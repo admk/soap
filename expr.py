@@ -66,5 +66,32 @@ class ExprParser(object):
         return self.string
 
 
+class AbstractExprTreeTransformer(object):
+
+    def __init__(self, tree):
+        self._t = tree
+
+    def transform(self):
+        pass
+
+    def closure(self):
+        pass
+
+
+class ExprTreeTransformer(AbstractExprTreeTransformer):
+
+    def __init__(self, tree):
+        pass
+
+    def associativity(self, t):
+        pass
+
+    def distributivity(self, t):
+        pass
+
+    def commutativity(self, t):
+        pass
+
+
 if __name__ == '__main__':
     print ExprParser('((a + b) + c)').tree
