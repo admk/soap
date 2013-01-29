@@ -83,7 +83,7 @@ class TreeTransformer(object):
             while trees != prev_trees:
                 prev_trees = trees
                 trees = reduce(
-                            lambda x, y: x.union(y),
+                            lambda x, y: x | y,
                             [set(self._walk_r(t, f)) for t in trees])
             return trees
 
@@ -121,7 +121,7 @@ class TreeTransformer(object):
             A set of trees after transform.
         """
         return reduce(
-                lambda x, y: x.union(y),
+                lambda x, y: x | y,
                 [set(f(t)) for f in self._transform_methods()])
 
     def _transform_methods(self):
