@@ -2,6 +2,10 @@
 # vim: set fileencoding=UTF-8 :
 
 
+from __future__ import print_function
+import inspect
+
+
 __author__ = 'Xitong Gao'
 __email__ = 'xtg08@ic.ac.uk'
 
@@ -166,10 +170,13 @@ class ExprTreeTransformer(TreeTransformer):
 
 
 if __name__ == '__main__':
-    e = '((a + b) + c)'
+    from pprint import pprint
+    e = '((a + b) * c)'
     t = ExprParser(e).tree
-    print 'Expr:', e
-    print 'Tree:', t
+    print('Expr:', e)
+    print('Tree:')
+    pprint(t)
     s = ExprTreeTransformer(t).closure()
-    print 'Transformed Total:', len(s)
-    print 'Exprs:', s
+    print('Transformed Total:', len(s))
+    print('Exprs:')
+    pprint(s)
