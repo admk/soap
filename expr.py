@@ -11,7 +11,6 @@ _OPERATORS = ['+', '*']
 
 def _parse_r(s):
     s = s.strip()
-    print s
     bracket_level = 0
     operator_pos = -1
     for i, v in enumerate(s):
