@@ -143,8 +143,22 @@ class ExprTreeTransformer(TreeTransformer):
         super(ExprTreeTransformer, self).__init__(tree)
         pass
 
+    ASSOCIATIVITY_OPERATORS = ['+', '*']
+
     def associativity(self, t):
-        return []
+        op, arg1, arg2 = t
+        s = []
+        if not op in self.ASSOCIATIVITY_OPERATORS:
+            return []
+        if type(arg1) is tuple:
+            arg1_op, arg11, arg12 = arg1
+            if arg1_op == op:
+                s.append((op, arg11, (op, arg12, arg2)))
+        if type(arg2) is tuple:
+            arg2_op, arg21, arg22 = arg2
+            if arg2_op == op:
+                s.append((op, (op, arg1, arg21), arg22))
+        return s
 
     def distributivity(self, t):
         return []
