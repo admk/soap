@@ -133,14 +133,14 @@ class TreeTransformer(object):
         """
         methods = [member[0] for member in inspect.getmembers(
                 self.__class__, predicate=inspect.ismethod)]
-        return [(method, getattr(self, method))
-                for method in methods if method.endswith('_transform')]
+        return [getattr(self, method)
+                for method in methods if method.endswith('tivity')]
 
 
 class ExprTreeTransformer(TreeTransformer):
 
     def __init__(self, tree):
-        super(ExprTreeTransformer, self).__init__()
+        super(ExprTreeTransformer, self).__init__(tree)
         pass
 
     def associativity(self, t):
