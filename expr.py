@@ -144,14 +144,20 @@ class ExprTreeTransformer(TreeTransformer):
         pass
 
     def associativity(self, t):
-        pass
+        return []
 
     def distributivity(self, t):
-        pass
+        return []
 
     def commutativity(self, t):
-        pass
+        return [(t[0], t[2], t[1])]
 
 
 if __name__ == '__main__':
-    print ExprParser('((a + b) + c)').tree
+    e = '((a + b) + c)'
+    t = ExprParser(e).tree
+    print 'Expr:', e
+    print 'Tree:', t
+    s = ExprTreeTransformer(t).closure()
+    print 'Transformed Total:', len(s)
+    print 'Exprs:', s
