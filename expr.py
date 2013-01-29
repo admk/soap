@@ -38,6 +38,7 @@ def _unparse_r(t):
 class ExprParser(object):
 
     def __init__(self, string_or_tree):
+        super(ExprParser, self).__init__()
         if type(string_or_tree) is str:
             self.string = string_or_tree
         elif type(string_or_tree) is tuple:
