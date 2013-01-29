@@ -11,7 +11,6 @@ _OPERATORS = ['+', '*']
 
 def _parse_r(s):
     s = s.strip()
-    print s
     bracket_level = 0
     operator_pos = -1
     for i, v in enumerate(s):
@@ -39,6 +38,7 @@ def _unparse_r(t):
 class ExprParser(object):
 
     def __init__(self, string_or_tree):
+        super(ExprParser, self).__init__()
         if type(string_or_tree) is str:
             self.string = string_or_tree
         elif type(string_or_tree) is tuple:
