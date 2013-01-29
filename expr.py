@@ -6,6 +6,9 @@ __author__ = 'Xitong Gao'
 __email__ = 'xtg08@ic.ac.uk'
 
 
+import inspect
+
+
 _OPERATORS = ['+', '*']
 
 
@@ -100,7 +103,38 @@ class TreeTransformer(object):
         self._t = tree
 
     def closure(self):
-        pass
+        """Perform transforms until transitive closure is reached.
+
+        Returns:
+            A set of trees after transform.
+        """
+        return TreeTransformer.TreeTransformerCore(self._t).closure(
+                self._transform_collate)
+
+    def _transform_collate(self, t):
+        """Combines all transform methods into one.
+
+        Args:
+            t: A tree under transform.
+
+        Returns:
+            A set of trees after transform.
+        """
+        return reduce(
+                lambda x, y: x.union(y),
+                [set(f(t)) for f in self._transform_methods()])
+
+    def _transform_methods(self):
+        """Find all transform methods within the class
+
+        Returns:
+            A list of tuples containing method names and corresponding methods
+            that can be called with a tree as the argument for each method.
+        """
+        methods = [member[0] for member in inspect.getmembers(
+                self.__class__, predicate=inspect.ismethod)]
+        return [(method, getattr(self, method))
+                for method in methods if method.endswith('_transform')]
 
 
 class ExprTreeTransformer(TreeTransformer):
