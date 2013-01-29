@@ -6,10 +6,10 @@ __author__ = 'Xitong Gao'
 __email__ = 'xtg08@ic.ac.uk'
 
 
-import inspect
+ADD_OP = '+'
+MULTIPLY_OP = '*'
 
-
-_OPERATORS = ['+', '*']
+_OPERATORS = [ADD_OP, MULTIPLY_OP]
 
 
 def _parse_r(s):
@@ -82,9 +82,8 @@ class TreeTransformer(object):
             prev_trees = None
             while trees != prev_trees:
                 prev_trees = trees
-                trees = reduce(
-                            lambda x, y: x | y,
-                            [set(self._walk_r(t, f)) for t in trees])
+                trees_list = [set(self._walk_r(t, f)) for t in trees]
+                trees = reduce(lambda x, y: x | y, trees_list)
             return trees
 
         def _walk_r(self, t, f):
@@ -141,9 +140,8 @@ class ExprTreeTransformer(TreeTransformer):
 
     def __init__(self, tree):
         super(ExprTreeTransformer, self).__init__(tree)
-        pass
 
-    ASSOCIATIVITY_OPERATORS = ['+', '*']
+    ASSOCIATIVITY_OPERATORS = [ADD_OP, MULTIPLY_OP]
 
     def associativity(self, t):
         op, arg1, arg2 = t
