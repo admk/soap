@@ -66,21 +66,47 @@ class ExprParser(object):
         return self.string
 
 
-class AbstractExprTreeTransformer(object):
+class TreeTransformer(object):
+
+    class TreeTransformerCore(object):
+
+        def __init__(self, tree):
+            super(TreeTransformer.TreeTransformerCore, self).__init__()
+            self._t = tree
+
+        def closure(self, f):
+            trees = set([self._t])
+            prev_trees = None
+            while trees != prev_trees:
+                prev_trees = trees
+                trees = reduce(
+                            lambda x, y: x.union(y),
+                            [set(self._walk_r(t, f)) for t in trees])
+            return trees
+
+        def _walk_r(self, t, f):
+            if type(t) is tuple:
+                for e in set(f(t)):
+                    yield e
+                for e in set(self._walk_r(t[1], f)):
+                    yield (t[0], e, t[2])
+                for e in set(self._walk_r(t[2], f)):
+                    yield (t[0], t[1], e)
+            # make sure identity is not forgotten
+            yield t
 
     def __init__(self, tree):
+        super(TreeTransformer, self).__init__()
         self._t = tree
-
-    def transform(self):
-        pass
 
     def closure(self):
         pass
 
 
-class ExprTreeTransformer(AbstractExprTreeTransformer):
+class ExprTreeTransformer(TreeTransformer):
 
     def __init__(self, tree):
+        super(ExprTreeTransformer, self).__init__()
         pass
 
     def associativity(self, t):
