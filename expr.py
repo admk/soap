@@ -162,8 +162,37 @@ class ExprTreeTransformer(TreeTransformer):
                 s.append((op, (op, arg1, arg21), arg22))
         return s
 
+    COMMUTATIVE_DISTRIBUTIVITY_OPERATOR_PAIRS = [(MULTIPLY_OP, ADD_OP)]
+    # left-distributive: a * (b + c) == a * b + a * c
+    LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS = \
+            COMMUTATIVE_DISTRIBUTIVITY_OPERATOR_PAIRS
+    # Note that division '/' is only right-distributive over +
+    RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS = \
+            COMMUTATIVE_DISTRIBUTIVITY_OPERATOR_PAIRS
+
+    LEFT_DISTRIBUTIVITY_OPERATORS = \
+            zip(*LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS)[0]
+    RIGHT_DISTRIBUTIVITY_OPERATORS = \
+            zip(*RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS)[0]
+
     def distributivity(self, t):
-        return []
+        def distribute(t):
+            op, arg1, arg2 = t
+            s = []
+            if op in self.LEFT_DISTRIBUTIVITY_OPERATORS and \
+                    type(arg2) is tuple:
+                op2, arg21, arg22 = arg2
+                if (op, op2) in self.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
+                    s.append((op2, (op, arg1, arg21), (op, arg1, arg22)))
+            if op in self.RIGHT_DISTRIBUTIVITY_OPERATORS and \
+                    type(arg1) is tuple:
+                op1, arg11, arg12 = arg1
+                if (op, op1) in self.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
+                    s.append((op1, (op, arg11, arg2), (op, arg12, arg2)))
+            return s
+        def collect(t):
+            return []
+        return distribute(t) + collect(t)
 
     def commutativity(self, t):
         return [(t[0], t[2], t[1])]
