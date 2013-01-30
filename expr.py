@@ -100,6 +100,24 @@ class TreeTransformer(object):
                         [set(self._walk_r(t, f)) for t in trees])
             return trees
 
+        def iterate(self, f, closure=False):
+            """Find the fix point of the function f.
+
+            After transform, all trees are in the
+            :func:`TreeTransformer.Core.trees` property.
+
+            Arg:
+                f: A function which transforms the trees. It has one argument,
+                   the tree, and returns a set of trees after transform.
+
+            Returns:
+                A set which is the fix point.
+            """
+            # TODO Write me. It appears the _walk_r function is not suitable
+            # for this, because we need reduction to work, should not yield
+            # a tree itself.
+            pass
+
         def _walk_r(self, t, f):
             if type(t) is tuple:
                 for e in set(f(t)):
@@ -129,8 +147,27 @@ class TreeTransformer(object):
         Returns:
             A set of trees after transform.
         """
-        return TreeTransformer.TreeTransformerCore(self._t).closure(
-                self._transform_collate)
+        core = TreeTransformer.Core([self._t])
+        core.trees = core.closure(self._transform_collate)
+        return core.closure(self._reduce)
+
+    def reduce(self, t):
+        """Perform reduction of tree.
+
+        Override this method in subclasses to perform reduction after deriving
+        transformed trees.
+
+        Arg:
+            t: A tree under reduction.
+
+        Returns:
+            A reduced tree.
+        """
+        return t
+
+    def _reduce(self, t):
+        """A method to make reduce(t) conform to the way _walk_r works."""
+        return [self.reduce(t)]
 
     def _transform_collate(self, t):
         """Combines all transform methods into one.
@@ -244,6 +281,16 @@ class ExprTreeTransformer(TreeTransformer):
 
     def commutativity(self, t):
         return [(t[0], t[2], t[1])]
+
+    def reduce(self, t):
+        op, arg1, arg2 = t
+        if op == MULTIPLY_OP:
+            if arg1 == 1:
+                return arg2
+            if arg2 == 1:
+                return arg1
+            return t
+        return t
 
 
 if __name__ == '__main__':
