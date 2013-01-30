@@ -34,7 +34,8 @@ def _unparse_r(t):
     if type(t) is not tuple:
         return str(t)
     operator, arg1, arg2 = t
-    return '(' + _unparse_r(arg1) + operator + _unparse_r(arg2) + ')'
+    return '(' + _unparse_r(arg1) + ' ' + operator + \
+           ' ' + _unparse_r(arg2) + ')'
 
 
 class ExprParser(object):
