@@ -75,19 +75,29 @@ class ExprParser(object):
 
 class TreeTransformer(object):
 
-    class TreeTransformerCore(object):
+    class Core(object):
 
-        def __init__(self, tree):
-            super(TreeTransformer.TreeTransformerCore, self).__init__()
-            self._t = tree
+        def __init__(self, trees):
+            super(TreeTransformer.Core, self).__init__()
+            self._trees = set(trees)
 
         def closure(self, f):
-            trees = set([self._t])
+            """Find the transitive closure of successive application of the
+            function f.
+
+            Arg:
+                f: A function which transforms the trees. It has one argument,
+                   the tree, and returns a set of trees after transform.
+
+            Returns:
+                A set after transforms.
+            """
+            trees = self._trees
             prev_trees = None
             while trees != prev_trees:
                 prev_trees = trees
-                trees_list = [set(self._walk_r(t, f)) for t in trees]
-                trees = reduce(lambda x, y: x | y, trees_list)
+                trees = reduce(lambda x, y: x | y,
+                        [set(self._walk_r(t, f)) for t in trees])
             return trees
 
         def _walk_r(self, t, f):
@@ -100,6 +110,14 @@ class TreeTransformer(object):
                     yield (t[0], t[1], e)
             # make sure identity is not forgotten
             yield t
+
+        @property
+        def trees(self):
+            return self._trees
+
+        @trees.setter
+        def trees(self, trees):
+            self._trees = set(trees)
 
     def __init__(self, tree):
         super(TreeTransformer, self).__init__()
@@ -123,8 +141,7 @@ class TreeTransformer(object):
         Returns:
             A set of trees after transform.
         """
-        return reduce(
-                lambda x, y: x | y,
+        return reduce(lambda x, y: x | y,
                 [set(f(t)) for f in self._transform_methods()])
 
     def _transform_methods(self):
@@ -170,10 +187,10 @@ class ExprTreeTransformer(TreeTransformer):
     RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS = \
             COMMUTATIVE_DISTRIBUTIVITY_OPERATOR_PAIRS
 
-    LEFT_DISTRIBUTIVITY_OPERATORS = \
-            zip(*LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS)[0]
-    RIGHT_DISTRIBUTIVITY_OPERATORS = \
-            zip(*RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS)[0]
+    LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTION_OVER_OPERATORS = \
+            zip(*LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS)
+    RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTION_OVER_OPERATORS = \
+            zip(*RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS)
 
     def distributivity(self, t):
         def distribute(t):
@@ -200,7 +217,7 @@ class ExprTreeTransformer(TreeTransformer):
 
 if __name__ == '__main__':
     from pprint import pprint
-    e = '((a + b) * c)'
+    e = '(a + (a * b))'
     t = ExprParser(e).tree
     print('Expr:', e)
     print('Tree:')
