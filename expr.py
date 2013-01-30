@@ -38,8 +38,18 @@ def _parse_r(s):
 def _unparse_r(t):
     if type(t) is str:
         return t
+    if type(t) is not tuple:
+        return str(t)
     operator, arg1, arg2 = t
-    return '(' + _unparse_r(arg1) + operator + _unparse_r(arg2) + ')'
+    return '(' + _unparse_r(arg1) + ' ' + operator + \
+           ' ' + _unparse_r(arg2) + ')'
+
+
+def pprint_expr_trees(trees):
+    print('[')
+    for t in trees:
+        print(' ', ExprParser(t))
+    print(']')
 
 
 class ExprParser(object):
