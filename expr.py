@@ -38,6 +38,13 @@ def _unparse_r(t):
            ' ' + _unparse_r(arg2) + ')'
 
 
+def pprint_expr_trees(trees):
+    print('[')
+    for t in trees:
+        print(' ', ExprParser(t))
+    print(']')
+
+
 class ExprParser(object):
 
     def __init__(self, string_or_tree):
