@@ -208,7 +208,38 @@ class ExprTreeTransformer(TreeTransformer):
                     s.append((op1, (op, arg11, arg2), (op, arg12, arg2)))
             return s
         def collect(t):
-            return []
+            op, arg1, arg2 = t
+            if not op in (self.LEFT_DISTRIBUTION_OVER_OPERATORS +
+                      self.RIGHT_DISTRIBUTION_OVER_OPERATORS):
+                return []
+            # depth test
+            if type(arg1) is not tuple and type(arg2) is not tuple:
+                return []
+            # tuplify by adding identities
+            if type(arg2) is tuple:
+                op2, arg21, arg22 = arg2
+                if op2 == MULTIPLY_OP:
+                    if arg21 == arg1:
+                        arg1 = (op2, arg1, 1)
+                    elif arg22 == arg1:
+                        arg1 = (op2, 1, arg1)
+            if type(arg1) is tuple:
+                op1, arg11, arg12 = arg1
+                if op1 == MULTIPLY_OP:
+                    if arg11 == arg2:
+                        arg2 = (op1, arg2, 1)
+                    elif arg12 == arg2:
+                        arg2 = (op1, 1, arg2)
+            op1, arg11, arg12 = arg1
+            op2, arg21, arg22 = arg2
+            s = []
+            if (op1, op) in self.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
+                if arg11 == arg21:
+                    s.append((op1, arg11, (op, arg12, arg22)))
+            if (op2, op) in self.RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS:
+                if arg12 == arg22:
+                    s.append((op2, (op, arg11, arg21), arg12))
+            return s
         return distribute(t) + collect(t)
 
     def commutativity(self, t):
