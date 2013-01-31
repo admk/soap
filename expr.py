@@ -270,6 +270,11 @@ class ExprTreeTransformer(TreeTransformer):
                         arg2 = (op1, arg2, 1)
                     elif arg12 == arg2:
                         arg2 = (op1, 1, arg2)
+            if type(arg1) is not tuple:
+                return []
+            if type(arg2) is not tuple:
+                return []
+            # equivalences
             op1, arg11, arg12 = arg1
             op2, arg21, arg22 = arg2
             s = []
