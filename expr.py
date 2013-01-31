@@ -91,25 +91,6 @@ class TreeTransformer(object):
             super(TreeTransformer.Core, self).__init__()
             self._trees = set(trees)
 
-        def closure(self, f):
-            """Find the transitive closure of successive application of the
-            function f.
-
-            Arg:
-                f: A function which transforms the trees. It has one argument,
-                   the tree, and returns a set of trees after transform.
-
-            Returns:
-                A set after transforms.
-            """
-            trees = self._trees
-            prev_trees = None
-            while trees != prev_trees:
-                prev_trees = trees
-                trees = reduce(lambda x, y: x | y,
-                        [set(self._walk_r(t, f)) for t in trees])
-            return trees
-
         def iterate(self, f, closure=False):
             """Find the fix point of the function f.
 
@@ -119,25 +100,31 @@ class TreeTransformer(object):
             Arg:
                 f: A function which transforms the trees. It has one argument,
                    the tree, and returns a set of trees after transform.
+                closure: If set, it will try to find a transitive closure.
 
             Returns:
                 A set which is the fix point.
             """
-            # TODO Write me. It appears the _walk_r function is not suitable
-            # for this, because we need reduction to work, should not yield
-            # a tree itself.
-            pass
+            trees = self._trees
+            prev_trees = None
+            while trees != prev_trees:
+                prev_trees = trees
+                trees = reduce(lambda x, y: x | y,
+                               [self._walk_r(t, f, closure) for t in trees])
+            return trees
 
-        def _walk_r(self, t, f):
+        def _walk_r(self, t, f, c):
+            s = set([])
             if type(t) is tuple:
-                for e in set(f(t)):
-                    yield e
-                for e in set(self._walk_r(t[1], f)):
-                    yield (t[0], e, t[2])
-                for e in set(self._walk_r(t[2], f)):
-                    yield (t[0], t[1], e)
+                for e in f(t):
+                    s.add(e)
+                for e in self._walk_r(t[1], f, c):
+                    s.add((t[0], e, t[2]))
+                for e in self._walk_r(t[2], f, c):
+                    s.add((t[0], t[1], e))
             # make sure identity is not forgotten
-            yield t
+            s.add(t)
+            return s
 
         @property
         def trees(self):
@@ -158,8 +145,8 @@ class TreeTransformer(object):
             A set of trees after transform.
         """
         core = TreeTransformer.Core([self._t])
-        core.trees = core.closure(self._transform_collate)
-        return core.closure(self._reduce)
+        core.trees = core.iterate(self._transform_collate, closure=True)
+        return core.iterate(self._reduce)
 
     def reduce(self, t):
         """Perform reduction of tree.
