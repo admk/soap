@@ -122,8 +122,14 @@ class TreeTransformer(object):
                     s.add((t[0], e, t[2]))
                 for e in self._walk_r(t[2], f, c):
                     s.add((t[0], t[1], e))
-            # make sure identity is not forgotten
-            s.add(t)
+            if c:
+                # make sure identity is not forgotten
+                s.add(t)
+            elif len(s) > 1:
+                # there is more than 1 transformed result. discard the
+                # original, because the original is transformed to become
+                # something else
+                s.remove(t)
             return s
 
         @property
