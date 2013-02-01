@@ -303,12 +303,12 @@ class ExprTreeTransformer(TreeTransformer):
 
 if __name__ == '__main__':
     from pprint import pprint
-    e = '(a + (a * b))'
+    e = '((a + b) * (c + 1))'
     t = ExprParser(e).tree
     print('Expr:', e)
     print('Tree:')
     pprint(t)
     s = ExprTreeTransformer(t).closure()
+    print('Transformed Exprs:')
+    pprint_expr_trees(s)
     print('Transformed Total:', len(s))
-    print('Exprs:')
-    pprint(s)
