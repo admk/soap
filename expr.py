@@ -161,7 +161,9 @@ class TreeTransformer(object):
         while trees != prev_trees:
             prev_trees = trees
             c.trees = trees
-            trees = c.step(self._transform_collate, True)
+            c.trees = c.step(self._transform_collate, True)
+            c.trees = c.step(self._reduce, True)
+            trees = c.trees
         return c.trees
 
     def reduce(self, t):
