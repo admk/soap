@@ -105,27 +105,18 @@ class TreeTransformer(object):
             super(TreeTransformer.Core, self).__init__()
             self._trees = set(trees)
 
-        def iterate(self, f, closure=False):
-            """Find the fix point of the function f.
-
-            After transform, all trees are in the
-            :func:`TreeTransformer.Core.trees` property.
-
+        def step(self, f, closure=False):
+            """Find the set of trees related by the function f.
             Arg:
                 f: A function which transforms the trees. It has one argument,
                    the tree, and returns a set of trees after transform.
-                closure: If set, it will try to find a transitive closure.
+                closure: If set, it will include everything in self.trees.
 
             Returns:
-                A set which is the fix point.
+                A set of trees related by f.
             """
-            trees = self._trees
-            prev_trees = None
-            while trees != prev_trees:
-                prev_trees = trees
-                trees = reduce(lambda x, y: x | y,
-                               [self._walk_r(t, f, closure) for t in trees])
-            return trees
+            return reduce(lambda x, y: x | y,
+                    [self._walk_r(t, f, closure) for t in self.trees])
 
         def _walk_r(self, t, f, c):
             s = set([])
@@ -164,9 +155,14 @@ class TreeTransformer(object):
         Returns:
             A set of trees after transform.
         """
-        core = TreeTransformer.Core([self._t])
-        core.trees = core.iterate(self._transform_collate, closure=True)
-        return core.iterate(self._reduce)
+        trees = [self._t]
+        prev_trees = None
+        c = TreeTransformer.Core(trees)
+        while trees != prev_trees:
+            prev_trees = trees
+            c.trees = trees
+            trees = c.step(self._transform_collate, True)
+        return c.trees
 
     def reduce(self, t):
         """Perform reduction of tree.
@@ -323,6 +319,6 @@ if __name__ == '__main__':
     print('Tree:')
     pprint(t)
     s = ExprTreeTransformer(t).closure()
-    print('Transformed Exprs:')
-    pprint_expr_trees(s)
+    # print('Transformed Exprs:')
+    # pprint_expr_trees(s)
     print('Transformed Total:', len(s))
