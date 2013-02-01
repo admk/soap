@@ -16,6 +16,20 @@ MULTIPLY_OP = '*'
 _OPERATORS = [ADD_OP, MULTIPLY_OP]
 
 
+def _to_number(s):
+    try:
+        return int(s)
+    except ValueError:
+        return float(s)
+
+
+def _try_to_number(s):
+    try:
+        return _to_number(s)
+    except (ValueError, TypeError):
+        return s
+
+
 def _parse_r(s):
     s = s.strip()
     bracket_level = 0
@@ -30,9 +44,9 @@ def _parse_r(s):
             break
     if operator_pos == -1:
         return s
-    return (s[operator_pos],
-            _parse_r(s[1:operator_pos].strip()),
-            _parse_r(s[operator_pos + 1:-1].strip()))
+    arg1 = _try_to_number(_parse_r(s[1:operator_pos].strip()))
+    arg2 = _try_to_number(_parse_r(s[operator_pos + 1:-1].strip()))
+    return (s[operator_pos], arg1, arg2)
 
 
 def _unparse_r(t):
