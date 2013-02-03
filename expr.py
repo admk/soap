@@ -130,7 +130,7 @@ class TreeTransformer(object):
             if c:
                 # make sure identity is not forgotten
                 s.add(t)
-            elif len(s) > 1:
+            elif len(s) > 1 and t in s:
                 # there is more than 1 transformed result. discard the
                 # original, because the original is transformed to become
                 # something else
