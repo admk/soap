@@ -149,22 +149,25 @@ class TreeTransformer(object):
         super(TreeTransformer, self).__init__()
         self._t = tree
 
+    def _closure_r(self, f, trees, reduced=False):
+        prev_trees = None
+        c = TreeTransformer.Core(trees)
+        while trees != prev_trees:
+            prev_trees = trees
+            c.trees = trees
+            trees = c.step(f, not reduced)
+        if not reduced:
+            trees = self._closure_r(self._reduce, trees, True)
+        prev_trees = None
+        return trees
+
     def closure(self):
         """Perform transforms until transitive closure is reached.
 
         Returns:
             A set of trees after transform.
         """
-        trees = [self._t]
-        prev_trees = None
-        c = TreeTransformer.Core(trees)
-        while trees != prev_trees:
-            prev_trees = trees
-            c.trees = trees
-            c.trees = c.step(self._transform_collate, True)
-            c.trees = c.step(self._reduce, True)
-            trees = c.trees
-        return c.trees
+        return self._closure_r(self._transform_collate, [self._t])
 
     def reduce(self, t):
         """Perform reduction of tree.
