@@ -160,12 +160,11 @@ class TreeTransformer(object):
             if not reduced:
                 for f in self._transform_methods():
                     trees = _step(trees, f, v, True)
+                trees = self._closure_r(trees, True)
             else:
                 trees = _step(trees, self._reduce, v, False)
             if self._p:
                 sys.stdout.write('%d ' % len(trees))
-        if not reduced:
-            trees = self._closure_r(trees, True)
         return trees
 
     def closure(self):
