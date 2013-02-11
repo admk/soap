@@ -4,6 +4,7 @@
 
 from __future__ import print_function
 import re
+import sys
 import random
 import inspect
 
@@ -145,10 +146,11 @@ class ValidationError(Exception):
 
 class TreeTransformer(object):
 
-    def __init__(self, tree, validate=False):
+    def __init__(self, tree, validate=False, print_progress=False):
         super(TreeTransformer, self).__init__()
         self._t = tree
         self._v = validate
+        self._p = print_progress
 
     def _closure_r(self, trees, reduced=False):
         v = self._validate if self._v else None
@@ -160,10 +162,10 @@ class TreeTransformer(object):
                     trees = _step(trees, f, v, True)
             else:
                 trees = _step(trees, self._reduce, v, False)
-            print(len(trees))
+            if self._p:
+                sys.stdout.write('%d ' % len(trees))
         if not reduced:
             trees = self._closure_r(trees, True)
-        prev_trees = None
         return trees
 
     def closure(self):
@@ -225,8 +227,9 @@ class TreeTransformer(object):
 
 class ExprTreeTransformer(TreeTransformer):
 
-    def __init__(self, tree, validate=False):
-        super(ExprTreeTransformer, self).__init__(tree, validate)
+    def __init__(self, tree, validate=False, print_progress=False):
+        super(ExprTreeTransformer, self).__init__(
+                tree, validate, print_progress)
 
     ASSOCIATIVITY_OPERATORS = [ADD_OP, MULTIPLY_OP]
 
@@ -356,14 +359,12 @@ if __name__ == '__main__':
     print('Expr:', e)
     print('Tree:')
     pprint(t)
-    s = ExprTreeTransformer(t, True).closure()
-    print('Transformed Exprs:')
-    pprint_expr_trees(s)
+    s = ExprTreeTransformer(t, print_progress=True).closure()
     print('Transformed Total:', len(s))
     print('Validating...')
     t = random.sample(s, 1)[0]
     print('Sample Expr:', ExprParser(t))
-    r = ExprTreeTransformer(t, True).closure()
+    r = ExprTreeTransformer(t).closure()
     if s == r:
         print('Validated.')
     else:
