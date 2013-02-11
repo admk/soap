@@ -318,12 +318,21 @@ class ExprTreeTransformer(TreeTransformer):
 
 if __name__ == '__main__':
     from pprint import pprint
-    e = '((a + b) * (c + 1))'
+    e = '((a + 1) * (b + 1))'
     t = ExprParser(e).tree
     print('Expr:', e)
     print('Tree:')
     pprint(t)
     s = ExprTreeTransformer(t).closure()
-    # print('Transformed Exprs:')
-    # pprint_expr_trees(s)
+    print('Transformed Exprs:')
+    pprint_expr_trees(s)
     print('Transformed Total:', len(s))
+    print('Validating...')
+    t = random.sample(s, 1)[0]
+    print('Sample Expr:', ExprParser(t))
+    r = ExprTreeTransformer(t).closure()
+    if s == r:
+        print('Validated.')
+    else:
+        print('Inconsistent closure generated.')
+        pprint_expr_trees(r)
