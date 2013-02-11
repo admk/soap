@@ -210,18 +210,6 @@ class TreeTransformer(object):
         """A method to make reduce(t) conform to the way _walk_r works."""
         return [self.reduce(t)]
 
-    def _transform_collate(self, t):
-        """Combines all transform methods into one.
-
-        Args:
-            t: A tree under transform.
-
-        Returns:
-            A set of trees after transform.
-        """
-        return reduce(lambda x, y: x | y,
-                [set(f(t)) for f in self._transform_methods()])
-
     def _transform_methods(self):
         """Find all transform methods within the class
 
