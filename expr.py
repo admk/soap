@@ -128,9 +128,14 @@ def _walk_r(t, f, v, c):
         # original, because the original is transformed to become
         # something else
         s.remove(t)
-    if v:
+    if not v:
+        return s
+    try:
         for tn in s:
             v(t, tn)
+    except ValidationError:
+        print('Violating transformation:', f)
+        raise
     return s
 
 
@@ -145,13 +150,19 @@ class TreeTransformer(object):
         self._t = tree
         self._v = validate
 
-    def _closure_r(self, f, trees, reduced=False):
+    def _closure_r(self, trees, reduced=False):
         v = self._validate if self._v else None
         prev_trees = None
         while trees != prev_trees:
-            prev_trees, trees = trees, _step(trees, f, v, not reduced)
+            prev_trees = trees
+            if not reduced:
+                for f in self._transform_methods():
+                    trees = _step(trees, f, v, True)
+            else:
+                trees = _step(trees, self._reduce, v, False)
+            print(len(trees))
         if not reduced:
-            trees = self._closure_r(self._reduce, trees, True)
+            trees = self._closure_r(trees, True)
         prev_trees = None
         return trees
 
@@ -161,7 +172,7 @@ class TreeTransformer(object):
         Returns:
             A set of trees after transform.
         """
-        return self._closure_r(self._transform_collate, [self._t])
+        return self._closure_r([self._t])
 
     def validate(self, t, tn):
         """Perform validation of tree.
