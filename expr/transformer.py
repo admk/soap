@@ -8,110 +8,12 @@ import sys
 import random
 import inspect
 
+from common import ADD_OP, MULTIPLY_OP, pprint_expr_trees
+from parser import ExprParser
+
 
 __author__ = 'Xitong Gao'
 __email__ = 'xtg08@ic.ac.uk'
-
-
-ADD_OP = '+'
-MULTIPLY_OP = '*'
-
-_OPERATORS = [ADD_OP, MULTIPLY_OP]
-
-
-def _to_number(s):
-    try:
-        return int(s)
-    except ValueError:
-        return float(s)
-
-
-def _try_to_number(s):
-    try:
-        return _to_number(s)
-    except (ValueError, TypeError):
-        return s
-
-
-def _to_number(s):
-    try:
-        return int(s)
-    except ValueError:
-        return float(s)
-
-
-def _try_to_number(s):
-    try:
-        return _to_number(s)
-    except (ValueError, TypeError):
-        return s
-
-
-def _parse_r(s):
-    s = s.strip()
-    bracket_level = 0
-    operator_pos = -1
-    for i, v in enumerate(s):
-        if v == '(':
-            bracket_level += 1
-        if v == ')':
-            bracket_level -= 1
-        if bracket_level == 1 and v in _OPERATORS:
-            operator_pos = i
-            break
-    if operator_pos == -1:
-        return s
-    arg1 = _try_to_number(_parse_r(s[1:operator_pos].strip()))
-    arg2 = _try_to_number(_parse_r(s[operator_pos + 1:-1].strip()))
-    return (s[operator_pos], arg1, arg2)
-
-
-def _unparse_r(t):
-    if type(t) is str:
-        return t
-    if type(t) is not tuple:
-        return str(t)
-    operator, arg1, arg2 = t
-    return '(' + _unparse_r(arg1) + ' ' + operator + \
-           ' ' + _unparse_r(arg2) + ')'
-
-
-def pprint_expr_trees(trees):
-    print('[')
-    for t in trees:
-        print(' ', ExprParser(t))
-    print(']')
-
-
-class ExprParser(object):
-
-    def __init__(self, string_or_tree):
-        super(ExprParser, self).__init__()
-        if type(string_or_tree) is str:
-            self.string = string_or_tree
-        else:
-            self.tree = string_or_tree
-
-    @property
-    def tree(self):
-        return self._t
-
-    @tree.setter
-    def tree(self, t):
-        self._t = t
-        self._s = _unparse_r(t)
-
-    @property
-    def string(self):
-        return self._s
-
-    @string.setter
-    def string(self, s):
-        self._s = s
-        self._t = _parse_r(self._s)
-
-    def __str__(self):
-        return self.string
 
 
 def _step(s, f, v=None, closure=False):
@@ -127,6 +29,7 @@ def _step(s, f, v=None, closure=False):
         A set of trees related by f.
     """
     return reduce(lambda x, y: x | y, [_walk_r(t, f, v, closure) for t in s])
+
 
 def _walk_r(t, f, v, c):
     s = set([t])
@@ -363,23 +266,3 @@ class ExprTreeTransformer(TreeTransformer):
                 return arg1
             return t
         return t
-
-
-if __name__ == '__main__':
-    from pprint import pprint
-    e = '((a + 1) * (b + 1))'
-    t = ExprParser(e).tree
-    print('Expr:', e)
-    print('Tree:')
-    pprint(t)
-    s = ExprTreeTransformer(t, print_progress=True).closure()
-    print('Transformed Total:', len(s))
-    print('Validating...')
-    t = random.sample(s, 1)[0]
-    print('Sample Expr:', ExprParser(t))
-    r = ExprTreeTransformer(t).closure()
-    if s == r:
-        print('Validated.')
-    else:
-        print('Inconsistent closure generated.')
-        pprint_expr_trees(r)
