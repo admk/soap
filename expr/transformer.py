@@ -8,7 +8,7 @@ import sys
 import random
 import inspect
 
-from common import ADD_OP, MULTIPLY_OP, pprint_expr_trees
+from common import ADD_OP, MULTIPLY_OP
 from parser import ExprParser
 
 
