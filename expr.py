@@ -3,6 +3,8 @@
 
 
 from __future__ import print_function
+import re
+import random
 import inspect
 
 
@@ -72,7 +74,7 @@ class ExprParser(object):
         super(ExprParser, self).__init__()
         if type(string_or_tree) is str:
             self.string = string_or_tree
-        elif type(string_or_tree) is tuple:
+        else:
             self.tree = string_or_tree
 
     @property
@@ -97,50 +99,57 @@ class ExprParser(object):
         return self.string
 
 
-def _step(s, f, closure=False):
+def _step(s, f, v=None, closure=False):
     """Find the set of trees related by the function f.
     Arg:
         s: A set of trees.
         f: A function which transforms the trees. It has one argument,
             the tree, and returns a set of trees after transform.
+        v: A function which validates the transform.
         closure: If set, it will include everything in self.trees.
 
     Returns:
         A set of trees related by f.
     """
-    return reduce(lambda x, y: x | y, [_walk_r(t, f, closure) for t in s])
+    return reduce(lambda x, y: x | y, [_walk_r(t, f, v, closure) for t in s])
 
-def _walk_r(t, f, c):
+def _walk_r(t, f, v, c):
     s = set([t])
     if type(t) is not tuple:
         return s
     for e in f(t):
         s.add(e)
-    for e in _walk_r(t[1], f, c):
+    for e in _walk_r(t[1], f, v, c):
         s.add((t[0], e, t[2]))
-    for e in _walk_r(t[2], f, c):
+    for e in _walk_r(t[2], f, v, c):
         s.add((t[0], t[1], e))
-    if c:
-        # make sure identity is not forgotten
-        return s
-    if len(s) > 1 and t in s:
+    if not c and len(s) > 1 and t in s:
         # there is more than 1 transformed result. discard the
         # original, because the original is transformed to become
         # something else
         s.remove(t)
+    if v:
+        for tn in s:
+            v(t, tn)
     return s
+
+
+class ValidationError(Exception):
+    """Failed to find equivalence."""
 
 
 class TreeTransformer(object):
 
-    def __init__(self, tree):
+    def __init__(self, tree, validate=False):
         super(TreeTransformer, self).__init__()
         self._t = tree
+        self._v = validate
 
     def _closure_r(self, f, trees, reduced=False):
+        v = self._validate if self._v else None
         prev_trees = None
         while trees != prev_trees:
-            prev_trees, trees = trees, _step(trees, f, not reduced)
+            prev_trees, trees = trees, _step(trees, f, v, not reduced)
         if not reduced:
             trees = self._closure_r(self._reduce, trees, True)
         prev_trees = None
@@ -153,6 +162,24 @@ class TreeTransformer(object):
             A set of trees after transform.
         """
         return self._closure_r(self._transform_collate, [self._t])
+
+    def validate(self, t, tn):
+        """Perform validation of tree.
+
+        Args:
+            t: An original tree.
+            tn: A transformed tree.
+
+        Raises:
+            ValidationError: If failed to find equivalences between t and tn.
+        """
+        pass
+
+    def _validate(self, t, tn):
+        if t == tn:
+            return
+        if self._v:
+            self.validate(t, tn)
 
     def reduce(self, t):
         """Perform reduction of tree.
@@ -199,8 +226,8 @@ class TreeTransformer(object):
 
 class ExprTreeTransformer(TreeTransformer):
 
-    def __init__(self, tree):
-        super(ExprTreeTransformer, self).__init__(tree)
+    def __init__(self, tree, validate=False):
+        super(ExprTreeTransformer, self).__init__(tree, validate)
 
     ASSOCIATIVITY_OPERATORS = [ADD_OP, MULTIPLY_OP]
 
@@ -290,6 +317,27 @@ class ExprTreeTransformer(TreeTransformer):
     def commutativity(self, t):
         return [(t[0], t[2], t[1])]
 
+    VAR_RE = re.compile(r"[^\d\W]\w*", re.UNICODE)
+
+    def validate(self, t, tn):
+        def string(tree):
+            return ExprParser(tree).string
+        def vars(tree_str):
+            return set(self.VAR_RE.findall(tree_str))
+        to, no = ts, ns = string(t), string(tn)
+        tsv, nsv = vars(ts), vars(ns)
+        if tsv != nsv:
+            raise ValidationError('Variable domain mismatch.')
+        vv = {v: random.randint(0, 127) for v in tsv}
+        for v, i in vv.iteritems():
+            ts = re.sub(r'\b%s\b' % v, str(i), ts)
+            ns = re.sub(r'\b%s\b' % v, str(i), ns)
+        if eval(ts) != eval(ns):
+            raise ValidationError(
+                    'Failed validation\n'
+                    'Original: %s %s,\n'
+                    'Transformed: %s %s' % (to, t, no, tn))
+
     def reduce(self, t):
         op, arg1, arg2 = t
         if op == MULTIPLY_OP:
@@ -308,14 +356,14 @@ if __name__ == '__main__':
     print('Expr:', e)
     print('Tree:')
     pprint(t)
-    s = ExprTreeTransformer(t).closure()
+    s = ExprTreeTransformer(t, True).closure()
     print('Transformed Exprs:')
     pprint_expr_trees(s)
     print('Transformed Total:', len(s))
     print('Validating...')
     t = random.sample(s, 1)[0]
     print('Sample Expr:', ExprParser(t))
-    r = ExprTreeTransformer(t).closure()
+    r = ExprTreeTransformer(t, True).closure()
     if s == r:
         print('Validated.')
     else:
