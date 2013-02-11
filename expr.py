@@ -97,53 +97,41 @@ class ExprParser(object):
         return self.string
 
 
+def _step(s, f, closure=False):
+    """Find the set of trees related by the function f.
+    Arg:
+        s: A set of trees.
+        f: A function which transforms the trees. It has one argument,
+            the tree, and returns a set of trees after transform.
+        closure: If set, it will include everything in self.trees.
+
+    Returns:
+        A set of trees related by f.
+    """
+    return reduce(lambda x, y: x | y, [_walk_r(t, f, closure) for t in s])
+
+def _walk_r(t, f, c):
+    s = set([t])
+    if type(t) is not tuple:
+        return s
+    for e in f(t):
+        s.add(e)
+    for e in _walk_r(t[1], f, c):
+        s.add((t[0], e, t[2]))
+    for e in _walk_r(t[2], f, c):
+        s.add((t[0], t[1], e))
+    if c:
+        # make sure identity is not forgotten
+        return s
+    if len(s) > 1 and t in s:
+        # there is more than 1 transformed result. discard the
+        # original, because the original is transformed to become
+        # something else
+        s.remove(t)
+    return s
+
+
 class TreeTransformer(object):
-
-    class Core(object):
-
-        def __init__(self, trees):
-            super(TreeTransformer.Core, self).__init__()
-            self._trees = set(trees)
-
-        def step(self, f, closure=False):
-            """Find the set of trees related by the function f.
-            Arg:
-                f: A function which transforms the trees. It has one argument,
-                   the tree, and returns a set of trees after transform.
-                closure: If set, it will include everything in self.trees.
-
-            Returns:
-                A set of trees related by f.
-            """
-            return reduce(lambda x, y: x | y,
-                    [self._walk_r(t, f, closure) for t in self.trees])
-
-        def _walk_r(self, t, f, c):
-            s = set([])
-            if type(t) is tuple:
-                for e in f(t):
-                    s.add(e)
-                for e in self._walk_r(t[1], f, c):
-                    s.add((t[0], e, t[2]))
-                for e in self._walk_r(t[2], f, c):
-                    s.add((t[0], t[1], e))
-            if c:
-                # make sure identity is not forgotten
-                s.add(t)
-            elif len(s) > 1 and t in s:
-                # there is more than 1 transformed result. discard the
-                # original, because the original is transformed to become
-                # something else
-                s.remove(t)
-            return s
-
-        @property
-        def trees(self):
-            return self._trees
-
-        @trees.setter
-        def trees(self, trees):
-            self._trees = set(trees)
 
     def __init__(self, tree):
         super(TreeTransformer, self).__init__()
@@ -151,11 +139,8 @@ class TreeTransformer(object):
 
     def _closure_r(self, f, trees, reduced=False):
         prev_trees = None
-        c = TreeTransformer.Core(trees)
         while trees != prev_trees:
-            prev_trees = trees
-            c.trees = trees
-            trees = c.step(f, not reduced)
+            prev_trees, trees = trees, _step(trees, f, not reduced)
         if not reduced:
             trees = self._closure_r(self._reduce, trees, True)
         prev_trees = None
