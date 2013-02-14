@@ -76,6 +76,7 @@ class TreeTransformer(object):
             # print set size
             if self._p:
                 sys.stdout.write('%d ' % len(trees))
+                sys.stdout.flush()
             # iterative transition
             prev_trees = trees
             if not reduced:
