@@ -265,3 +265,14 @@ class ExprTreeTransformer(TreeTransformer):
 
     def multiplicative_identity_reduction(self, t):
         return self._identity_reduction(t, MULTIPLY_OP, 1)
+
+    def additive_identity_reduction(self, t):
+        return self._identity_reduction(t, ADD_OP, 0)
+
+    def zero_reduction(self, t):
+        op, arg1, arg2 = t
+        if op != MULTIPLY_OP:
+            return t
+        if arg1 != 0 and arg2 != 0:
+            return t
+        return 0
