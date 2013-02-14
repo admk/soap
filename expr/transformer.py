@@ -79,6 +79,11 @@ class TreeTransformer(object):
         v = self._validate if self._v else None
         prev_trees = None
         while trees != prev_trees:
+            # print set size
+            if self._p:
+                sys.stdout.write('%d ' % len(trees))
+                sys.stdout.flush()
+            # iterative transition
             prev_trees = trees
             if not reduced:
                 for f in self._transform_methods():
@@ -87,8 +92,6 @@ class TreeTransformer(object):
             else:
                 for f in self._reduction_methods():
                     trees = _step(trees, item_to_list(f), v, False)
-            if self._p:
-                sys.stdout.write('%d ' % len(trees))
         return trees
 
     def closure(self):
