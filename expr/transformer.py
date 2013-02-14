@@ -57,6 +57,12 @@ def _walk_r(t, f, v, c):
     return s
 
 
+def item_to_list(f):
+    def decorator(t):
+        return [f(t)]
+    return decorator
+
+
 class ValidationError(Exception):
     """Failed to find equivalence."""
 
@@ -79,7 +85,8 @@ class TreeTransformer(object):
                     trees = _step(trees, f, v, True)
                 trees = self._closure_r(trees, True)
             else:
-                trees = _step(trees, self._reduce, v, False)
+                for f in self._reduction_methods():
+                    trees = _step(trees, item_to_list(f), v, False)
             if self._p:
                 sys.stdout.write('%d ' % len(trees))
         return trees
@@ -110,26 +117,15 @@ class TreeTransformer(object):
         if self._v:
             self.validate(t, tn)
 
-    def reduce(self, t):
-        """Perform reduction of tree.
-
-        Override this method in subclasses to perform reduction after deriving
-        transformed trees.
-
-        Arg:
-            t: A tree under reduction.
-
-        Returns:
-            A reduced tree.
-        """
-        return t
-
-    def _reduce(self, t):
-        """A method to make reduce(t) conform to the way _walk_r works."""
-        return [self.reduce(t)]
+    def _reduction_methods(self):
+        return self._list_methods(lambda m: m.endswith('reduction'))
 
     def _transform_methods(self):
-        """Find all transform methods within the class
+        return self._list_methods(lambda m: m.endswith('tivity'))
+
+    def _list_methods(self, predicate):
+        """Find all transform methods within the class that satisfies the
+        predicate.
 
         Returns:
             A list of tuples containing method names and corresponding methods
@@ -137,8 +133,8 @@ class TreeTransformer(object):
         """
         methods = [member[0] for member in inspect.getmembers(
                 self.__class__, predicate=inspect.ismethod)]
-        return [getattr(self, method)
-                for method in methods if method.endswith('tivity')]
+        return [getattr(self, method) for method in methods
+                if not method.startswith('_') and predicate(method)]
 
 
 class ExprTreeTransformer(TreeTransformer):
@@ -257,12 +253,15 @@ class ExprTreeTransformer(TreeTransformer):
                     'Original: %s %s,\n'
                     'Transformed: %s %s' % (to, t, no, tn))
 
-    def reduce(self, t):
+    def _identity_reduction(self, t, iop, i):
         op, arg1, arg2 = t
-        if op == MULTIPLY_OP:
-            if arg1 == 1:
-                return arg2
-            if arg2 == 1:
-                return arg1
+        if op != iop:
             return t
+        if arg1 == i:
+            return arg2
+        if arg2 == i:
+            return arg1
         return t
+
+    def multiplicative_identity_reduction(self, t):
+        return self._identity_reduction(t, MULTIPLY_OP, 1)
