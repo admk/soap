@@ -16,6 +16,10 @@ __author__ = 'Xitong Gao'
 __email__ = 'xtg08@ic.ac.uk'
 
 
+def is_num(v):
+    return isinstance(v, (int, long, float))
+
+
 def _step(s, f, v=None, closure=False):
     """Find the set of trees related by the function f.
     Arg:
@@ -279,3 +283,12 @@ class ExprTreeTransformer(TreeTransformer):
         if arg1 != 0 and arg2 != 0:
             return t
         return 0
+
+    def constant_reduction(self, t):
+        op, arg1, arg2 = t
+        if not is_num(arg1) or not is_num(arg2):
+            return t
+        if op == MULTIPLY_OP:
+            return arg1 * arg2
+        if op == ADD_OP:
+            return arg1 + arg2
