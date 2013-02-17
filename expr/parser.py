@@ -7,7 +7,7 @@ from common import OPERATORS
 
 def _to_number(s):
     try:
-        return int(s)
+        return long(s)
     except ValueError:
         return float(s)
 
