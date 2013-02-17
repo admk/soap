@@ -62,9 +62,7 @@ def _walk_r(t, f, v, c):
 
 
 def item_to_list(f):
-    def decorator(t):
-        return [f(t)]
-    return decorator
+    return lambda t: [f(t)]
 
 
 class ValidationError(Exception):
