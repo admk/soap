@@ -7,6 +7,7 @@ import re
 import sys
 import random
 import inspect
+import functools
 
 from common import ADD_OP, MULTIPLY_OP
 from parser import ExprParser
@@ -56,13 +57,13 @@ def _walk_r(t, f, v, c):
         for tn in s:
             v(t, tn)
     except ValidationError:
-        print('Violating transformation:', f)
+        print('Violating transformation:', f.__name__)
         raise
     return s
 
 
 def item_to_list(f):
-    return lambda t: [f(t)]
+    return functools.wraps(f)(lambda t: [f(t)])
 
 
 class ValidationError(Exception):
