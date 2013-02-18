@@ -229,8 +229,7 @@ class ExprTreeTransformer(TreeTransformer):
         if (op1, op) in self.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
             if arg11 == arg21:
                 s.append((op1, arg11, (op, arg12, arg22)))
-        if (op1, op) in self.RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS and \
-                (op2, op) in self.RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS:
+        if (op2, op) in self.RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS:
             if arg12 == arg22:
                 s.append((op2, (op, arg11, arg21), arg12))
         return s
