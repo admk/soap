@@ -4,22 +4,20 @@
 
 from __future__ import print_function
 import random
-from pprint import pprint
 
-from expr.common import pprint_expr_trees
-from expr import ExprParser, ExprTreeTransformer
+from expr import Expr, ExprTreeTransformer
 
 
 e = '((a + 2) * (a + 3))'
-t = ExprParser(e).tree
+t = Expr(e)
 print('Expr:', e)
-print('Tree:')
-pprint(t)
+print('Tree:', t.tuple())
 s = ExprTreeTransformer(t, validate=True, print_progress=True).closure()
-pprint_expr_trees(s)
+for n in s:
+    print('>', n)
 print('Validating...')
 t = random.sample(s, 1)[0]
-print('Sample Expr:', ExprParser(t))
+print('Sample Expr:', t)
 r = ExprTreeTransformer(t, print_progress=True).closure()
 if s >= r:
     print('Validated.')
