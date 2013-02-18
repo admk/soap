@@ -65,6 +65,12 @@ def _walk_r(t, f, v, c):
 def item_to_list(f):
     return functools.wraps(f)(lambda t: [f(t)])
 
+def none_to_list(f):
+    def wrapper(t):
+        v = f(t)
+        return v if v else []
+    return functools.wraps(f)(wrapper)
+
 
 class ValidationError(Exception):
     """Failed to find equivalence."""
@@ -90,7 +96,7 @@ class TreeTransformer(object):
             prev_trees = trees
             if not reduced:
                 for f in self._transform_methods():
-                    trees = _step(trees, f, v, True)
+                    trees = _step(trees, none_to_list(f), v, True)
                 trees = self._closure_r(trees, True)
             else:
                 for f in self._reduction_methods():
@@ -155,7 +161,7 @@ class ExprTreeTransformer(TreeTransformer):
         op, arg1, arg2 = t
         s = []
         if not op in self.ASSOCIATIVITY_OPERATORS:
-            return []
+            return
         if type(arg1) is tuple:
             arg1_op, arg11, arg12 = arg1
             if arg1_op == op:
@@ -198,10 +204,10 @@ class ExprTreeTransformer(TreeTransformer):
         op, arg1, arg2 = t
         if not op in (self.LEFT_DISTRIBUTION_OVER_OPERATORS +
                     self.RIGHT_DISTRIBUTION_OVER_OPERATORS):
-            return []
+            return
         # depth test
         if type(arg1) is not tuple and type(arg2) is not tuple:
-            return []
+            return
         # tuplify by adding identities
         if type(arg2) is tuple:
             op2, arg21, arg22 = arg2
@@ -219,12 +225,12 @@ class ExprTreeTransformer(TreeTransformer):
                     arg2 = (op1, 1, arg2)
         # must be all tuples
         if type(arg1) is not tuple or type(arg2) is not tuple:
-            return []
+            return
         # equivalences
         op1, arg11, arg12 = arg1
         op2, arg21, arg22 = arg2
         if op1 != op2:
-            return []
+            return
         s = []
         if (op1, op) in self.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
             if arg11 == arg21:
