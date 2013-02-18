@@ -33,47 +33,36 @@ def _parse_r(s):
             break
     if operator_pos == -1:
         return s
-    arg1 = _try_to_number(_parse_r(s[1:operator_pos].strip()))
-    arg2 = _try_to_number(_parse_r(s[operator_pos + 1:-1].strip()))
-    return (s[operator_pos], arg1, arg2)
+    arg1 = _parse_r(s[1:operator_pos].strip())
+    arg2 = _parse_r(s[operator_pos + 1:-1].strip())
+    return Expr(string=None, op=s[operator_pos], arg1=arg1, arg2=arg2)
 
 
-def _unparse_r(t):
-    if type(t) is str:
-        return t
-    if type(t) is not tuple:
-        return str(t)
-    operator, arg1, arg2 = t
-    return '(' + _unparse_r(arg1) + ' ' + operator + \
-           ' ' + _unparse_r(arg2) + ')'
+class Expr(object):
 
-
-class ExprParser(object):
-
-    def __init__(self, string_or_tree):
-        super(ExprParser, self).__init__()
-        if type(string_or_tree) is str:
-            self.string = string_or_tree
+    def __init__(self, string=None, op=None, arg1=None, arg2=None):
+        super(Expr, self).__init__()
+        if string:
+            expr = _parse_r(string)
+            self.op = expr.op
+            self.arg1 = expr.arg1
+            self.arg2 = expr.arg2
         else:
-            self.tree = string_or_tree
-
-    @property
-    def tree(self):
-        return self._t
-
-    @tree.setter
-    def tree(self, t):
-        self._t = t
-        self._s = _unparse_r(t)
-
-    @property
-    def string(self):
-        return self._s
-
-    @string.setter
-    def string(self, s):
-        self._s = s
-        self._t = _parse_r(self._s)
+            self.op = op
+            self.arg1 = _try_to_number(arg1)
+            self.arg2 = _try_to_number(arg2)
 
     def __str__(self):
-        return self.string
+        return '(%s %s %s)' % (str(self.arg1), self.op, str(self.arg2))
+
+    def __repr__(self):
+        return "Expr(op='%s', arg1=%s, arg2=%s)" % \
+                (self.op, repr(self.arg1), repr(self.arg2))
+
+
+if __name__ == '__main__':
+    s = '((a + 1) * c)'
+    t = repr(Expr(s))
+    print t
+    t = eval(t)
+    assert(s == str(t))
