@@ -33,38 +33,38 @@ def _parse_r(s):
             break
     if operator_pos == -1:
         return s
-    arg1 = _parse_r(s[1:operator_pos].strip())
-    arg2 = _parse_r(s[operator_pos + 1:-1].strip())
-    return Expr(string=None, op=s[operator_pos], arg1=arg1, arg2=arg2)
+    a1 = _parse_r(s[1:operator_pos].strip())
+    a2 = _parse_r(s[operator_pos + 1:-1].strip())
+    return Expr(string=None, op=s[operator_pos], a1=a1, a2=a2)
 
 
 class Expr(object):
 
-    def __init__(self, string=None, op=None, arg1=None, arg2=None):
+    def __init__(self, string=None, op=None, a1=None, a2=None):
         super(Expr, self).__init__()
         if string:
             expr = _parse_r(string)
             self.op = expr.op
-            self.arg1 = expr.arg1
-            self.arg2 = expr.arg2
+            self.a1 = expr.a1
+            self.a2 = expr.a2
         else:
             self.op = op
-            self.arg1 = _try_to_number(arg1)
-            self.arg2 = _try_to_number(arg2)
+            self.a1 = _try_to_number(a1)
+            self.a2 = _try_to_number(a2)
 
     def tuple(self):
         def to_tuple(a):
             if isinstance(a, Expr):
                 return a.tuple()
             return a
-        return (self.op, to_tuple(self.arg1), to_tuple(self.arg2))
+        return (self.op, to_tuple(self.a1), to_tuple(self.a2))
 
     def __str__(self):
-        return '(%s %s %s)' % (str(self.arg1), self.op, str(self.arg2))
+        return '(%s %s %s)' % (str(self.a1), self.op, str(self.a2))
 
     def __repr__(self):
-        return "Expr(op='%s', arg1=%s, arg2=%s)" % \
-                (self.op, repr(self.arg1), repr(self.arg2))
+        return "Expr(op='%s', a1=%s, a2=%s)" % \
+                (self.op, repr(self.a1), repr(self.a2))
 
     def __eq__(self, other):
         if not isinstance(other, Expr):
