@@ -10,7 +10,7 @@ import inspect
 import functools
 
 from common import ADD_OP, MULTIPLY_OP
-from parser import ExprParser
+from parser import Expr
 
 
 __author__ = 'Xitong Gao'
@@ -19,6 +19,9 @@ __email__ = 'xtg08@ic.ac.uk'
 
 def is_num(v):
     return isinstance(v, (int, long, float))
+
+def is_expr(e):
+    return isinstance(e, Expr)
 
 
 def _step(s, f, v=None, closure=False):
@@ -38,14 +41,14 @@ def _step(s, f, v=None, closure=False):
 
 def _walk_r(t, f, v, c):
     s = set([t])
-    if type(t) is not tuple:
+    if not is_expr(t):
         return s
     for e in f(t):
         s.add(e)
-    for e in _walk_r(t[1], f, v, c):
-        s.add((t[0], e, t[2]))
-    for e in _walk_r(t[2], f, v, c):
-        s.add((t[0], t[1], e))
+    for e in _walk_r(t.a1, f, v, c):
+        s.add(Expr(op=t.op, a1=e, a2=t.a2))
+    for e in _walk_r(t.a2, f, v, c):
+        s.add(Expr(op=t.op, a1=t.a1, a2=e))
     if not c and len(s) > 1 and t in s:
         # there is more than 1 transformed result. discard the
         # original, because the original is transformed to become
@@ -158,18 +161,17 @@ class ExprTreeTransformer(TreeTransformer):
     ASSOCIATIVITY_OPERATORS = [ADD_OP, MULTIPLY_OP]
 
     def associativity(self, t):
-        op, arg1, arg2 = t
         s = []
-        if not op in self.ASSOCIATIVITY_OPERATORS:
+        if not t.op in self.ASSOCIATIVITY_OPERATORS:
             return
-        if type(arg1) is tuple:
-            arg1_op, arg11, arg12 = arg1
-            if arg1_op == op:
-                s.append((op, arg11, (op, arg12, arg2)))
-        if type(arg2) is tuple:
-            arg2_op, arg21, arg22 = arg2
-            if arg2_op == op:
-                s.append((op, (op, arg1, arg21), arg22))
+        if is_expr(t.a1):
+            if t.a1.op == t.op:
+                s.append(Expr(op=t.op, a1=t.a1.a1,
+                              a2=Expr(op=t.op, a1=t.a1.a2, a2=t.a2)))
+        if is_expr(t.a2):
+            if t.a2.op == t.op:
+                s.append(Expr(op=t.op, a1=Expr(op=t.op, a1=t.a1, a2=t.a2.a1),
+                              a2=t.a2.a2))
         return s
 
     COMMUTATIVE_DISTRIBUTIVITY_OPERATOR_PAIRS = [(MULTIPLY_OP, ADD_OP)]
@@ -186,71 +188,70 @@ class ExprTreeTransformer(TreeTransformer):
             zip(*RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS)
 
     def distribute_for_distributivity(self, t):
-        op, arg1, arg2 = t
         s = []
-        if op in self.LEFT_DISTRIBUTIVITY_OPERATORS and \
-                type(arg2) is tuple:
-            op2, arg21, arg22 = arg2
-            if (op, op2) in self.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
-                s.append((op2, (op, arg1, arg21), (op, arg1, arg22)))
-        if op in self.RIGHT_DISTRIBUTIVITY_OPERATORS and \
-                type(arg1) is tuple:
-            op1, arg11, arg12 = arg1
-            if (op, op1) in self.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
-                s.append((op1, (op, arg11, arg2), (op, arg12, arg2)))
+        if t.op in self.LEFT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a2):
+            if (t.op, t.a2.op) in self.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
+                s.append(
+                    Expr(op=t.a2.op,
+                         a1=Expr(op=t.op, a1=t.a1, a2=t.a2.a1),
+                         a2=Expr(op=t.op, a1=t.a1, a2=t.a2.a2)))
+        if t.op in self.RIGHT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a1):
+            if (t.op, t.a1.op) in self.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
+                s.append(
+                    Expr(op=t.a1.op,
+                         a1=Expr(op=t.op, a1=t.a1.a1, a2=t.a2),
+                         a2=Expr(op=t.op, a1=t.a1.a2, a2=t.a2)))
         return s
 
     def collect_for_distributivity(self, t):
-        op, arg1, arg2 = t
+        op, a1, a2 = t.tuple()
         if not op in (self.LEFT_DISTRIBUTION_OVER_OPERATORS +
                     self.RIGHT_DISTRIBUTION_OVER_OPERATORS):
             return
         # depth test
-        if type(arg1) is not tuple and type(arg2) is not tuple:
+        if not is_expr(a1) and not is_expr(a2):
             return
-        # tuplify by adding identities
-        if type(arg2) is tuple:
-            op2, arg21, arg22 = arg2
+        # expand by adding identities
+        if is_expr(a2):
+            op2, a21, a22 = a2.tuple()
             if op2 == MULTIPLY_OP:
-                if arg21 == arg1:
-                    arg1 = (op2, arg1, 1)
-                elif arg22 == arg1:
-                    arg1 = (op2, 1, arg1)
-        if type(arg1) is tuple:
-            op1, arg11, arg12 = arg1
+                if a21 == a1:
+                    a1 = Expr(op=op2, a1=a1, a2=1L)
+                elif a22 == a1:
+                    a1 = Expr(op=op2, a1=1L, a2=a1)
+        if is_expr(a1):
+            op1, a11, a12 = a1.tuple()
             if op1 == MULTIPLY_OP:
-                if arg11 == arg2:
-                    arg2 = (op1, arg2, 1)
-                elif arg12 == arg2:
-                    arg2 = (op1, 1, arg2)
-        # must be all tuples
-        if type(arg1) is not tuple or type(arg2) is not tuple:
+                if a11 == a2:
+                    a2 = Expr(op=op1, a1=a2, a2=1L)
+                elif a12 == a2:
+                    a1 = Expr(op=op1, a1=1L, a2=a2)
+        # must be all expressions
+        if not is_expr(a1) or not is_expr(a2):
             return
         # equivalences
-        op1, arg11, arg12 = arg1
-        op2, arg21, arg22 = arg2
+        op1, a11, a12 = a1.tuple()
+        op2, a21, a22 = a2.tuple()
         if op1 != op2:
             return
         s = []
         if (op1, op) in self.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
-            if arg11 == arg21:
-                s.append((op1, arg11, (op, arg12, arg22)))
+            if a11 == a21:
+                s.append(Expr(op=op1, a1=a11, a2=Expr(op=op, a1=a12, a2=a22)))
         if (op2, op) in self.RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS:
-            if arg12 == arg22:
-                s.append((op2, (op, arg11, arg21), arg12))
+            if a12 == a22:
+                s.append(Expr(op=op2, a1=Expr(op=op, a1=a11, a2=a21), a2=a12))
         return s
 
     def commutativity(self, t):
-        return [(t[0], t[2], t[1])]
+        return [Expr(op=t.op, a1=t.a2, a2=t.a1)]
 
     VAR_RE = re.compile(r"[^\d\W]\w*", re.UNICODE)
 
     def validate(self, t, tn):
-        def string(tree):
-            return ExprParser(tree).string
         def vars(tree_str):
             return set(self.VAR_RE.findall(tree_str))
-        to, no = ts, ns = string(t), string(tn)
+        to, no = ts, ns = str(t), str(tn)
         tsv, nsv = vars(ts), vars(ns)
         if tsv != nsv:
             raise ValidationError('Variable domain mismatch.')
@@ -265,13 +266,12 @@ class ExprTreeTransformer(TreeTransformer):
                     'Transformed: %s %s' % (to, t, no, tn))
 
     def _identity_reduction(self, t, iop, i):
-        op, arg1, arg2 = t
-        if op != iop:
+        if t.op != iop:
             return t
-        if arg1 == i:
-            return arg2
-        if arg2 == i:
-            return arg1
+        if t.a1 == i:
+            return t.a2
+        if t.a2 == i:
+            return t.a1
         return t
 
     def multiplicative_identity_reduction(self, t):
@@ -281,18 +281,16 @@ class ExprTreeTransformer(TreeTransformer):
         return self._identity_reduction(t, ADD_OP, 0)
 
     def zero_reduction(self, t):
-        op, arg1, arg2 = t
-        if op != MULTIPLY_OP:
+        if t.op != MULTIPLY_OP:
             return t
-        if arg1 != 0 and arg2 != 0:
+        if t.a1 != 0 and t.a2 != 0:
             return t
         return 0
 
     def constant_reduction(self, t):
-        op, arg1, arg2 = t
-        if not is_num(arg1) or not is_num(arg2):
+        if not is_num(t.a1) or not is_num(t.a2):
             return t
-        if op == MULTIPLY_OP:
-            return arg1 * arg2
-        if op == ADD_OP:
-            return arg1 + arg2
+        if t.op == MULTIPLY_OP:
+            return t.a1 * t.a2
+        if t.op == ADD_OP:
+            return t.a1 + t.a2
