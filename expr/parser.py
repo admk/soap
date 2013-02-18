@@ -7,7 +7,7 @@ from common import OPERATORS
 
 def _to_number(s):
     try:
-        return int(s)
+        return long(s)
     except ValueError:
         return float(s)
 
@@ -33,47 +33,52 @@ def _parse_r(s):
             break
     if operator_pos == -1:
         return s
-    arg1 = _try_to_number(_parse_r(s[1:operator_pos].strip()))
-    arg2 = _try_to_number(_parse_r(s[operator_pos + 1:-1].strip()))
-    return (s[operator_pos], arg1, arg2)
+    a1 = _parse_r(s[1:operator_pos].strip())
+    a2 = _parse_r(s[operator_pos + 1:-1].strip())
+    return Expr(string=None, op=s[operator_pos], a1=a1, a2=a2)
 
 
-def _unparse_r(t):
-    if type(t) is str:
-        return t
-    if type(t) is not tuple:
-        return str(t)
-    operator, arg1, arg2 = t
-    return '(' + _unparse_r(arg1) + ' ' + operator + \
-           ' ' + _unparse_r(arg2) + ')'
+class Expr(object):
 
-
-class ExprParser(object):
-
-    def __init__(self, string_or_tree):
-        super(ExprParser, self).__init__()
-        if type(string_or_tree) is str:
-            self.string = string_or_tree
+    def __init__(self, string=None, op=None, a1=None, a2=None):
+        super(Expr, self).__init__()
+        if string:
+            expr = _parse_r(string)
+            self.op = expr.op
+            self.a1 = expr.a1
+            self.a2 = expr.a2
         else:
-            self.tree = string_or_tree
+            self.op = op
+            self.a1 = _try_to_number(a1)
+            self.a2 = _try_to_number(a2)
 
-    @property
-    def tree(self):
-        return self._t
-
-    @tree.setter
-    def tree(self, t):
-        self._t = t
-        self._s = _unparse_r(t)
-
-    @property
-    def string(self):
-        return self._s
-
-    @string.setter
-    def string(self, s):
-        self._s = s
-        self._t = _parse_r(self._s)
+    def tuple(self):
+        def to_tuple(a):
+            if isinstance(a, Expr):
+                return a.tuple()
+            return a
+        return (self.op, to_tuple(self.a1), to_tuple(self.a2))
 
     def __str__(self):
-        return self.string
+        return '(%s %s %s)' % (str(self.a1), self.op, str(self.a2))
+
+    def __repr__(self):
+        return "Expr(op='%s', a1=%s, a2=%s)" % \
+                (self.op, repr(self.a1), repr(self.a2))
+
+    def __eq__(self, other):
+        if not isinstance(other, Expr):
+            return False
+        return self.tuple() == other.tuple()
+
+    def __hash__(self):
+        return hash(self.tuple())
+
+
+if __name__ == '__main__':
+    s = '((a + 1) * c)'
+    r = Expr(s)
+    t = repr(r)
+    t = eval(t)
+    assert(r == t)
+    assert(s == str(t))

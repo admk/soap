@@ -4,22 +4,22 @@
 
 from __future__ import print_function
 import random
-from pprint import pprint
 
-from expr import ExprParser, ExprTreeTransformer
+from expr import Expr, ExprTreeTransformer
 
 
-e = '((a + 1) * (b + 1))'
-t = ExprParser(e).tree
+e = '((a + 2) * (a + 3))'
+t = Expr(e)
 print('Expr:', e)
-print('Tree:')
-pprint(t)
-s = ExprTreeTransformer(t, print_progress=True).closure()
+print('Tree:', t.tuple())
+s = ExprTreeTransformer(t, validate=True, print_progress=True).closure()
+for n in s:
+    print('>', n)
 print('Validating...')
 t = random.sample(s, 1)[0]
-print('Sample Expr:', ExprParser(t))
-r = ExprTreeTransformer(t).closure()
-if s == r:
+print('Sample Expr:', t)
+r = ExprTreeTransformer(t, print_progress=True).closure()
+if s >= r:
     print('Validated.')
 else:
     print('Inconsistent closure generated.')

@@ -1,2 +1,2 @@
-from parser import ExprParser
+from parser import Expr
 from transformer import ExprTreeTransformer
