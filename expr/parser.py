@@ -77,7 +77,8 @@ class Expr(object):
 
 if __name__ == '__main__':
     s = '((a + 1) * c)'
-    t = repr(Expr(s))
-    print t
+    r = Expr(s)
+    t = repr(r)
     t = eval(t)
+    assert(r == t)
     assert(s == str(t))
