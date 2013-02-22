@@ -52,12 +52,18 @@ class Expr(object):
             self.a1 = _try_to_number(a1)
             self.a2 = _try_to_number(a2)
 
-    def tuple(self):
+    def tree(self):
         def to_tuple(a):
             if isinstance(a, Expr):
-                return a.tuple()
+                return a.tree()
             return a
         return (self.op, to_tuple(self.a1), to_tuple(self.a2))
+
+    def tuple(self):
+        return (self.op, self.a1, self.a2)
+
+    def __iter__(self):
+        return iter(self.tuple())
 
     def __str__(self):
         return '(%s %s %s)' % (str(self.a1), self.op, str(self.a2))
