@@ -11,7 +11,7 @@ from expr import Expr, ExprTreeTransformer
 e = '((a + 2) * (a + 3))'
 t = Expr(e)
 print('Expr:', e)
-print('Tree:', t.tuple())
+print('Tree:', t.tree())
 s = ExprTreeTransformer(t, validate=True, print_progress=True).closure()
 for n in s:
     print('>', n)

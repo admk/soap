@@ -8,6 +8,13 @@ TODOs
 Changelog
 =========
 
+Version 0.2.1
+-------------
+
+Fri Feb 22 01:02:52 GMT 2013
+
+* Fix broken distributivity
+
 Version 0.2
 -----------
 
