@@ -204,7 +204,7 @@ class ExprTreeTransformer(TreeTransformer):
         return s
 
     def collect_for_distributivity(self, t):
-        op, a1, a2 = t.tuple()
+        op, a1, a2 = t
         if not op in (self.LEFT_DISTRIBUTION_OVER_OPERATORS +
                     self.RIGHT_DISTRIBUTION_OVER_OPERATORS):
             return
@@ -213,14 +213,14 @@ class ExprTreeTransformer(TreeTransformer):
             return
         # expand by adding identities
         if is_expr(a2):
-            op2, a21, a22 = a2.tuple()
+            op2, a21, a22 = a2
             if op2 == MULTIPLY_OP:
                 if a21 == a1:
                     a1 = Expr(op=op2, a1=a1, a2=1L)
                 elif a22 == a1:
                     a1 = Expr(op=op2, a1=1L, a2=a1)
         if is_expr(a1):
-            op1, a11, a12 = a1.tuple()
+            op1, a11, a12 = a1
             if op1 == MULTIPLY_OP:
                 if a11 == a2:
                     a2 = Expr(op=op1, a1=a2, a2=1L)
@@ -230,8 +230,8 @@ class ExprTreeTransformer(TreeTransformer):
         if not is_expr(a1) or not is_expr(a2):
             return
         # equivalences
-        op1, a11, a12 = a1.tuple()
-        op2, a21, a22 = a2.tuple()
+        op1, a11, a12 = a1
+        op2, a21, a22 = a2
         if op1 != op2:
             return
         s = []
