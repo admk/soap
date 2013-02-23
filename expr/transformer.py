@@ -5,6 +5,7 @@
 from __future__ import print_function
 import re
 import sys
+import multiprocessing
 import random
 import inspect
 import functools
@@ -24,6 +25,9 @@ def is_expr(e):
     return isinstance(e, Expr)
 
 
+_pool = multiprocessing.Pool()
+
+
 def _step(s, f, v=None, closure=False):
     """Find the set of trees related by the function f.
     Arg:
@@ -36,18 +40,20 @@ def _step(s, f, v=None, closure=False):
     Returns:
         A set of trees related by f.
     """
-    return reduce(lambda x, y: x | y, [_walk_r(t, f, v, closure) for t in s])
+    chunksize = len(s) / multiprocessing.cpu_count() + 1
+    r = _pool.imap(_walk_r, [(t, f, v, closure) for t in s], chunksize)
+    return reduce(lambda x, y: x | y, r)
 
 
-def _walk_r(t, f, v, c):
+def _walk_r((t, f, v, c)):
     s = set([t])
     if not is_expr(t):
         return s
     for e in f(t):
         s.add(e)
-    for e in _walk_r(t.a1, f, v, c):
+    for e in _walk_r((t.a1, f, v, c)):
         s.add(Expr(op=t.op, a1=e, a2=t.a2))
-    for e in _walk_r(t.a2, f, v, c):
+    for e in _walk_r((t.a2, f, v, c)):
         s.add(Expr(op=t.op, a1=t.a1, a2=e))
     if not c and len(s) > 1 and t in s:
         # there is more than 1 transformed result. discard the
