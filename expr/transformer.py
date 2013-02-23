@@ -20,6 +20,7 @@ __email__ = 'xtg08@ic.ac.uk'
 def is_num(v):
     return isinstance(v, (int, long, float))
 
+
 def is_expr(e):
     return isinstance(e, Expr)
 
@@ -67,6 +68,7 @@ def _walk_r(t, f, v, c):
 
 def item_to_list(f):
     return functools.wraps(f)(lambda t: [f(t)])
+
 
 def none_to_list(f):
     def wrapper(t):
@@ -147,7 +149,7 @@ class TreeTransformer(object):
             that can be called with a tree as the argument for each method.
         """
         methods = [member[0] for member in inspect.getmembers(
-                self.__class__, predicate=inspect.ismethod)]
+            self.__class__, predicate=inspect.ismethod)]
         return [getattr(self, method) for method in methods
                 if not method.startswith('_') and predicate(method)]
 
@@ -156,7 +158,7 @@ class ExprTreeTransformer(TreeTransformer):
 
     def __init__(self, tree, validate=False, print_progress=False):
         super(ExprTreeTransformer, self).__init__(
-                tree, validate, print_progress)
+            tree, validate, print_progress)
 
     ASSOCIATIVITY_OPERATORS = [ADD_OP, MULTIPLY_OP]
 
@@ -177,15 +179,15 @@ class ExprTreeTransformer(TreeTransformer):
     COMMUTATIVE_DISTRIBUTIVITY_OPERATOR_PAIRS = [(MULTIPLY_OP, ADD_OP)]
     # left-distributive: a * (b + c) == a * b + a * c
     LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS = \
-            COMMUTATIVE_DISTRIBUTIVITY_OPERATOR_PAIRS
+        COMMUTATIVE_DISTRIBUTIVITY_OPERATOR_PAIRS
     # Note that division '/' is only right-distributive over +
     RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS = \
-            COMMUTATIVE_DISTRIBUTIVITY_OPERATOR_PAIRS
+        COMMUTATIVE_DISTRIBUTIVITY_OPERATOR_PAIRS
 
     LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTION_OVER_OPERATORS = \
-            zip(*LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS)
+        zip(*LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS)
     RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTION_OVER_OPERATORS = \
-            zip(*RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS)
+        zip(*RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS)
 
     def distribute_for_distributivity(self, t):
         s = []
@@ -206,7 +208,7 @@ class ExprTreeTransformer(TreeTransformer):
     def collect_for_distributivity(self, t):
         op, a1, a2 = t
         if not op in (self.LEFT_DISTRIBUTION_OVER_OPERATORS +
-                    self.RIGHT_DISTRIBUTION_OVER_OPERATORS):
+                      self.RIGHT_DISTRIBUTION_OVER_OPERATORS):
             return
         # depth test
         if not is_expr(a1) and not is_expr(a2):
@@ -261,9 +263,9 @@ class ExprTreeTransformer(TreeTransformer):
             ns = re.sub(r'\b%s\b' % v, str(i), ns)
         if eval(ts) != eval(ns):
             raise ValidationError(
-                    'Failed validation\n'
-                    'Original: %s %s,\n'
-                    'Transformed: %s %s' % (to, t, no, tn))
+                'Failed validation\n'
+                'Original: %s %s,\n'
+                'Transformed: %s %s' % (to, t, no, tn))
 
     def _identity_reduction(self, t, iop, i):
         if t.op != iop:

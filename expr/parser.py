@@ -70,7 +70,7 @@ class Expr(object):
 
     def __repr__(self):
         return "Expr(op='%s', a1=%s, a2=%s)" % \
-                (self.op, repr(self.a1), repr(self.a2))
+            (self.op, repr(self.a1), repr(self.a2))
 
     def __eq__(self, other):
         if not isinstance(other, Expr):
