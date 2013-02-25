@@ -14,7 +14,13 @@ def get_exponent(v):
 
 
 def ulp(v):
-    pass
+    if isinstance(v, np.float16):
+        prec = 11
+    elif isinstance(v, np.float32):
+        prec = 24
+    elif isinstance(v, np.float64):
+        prec = 53
+    return 2 ** (get_exponent(v) - prec)
 
 
 def round(v, m='Nearest'):
@@ -22,4 +28,6 @@ def round(v, m='Nearest'):
 
 
 if __name__ == '__main__':
-    print get_exponent(np.float32('2.5'))
+    v = np.float32('2.5')
+    print get_exponent(v)
+    print ulp(v)
