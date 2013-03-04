@@ -2,32 +2,27 @@
 # vim: set fileencoding=UTF-8 :
 
 
-import numpy as np
-
-
-def get_exponent(v):
-    if isinstance(v, np.float32):
-        mask, shift, offset = 0x7f800000, 23, 127
-    else:
-        raise NotImplementedError('The value v can only be of type np.float32')
-    return ((v.view('i') & mask) >> shift) - offset
+import gmpy2
+from gmpy2 import mpq, mpfr
 
 
 def ulp(v):
-    if isinstance(v, np.float16):
-        prec = 11
-    elif isinstance(v, np.float32):
-        prec = 24
-    elif isinstance(v, np.float64):
-        prec = 53
-    return 2 ** (get_exponent(v) - prec)
+    return mpq(2) ** v.as_mantissa_exp()[1]
 
 
-def round(v, m='Nearest'):
-    pass
+def round(mode):
+    def decorator(f):
+        def wrapped(v1, v2):
+            with gmpy2.local_context(round=mode):
+                return f(v1, v2)
+        return wrapped
+    return decorator
 
 
 if __name__ == '__main__':
-    v = np.float32('2.5')
-    print get_exponent(v)
-    print ulp(v)
+    gmpy2.set_context(gmpy2.ieee(32))
+    print float(ulp(mpfr('0.1')))
+    mult = lambda x, y: x * y
+    args = [mpfr('0.3'), mpfr('2.6')]
+    print round(gmpy2.RoundDown)(mult)(*args)
+    print round(gmpy2.RoundUp)(mult)(*args)
