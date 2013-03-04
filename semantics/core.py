@@ -6,47 +6,28 @@ __author__ = 'Xitong Gao'
 __email__ = 'xtg08@ic.ac.uk'
 
 
-import decimal
-decimal.getcontext().traps[decimal.Inexact] = True
 
 
-class ExactDecimal(decimal.Decimal):
+class Interval(object):
 
-    def __init__(self, v):
-        if not isinstance(v, str):
-            raise ValueError('Value is not string, could be inexact')
-        super(ExactDecimal, self).__init__(v)
+    def __init__(self, (min_val, max_val)):
+        self.min, self.max = min_val, max_val
+        if type(min_val) != type(max_val):
+            raise TypeError('min_val and max_val must be of the same type')
 
-    def _exact_operation(self, op, other):
-        while True:
-            try:
-                return decimal.Decimal.__dict__['__%s__' % op](self, other)
-            except decimal.Inexact:
-                decimal.getcontext().prec += 1
+    def __iter__(self):
+        return iter((self.min, self.max))
 
     def __add__(self, other):
-        return self._exact_operation('add', other)
+        return Interval([self.min + other.min, self.max + other.max])
 
     def __sub__(self, other):
-        return self._exact_operation('sub', other)
+        return Interval([self.min - other.max, self.max - other.min])
 
     def __mul__(self, other):
-        return self._exact_operation('mul', other)
+        v = (self.min * other.min, self.min * other.max,
+             self.max * other.min, self.max * other.max)
+        return Interval([min(v), max(v)])
 
-
-class AbstractInterval(object):
-
-    def __init__(self, min_val, max_val):
-        pass
-        
-
-class AbstractErrorSemantics(object):
-
-    def __init__(self, ):
-        pass
-
-
-if __name__ == '__main__':
-    print ExactDecimal('2.89638143766236577531434781') / \
-            ExactDecimal('6.7952943728618031095770')
-    print decimal.getcontext().prec
+    def __str__(self):
+        return '[%s, %s]' % (str(self.min), str(self.max))
