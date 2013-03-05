@@ -10,7 +10,7 @@ import itertools
 import gmpy2
 from gmpy2 import mpq, mpfr, RoundUp, RoundDown
 
-from common import mpfr_type, mpq_type, round_op
+from common import mpfr_type, mpq_type, round_op, round_off_error
 
 
 class Interval(object):
@@ -84,6 +84,40 @@ class FractionInterval(Interval):
             raise TypeError('min_val and max_val must be mpq values')
 
 
+class ErrorSemantics(object):
+
+    def __init__(self, (v_min, v_max), (e_min, e_max)):
+        self.v = FloatInterval([v_min, v_max])
+        self.e = FractionInterval([e_min, e_max])
+
+    def __add__(self, other):
+        v = self.v + other.v
+        e = self.e + other.e + round_off_error(v)
+        return ErrorSemantics([v.min, v.max], [e.min, e.max])
+
+    def __sub__(self, other):
+        v = self.v - other.v
+        e = self.e - other.e + round_off_error(v)
+        return ErrorSemantics([v.min, v.max], [e.min, e.max])
+
+    def __mul__(self, other):
+        v = self.v * other.v
+        e = self.e * other.e + round_off_error(v)
+        e += FractionInterval([mpq(self.v.min), mpq(self.v.max)]) * other.e
+        e += FractionInterval([mpq(other.v.min), mpq(other.v.max)]) * self.e
+        return ErrorSemantics([v.min, v.max], [e.min, e.max])
+
+    def __str__(self):
+        return '%sx%s' % (self.v, self.e)
+
+
+def cast(v, w=None):
+    w = w if w else v
+    return ErrorSemantics([v, w], round_off_error(FractionInterval([v, w])))
+
+
 if __name__ == '__main__':
     gmpy2.set_context(gmpy2.ieee(32))
     print FloatInterval(['0.1', '0.2']) * FloatInterval(['5.3', '6.7'])
+    a, b = cast('0.3', '0.6'), cast('0.3')
+    print a, b, a * b
