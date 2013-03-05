@@ -116,6 +116,11 @@ class ErrorSemantics(object):
     def __str__(self):
         return '%sx%s' % (self.v, self.e)
 
+    def __repr__(self):
+        return 'ErrorSemantics([%s, %s], [%s, %s])' % \
+            (repr(self.v.min), repr(self.v.max),
+             repr(self.e.min), repr(self.e.max))
+
     def __hash__(self):
         return hash((self.v, self.e))
 
