@@ -6,6 +6,10 @@ import gmpy2
 from gmpy2 import mpq, mpfr
 
 
+mpfr_type = type(mpfr('1.0'))
+mpq_type = type(mpq('1.0'))
+
+
 def ulp(v):
     return mpq(2) ** v.as_mantissa_exp()[1]
 

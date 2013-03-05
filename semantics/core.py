@@ -10,11 +10,7 @@ import itertools
 import gmpy2
 from gmpy2 import mpq, mpfr, RoundUp, RoundDown
 
-from common import round_op
-
-
-mpfr_type = type(mpfr('1.0'))
-mpq_type = type(mpq('1.0'))
+from common import mpfr_type, mpq_type, round_op
 
 
 class Interval(object):
