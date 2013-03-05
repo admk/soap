@@ -37,6 +37,11 @@ class Interval(object):
     def __str__(self):
         return '[%s, %s]' % (str(self.min), str(self.max))
 
+    def __eq__(self, other):
+        if not isinstance(other, Interval):
+            return False
+        return self.min == other.min and self.max == other.max
+
     def __hash__(self):
         return hash(tuple(self))
 
@@ -120,6 +125,11 @@ class ErrorSemantics(object):
         return 'ErrorSemantics([%s, %s], [%s, %s])' % \
             (repr(self.v.min), repr(self.v.max),
              repr(self.e.min), repr(self.e.max))
+
+    def __eq__(self, other):
+        if not isinstance(other, ErrorSemantics):
+            return False
+        return self.v == other.v and self.e == other.e
 
     def __hash__(self):
         return hash((self.v, self.e))
