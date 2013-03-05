@@ -11,6 +11,9 @@ mpq_type = type(mpq('1.0'))
 
 
 def ulp(v):
+    if type(v) is not mpfr_type:
+        with gmpy2.local_context(round=gmpy2.RoundAwayZero):
+            v = mpfr(v)
     return mpq(2) ** v.as_mantissa_exp()[1]
 
 
