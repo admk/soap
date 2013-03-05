@@ -2,7 +2,7 @@
 # vim: set fileencoding=UTF-8 :
 
 
-from common import OPERATORS
+from common import OPERATORS, cached
 
 
 def _to_number(s):
@@ -61,6 +61,10 @@ class Expr(object):
 
     def tuple(self):
         return (self.op, self.a1, self.a2)
+
+    @cached
+    def error(self, v):
+        pass
 
     def __iter__(self):
         return iter(self.tuple())
