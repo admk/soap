@@ -2,20 +2,13 @@
 # vim: set fileencoding=UTF-8 :
 
 
-from common import OPERATORS, cached
-from ..semantics import ErrorSemantics
-
-
-def _to_number(s):
-    try:
-        return long(s)
-    except ValueError:
-        return float(s)
+from common import ADD_OP, MULTIPLY_OP, OPERATORS, cached
+from ..semantics import ErrorSemantics, cast
 
 
 def _try_to_number(s):
     try:
-        return _to_number(s)
+        return cast(s)
     except (ValueError, TypeError):
         return s
 
@@ -65,7 +58,18 @@ class Expr(object):
 
     @cached
     def error(self, v):
-        pass
+        def eval(a):
+            if isinstance(a, Expr):
+                return a.error(v)
+            if isinstance(a, str):
+                return v[a]
+            if isinstance(a, ErrorSemantics):
+                return a
+        e1, e2 = eval(self.a1), eval(self.a2)
+        if self.op == ADD_OP:
+            return e1 + e2
+        if self.op == MULTIPLY_OP:
+            return e1 * e2
 
     def __iter__(self):
         return iter(self.tuple())
@@ -87,9 +91,11 @@ class Expr(object):
 
 
 if __name__ == '__main__':
-    s = '((a + 1) * c)'
+    from gmpy2 import mpfr, mpq
+    s = '((a + 1) * b)'
     r = Expr(s)
     t = repr(r)
     t = eval(t)
     assert(r == t)
     assert(s == str(t))
+    print r.error({'a': cast('0.2', '0.3'), 'b': cast('2.3', '2.4')})
