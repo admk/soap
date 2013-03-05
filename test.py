@@ -5,7 +5,7 @@
 from __future__ import print_function
 import random
 
-from expr import Expr, ExprTreeTransformer
+from ce.expr import Expr, ExprTreeTransformer
 
 
 e = '((a + 2) * (a + 3))'

@@ -3,6 +3,7 @@
 
 
 from common import OPERATORS, cached
+from ..semantics import ErrorSemantics
 
 
 def _to_number(s):
