@@ -83,6 +83,9 @@ class FractionInterval(Interval):
         if type(min_val) is not mpq_type or type(max_val) is not mpq_type:
             raise TypeError('min_val and max_val must be mpq values')
 
+    def __str__(self):
+        return '[~%s, ~%s]' % (str(mpfr(self.min)), str(mpfr(self.max)))
+
 
 class ErrorSemantics(object):
 
