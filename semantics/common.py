@@ -24,10 +24,19 @@ def round_op(f):
     return wrapped
 
 
+def round_off_error(interval):
+    from core import FractionInterval
+    error = ulp(max(abs(interval.min), abs(interval.max))) / 2
+    return FractionInterval((-error, error))
+
+
 if __name__ == '__main__':
+    from core import FloatInterval
     gmpy2.set_context(gmpy2.ieee(32))
     print float(ulp(mpfr('0.1')))
     mult = lambda x, y: x * y
     args = [mpfr('0.3'), mpfr('2.6')]
     print round_op(mult)(*(args + [gmpy2.RoundDown]))
     print round_op(mult)(*(args + [gmpy2.RoundUp]))
+    a = FloatInterval(['0.3', '0.3'])
+    print a, round_off_error(a)
