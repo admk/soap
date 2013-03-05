@@ -37,6 +37,9 @@ class Interval(object):
     def __str__(self):
         return '[%s, %s]' % (str(self.min), str(self.max))
 
+    def __hash__(self):
+        return hash(tuple(self))
+
 
 class FloatInterval(Interval):
 
@@ -112,6 +115,9 @@ class ErrorSemantics(object):
 
     def __str__(self):
         return '%sx%s' % (self.v, self.e)
+
+    def __hash__(self):
+        return hash((self.v, self.e))
 
 
 def cast(v, w=None):
