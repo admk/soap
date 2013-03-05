@@ -92,10 +92,11 @@ class Expr(object):
 
 if __name__ == '__main__':
     from gmpy2 import mpfr, mpq
+    mpfr('1.0'), mpq('1.0')
     s = '((a + 1) * b)'
     r = Expr(s)
     t = repr(r)
     t = eval(t)
     assert(r == t)
-    assert(s == str(t))
-    print r.error({'a': cast('0.2', '0.3'), 'b': cast('2.3', '2.4')})
+    for i in range(3):
+        print r.error({'a': cast('0.2', '0.3'), 'b': cast('2.3', '2.4')})
