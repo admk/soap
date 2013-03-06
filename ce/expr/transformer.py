@@ -8,7 +8,7 @@ import sys
 import random
 import functools
 
-from .. import DynamicMethods
+from ..common import DynamicMethods
 from common import ADD_OP, MULTIPLY_OP
 from parser import Expr
 
@@ -284,3 +284,21 @@ class ExprTreeTransformer(TreeTransformer):
             return t.a1 * t.a2
         if t.op == ADD_OP:
             return t.a1 + t.a2
+
+
+if __name__ == '__main__':
+    e = '((a + 2) * (a + 3))'
+    t = Expr(e)
+    print('Expr:', e)
+    print('Tree:', t.tree())
+    s = ExprTreeTransformer(t, print_progress=True).closure()
+    for n in s:
+        print('>', n)
+    print('Validating...')
+    t = random.sample(s, 1)[0]
+    print('Sample Expr:', t)
+    r = ExprTreeTransformer(t, print_progress=True).closure()
+    if s >= r:
+        print('Validated.')
+    else:
+        print('Inconsistent closure generated.')
