@@ -8,7 +8,7 @@ import sys
 import random
 import functools
 
-from .. import DynamicMethods
+from ..common import DynamicMethods
 from common import ADD_OP, MULTIPLY_OP
 from parser import Expr
 
