@@ -30,6 +30,12 @@ def round_off_error(interval):
     return FractionInterval((-error, error))
 
 
+def cast_error(v, w=None):
+    from core import FractionInterval, ErrorSemantics
+    w = w if w else v
+    return ErrorSemantics([v, w], round_off_error(FractionInterval([v, w])))
+
+
 if __name__ == '__main__':
     from core import FloatInterval
     gmpy2.set_context(gmpy2.ieee(32))

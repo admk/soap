@@ -3,7 +3,7 @@
 
 
 from common import ADD_OP, MULTIPLY_OP, OPERATORS, cached
-from ..semantics import ErrorSemantics, cast
+from ..semantics import ErrorSemantics, cast_error
 
 
 def _try_to_number(s):
@@ -102,4 +102,6 @@ if __name__ == '__main__':
     t = eval(t)
     assert(r == t)
     for i in range(3):
-        print r.error({'a': cast('0.2', '0.3'), 'b': cast('2.3', '2.4')})
+        print r.error({
+            'a': cast_error('0.2', '0.3'),
+            'b': cast_error('2.3', '2.4')})
