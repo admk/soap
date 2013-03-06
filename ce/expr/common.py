@@ -4,6 +4,8 @@
 
 from __future__ import print_function
 
+from ..semantics import mpq_type
+
 
 ADD_OP = '+'
 MULTIPLY_OP = '*'
@@ -33,3 +35,12 @@ def cached(f):
         _cache_map[key] = v
         return v
     return decorated
+
+
+def is_exact(v):
+    return isinstance(v, (int, long, mpq_type))
+
+
+def is_expr(e):
+    from parser import Expr
+    return isinstance(e, Expr)

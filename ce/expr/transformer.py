@@ -10,20 +10,12 @@ import functools
 
 from ..common import DynamicMethods
 from ..semantics import mpq_type
-from common import ADD_OP, MULTIPLY_OP
+from common import ADD_OP, MULTIPLY_OP, is_exact, is_expr
 from parser import Expr
 
 
 __author__ = 'Xitong Gao'
 __email__ = 'xtg08@ic.ac.uk'
-
-
-def is_num(v):
-    return isinstance(v, (int, long, mpq_type))
-
-
-def is_expr(e):
-    return isinstance(e, Expr)
 
 
 def _step(s, f, v=None, closure=False):
@@ -279,7 +271,7 @@ class ExprTreeTransformer(TreeTransformer):
         return 0
 
     def constant_reduction(self, t):
-        if not is_num(t.a1) or not is_num(t.a2):
+        if not is_exact(t.a1) or not is_exact(t.a2):
             return t
         if t.op == MULTIPLY_OP:
             return t.a1 * t.a2
