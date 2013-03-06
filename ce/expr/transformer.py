@@ -238,6 +238,7 @@ class ExprTreeTransformer(TreeTransformer):
     VAR_RE = re.compile(r"[^\d\W]\w*", re.UNICODE)
 
     def validate(self, t, tn):
+        # FIXME: broken after ErrorSemantics
         def vars(tree_str):
             return set(self.VAR_RE.findall(tree_str))
         to, no = ts, ns = str(t), str(tn)
