@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # vim: set fileencoding=UTF-8 :
 
+
 from ..common import DynamicMethods
 from ..expr import Expr, ExprTreeTransformer
 
@@ -15,11 +16,14 @@ class Analysis(DynamicMethods):
         self.s = ExprTreeTransformer(Expr(e), **kwargs).closure()
 
     def analyse(self):
-        return [(self._analyse(t), t) for t in self.s]
+        return sorted([self.select(self._analyse(t), t) for t in self.s])
 
     def _analyse(self, t):
         l = self.list_methods(lambda m: m.endswith('analysis'))
-        return (f(t) for f in l)
+        return tuple(f(t) for f in l)
+
+    def select(self, r, e):
+        return (r, e)
 
 
 class ErrorAnalysis(Analysis):
@@ -31,7 +35,12 @@ class ErrorAnalysis(Analysis):
     def error_analysis(self, t):
         return t.error(self.v)
 
+    def select(self, r, e):
+        r = float(max(abs(r[0].e.min), abs(r[0].e.max)))
+        return (r, str(e))
 
 if __name__ == '__main__':
-    e = '((a + 2) * (a + 3))'
-    ErrorAnalysis(e, {'a': cast_error('0.1', '0.2')})
+    from pprint import pprint
+    e = '((a + 0.1) + 0.4)'
+    a = ErrorAnalysis(e, {'a': cast_error('0.1', '0.2')}, print_progress=True)
+    pprint(a.analyse())
