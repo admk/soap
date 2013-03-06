@@ -108,6 +108,8 @@ class Expr(object):
         return self.tuple() == other.tuple()
 
     def __lt__(self, other):
+        if not isinstance(other, Expr):
+            return False
         return self.tuple() < other.tuple()
 
     def __hash__(self):
