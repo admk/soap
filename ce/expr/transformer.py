@@ -10,7 +10,8 @@ import functools
 
 from ..common import DynamicMethods
 from ..semantics import mpq_type
-from common import ADD_OP, MULTIPLY_OP, is_exact, is_expr
+import common
+from common import is_exact, is_expr
 from parser import Expr
 
 
@@ -34,7 +35,7 @@ def _step(s, f, v=None, closure=False):
 
 
 def _walk_r(t, f, v, c):
-    s = set([t])
+    s = {t}
     if not is_expr(t):
         return s
     for e in f(t):
@@ -140,11 +141,9 @@ class ExprTreeTransformer(TreeTransformer):
         super(ExprTreeTransformer, self).__init__(
             tree, validate, print_progress)
 
-    ASSOCIATIVITY_OPERATORS = [ADD_OP, MULTIPLY_OP]
-
     def associativity(self, t):
         s = []
-        if not t.op in self.ASSOCIATIVITY_OPERATORS:
+        if not t.op in common.ASSOCIATIVITY_OPERATORS:
             return
         if is_expr(t.a1):
             if t.a1.op == t.op:
@@ -156,29 +155,16 @@ class ExprTreeTransformer(TreeTransformer):
                               a2=t.a2.a2))
         return s
 
-    COMMUTATIVE_DISTRIBUTIVITY_OPERATOR_PAIRS = [(MULTIPLY_OP, ADD_OP)]
-    # left-distributive: a * (b + c) == a * b + a * c
-    LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS = \
-        COMMUTATIVE_DISTRIBUTIVITY_OPERATOR_PAIRS
-    # Note that division '/' is only right-distributive over +
-    RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS = \
-        COMMUTATIVE_DISTRIBUTIVITY_OPERATOR_PAIRS
-
-    LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTION_OVER_OPERATORS = \
-        zip(*LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS)
-    RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTION_OVER_OPERATORS = \
-        zip(*RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS)
-
     def distribute_for_distributivity(self, t):
         s = []
-        if t.op in self.LEFT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a2):
-            if (t.op, t.a2.op) in self.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
+        if t.op in common.LEFT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a2):
+            if (t.op, t.a2.op) in common.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
                 s.append(
                     Expr(op=t.a2.op,
                          a1=Expr(op=t.op, a1=t.a1, a2=t.a2.a1),
                          a2=Expr(op=t.op, a1=t.a1, a2=t.a2.a2)))
-        if t.op in self.RIGHT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a1):
-            if (t.op, t.a1.op) in self.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
+        if t.op in common.RIGHT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a1):
+            if (t.op, t.a1.op) in common.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
                 s.append(
                     Expr(op=t.a1.op,
                          a1=Expr(op=t.op, a1=t.a1.a1, a2=t.a2),
@@ -187,8 +173,8 @@ class ExprTreeTransformer(TreeTransformer):
 
     def collect_for_distributivity(self, t):
         op, a1, a2 = t
-        if not op in (self.LEFT_DISTRIBUTION_OVER_OPERATORS +
-                      self.RIGHT_DISTRIBUTION_OVER_OPERATORS):
+        if not op in (common.LEFT_DISTRIBUTION_OVER_OPERATORS +
+                      common.RIGHT_DISTRIBUTION_OVER_OPERATORS):
             return
         # depth test
         if not is_expr(a1) and not is_expr(a2):
@@ -196,14 +182,14 @@ class ExprTreeTransformer(TreeTransformer):
         # expand by adding identities
         if is_expr(a2):
             op2, a21, a22 = a2
-            if op2 == MULTIPLY_OP:
+            if op2 == common.MULTIPLY_OP:
                 if a21 == a1:
                     a1 = Expr(op=op2, a1=a1, a2=1L)
                 elif a22 == a1:
                     a1 = Expr(op=op2, a1=1L, a2=a1)
         if is_expr(a1):
             op1, a11, a12 = a1
-            if op1 == MULTIPLY_OP:
+            if op1 == common.MULTIPLY_OP:
                 if a11 == a2:
                     a2 = Expr(op=op1, a1=a2, a2=1L)
                 elif a12 == a2:
@@ -217,15 +203,17 @@ class ExprTreeTransformer(TreeTransformer):
         if op1 != op2:
             return
         s = []
-        if (op1, op) in self.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
+        if (op1, op) in common.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
             if a11 == a21:
                 s.append(Expr(op=op1, a1=a11, a2=Expr(op=op, a1=a12, a2=a22)))
-        if (op2, op) in self.RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS:
+        if (op2, op) in common.RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS:
             if a12 == a22:
                 s.append(Expr(op=op2, a1=Expr(op=op, a1=a11, a2=a21), a2=a12))
         return s
 
     def commutativity(self, t):
+        if not t.op in common.COMMUTATIVITY_OPERATORS:
+            return
         return [Expr(op=t.op, a1=t.a2, a2=t.a1)]
 
     VAR_RE = re.compile(r"[^\d\W]\w*", re.UNICODE)
@@ -258,13 +246,13 @@ class ExprTreeTransformer(TreeTransformer):
         return t
 
     def multiplicative_identity_reduction(self, t):
-        return self._identity_reduction(t, MULTIPLY_OP, 1)
+        return self._identity_reduction(t, common.MULTIPLY_OP, 1)
 
     def additive_identity_reduction(self, t):
-        return self._identity_reduction(t, ADD_OP, 0)
+        return self._identity_reduction(t, common.ADD_OP, 0)
 
     def zero_reduction(self, t):
-        if t.op != MULTIPLY_OP:
+        if t.op != common.MULTIPLY_OP:
             return t
         if t.a1 != 0 and t.a2 != 0:
             return t
@@ -273,9 +261,9 @@ class ExprTreeTransformer(TreeTransformer):
     def constant_reduction(self, t):
         if not is_exact(t.a1) or not is_exact(t.a2):
             return t
-        if t.op == MULTIPLY_OP:
+        if t.op == common.MULTIPLY_OP:
             return t.a1 * t.a2
-        if t.op == ADD_OP:
+        if t.op == common.ADD_OP:
             return t.a1 + t.a2
 
 
