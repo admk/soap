@@ -9,6 +9,7 @@ import random
 import functools
 
 from ..common import DynamicMethods
+from ..semantics import mpq_type
 from common import ADD_OP, MULTIPLY_OP
 from parser import Expr
 
@@ -18,7 +19,7 @@ __email__ = 'xtg08@ic.ac.uk'
 
 
 def is_num(v):
-    return isinstance(v, (int, long, float))
+    return isinstance(v, (int, long, mpq_type))
 
 
 def is_expr(e):

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # vim: set fileencoding=UTF-8 :
 
+from gmpy2 import mpq
 
 from common import ADD_OP, MULTIPLY_OP, OPERATORS, cached
 from ..semantics import ErrorSemantics, cast_error
@@ -8,7 +9,7 @@ from ..semantics import ErrorSemantics, cast_error
 
 def _try_to_number(s):
     try:
-        return cast(s)
+        return mpq(s)
     except (ValueError, TypeError):
         return s
 
@@ -94,8 +95,8 @@ class Expr(object):
 
 
 if __name__ == '__main__':
-    from gmpy2 import mpfr, mpq
-    mpfr('1.0'), mpq('1.0')
+    from gmpy2 import mpfr
+    mpfr('1.0')
     s = '((a + 1) * b)'
     r = Expr(s)
     t = repr(r)
