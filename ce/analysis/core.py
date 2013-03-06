@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # vim: set fileencoding=UTF-8 :
 
-from .. import DynamicMethods
+from ..common import DynamicMethods
 from ..expr import Expr, ExprTreeTransformer
-from ..semantics import ErrorSemantics, cast
+
+from ..semantics import cast_error
 
 
 class Analysis(DynamicMethods):
@@ -18,7 +19,7 @@ class Analysis(DynamicMethods):
 
     def _analyse(self, t):
         l = self.list_methods(lambda m: m.endswith('analysis'))
-        return (f(r) for f in l)
+        return (f(t) for f in l)
 
 
 class ErrorAnalysis(Analysis):
