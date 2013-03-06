@@ -108,7 +108,17 @@ class TreeTransformer(DynamicMethods):
         Returns:
             A set of trees after transform.
         """
-        return self._closure_r([self._t])
+        s = self._closure_r([self._t])
+        # reduce commutatively equivalent expressions
+        l = set()
+        for e in s:
+            has = False
+            for f in l:
+                if e.equiv(f):
+                    has = True
+            if not has:
+                l.add(e)
+        return l
 
     def validate(self, t, tn):
         """Perform validation of tree.

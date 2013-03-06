@@ -3,7 +3,8 @@
 
 from gmpy2 import mpq
 
-from common import ADD_OP, MULTIPLY_OP, OPERATORS, is_exact, cached
+from common import ADD_OP, MULTIPLY_OP, OPERATORS, ASSOCIATIVITY_OPERATORS, \
+    is_exact, cached
 from ..semantics import cast_error
 
 
@@ -71,6 +72,25 @@ class Expr(object):
             return e1 + e2
         if self.op == MULTIPLY_OP:
             return e1 * e2
+
+    def equiv(self, other):
+        def eq(a, b):
+            try:
+                return a.equiv(b)
+            except AttributeError:
+                try:
+                    return b.equiv(a)
+                except AttributeError:
+                    return a == b
+        if not isinstance(other, Expr):
+            return False
+        if eq(self.a1, other.a1) and eq(self.a2, other.a2):
+            return True
+        if not self.op in ASSOCIATIVITY_OPERATORS:
+            return False
+        if eq(self.a1, other.a2) and eq(self.a2, other.a1):
+            return True
+        return False
 
     def __iter__(self):
         return iter(self.tuple())
