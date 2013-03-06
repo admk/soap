@@ -30,3 +30,8 @@ class ErrorAnalysis(Analysis):
 
     def error_analysis(self, t):
         return t.error(self.v)
+
+
+if __name__ == '__main__':
+    e = '((a + 2) * (a + 3))'
+    ErrorAnalysis(e, {'a': cast_error('0.1', '0.2')})
