@@ -10,7 +10,7 @@ import itertools
 import gmpy2
 from gmpy2 import mpq, mpfr, RoundUp, RoundDown
 
-from common import mpfr_type, mpq_type, round_op, round_off_error, cast_error
+from common import round_op, round_off_error, cast_error
 
 
 class Interval(object):
@@ -49,15 +49,11 @@ class Interval(object):
 class FloatInterval(Interval):
 
     def __init__(self, (min_val, max_val)):
-        if type(min_val) is str:
-            with gmpy2.local_context(round=RoundDown):
-                min_val = mpfr(min_val)
-        if type(max_val) is str:
-            with gmpy2.local_context(round=RoundUp):
-                max_val = mpfr(max_val)
+        with gmpy2.local_context(round=RoundDown):
+            min_val = mpfr(min_val)
+        with gmpy2.local_context(round=RoundUp):
+            max_val = mpfr(max_val)
         super(FloatInterval, self).__init__((min_val, max_val))
-        if type(min_val) is not mpfr_type or type(max_val) is not mpfr_type:
-            raise TypeError('min_val and max_val must be mpfr values')
 
     def __add__(self, other):
         f = round_op(lambda x, y: x + y)
@@ -83,13 +79,7 @@ class FloatInterval(Interval):
 class FractionInterval(Interval):
 
     def __init__(self, (min_val, max_val)):
-        if type(min_val) is str:
-            min_val = mpq(min_val)
-        if type(max_val) is str:
-            max_val = mpq(max_val)
-        super(FractionInterval, self).__init__((min_val, max_val))
-        if type(min_val) is not mpq_type or type(max_val) is not mpq_type:
-            raise TypeError('min_val and max_val must be mpq values')
+        super(FractionInterval, self).__init__((mpq(min_val), mpq(max_val)))
 
     def __str__(self):
         return '[~%s, ~%s]' % (str(mpfr(self.min)), str(mpfr(self.max)))

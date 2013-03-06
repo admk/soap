@@ -3,8 +3,8 @@
 
 from gmpy2 import mpq
 
-from common import ADD_OP, MULTIPLY_OP, OPERATORS, cached
-from ..semantics import ErrorSemantics, cast_error
+from common import ADD_OP, MULTIPLY_OP, OPERATORS, is_exact, cached
+from ..semantics import cast_error
 
 
 def _try_to_number(s):
@@ -64,8 +64,8 @@ class Expr(object):
                 return a.error(v)
             if isinstance(a, str):
                 return v[a]
-            if isinstance(a, ErrorSemantics):
-                return a
+            if is_exact(a):
+                return cast_error(a)
         e1, e2 = eval(self.a1), eval(self.a2)
         if self.op == ADD_OP:
             return e1 + e2
@@ -95,13 +95,7 @@ class Expr(object):
 
 
 if __name__ == '__main__':
-    from gmpy2 import mpfr
-    mpfr('1.0')
-    s = '((a + 1) * b)'
-    r = Expr(s)
-    t = repr(r)
-    t = eval(t)
-    assert(r == t)
+    r = Expr('((a + 1) * b)')
     for i in range(3):
         print r.error({
             'a': cast_error('0.2', '0.3'),
