@@ -6,9 +6,9 @@ from __future__ import print_function
 import re
 import sys
 import random
-import inspect
 import functools
 
+from .. import DynamicMethods
 from common import ADD_OP, MULTIPLY_OP
 from parser import Expr
 
@@ -81,7 +81,7 @@ class ValidationError(Exception):
     """Failed to find equivalence."""
 
 
-class TreeTransformer(object):
+class TreeTransformer(DynamicMethods):
 
     def __init__(self, tree, validate=False, print_progress=False):
         super(TreeTransformer, self).__init__()
@@ -135,23 +135,10 @@ class TreeTransformer(object):
             self.validate(t, tn)
 
     def _reduction_methods(self):
-        return self._list_methods(lambda m: m.endswith('reduction'))
+        return self.list_methods(lambda m: m.endswith('reduction'))
 
     def _transform_methods(self):
-        return self._list_methods(lambda m: m.endswith('tivity'))
-
-    def _list_methods(self, predicate):
-        """Find all transform methods within the class that satisfies the
-        predicate.
-
-        Returns:
-            A list of tuples containing method names and corresponding methods
-            that can be called with a tree as the argument for each method.
-        """
-        methods = [member[0] for member in inspect.getmembers(
-            self.__class__, predicate=inspect.ismethod)]
-        return [getattr(self, method) for method in methods
-                if not method.startswith('_') and predicate(method)]
+        return self.list_methods(lambda m: m.endswith('tivity'))
 
 
 class ExprTreeTransformer(TreeTransformer):

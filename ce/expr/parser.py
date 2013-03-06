@@ -86,6 +86,9 @@ class Expr(object):
             return False
         return self.tuple() == other.tuple()
 
+    def __lt__(self, other):
+        return self.tuple() < other.tuple()
+
     def __hash__(self):
         return hash(self.tuple())
 
