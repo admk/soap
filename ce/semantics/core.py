@@ -16,7 +16,8 @@ from common import round_op, round_off_error
 
 class Interval(object):
 
-    def __init__(self, (min_val, max_val)):
+    def __init__(self, v):
+        min_val, max_val = v
         self.min, self.max = min_val, max_val
         if type(min_val) != type(max_val):
             raise TypeError('min_val and max_val must be of the same type')
@@ -49,7 +50,8 @@ class Interval(object):
 
 class FloatInterval(Interval):
 
-    def __init__(self, (min_val, max_val)):
+    def __init__(self, v):
+        min_val, max_val = v
         with gmpy2.local_context(round=RoundDown):
             min_val = mpfr(min_val)
         with gmpy2.local_context(round=RoundUp):
@@ -79,7 +81,8 @@ class FloatInterval(Interval):
 
 class FractionInterval(Interval):
 
-    def __init__(self, (min_val, max_val)):
+    def __init__(self, v):
+        min_val, max_val = v
         super(FractionInterval, self).__init__((mpq(min_val), mpq(max_val)))
 
     def __str__(self):
@@ -88,26 +91,26 @@ class FractionInterval(Interval):
 
 class ErrorSemantics(object):
 
-    def __init__(self, (v_min, v_max), (e_min, e_max)):
-        self.v = FloatInterval([v_min, v_max])
-        self.e = FractionInterval([e_min, e_max])
+    def __init__(self, v, e):
+        self.v = FloatInterval(v)
+        self.e = FractionInterval(e)
 
     def __add__(self, other):
         v = self.v + other.v
         e = self.e + other.e + round_off_error(v)
-        return ErrorSemantics([v.min, v.max], [e.min, e.max])
+        return ErrorSemantics(v, e)
 
     def __sub__(self, other):
         v = self.v - other.v
         e = self.e - other.e + round_off_error(v)
-        return ErrorSemantics([v.min, v.max], [e.min, e.max])
+        return ErrorSemantics(v, e)
 
     def __mul__(self, other):
         v = self.v * other.v
         e = self.e * other.e + round_off_error(v)
-        e += FractionInterval([mpq(self.v.min), mpq(self.v.max)]) * other.e
-        e += FractionInterval([mpq(other.v.min), mpq(other.v.max)]) * self.e
-        return ErrorSemantics([v.min, v.max], [e.min, e.max])
+        e += FractionInterval(self.v) * other.e
+        e += FractionInterval(other.v) * self.e
+        return ErrorSemantics(v, e)
 
     def __str__(self):
         return '%sx%s' % (self.v, self.e)
