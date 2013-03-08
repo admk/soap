@@ -1,20 +1,14 @@
 #!/usr/bin/env python
 # vim: set fileencoding=UTF-8 :
 
-
-from common import OPERATORS
-
-
-def _to_number(s):
-    try:
-        return long(s)
-    except ValueError:
-        return float(s)
+from common import ADD_OP, MULTIPLY_OP, OPERATORS, ASSOCIATIVITY_OPERATORS, \
+    is_exact, cached
+from ..semantics import mpq, cast_error, cast_error_constant
 
 
 def _try_to_number(s):
     try:
-        return _to_number(s)
+        return mpq(s)
     except (ValueError, TypeError):
         return s
 
@@ -62,6 +56,40 @@ class Expr(object):
     def tuple(self):
         return (self.op, self.a1, self.a2)
 
+    @cached
+    def error(self, v):
+        def eval(a):
+            if isinstance(a, Expr):
+                return a.error(v)
+            if isinstance(a, str):
+                return v[a]
+            if is_exact(a):
+                return cast_error_constant(a)
+        e1, e2 = eval(self.a1), eval(self.a2)
+        if self.op == ADD_OP:
+            return e1 + e2
+        if self.op == MULTIPLY_OP:
+            return e1 * e2
+
+    def equiv(self, other):
+        def eq(a, b):
+            try:
+                return a.equiv(b)
+            except AttributeError:
+                try:
+                    return b.equiv(a)
+                except AttributeError:
+                    return a == b
+        if not isinstance(other, Expr):
+            return False
+        if eq(self.a1, other.a1) and eq(self.a2, other.a2):
+            return True
+        if not self.op in ASSOCIATIVITY_OPERATORS:
+            return False
+        if eq(self.a1, other.a2) and eq(self.a2, other.a1):
+            return True
+        return False
+
     def __iter__(self):
         return iter(self.tuple())
 
@@ -78,6 +106,8 @@ class Expr(object):
         return self.tuple() == other.tuple()
 
     def __lt__(self, other):
+        if not isinstance(other, Expr):
+            return False
         return self.tuple() < other.tuple()
 
     def __hash__(self):
@@ -85,9 +115,8 @@ class Expr(object):
 
 
 if __name__ == '__main__':
-    s = '((a + 1) * c)'
-    r = Expr(s)
-    t = repr(r)
-    t = eval(t)
-    assert(r == t)
-    assert(s == str(t))
+    r = Expr('((a + 1) * b)')
+    for i in range(3):
+        print r.error({
+            'a': cast_error('0.2', '0.3'),
+            'b': cast_error('2.3', '2.4')})
