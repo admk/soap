@@ -70,11 +70,11 @@ class FloatInterval(Interval):
 
     def __mul__(self, other):
         f = round_op(lambda x, y: x * y)
-        l = itertools.product((self.min, other.min),
-                              (self.max, other.max),
+        l = itertools.product((self.min, self.max),
+                              (other.min, other.max),
                               (RoundDown, RoundUp))
         v = [f(x, y, m) for x, y, m in l]
-        return Interval([min(v), max(v)])
+        return FloatInterval([min(v), max(v)])
 
 
 class FractionInterval(Interval):
