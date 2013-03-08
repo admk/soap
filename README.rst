@@ -1,12 +1,18 @@
 TODOs
 =====
 
-* Precision analysis
 * Area estimation
 * Support for subtraction & maybe division
 
 Changelog
 =========
+
+Version 0.3
+-----------
+
+Fri  8 Mar 2013 16:28:10 GMT
+
+* Precision analysis
 
 Version 0.2.1
 -------------
