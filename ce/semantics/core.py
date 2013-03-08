@@ -19,8 +19,6 @@ class Interval(object):
     def __init__(self, v):
         min_val, max_val = v
         self.min, self.max = min_val, max_val
-        if type(min_val) != type(max_val):
-            raise TypeError('min_val and max_val must be of the same type')
 
     def __iter__(self):
         return iter((self.min, self.max))

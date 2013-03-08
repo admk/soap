@@ -13,15 +13,21 @@ mpq_type = type(_mpq('1.0'))
 def mpq(v):
     if not isinstance(v, mpfr_type):
         return _mpq(v)
-    m, e = v.as_mantissa_exp()
-    return _mpq(m, 2 ** (-e))
+    try:
+        m, e = v.as_mantissa_exp()
+    except (OverflowError, ValueError):
+        return v
+    return _mpq(m, mpq(2) ** (-e))
 
 
 def ulp(v):
     if type(v) is not mpfr_type:
         with gmpy2.local_context(round=gmpy2.RoundAwayZero):
             v = mpfr(v)
-    return mpq(2) ** v.as_mantissa_exp()[1]
+    try:
+        return mpq(2) ** v.as_mantissa_exp()[1]
+    except OverflowError:
+        return mpfr('Inf')
 
 
 def round_op(f):
@@ -72,4 +78,7 @@ if __name__ == '__main__':
     print round_op(mult)(*(args + [gmpy2.RoundUp]))
     a = FloatInterval(['0.3', '0.3'])
     print a, round_off_error(a)
-    print cast_error_constant('0.5001')
+    x = cast_error('0.9', '1.1')
+    for i in xrange(10):
+        x *= x
+        print i, x
