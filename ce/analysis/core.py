@@ -39,8 +39,9 @@ class ErrorAnalysis(Analysis):
         r = float(max(abs(r[0].e.min), abs(r[0].e.max)))
         return (r, str(e))
 
+
 if __name__ == '__main__':
     from pprint import pprint
-    e = '((a + 0.1) + 0.4)'
-    a = ErrorAnalysis(e, {'a': cast_error('0.1', '0.2')}, print_progress=True)
+    e = '((a + 0.25) + 0.75)'
+    a = ErrorAnalysis(e, {'a': cast_error('0.01')}, print_progress=True)
     pprint(a.analyse())

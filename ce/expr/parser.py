@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 # vim: set fileencoding=UTF-8 :
 
-from gmpy2 import mpq
-
 from common import ADD_OP, MULTIPLY_OP, OPERATORS, ASSOCIATIVITY_OPERATORS, \
     is_exact, cached
-from ..semantics import cast_error
+from ..semantics import mpq, cast_error, cast_error_constant
 
 
 def _try_to_number(s):
@@ -66,7 +64,7 @@ class Expr(object):
             if isinstance(a, str):
                 return v[a]
             if is_exact(a):
-                return cast_error(a)
+                return cast_error_constant(a)
         e1, e2 = eval(self.a1), eval(self.a2)
         if self.op == ADD_OP:
             return e1 + e2

@@ -8,9 +8,10 @@ __email__ = 'xtg08@ic.ac.uk'
 
 import itertools
 import gmpy2
-from gmpy2 import mpq, mpfr, RoundUp, RoundDown
+from gmpy2 import RoundUp, RoundDown
 
-from common import round_op, round_off_error, cast_error
+from . import mpfr, mpq
+from common import round_op, round_off_error
 
 
 class Interval(object):
@@ -128,5 +129,3 @@ class ErrorSemantics(object):
 if __name__ == '__main__':
     gmpy2.set_context(gmpy2.ieee(32))
     print FloatInterval(['0.1', '0.2']) * FloatInterval(['5.3', '6.7'])
-    a, b = cast_error('0.3', '0.6'), cast_error('0.3')
-    print a, b, a * b

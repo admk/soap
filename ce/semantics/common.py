@@ -3,11 +3,18 @@
 
 
 import gmpy2
-from gmpy2 import mpq, mpfr
+from gmpy2 import mpfr, mpq as _mpq
 
 
 mpfr_type = type(mpfr('1.0'))
-mpq_type = type(mpq('1.0'))
+mpq_type = type(_mpq('1.0'))
+
+
+def mpq(v):
+    if not isinstance(v, mpfr_type):
+        return _mpq(v)
+    m, e = v.as_mantissa_exp()
+    return _mpq(m, 2 ** (-e))
 
 
 def ulp(v):
@@ -27,13 +34,32 @@ def round_op(f):
 def round_off_error(interval):
     from core import FractionInterval
     error = ulp(max(abs(interval.min), abs(interval.max))) / 2
-    return FractionInterval((-error, error))
+    return FractionInterval([-error, error])
+
+
+def round_off_error_from_exact(v):
+    def round(exact):
+        exact = mpq(exact)
+        rounded = mpq(mpfr(exact))
+        return rounded - exact
+    from core import FractionInterval
+    with gmpy2.local_context(round=gmpy2.RoundDown):
+        vr = round(v)
+    with gmpy2.local_context(round=gmpy2.RoundUp):
+        wr = round(v)
+    return FractionInterval([vr, wr])
+
+
+def cast_error_constant(v):
+    from core import ErrorSemantics
+    return ErrorSemantics([v, v], round_off_error_from_exact(v))
 
 
 def cast_error(v, w=None):
     from core import FractionInterval, ErrorSemantics
     w = w if w else v
-    return ErrorSemantics([v, w], round_off_error(FractionInterval([v, w])))
+    return ErrorSemantics(
+        [v, w], round_off_error(FractionInterval([v, w])))
 
 
 if __name__ == '__main__':
@@ -46,3 +72,4 @@ if __name__ == '__main__':
     print round_op(mult)(*(args + [gmpy2.RoundUp]))
     a = FloatInterval(['0.3', '0.3'])
     print a, round_off_error(a)
+    print cast_error_constant('0.5001')
