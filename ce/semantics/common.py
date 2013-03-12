@@ -63,7 +63,7 @@ def cast_error_constant(v):
 
 def cast_error(v, w=None):
     from core import FractionInterval, ErrorSemantics
-    w = w if w else v
+    w = w or v
     return ErrorSemantics(
         [v, w], round_off_error(FractionInterval([v, w])))
 
