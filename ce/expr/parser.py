@@ -3,7 +3,7 @@
 
 from common import ADD_OP, MULTIPLY_OP, OPERATORS, ASSOCIATIVITY_OPERATORS, \
     is_exact, cached
-from ..semantics import mpq, cast_error, cast_error_constant
+from ..semantics import mpq, cast_error, cast_error_constant, Label
 
 
 def _try_to_number(s):
@@ -35,7 +35,6 @@ def _parse_r(s):
 class Expr(object):
 
     def __init__(self, string=None, op=None, a1=None, a2=None):
-        super(Expr, self).__init__()
         if string:
             expr = _parse_r(string)
             self.op = expr.op
@@ -45,6 +44,7 @@ class Expr(object):
             self.op = op
             self.a1 = _try_to_number(a1)
             self.a2 = _try_to_number(a2)
+        super(Expr, self).__init__()
 
     def tree(self):
         def to_tuple(a):
@@ -90,6 +90,23 @@ class Expr(object):
             return True
         return False
 
+    @cached
+    def as_labels(self):
+        def to_label(e):
+            if isinstance(e, Expr):
+                return e.as_labels()
+            else:
+                l = Label(e)
+                return l, {l: e}
+        l1, s1 = to_label(self.a1)
+        l2, s2 = to_label(self.a2)
+        e = BExpr(op=self.op, a1=l1, a2=l2)
+        l = Label(e)
+        s = {l: e}
+        s.update(s1)
+        s.update(s2)
+        return l, s
+
     def __iter__(self):
         return iter(self.tuple())
 
@@ -114,9 +131,19 @@ class Expr(object):
         return hash(self.tuple())
 
 
+class BExpr(Expr):
+
+    def __init__(self, **kwargs):
+        super(BExpr, self).__init__(**kwargs)
+        if not isinstance(self.a1, Label) or not isinstance(self.a2, Label):
+            raise ValueError('BExpr allows only binary expressions.')
+
+
 if __name__ == '__main__':
-    r = Expr('((a + 1) * b)')
+    r = Expr('((a + 1) * ((a + 1) + b))')
     for i in range(3):
         print r.error({
             'a': cast_error('0.2', '0.3'),
             'b': cast_error('2.3', '2.4')})
+    for e, v in r.as_labels()[1].iteritems():
+        print str(e), ':', str(v)
