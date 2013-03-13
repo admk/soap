@@ -122,6 +122,12 @@ class Expr(object):
         return "Expr(op='%s', a1=%s, a2=%s)" % \
             (self.op, repr(self.a1), repr(self.a2))
 
+    def __add__(self, other):
+        return Expr(op=ADD_OP, a1=self, a2=other)
+
+    def __mul__(self, other):
+        return Expr(op=MULTIPLY_OP, a1=self, a2=other)
+
     def __eq__(self, other):
         if not isinstance(other, Expr):
             return False
