@@ -24,17 +24,14 @@ class DynamicMethods(object):
 
 class Comparable(object):
 
-    def __eq__(self, other):
-        return not self < other and not other < self
-
     def __ne__(self, other):
-        return self < other or other < self
+        return not self.__eq__(other)
 
     def __ge__(self, other):
-        return not self < other
+        return not self.__lt__(other)
 
     def __gt__(self, other):
-        return other < self
+        return not self.__eq__(other) and not self.__lt__(other)
 
     def __le__(self, other):
-        return not other < self
+        return not self.__gt__(other)
