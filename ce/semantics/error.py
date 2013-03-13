@@ -10,6 +10,8 @@ import itertools
 import gmpy2
 from gmpy2 import RoundUp, RoundDown, mpfr, mpq as _mpq
 
+from ..common import Comparable
+
 
 mpfr_type = type(mpfr('1.0'))
 mpq_type = type(_mpq('1.0'))
@@ -142,7 +144,7 @@ class FractionInterval(Interval):
         return '[~%s, ~%s]' % (str(mpfr(self.min)), str(mpfr(self.max)))
 
 
-class ErrorSemantics(object):
+class ErrorSemantics(Comparable):
 
     def __init__(self, v, e):
         self.v = FloatInterval(v)
@@ -177,6 +179,11 @@ class ErrorSemantics(object):
         if not isinstance(other, ErrorSemantics):
             return False
         return self.v == other.v and self.e == other.e
+
+    def __lt__(self, other):
+        def max_err(a):
+            return max(abs(a.e.min), abs(a.e.max))
+        return max_err(self) < max_err(other)
 
     def __hash__(self):
         return hash((self.v, self.e))
