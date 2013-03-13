@@ -8,6 +8,10 @@ import ce.expr
 from . import Lattice
 
 
+ADDER_SIZE = 576
+MULTIPLIER_SIZE = 138
+
+
 class AreaSemantics(Comparable, Lattice):
 
     def __init__(self, e):
@@ -32,10 +36,7 @@ class AreaSemantics(Comparable, Lattice):
                     add += 1
             except AttributeError:
                 pass
-        return {
-            ce.expr.MULTIPLY_OP: mult,
-            ce.expr.ADD_OP: add
-        }
+        return ADDER_SIZE * add + MULTIPLIER_SIZE * mult
 
     def __add__(self, other):
         return AreaSemantics(self.e + other.e)
@@ -49,12 +50,7 @@ class AreaSemantics(Comparable, Lattice):
     def __lt__(self, other):
         if not isinstance(other, AreaSemantics):
             return False
-        if self.area[ce.expr.MULTIPLY_OP] > other.area[ce.expr.MULTIPLY_OP]:
-            return False
-        if self.area[ce.expr.MULTIPLY_OP] == other.area[ce.expr.MULTIPLY_OP]:
-            if self.area[ce.expr.ADD_OP] >= other.area[ce.expr.ADD_OP]:
-                return False
-        return True
+        return self.area < other.area
 
     def __eq__(self, other):
         if not isinstance(other, AreaSemantics):
