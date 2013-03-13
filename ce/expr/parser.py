@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # vim: set fileencoding=UTF-8 :
 
+
+from ..common import Comparable
+
 from common import ADD_OP, MULTIPLY_OP, OPERATORS, ASSOCIATIVITY_OPERATORS, \
     is_exact, cached
 from ..semantics import mpq, cast_error, cast_error_constant, Label
@@ -32,7 +35,7 @@ def _parse_r(s):
     return Expr(string=None, op=s[operator_pos], a1=a1, a2=a2)
 
 
-class Expr(object):
+class Expr(Comparable):
 
     def __init__(self, string=None, op=None, a1=None, a2=None):
         if string:
