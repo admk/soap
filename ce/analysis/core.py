@@ -2,6 +2,8 @@
 # vim: set fileencoding=UTF-8 :
 
 
+import itertools
+
 from ..common import DynamicMethods
 from ..expr import Expr, ExprTreeTransformer
 
@@ -16,14 +18,23 @@ class Analysis(DynamicMethods):
         self.s = ExprTreeTransformer(Expr(e), **kwargs).closure()
 
     def analyse(self):
-        return sorted([self.select(self._analyse(t), t) for t in self.s])
+        a = sorted([self._analyse(t) for t in self.s],
+                   key=lambda k: tuple(k[m.__name__] for m in self.methods()))
+        return [self._select(d) for d in a]
 
     def _analyse(self, t):
-        l = self.list_methods(lambda m: m.endswith('analysis'))
-        return tuple(f(t) for f in l)
+        d = {'e': t}
+        d.update({m.__name__: m(t) for m in self.methods()})
+        return d
 
-    def select(self, r, e):
-        return (r, e)
+    def _select(self, d):
+        d['e'] = str(d['e'])
+        for f in self.list_methods(lambda m: m.endswith('select')):
+            d = f(d)
+        return d
+
+    def methods(self):
+        return self.list_methods(lambda m: m.endswith('analysis'))
 
 
 class ErrorAnalysis(Analysis):
@@ -35,9 +46,10 @@ class ErrorAnalysis(Analysis):
     def error_analysis(self, t):
         return t.error(self.v)
 
-    def select(self, r, e):
-        r = float(max(abs(r[0].e.min), abs(r[0].e.max)))
-        return (r, str(e))
+    def error_select(self, d):
+        m = self.error_analysis.__name__
+        d[m] = float(max(abs(d[m].e.min), abs(d[m].e.max)))
+        return d
 
 
 if __name__ == '__main__':
