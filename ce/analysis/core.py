@@ -52,8 +52,41 @@ class ErrorAnalysis(Analysis):
         return d
 
 
+class AreaAnalysis(Analysis):
+
+    def area_analysis(self, t):
+        return t.area()
+
+    def area_select(self, d):
+        m = self.area_analysis.__name__
+        d[m] = d[m].area
+        return d
+
+
+def pareto_frontier(s, keys=None):
+    keys = keys or range(len(s[0]))
+    s = sorted(s, key=lambda e: tuple(e[k] for k in keys))
+    frontier = s[:]
+    for m, n in itertools.product(s, s):
+        if m == n:
+            continue
+        if not n in frontier:
+            continue
+        if all(m[k] <= n[k] for k in keys):
+            frontier.remove(n)
+    return frontier
+
+
+class AreaErrorAnalysis(ErrorAnalysis, AreaAnalysis):
+    """Collect area and error analysis."""
+
+    def analyse(self):
+        a = super(AreaErrorAnalysis, self).analyse()
+        return pareto_frontier(a, keys=(self.area_analysis.__name__,
+                                        self.error_analysis.__name__))
+
 if __name__ == '__main__':
     from pprint import pprint
-    e = '((a + 0.25) + 0.75)'
-    a = ErrorAnalysis(e, {'a': cast_error('0.01')}, print_progress=True)
+    e = '((a + 1) * (a + 1))'
+    a = AreaErrorAnalysis(e, {'a': cast_error('0.01')}, print_progress=True)
     pprint(a.analyse())
