@@ -107,6 +107,11 @@ class Expr(object):
         s.update(s2)
         return l, s
 
+    @cached
+    def area(self):
+        from ..semantics import AreaSemantics
+        return AreaSemantics(self)
+
     def __iter__(self):
         return iter(self.tuple())
 
@@ -147,3 +152,4 @@ if __name__ == '__main__':
             'b': cast_error('2.3', '2.4')})
     for e, v in r.as_labels()[1].iteritems():
         print str(e), ':', str(v)
+    print r.area()
