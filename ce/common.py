@@ -20,3 +20,18 @@ class DynamicMethods(object):
         return [getattr(self, method) for method in methods
                 if not method.startswith('_') and method != 'list_methods' and
                 predicate(method)]
+
+
+class Comparable(object):
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __ge__(self, other):
+        return not self.__lt__(other)
+
+    def __gt__(self, other):
+        return not self.__eq__(other) and not self.__lt__(other)
+
+    def __le__(self, other):
+        return not self.__gt__(other)

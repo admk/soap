@@ -89,7 +89,7 @@ class TreeTransformer(DynamicMethods):
         while trees != prev_trees:
             # print set size
             if self._p:
-                sys.stdout.write('%d ' % len(trees))
+                sys.stdout.write('\r%d' % len(trees))
                 sys.stdout.flush()
             # iterative transition
             prev_trees = trees
@@ -109,10 +109,17 @@ class TreeTransformer(DynamicMethods):
             A set of trees after transform.
         """
         s = self._closure_r([self._t])
+        if self._p:
+            print('Finished finding closure.')
+            print('Reducing commutatively equivalent expressions.')
         # reduce commutatively equivalent expressions
         # FIXME complexity, try hashing instead
         l = set()
-        for e in s:
+        n = len(s)
+        for i, e in enumerate(s):
+            if self._p:
+                sys.stdout.write('\r%d/%d' % (i, n))
+                sys.stdout.flush()
             has = False
             for f in l:
                 if e.equiv(f):
