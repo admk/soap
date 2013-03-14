@@ -110,6 +110,7 @@ class TreeTransformer(DynamicMethods):
         """
         s = self._closure_r([self._t])
         # reduce commutatively equivalent expressions
+        # FIXME complexity, try hashing instead
         l = set()
         for e in s:
             has = False
