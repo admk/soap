@@ -81,12 +81,25 @@ class AreaErrorAnalysis(ErrorAnalysis, AreaAnalysis):
     """Collect area and error analysis."""
 
     def analyse(self):
-        a = super(AreaErrorAnalysis, self).analyse()
-        return pareto_frontier(a, keys=(self.area_analysis.__name__,
-                                        self.error_analysis.__name__))
+        analysis = super(AreaErrorAnalysis, self).analyse()
+        frontier = pareto_frontier(
+            analysis, keys=(self.area_analysis.__name__,
+                            self.error_analysis.__name__))
+        return (analysis, frontier)
+
 
 if __name__ == '__main__':
-    from pprint import pprint
-    e = '((a + 1) * (a + 1))'
+    from matplotlib import pyplot as plt
+    e = '((a + 1) * ((a + 1) * (a + 1)))'
     a = AreaErrorAnalysis(e, {'a': cast_error('0.01')}, print_progress=True)
-    pprint(a.analyse())
+    a, f = a.analyse()
+    ax = [v['area_analysis'] for v in a]
+    ay = [v['error_analysis'] for v in a]
+    fx = [v['area_analysis'] for v in f]
+    fy = [v['error_analysis'] for v in f]
+    fig = plt.figure()
+    subplt = fig.add_subplot(111)
+    subplt.set_ylim(0.8 * min(ay), 1.2 * max(ay))
+    subplt.scatter(ax, ay)
+    subplt.plot(fx, fy)
+    plt.show()
