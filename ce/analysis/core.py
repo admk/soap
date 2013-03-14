@@ -2,6 +2,7 @@
 # vim: set fileencoding=UTF-8 :
 
 
+import sys
 import itertools
 
 from ..common import DynamicMethods
@@ -12,14 +13,25 @@ from ..semantics import cast_error
 
 class Analysis(DynamicMethods):
 
-    def __init__(self, e, **kwargs):
+    def __init__(self, e, print_progress=False, **kwargs):
         super(Analysis, self).__init__()
         self.e = e
-        self.s = ExprTreeTransformer(Expr(e), **kwargs).closure()
+        self.s = ExprTreeTransformer(
+            Expr(e), print_progress=print_progress, **kwargs).closure()
+        self.p = print_progress
 
     def analyse(self):
-        a = sorted([self._analyse(t) for t in self.s],
-                   key=lambda k: tuple(k[m.__name__] for m in self.methods()))
+        if self.p:
+            print 'Analysing results.'
+        a = []
+        n = len(self.s)
+        for i, t in enumerate(self.s):
+            if self.p:
+                sys.stdout.write('\r%d/%d' % (i, n))
+                sys.stdout.flush()
+            a.append(self._analyse(t))
+        a = sorted(
+            a, key=lambda k: tuple(k[m.__name__] for m in self.methods()))
         return [self._select(d) for d in a]
 
     def _analyse(self, t):
