@@ -50,7 +50,7 @@ class Labels(object):
         super(Labels, self).__init__()
 
     def add(self, e):
-        if e in self.s.items():
+        if e in list(self.s.items()):
             return
         self.s[Label()] = e
 

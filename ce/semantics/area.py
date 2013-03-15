@@ -28,7 +28,7 @@ class AreaSemantics(Comparable, Lattice):
     @property
     def area(self):
         mult, add = 0, 0
-        for _, e in self.s.iteritems():
+        for _, e in self.s.items():
             try:
                 if e.op == ce.expr.MULTIPLY_OP:
                     mult += 1
@@ -68,4 +68,4 @@ class AreaSemantics(Comparable, Lattice):
 
 if __name__ == '__main__':
     e = ce.expr.Expr('((a + 1) * (a + 1))')
-    print AreaSemantics(e)
+    print(AreaSemantics(e))

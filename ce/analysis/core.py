@@ -22,7 +22,7 @@ class Analysis(DynamicMethods):
 
     def analyse(self):
         if self.p:
-            print 'Analysing results.'
+            print('Analysing results.')
         a = []
         n = len(self.s)
         for i, t in enumerate(self.s):
@@ -76,7 +76,7 @@ class AreaAnalysis(Analysis):
 
 
 def pareto_frontier(s, keys=None):
-    keys = keys or range(len(s[0]))
+    keys = keys or list(range(len(s[0])))
     s = sorted(s, key=lambda e: tuple(e[k] for k in keys))
     frontier = s[:]
     for m, n in itertools.product(s, s):
