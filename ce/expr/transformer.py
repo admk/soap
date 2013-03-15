@@ -2,18 +2,18 @@
 # vim: set fileencoding=UTF-8 :
 
 
-from __future__ import print_function
 import re
 import sys
 import multiprocessing
 import random
 import functools
+from functools import reduce
 
 from ..common import DynamicMethods
 from ..semantics import mpq_type
-import common
-from common import is_exact, is_expr
-from parser import Expr
+from . import common
+from .common import is_exact, is_expr
+from .parser import Expr
 
 
 __author__ = 'Xitong Gao'
@@ -215,16 +215,16 @@ class ExprTreeTransformer(TreeTransformer):
             op2, a21, a22 = a2
             if op2 == common.MULTIPLY_OP:
                 if a21 == a1:
-                    a1 = Expr(op=op2, a1=a1, a2=1L)
+                    a1 = Expr(op=op2, a1=a1, a2=1)
                 elif a22 == a1:
-                    a1 = Expr(op=op2, a1=1L, a2=a1)
+                    a1 = Expr(op=op2, a1=1, a2=a1)
         if is_expr(a1):
             op1, a11, a12 = a1
             if op1 == common.MULTIPLY_OP:
                 if a11 == a2:
-                    a2 = Expr(op=op1, a1=a2, a2=1L)
+                    a2 = Expr(op=op1, a1=a2, a2=1)
                 elif a12 == a2:
-                    a1 = Expr(op=op1, a1=1L, a2=a2)
+                    a1 = Expr(op=op1, a1=1, a2=a2)
         # must be all expressions
         if not is_expr(a1) or not is_expr(a2):
             return
@@ -258,7 +258,7 @@ class ExprTreeTransformer(TreeTransformer):
         if tsv != nsv:
             raise ValidationError('Variable domain mismatch.')
         vv = {v: random.randint(0, 127) for v in tsv}
-        for v, i in vv.iteritems():
+        for v, i in vv.items():
             ts = re.sub(r'\b%s\b' % v, str(i), ts)
             ns = re.sub(r'\b%s\b' % v, str(i), ns)
         if eval(ts) != eval(ns):
