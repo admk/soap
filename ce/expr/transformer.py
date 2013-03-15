@@ -7,10 +7,12 @@ import re
 import sys
 import multiprocessing
 import random
-import inspect
 import functools
 
-from common import ADD_OP, MULTIPLY_OP
+from ..common import DynamicMethods
+from ..semantics import mpq_type
+import common
+from common import is_exact, is_expr
 from parser import Expr
 
 
@@ -46,7 +48,7 @@ def _step(s, f, v=None, closure=False):
 
 
 def _walk_r((t, f, v, c)):
-    s = set([t])
+    s = {t}
     if not is_expr(t):
         return s
     for e in f(t):
@@ -74,6 +76,7 @@ def _walk_r((t, f, v, c)):
 def item_to_list(f):
     return functools.wraps(f)(lambda t: [f(t)])
 
+
 def none_to_list(f):
     def wrapper(t):
         v = f(t)
@@ -85,7 +88,7 @@ class ValidationError(Exception):
     """Failed to find equivalence."""
 
 
-class TreeTransformer(object):
+class TreeTransformer(DynamicMethods):
 
     def __init__(self, tree, validate=False, print_progress=False):
         super(TreeTransformer, self).__init__()
@@ -99,7 +102,7 @@ class TreeTransformer(object):
         while trees != prev_trees:
             # print set size
             if self._p:
-                sys.stdout.write('%d ' % len(trees))
+                sys.stdout.write('\r%d' % len(trees))
                 sys.stdout.flush()
             # iterative transition
             prev_trees = trees
@@ -118,7 +121,25 @@ class TreeTransformer(object):
         Returns:
             A set of trees after transform.
         """
-        return self._closure_r([self._t])
+        s = self._closure_r([self._t])
+        if self._p:
+            print('Finished finding closure.')
+            print('Reducing commutatively equivalent expressions.')
+        # reduce commutatively equivalent expressions
+        # FIXME complexity, try hashing instead
+        l = set()
+        n = len(s)
+        for i, e in enumerate(s):
+            if self._p:
+                sys.stdout.write('\r%d/%d' % (i, n))
+                sys.stdout.flush()
+            has = False
+            for f in l:
+                if e.equiv(f):
+                    has = True
+            if not has:
+                l.add(e)
+        return l
 
     def validate(self, t, tn):
         """Perform validation of tree.
@@ -139,36 +160,21 @@ class TreeTransformer(object):
             self.validate(t, tn)
 
     def _reduction_methods(self):
-        return self._list_methods(lambda m: m.endswith('reduction'))
+        return self.list_methods(lambda m: m.endswith('reduction'))
 
     def _transform_methods(self):
-        return self._list_methods(lambda m: m.endswith('tivity'))
-
-    def _list_methods(self, predicate):
-        """Find all transform methods within the class that satisfies the
-        predicate.
-
-        Returns:
-            A list of tuples containing method names and corresponding methods
-            that can be called with a tree as the argument for each method.
-        """
-        methods = [member[0] for member in inspect.getmembers(
-                self.__class__, predicate=inspect.ismethod)]
-        return [getattr(self, method) for method in methods
-                if not method.startswith('_') and predicate(method)]
+        return self.list_methods(lambda m: m.endswith('tivity'))
 
 
 class ExprTreeTransformer(TreeTransformer):
 
     def __init__(self, tree, validate=False, print_progress=False):
         super(ExprTreeTransformer, self).__init__(
-                tree, validate, print_progress)
-
-    ASSOCIATIVITY_OPERATORS = [ADD_OP, MULTIPLY_OP]
+            tree, validate, print_progress)
 
     def associativity(self, t):
         s = []
-        if not t.op in self.ASSOCIATIVITY_OPERATORS:
+        if not t.op in common.ASSOCIATIVITY_OPERATORS:
             return
         if is_expr(t.a1):
             if t.a1.op == t.op:
@@ -180,29 +186,16 @@ class ExprTreeTransformer(TreeTransformer):
                               a2=t.a2.a2))
         return s
 
-    COMMUTATIVE_DISTRIBUTIVITY_OPERATOR_PAIRS = [(MULTIPLY_OP, ADD_OP)]
-    # left-distributive: a * (b + c) == a * b + a * c
-    LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS = \
-            COMMUTATIVE_DISTRIBUTIVITY_OPERATOR_PAIRS
-    # Note that division '/' is only right-distributive over +
-    RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS = \
-            COMMUTATIVE_DISTRIBUTIVITY_OPERATOR_PAIRS
-
-    LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTION_OVER_OPERATORS = \
-            zip(*LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS)
-    RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTION_OVER_OPERATORS = \
-            zip(*RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS)
-
     def distribute_for_distributivity(self, t):
         s = []
-        if t.op in self.LEFT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a2):
-            if (t.op, t.a2.op) in self.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
+        if t.op in common.LEFT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a2):
+            if (t.op, t.a2.op) in common.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
                 s.append(
                     Expr(op=t.a2.op,
                          a1=Expr(op=t.op, a1=t.a1, a2=t.a2.a1),
                          a2=Expr(op=t.op, a1=t.a1, a2=t.a2.a2)))
-        if t.op in self.RIGHT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a1):
-            if (t.op, t.a1.op) in self.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
+        if t.op in common.RIGHT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a1):
+            if (t.op, t.a1.op) in common.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
                 s.append(
                     Expr(op=t.a1.op,
                          a1=Expr(op=t.op, a1=t.a1.a1, a2=t.a2),
@@ -211,8 +204,8 @@ class ExprTreeTransformer(TreeTransformer):
 
     def collect_for_distributivity(self, t):
         op, a1, a2 = t
-        if not op in (self.LEFT_DISTRIBUTION_OVER_OPERATORS +
-                    self.RIGHT_DISTRIBUTION_OVER_OPERATORS):
+        if not op in (common.LEFT_DISTRIBUTION_OVER_OPERATORS +
+                      common.RIGHT_DISTRIBUTION_OVER_OPERATORS):
             return
         # depth test
         if not is_expr(a1) and not is_expr(a2):
@@ -220,14 +213,14 @@ class ExprTreeTransformer(TreeTransformer):
         # expand by adding identities
         if is_expr(a2):
             op2, a21, a22 = a2
-            if op2 == MULTIPLY_OP:
+            if op2 == common.MULTIPLY_OP:
                 if a21 == a1:
                     a1 = Expr(op=op2, a1=a1, a2=1L)
                 elif a22 == a1:
                     a1 = Expr(op=op2, a1=1L, a2=a1)
         if is_expr(a1):
             op1, a11, a12 = a1
-            if op1 == MULTIPLY_OP:
+            if op1 == common.MULTIPLY_OP:
                 if a11 == a2:
                     a2 = Expr(op=op1, a1=a2, a2=1L)
                 elif a12 == a2:
@@ -241,20 +234,23 @@ class ExprTreeTransformer(TreeTransformer):
         if op1 != op2:
             return
         s = []
-        if (op1, op) in self.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
+        if (op1, op) in common.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
             if a11 == a21:
                 s.append(Expr(op=op1, a1=a11, a2=Expr(op=op, a1=a12, a2=a22)))
-        if (op2, op) in self.RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS:
+        if (op2, op) in common.RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS:
             if a12 == a22:
                 s.append(Expr(op=op2, a1=Expr(op=op, a1=a11, a2=a21), a2=a12))
         return s
 
     def commutativity(self, t):
+        if not t.op in common.COMMUTATIVITY_OPERATORS:
+            return
         return [Expr(op=t.op, a1=t.a2, a2=t.a1)]
 
     VAR_RE = re.compile(r"[^\d\W]\w*", re.UNICODE)
 
     def validate(self, t, tn):
+        # FIXME: broken after ErrorSemantics
         def vars(tree_str):
             return set(self.VAR_RE.findall(tree_str))
         to, no = ts, ns = str(t), str(tn)
@@ -267,9 +263,9 @@ class ExprTreeTransformer(TreeTransformer):
             ns = re.sub(r'\b%s\b' % v, str(i), ns)
         if eval(ts) != eval(ns):
             raise ValidationError(
-                    'Failed validation\n'
-                    'Original: %s %s,\n'
-                    'Transformed: %s %s' % (to, t, no, tn))
+                'Failed validation\n'
+                'Original: %s %s,\n'
+                'Transformed: %s %s' % (to, t, no, tn))
 
     def _identity_reduction(self, t, iop, i):
         if t.op != iop:
@@ -281,22 +277,40 @@ class ExprTreeTransformer(TreeTransformer):
         return t
 
     def multiplicative_identity_reduction(self, t):
-        return self._identity_reduction(t, MULTIPLY_OP, 1)
+        return self._identity_reduction(t, common.MULTIPLY_OP, 1)
 
     def additive_identity_reduction(self, t):
-        return self._identity_reduction(t, ADD_OP, 0)
+        return self._identity_reduction(t, common.ADD_OP, 0)
 
     def zero_reduction(self, t):
-        if t.op != MULTIPLY_OP:
+        if t.op != common.MULTIPLY_OP:
             return t
         if t.a1 != 0 and t.a2 != 0:
             return t
         return 0
 
     def constant_reduction(self, t):
-        if not is_num(t.a1) or not is_num(t.a2):
+        if not is_exact(t.a1) or not is_exact(t.a2):
             return t
-        if t.op == MULTIPLY_OP:
+        if t.op == common.MULTIPLY_OP:
             return t.a1 * t.a2
-        if t.op == ADD_OP:
+        if t.op == common.ADD_OP:
             return t.a1 + t.a2
+
+
+if __name__ == '__main__':
+    e = '((a + 2) * (a + 3))'
+    t = Expr(e)
+    print('Expr:', e)
+    print('Tree:', t.tree())
+    s = ExprTreeTransformer(t, print_progress=True).closure()
+    for n in s:
+        print('>', n)
+    print('Validating...')
+    t = random.sample(s, 1)[0]
+    print('Sample Expr:', t)
+    r = ExprTreeTransformer(t, print_progress=True).closure()
+    if s >= r:
+        print('Validated.')
+    else:
+        print('Inconsistent closure generated.')
