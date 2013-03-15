@@ -4,8 +4,6 @@
 
 from __future__ import print_function
 
-from ..semantics import mpq_type
-
 
 ADD_OP = '+'
 MULTIPLY_OP = '*'
@@ -55,6 +53,7 @@ def cached(f):
 
 
 def is_exact(v):
+    from ..semantics import mpq_type
     return isinstance(v, (int, long, mpq_type))
 
 
