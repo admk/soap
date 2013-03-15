@@ -105,6 +105,7 @@ if __name__ == '__main__':
     e = '((a + 1) * ((a + 1) * (a + 1)))'
     a = AreaErrorAnalysis(e, {'a': cast_error('0.01')}, print_progress=True)
     a, f = a.analyse()
+    print(a)
     ax = [v['area_analysis'] for v in a]
     ay = [v['error_analysis'] for v in a]
     fx = [v['area_analysis'] for v in f]

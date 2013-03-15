@@ -6,13 +6,13 @@ import re
 import sys
 import random
 import functools
+from functools import reduce
 
 from ..common import DynamicMethods
 from ..semantics import mpq_type
 from . import common
 from .common import is_exact, is_expr
 from .parser import Expr
-from functools import reduce
 
 
 __author__ = 'Xitong Gao'
