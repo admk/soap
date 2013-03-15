@@ -1,11 +1,20 @@
 TODOs
 =====
 
-* Area estimation
 * Support for subtraction & maybe division
+* Multiprocessing
+* Much needed documentation and unit testing
 
 Changelog
 =========
+
+Version 0.4
+-----------
+
+Fri Mar 15 11:05:33 GMT 2013
+
+* Area analysis
+* Preliminary Pareto trade-off analysis
 
 Version 0.3
 -----------
@@ -27,7 +36,7 @@ Version 0.2
 Mon Feb 18 17:37:49 GMT 2013
 
 * Non-symmetric reductions
-  * Constant propagation
+* Constant propagation
 * Use Expr instead of tuples for expressions
 
 Version 0.1
