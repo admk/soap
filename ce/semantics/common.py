@@ -3,13 +3,14 @@
 
 
 _label_count = 0
-_labels = {}
+_labels = None
 
 
 def fresh_int(e):
+    global _label_count, _labels
+    _labels = _labels or {}
     if e in _labels:
         return _labels[e]
-    global _label_count, _labels
     _label_count += 1
     _labels[e] = _label_count
     return _label_count
