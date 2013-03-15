@@ -4,7 +4,7 @@
 
 from ..common import Comparable
 
-from common import ADD_OP, MULTIPLY_OP, OPERATORS, ASSOCIATIVITY_OPERATORS, \
+from .common import ADD_OP, MULTIPLY_OP, OPERATORS, ASSOCIATIVITY_OPERATORS, \
     is_exact, cached
 from ..semantics import mpq, cast_error, cast_error_constant, Label
 
@@ -157,9 +157,9 @@ class BExpr(Expr):
 if __name__ == '__main__':
     r = Expr('((a + 1) * ((a + 1) + b))')
     for i in range(3):
-        print r.error({
+        print(r.error({
             'a': cast_error('0.2', '0.3'),
-            'b': cast_error('2.3', '2.4')})
-    for e, v in r.as_labels()[1].iteritems():
-        print str(e), ':', str(v)
-    print r.area()
+            'b': cast_error('2.3', '2.4')}))
+    for e, v in r.as_labels()[1].items():
+        print(str(e), ':', str(v))
+    print(r.area())
