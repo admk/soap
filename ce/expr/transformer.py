@@ -190,13 +190,6 @@ def collect_for_distributivity(t):
     return s
 
 
-@none_to_list
-def commutativity(t):
-    if not t.op in common.COMMUTATIVITY_OPERATORS:
-        return
-    return [Expr(op=t.op, a1=t.a2, a2=t.a1)]
-
-
 def _identity_reduction(t, iop, i):
     if t.op != iop:
         return t
@@ -243,7 +236,7 @@ class ExprTreeTransformer(TreeTransformer):
 
     def transform_methods(self):
         return [associativity, distribute_for_distributivity,
-                collect_for_distributivity, commutativity]
+                collect_for_distributivity]
 
     def reduction_methods(self):
         return [multiplicative_identity_reduction,
