@@ -2,10 +2,6 @@
 # vim: set fileencoding=UTF-8 :
 
 
-__author__ = 'Xitong Gao'
-__email__ = 'xtg08@ic.ac.uk'
-
-
 import itertools
 import gmpy2
 from gmpy2 import RoundUp, RoundDown, mpfr, mpq as _mpq

@@ -15,10 +15,6 @@ from .common import is_exact, is_expr
 from .parser import Expr
 
 
-__author__ = 'Xitong Gao'
-__email__ = 'xtg08@ic.ac.uk'
-
-
 def _step(s, f, v=None, closure=False):
     """Find the set of trees related by the function f.
     Arg:
