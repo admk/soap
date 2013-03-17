@@ -7,19 +7,20 @@ import inspect
 
 class DynamicMethods(object):
 
-    def list_methods(self, predicate):
+    def list_method_names(self, predicate):
         """Find all transform methods within the class that satisfies the
         predicate.
 
         Returns:
-            A list of tuples containing method names and corresponding methods
-            that can be called with a tree as the argument for each method.
+            A list of tuples containing method names.
         """
         methods = [member[0] for member in inspect.getmembers(self,
-                   predicate=inspect.ismethod)]
-        return [getattr(self, method) for method in methods
-                if not method.startswith('_') and method != 'list_methods' and
-                predicate(method)]
+                   predicate=inspect.isroutine)]
+        return [m for m in methods if not method.startswith('_') and
+                method != 'list_methods' and predicate(method)]
+
+    def list_methods(self, predicate):
+        return [getattr(self, m) for m in self.list_method_names(predicate)]
 
 
 class Comparable(object):
