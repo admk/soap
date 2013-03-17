@@ -7,7 +7,7 @@ import sys
 import multiprocessing
 import random
 import functools
-from functools import reduce
+import itertools
 
 from ..common import DynamicMethods
 from ..semantics import mpq_type
@@ -75,12 +75,10 @@ class TreeTransformer(object):
             # iterative transition
             prev_trees = trees
             if not reduced:
-                for f in self.transform_methods():
-                    trees = _step(trees, f, v, True)
+                trees = _step(trees, self.transform_methods(), v, True)
                 trees = self._closure_r(trees, True)
             else:
-                for f in self.reduction_methods():
-                    trees = _step(trees, f, v, False)
+                trees = _step(trees, self.reduction_methods(), v, False)
         return trees
 
     def closure(self):
@@ -323,22 +321,23 @@ def _walk_r(t, f, v, c):
 _pool = multiprocessing.Pool()
 
 
-def _step(s, f, v=None, closure=False):
+def _step(s, fs, v=None, closure=False):
     """Find the set of trees related by the function f.
     Arg:
         s: A set of trees.
-        f: A function which transforms the trees. It has one argument,
-            the tree, and returns a set of trees after transform.
+        f: A set of functions which transforms the trees. Each function has one
+            argument, the tree, and returns a set of trees after transform.
         v: A function which validates the transform.
         closure: If set, it will include everything in self.trees.
 
     Returns:
         A set of trees related by f.
     """
-    chunksize = int(len(s) / multiprocessing.cpu_count()) + 1
+    sf = itertools.product(s, fs)
+    chunksize = int(len(s) * len(fs) / multiprocessing.cpu_count()) + 1
     r = _pool.imap(_walk,
-        [(t, f, v, closure) for t in s], chunksize)
-    return reduce(lambda x, y: x | y, r)
+        [(t, f, v, closure) for (t, f) in sf], chunksize)
+    return functools.reduce(lambda x, y: x | y, r)
 
 
 if __name__ == '__main__':
@@ -353,7 +352,7 @@ if __name__ == '__main__':
     t = random.sample(s, 1)[0]
     print('Sample Expr:', t)
     r = ExprTreeTransformer(t, print_progress=True).closure()
-    if s >= r:
-        print('Validated.')
-    else:
-        print('Inconsistent closure generated.')
+    print('Listing inconsistent closure items...')
+    for t in r:
+        if not t in s:
+            print(str(t))
