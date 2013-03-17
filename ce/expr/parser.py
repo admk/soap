@@ -87,7 +87,7 @@ class Expr(Comparable):
             return False
         if eq(self.a1, other.a1) and eq(self.a2, other.a2):
             return True
-        if not self.op in ASSOCIATIVITY_OPERATORS:
+        if not self.op in COMMUTATIVITY_OPERATORS:
             return False
         if eq(self.a1, other.a2) and eq(self.a2, other.a1):
             return True
