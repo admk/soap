@@ -56,8 +56,9 @@ class Expr(Comparable):
             return a
         return (self.op, to_tuple(self.a1), to_tuple(self.a2))
 
-    def tuple(self):
-        return (self.op, self.a1, self.a2)
+    @property
+    def as(self):
+        return (self.a1, self.a2)
 
     @cached
     def error(self, v):
@@ -116,7 +117,7 @@ class Expr(Comparable):
         return AreaSemantics(self)
 
     def __iter__(self):
-        return iter(self.tuple())
+        return iter((self.op, self.a1, self.a2))
 
     def __str__(self):
         return '(%s %s %s)' % (str(self.a1), self.op, str(self.a2))
@@ -134,15 +135,15 @@ class Expr(Comparable):
     def __eq__(self, other):
         if not isinstance(other, Expr):
             return False
-        return self.tuple() == other.tuple()
+        return tuple(self) == tuple(other)
 
     def __lt__(self, other):
         if not isinstance(other, Expr):
             return False
-        return self.tuple() < other.tuple()
+        return tuple(self) < tuple(other)
 
     def __hash__(self):
-        return hash(self.tuple())
+        return hash(tuple(self))
 
 
 class BExpr(Expr):
