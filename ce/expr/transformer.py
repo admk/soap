@@ -21,13 +21,6 @@ __author__ = 'Xitong Gao'
 __email__ = 'xtg08@ic.ac.uk'
 
 
-def is_num(v):
-    return isinstance(v, (int, long, float))
-
-def is_expr(e):
-    return isinstance(e, Expr)
-
-
 def item_to_list(f):
     return functools.wraps(f)(lambda t: [f(t)])
 
@@ -321,23 +314,25 @@ def _walk_r(t, f, v, c):
 _pool = multiprocessing.Pool()
 
 
-def _step(s, fs, v=None, closure=False):
+def _step(s, fs, v=None, c=False):
     """Find the set of trees related by the function f.
-    Arg:
+
+    Args:
         s: A set of trees.
-        f: A set of functions which transforms the trees. Each function has one
-            argument, the tree, and returns a set of trees after transform.
+        fs: A set of functions which transforms the trees. Each function has
+            one argument, the tree, and returns a set of trees after transform.
         v: A function which validates the transform.
-        closure: If set, it will include everything in self.trees.
+        c: If set, it will include everything in s. Otherwise only derived
+            trees.
 
     Returns:
         A set of trees related by f.
     """
-    sf = itertools.product(s, fs)
-    chunksize = int(len(s) * len(fs) / multiprocessing.cpu_count()) + 1
-    r = _pool.imap(_walk,
-        [(t, f, v, closure) for (t, f) in sf], chunksize)
-    return functools.reduce(lambda x, y: x | y, r)
+    chunksize = int(len(s) / multiprocessing.cpu_count()) + 1
+    for f in fs:
+        s = _pool.imap(_walk, [(t, f, v, c) for t in s], chunksize)
+        s = functools.reduce(lambda x, y: x | y, s)
+    return s
 
 
 if __name__ == '__main__':
