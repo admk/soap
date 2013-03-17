@@ -47,6 +47,7 @@ class Expr(Comparable):
             self.op = op
             self.a1 = _try_to_number(a1)
             self.a2 = _try_to_number(a2)
+        self.a1, self.a2 = sorted([self.a1, self.a2])
         super(Expr, self).__init__()
 
     def tree(self):
@@ -151,7 +152,6 @@ class BExpr(Expr):
         super(BExpr, self).__init__(**kwargs)
         if not isinstance(self.a1, Label) or not isinstance(self.a2, Label):
             raise ValueError('BExpr allows only binary expressions.')
-        self.a1, self.a2 = sorted([self.a1, self.a2])
 
 
 if __name__ == '__main__':
