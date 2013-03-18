@@ -314,7 +314,7 @@ def _walk_r(t, f, v, c):
 _pool = multiprocessing.Pool()
 
 
-def _step(s, fs, v=None, c=False):
+def _step(s, fs, v=None, c=False, m=False):
     """Find the set of trees related by the function f.
 
     Args:
@@ -328,9 +328,13 @@ def _step(s, fs, v=None, c=False):
     Returns:
         A set of trees related by f.
     """
+    if m:
+        imap = _pool.imap
+    else:
+        imap = lambda f, l, _: [f(a) for a in l]
     chunksize = int(len(s) / multiprocessing.cpu_count()) + 1
     for f in fs:
-        s = _pool.imap(_walk, [(t, f, v, c) for t in s], chunksize)
+        s = imap(_walk, [(t, f, v, c) for t in s], chunksize)
         s = functools.reduce(lambda x, y: x | y, s)
     return s
 
