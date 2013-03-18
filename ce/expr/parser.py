@@ -38,18 +38,20 @@ def _parse_r(s):
 class Expr(Comparable):
 
     def __init__(self, *args, **kwargs):
-        self.__dict__.update(kwargs)
+        if kwargs:
+            op = kwargs.setdefault('op')
+            a1 = kwargs.setdefault('a1')
+            a2 = kwargs.setdefault('a2')
+            al = a1, a2
         if len(args) == 1:
             expr = _parse_r(list(args).pop())
-            self.op = expr.op
-            self.a1 = expr.a1
-            self.a2 = expr.a2
+            op, al = expr.op, expr.args
+        elif len(args) == 2:
+            op, al = args
         elif len(args) == 3:
-            op, a1, a2 = args
-            self.op = op
-            self.a1 = _try_to_number(a1)
-            self.a2 = _try_to_number(a2)
-        self.a1, self.a2 = sorted([self.a1, self.a2])
+            op, *al = args
+        self.op = op
+        self.a1, self.a2 = sorted([_try_to_number(a) for a in al])
         super(Expr, self).__init__()
 
     def tree(self):
