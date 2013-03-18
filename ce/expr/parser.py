@@ -60,8 +60,8 @@ class Expr(Comparable):
         return (self.op, to_tuple(self.a1), to_tuple(self.a2))
 
     @property
-    def as(self):
-        return (self.a1, self.a2)
+    def args(self):
+        return [self.a1, self.a2]
 
     @cached
     def error(self, v):
