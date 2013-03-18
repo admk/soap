@@ -121,16 +121,14 @@ def distribute_for_distributivity(t):
     s = []
     if t.op in common.LEFT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a2):
         if (t.op, t.a2.op) in common.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
-            s.append(
-                Expr(op=t.a2.op,
-                     a1=Expr(op=t.op, a1=t.a1, a2=t.a2.a1),
-                     a2=Expr(op=t.op, a1=t.a1, a2=t.a2.a2)))
+            s.append(Expr(t.a2.op,
+                          Expr(t.op, t.a1, t.a2.a1),
+                          Expr(t.op, t.a1, t.a2.a2)))
     if t.op in common.RIGHT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a1):
-        if (t.op, t.a1.op) in common.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
-            s.append(
-                Expr(op=t.a1.op,
-                     a1=Expr(op=t.op, a1=t.a1.a1, a2=t.a2),
-                     a2=Expr(op=t.op, a1=t.a1.a2, a2=t.a2)))
+        if (t.op, t.a1.op) in common.RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS:
+            s.append(Expr(t.a1.op,
+                          Expr(t.op, t.a1.a1, t.a2),
+                          Expr(t.op, t.a1.a2, t.a2)))
     return s
 
 
