@@ -102,17 +102,18 @@ class TreeTransformer(object):
 
 @none_to_list
 def associativity(t):
-    s = []
+    def expr_from_args(args):
+        for a in args:
+            al = list(args)
+            al.remove(a)
+            yield Expr(t.op, a, Expr(t.op, al))
     if not t.op in common.ASSOCIATIVITY_OPERATORS:
         return
-    if is_expr(t.a1):
-        if t.a1.op == t.op:
-            s.append(Expr(op=t.op, a1=t.a1.a1,
-                          a2=Expr(op=t.op, a1=t.a1.a2, a2=t.a2)))
-    if is_expr(t.a2):
-        if t.a2.op == t.op:
-            s.append(Expr(op=t.op, a1=Expr(op=t.op, a1=t.a1, a2=t.a2.a1),
-                          a2=t.a2.a2))
+    s = []
+    if is_expr(t.a1) and t.a1.op == t.op:
+        s.extend(list(expr_from_args(t.a1.args + [t.a2])))
+    if is_expr(t.a2) and t.a2.op == t.op:
+        s.extend(list(expr_from_args(t.a2.args + [t.a1])))
     return s
 
 
