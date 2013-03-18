@@ -37,13 +37,15 @@ def _parse_r(s):
 
 class Expr(Comparable):
 
-    def __init__(self, string=None, op=None, a1=None, a2=None):
-        if string:
-            expr = _parse_r(string)
+    def __init__(self, *args, **kwargs):
+        self.__dict__.update(kwargs)
+        if len(args) == 1:
+            expr = _parse_r(list(args).pop())
             self.op = expr.op
             self.a1 = expr.a1
             self.a2 = expr.a2
-        else:
+        elif len(args) == 3:
+            op, a1, a2 = args
             self.op = op
             self.a1 = _try_to_number(a1)
             self.a2 = _try_to_number(a2)
