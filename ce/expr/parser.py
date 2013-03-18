@@ -78,25 +78,6 @@ class Expr(Comparable):
         if self.op == MULTIPLY_OP:
             return e1 * e2
 
-    def equiv(self, other):
-        def eq(a, b):
-            try:
-                return a.equiv(b)
-            except AttributeError:
-                try:
-                    return b.equiv(a)
-                except AttributeError:
-                    return a == b
-        if not isinstance(other, Expr):
-            return False
-        if eq(self.a1, other.a1) and eq(self.a2, other.a2):
-            return True
-        if not self.op in COMMUTATIVITY_OPERATORS:
-            return False
-        if eq(self.a1, other.a2) and eq(self.a2, other.a1):
-            return True
-        return False
-
     @cached
     def as_labels(self):
         def to_label(e):

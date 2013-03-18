@@ -79,22 +79,7 @@ class TreeTransformer(object):
         s = self._closure_r([self._t])
         if self._p:
             print('Finished finding closure.')
-            print('Reducing commutatively equivalent expressions.')
-        # reduce commutatively equivalent expressions
-        # FIXME complexity, try hashing instead
-        l = set()
-        n = len(s)
-        for i, e in enumerate(s):
-            if self._p:
-                sys.stdout.write('\r%d/%d' % (i, n))
-                sys.stdout.flush()
-            has = False
-            for f in l:
-                if e.equiv(f):
-                    has = True
-            if not has:
-                l.add(e)
-        return l
+        return s
 
     def validate(self, t, tn):
         """Perform validation of tree.
