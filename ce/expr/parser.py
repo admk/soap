@@ -119,12 +119,20 @@ class Expr(Comparable):
         return Expr(op=MULTIPLY_OP, a1=self, a2=other)
 
     def _symmetric_id(self):
+        try:
+            return self._sym_id
+        except AttributeError:
+            pass
         if self.op in COMMUTATIVITY_OPERATORS:
-            return (self.op, frozenset(self.args))
-        return tuple(self)
+            self._sym_id = (self.op, frozenset(self.args))
+        else:
+            self._sym_id = tuple(self)
+        return self._sym_id
 
     def __eq__(self, other):
         if not isinstance(other, Expr):
+            return False
+        if hash(self) != hash(other):
             return False
         return self._symmetric_id() == other._symmetric_id()
 
@@ -134,7 +142,12 @@ class Expr(Comparable):
         return self._symmetric_id() < other._symmetric_id()
 
     def __hash__(self):
-        return hash(self._symmetric_id())
+        try:
+            return self._hash
+        except AttributeError:
+            pass
+        self._hash = hash(self._symmetric_id())
+        return self._hash
 
 
 class BExpr(Expr):

@@ -9,7 +9,7 @@ import random
 import functools
 
 from . import common
-from .common import is_exact, is_expr
+from .common import cached, is_exact, is_expr
 from .parser import Expr
 
 
@@ -243,6 +243,7 @@ def _walk(a):
     return _walk_r(*a)
 
 
+@cached
 def _walk_r(t, f, v, c, n=None):
     if n:
         sys.stdout.write('\rProgress: %d/%d' % n)
@@ -275,7 +276,7 @@ def _walk_r(t, f, v, c, n=None):
 _pool = multiprocessing.Pool()
 
 
-def _step(s, fs, v=None, c=False, m=True, p=True):
+def _step(s, fs, v=None, c=False, m=False, p=True):
     """Find the set of trees related by the function f.
 
     Args:
@@ -302,7 +303,9 @@ def _step(s, fs, v=None, c=False, m=True, p=True):
 
 
 if __name__ == '__main__':
-    e = '((a + 2) * (a + 3))'
+    import pycallgraph
+    pycallgraph.start_trace()
+    e = '((a + b) * (a + b))'
     t = Expr(e)
     print('Expr:', e)
     print('Tree:', t.tree())
@@ -317,3 +320,4 @@ if __name__ == '__main__':
     for t in r:
         if not t in s:
             print(str(t))
+    pycallgraph.make_dot_graph('test.png')
