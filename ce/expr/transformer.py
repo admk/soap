@@ -128,43 +128,34 @@ def distribute_for_distributivity(t):
 
 @none_to_list
 def collect_for_distributivity(t):
-    op, a1, a2 = t
-    if not op in (common.LEFT_DISTRIBUTION_OVER_OPERATORS +
-                  common.RIGHT_DISTRIBUTION_OVER_OPERATORS):
-        return
+
+    def al(a):
+        if not is_expr(a):
+            return [a, 1]
+        if (a.op, t.op) == (common.MULTIPLY_OP, common.ADD_OP):
+            return a.args
+        return [a, 1]
+
+    def sub(l, e):
+        l = list(l)
+        l.remove(e)
+        return l.pop()
+
     # depth test
-    if not is_expr(a1) and not is_expr(a2):
+    if all(not is_expr(a) for a in t.args):
         return
-    # expand by adding identities
-    if is_expr(a2):
-        op2, a21, a22 = a2
-        if op2 == common.MULTIPLY_OP:
-            if a21 == a1:
-                a1 = Expr(op=op2, a1=a1, a2=1)
-            elif a22 == a1:
-                a1 = Expr(op=op2, a1=1, a2=a1)
-    if is_expr(a1):
-        op1, a11, a12 = a1
-        if op1 == common.MULTIPLY_OP:
-            if a11 == a2:
-                a2 = Expr(op=op1, a1=a2, a2=1)
-            elif a12 == a2:
-                a1 = Expr(op=op1, a1=1, a2=a2)
-    # must be all expressions
-    if not is_expr(a1) or not is_expr(a2):
+    # operator tests
+    if t.op != common.ADD_OP:
         return
-    # equivalences
-    op1, a11, a12 = a1
-    op2, a21, a22 = a2
-    if op1 != op2:
+    if all(is_expr(a) and a.op != common.MULTIPLY_OP for a in t.args):
         return
+    # forming list
+    af = [al(arg) for arg in t.args]
+    # find common elements
     s = []
-    if (op1, op) in common.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
-        if a11 == a21:
-            s.append(Expr(op=op1, a1=a11, a2=Expr(op=op, a1=a12, a2=a22)))
-    if (op2, op) in common.RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS:
-        if a12 == a22:
-            s.append(Expr(op=op2, a1=Expr(op=op, a1=a11, a2=a21), a2=a12))
+    for ac in functools.reduce(lambda x, y: set(x) & set(y), af):
+        an = [sub(an, ac) for an in af]
+        s.append(Expr(common.MULTIPLY_OP, ac, Expr(common.ADD_OP, an)))
     return s
 
 
