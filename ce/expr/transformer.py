@@ -48,8 +48,8 @@ class TreeTransformer(object):
         i = 0
         while trees != prev_trees:
             # print set size
-            i += 1
             if self._p:
+                i += 1
                 sys.stdout.write(
                     '\r%s: %d, Trees: %d' %
                     ('Reduction' if not reduced else 'Iteration',
@@ -243,7 +243,10 @@ def _walk(a):
     return _walk_r(*a)
 
 
-def _walk_r(t, f, v, c):
+def _walk_r(t, f, v, c, n=None):
+    if n:
+        sys.stdout.write('\rProgress: %d/%d' % n)
+        sys.stdout.flush()
     s = {t}
     if not is_expr(t):
         return s
@@ -272,7 +275,7 @@ def _walk_r(t, f, v, c):
 _pool = multiprocessing.Pool()
 
 
-def _step(s, fs, v=None, c=False, m=False):
+def _step(s, fs, v=None, c=False, m=True, p=True):
     """Find the set of trees related by the function f.
 
     Args:
@@ -292,7 +295,8 @@ def _step(s, fs, v=None, c=False, m=False):
         imap = lambda f, l, _: [f(a) for a in l]
     chunksize = int(len(s) / multiprocessing.cpu_count()) + 1
     for f in fs:
-        s = imap(_walk, [(t, f, v, c) for t in s], chunksize)
+        s = [(t, f, v, c, (i, len(s)) if p else None) for i, t in enumerate(s)]
+        s = imap(_walk, s, chunksize)
         s = functools.reduce(lambda x, y: x | y, s)
     return s
 
