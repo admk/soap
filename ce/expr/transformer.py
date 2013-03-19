@@ -7,10 +7,6 @@ import sys
 import multiprocessing
 import random
 import functools
-import itertools
-
-from ..common import DynamicMethods
-from ..semantics import mpq_type
 
 from . import common
 from .common import is_exact, is_expr
@@ -54,12 +50,10 @@ class TreeTransformer(object):
             # print set size
             i += 1
             if self._p:
-                if not reduced:
-                    sys.stdout.write('\rIteration: %d, Trees: %d' %
-                            (i, len(trees)))
-                else:
-                    sys.stdout.write('\rReduction: %d, Trees: %d' %
-                            (i, len(trees)))
+                sys.stdout.write(
+                    '\r%s: %d, Trees: %d' %
+                    ('Reduction' if not reduced else 'Iteration',
+                     i, len(trees)))
                 sys.stdout.flush()
             # iterative transition
             prev_trees = trees
