@@ -5,7 +5,7 @@
 from ..common import Comparable
 
 from .common import ADD_OP, MULTIPLY_OP, OPERATORS, ASSOCIATIVITY_OPERATORS, \
-    is_exact, cached
+    COMMUTATIVITY_OPERATORS, is_exact, cached
 from ..semantics import mpq, cast_error, cast_error_constant, Label
 
 
@@ -51,7 +51,7 @@ class Expr(Comparable):
         elif len(args) == 3:
             op, *al = args
         self.op = op
-        self.a1, self.a2 = sorted([_try_to_number(a) for a in al])
+        self.a1, self.a2 = [_try_to_number(a) for a in al]
         super(Expr, self).__init__()
 
     def tree(self):
@@ -118,18 +118,23 @@ class Expr(Comparable):
     def __mul__(self, other):
         return Expr(op=MULTIPLY_OP, a1=self, a2=other)
 
+    def _symmetric_id(self):
+        if self.op in COMMUTATIVITY_OPERATORS:
+            return (self.op, frozenset(self.args))
+        return tuple(self)
+
     def __eq__(self, other):
         if not isinstance(other, Expr):
             return False
-        return tuple(self) == tuple(other)
+        return self._symmetric_id() == other._symmetric_id()
 
     def __lt__(self, other):
         if not isinstance(other, Expr):
             return False
-        return tuple(self) < tuple(other)
+        return self._symmetric_id() < other._symmetric_id()
 
     def __hash__(self):
-        return hash(tuple(self))
+        return hash(self._symmetric_id())
 
 
 class BExpr(Expr):
