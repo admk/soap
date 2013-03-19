@@ -5,7 +5,7 @@
 from ..common import Comparable
 
 from .common import ADD_OP, MULTIPLY_OP, OPERATORS, ASSOCIATIVITY_OPERATORS, \
-    is_exact, cached
+    COMMUTATIVITY_OPERATORS, is_exact, cached
 from ..semantics import mpq, cast_error, cast_error_constant, Label
 
 
@@ -37,16 +37,21 @@ def _parse_r(s):
 
 class Expr(Comparable):
 
-    def __init__(self, string=None, op=None, a1=None, a2=None):
-        if string:
-            expr = _parse_r(string)
-            self.op = expr.op
-            self.a1 = expr.a1
-            self.a2 = expr.a2
-        else:
-            self.op = op
-            self.a1 = _try_to_number(a1)
-            self.a2 = _try_to_number(a2)
+    def __init__(self, *args, **kwargs):
+        if kwargs:
+            op = kwargs.setdefault('op')
+            a1 = kwargs.setdefault('a1')
+            a2 = kwargs.setdefault('a2')
+            al = a1, a2
+        if len(args) == 1:
+            expr = _parse_r(list(args).pop())
+            op, al = expr.op, expr.args
+        elif len(args) == 2:
+            op, al = args
+        elif len(args) == 3:
+            op, *al = args
+        self.op = op
+        self.a1, self.a2 = [_try_to_number(a) for a in al]
         super(Expr, self).__init__()
 
     def tree(self):
@@ -57,8 +62,8 @@ class Expr(Comparable):
         return (self.op, to_tuple(self.a1), to_tuple(self.a2))
 
     @property
-    def as(self):
-        return (self.a1, self.a2)
+    def args(self):
+        return [self.a1, self.a2]
 
     @cached
     def error(self, v):
@@ -74,25 +79,6 @@ class Expr(Comparable):
             return e1 + e2
         if self.op == MULTIPLY_OP:
             return e1 * e2
-
-    def equiv(self, other):
-        def eq(a, b):
-            try:
-                return a.equiv(b)
-            except AttributeError:
-                try:
-                    return b.equiv(a)
-                except AttributeError:
-                    return a == b
-        if not isinstance(other, Expr):
-            return False
-        if eq(self.a1, other.a1) and eq(self.a2, other.a2):
-            return True
-        if not self.op in COMMUTATIVITY_OPERATORS:
-            return False
-        if eq(self.a1, other.a2) and eq(self.a2, other.a1):
-            return True
-        return False
 
     @cached
     def as_labels(self):
@@ -132,18 +118,23 @@ class Expr(Comparable):
     def __mul__(self, other):
         return Expr(op=MULTIPLY_OP, a1=self, a2=other)
 
+    def _symmetric_id(self):
+        if self.op in COMMUTATIVITY_OPERATORS:
+            return (self.op, frozenset(self.args))
+        return tuple(self)
+
     def __eq__(self, other):
         if not isinstance(other, Expr):
             return False
-        return tuple(self) == tuple(other)
+        return self._symmetric_id() == other._symmetric_id()
 
     def __lt__(self, other):
         if not isinstance(other, Expr):
             return False
-        return tuple(self) < tuple(other)
+        return self._symmetric_id() < other._symmetric_id()
 
     def __hash__(self):
-        return hash(tuple(self))
+        return hash(self._symmetric_id())
 
 
 class BExpr(Expr):
@@ -152,7 +143,6 @@ class BExpr(Expr):
         super(BExpr, self).__init__(**kwargs)
         if not isinstance(self.a1, Label) or not isinstance(self.a2, Label):
             raise ValueError('BExpr allows only binary expressions.')
-        self.a1, self.a2 = sorted([self.a1, self.a2])
 
 
 if __name__ == '__main__':
