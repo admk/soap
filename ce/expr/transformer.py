@@ -300,9 +300,12 @@ def _step(s, fs, v=None, c=False, m=True):
 
 
 if __name__ == '__main__':
-    import pycallgraph
-    pycallgraph.start_trace()
-    e = '((a + b) * (a + b))'
+    profile = False
+    if profile:
+        import pycallgraph
+        pycallgraph.start_trace()
+    from datetime import datetime
+    startTime = datetime.now()
     t = Expr(e)
     print('Expr:', e)
     print('Tree:', t.tree())
@@ -317,4 +320,6 @@ if __name__ == '__main__':
     for t in r:
         if not t in s:
             print(str(t))
+    print(datetime.now() - startTime)
+    if profile:
     pycallgraph.make_dot_graph('test.png')
