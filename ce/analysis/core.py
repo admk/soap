@@ -85,6 +85,8 @@ def pareto_frontier(s, keys=None):
         if not n in frontier:
             continue
         if all(m[k] <= n[k] for k in keys):
+            if all(m[k] == n[k] for k in keys):
+                continue
             frontier.remove(n)
     return frontier
 
@@ -102,10 +104,13 @@ class AreaErrorAnalysis(ErrorAnalysis, AreaAnalysis):
 
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
-    e = '((a + 1) * ((a + 1) * (a + 1)))'
-    a = AreaErrorAnalysis(e, {'a': cast_error('0.01')}, print_progress=True)
+    e = '(((a + b) * (a + b)) * a)'
+    s = {
+        'a': cast_error('0.01', '0.02'),
+        'b': cast_error('0.02', '0.03')
+    }
+    a = AreaErrorAnalysis(e, s, print_progress=True)
     a, f = a.analyse()
-    print(a)
     ax = [v['area_analysis'] for v in a]
     ay = [v['error_analysis'] for v in a]
     fx = [v['area_analysis'] for v in f]

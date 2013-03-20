@@ -309,6 +309,7 @@ def _step(s, fs, v=None, c=False, m=True):
         map = _pool.imap_unordered
         union = _iunion
     else:
+        cpu_count = chunksize = 1
         map = lambda f, l, _: [f(a) for a in l]
         union = lambda s, _: functools.reduce(lambda x, y: x | y, s)
     for f in fs:

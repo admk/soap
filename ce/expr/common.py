@@ -34,6 +34,8 @@ def to_immutable(*m):
             return tuple((e, to_immutable(v)) for e, v in d.items())
         if isinstance(d, (list, tuple)):
             return tuple(to_immutable(e) for e in d)
+        if isinstance(d, set):
+            return frozenset(to_immutable(e) for e in d)
         return d
     return tuple(r(e) for e in m)
 

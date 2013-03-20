@@ -16,8 +16,8 @@ class DynamicMethods(object):
         """
         methods = [member[0] for member in inspect.getmembers(self,
                    predicate=inspect.isroutine)]
-        return [m for m in methods if not method.startswith('_') and
-                method != 'list_methods' and predicate(method)]
+        return [m for m in methods if not m.startswith('_') and
+                m != 'list_ms' and predicate(m)]
 
     def list_methods(self, predicate):
         return [getattr(self, m) for m in self.list_method_names(predicate)]
