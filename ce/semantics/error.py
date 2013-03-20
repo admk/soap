@@ -2,10 +2,6 @@
 # vim: set fileencoding=UTF-8 :
 
 
-__author__ = 'Xitong Gao'
-__email__ = 'xtg08@ic.ac.uk'
-
-
 import itertools
 import gmpy2
 from gmpy2 import RoundUp, RoundDown, mpfr, mpq as _mpq
@@ -191,15 +187,15 @@ class ErrorSemantics(Comparable):
 
 if __name__ == '__main__':
     gmpy2.set_context(gmpy2.ieee(32))
-    print FloatInterval(['0.1', '0.2']) * FloatInterval(['5.3', '6.7'])
-    print float(ulp(mpfr('0.1')))
+    print(FloatInterval(['0.1', '0.2']) * FloatInterval(['5.3', '6.7']))
+    print(float(ulp(mpfr('0.1'))))
     mult = lambda x, y: x * y
     args = [mpfr('0.3'), mpfr('2.6')]
-    print round_op(mult)(*(args + [gmpy2.RoundDown]))
-    print round_op(mult)(*(args + [gmpy2.RoundUp]))
+    print(round_op(mult)(*(args + [gmpy2.RoundDown])))
+    print(round_op(mult)(*(args + [gmpy2.RoundUp])))
     a = FloatInterval(['0.3', '0.3'])
-    print a, round_off_error(a)
+    print(a, round_off_error(a))
     x = cast_error('0.9', '1.1')
-    for i in xrange(10):
+    for i in range(10):
         x *= x
-        print i, x
+        print(i, x)

@@ -2,7 +2,8 @@
 # vim: set fileencoding=UTF-8 :
 
 
-from __future__ import print_function
+import functools
+import weakref
 
 
 ADD_OP = '+'
@@ -23,18 +24,20 @@ RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS = \
     COMMUTATIVE_DISTRIBUTIVITY_OPERATOR_PAIRS
 
 LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTION_OVER_OPERATORS = \
-    zip(*LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS)
+    list(zip(*LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS))
 RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTION_OVER_OPERATORS = \
-    zip(*RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS)
+    list(zip(*RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS))
 
 
 def to_immutable(*m):
     def r(d):
         if isinstance(d, dict):
-            return tuple((e, to_immutable(v)) for e, v in d.iteritems())
+            return tuple((e, to_immutable(v)) for e, v in d.items())
         if isinstance(d, (list, tuple)):
             return tuple(to_immutable(e) for e in d)
-        return repr(d)
+        if isinstance(d, set):
+            return frozenset(to_immutable(e) for e in d)
+        return d
     return tuple(r(e) for e in m)
 
 
@@ -43,20 +46,37 @@ _cache_map = dict()
 
 def cached(f):
     def decorated(*args, **kwargs):
-        key = to_immutable(f, args, kwargs.items())
-        if key in _cache_map:
-            return _cache_map[key]
-        v = f(*args, **kwargs)
-        _cache_map[key] = v
+        key = to_immutable(f, args, list(kwargs.items()))
+        v = _cache_map.get(key, None)
+        if not v:
+            v = f(*args, **kwargs)
+            _cache_map[key] = v
         return v
-    return decorated
+    return functools.wraps(f)(decorated)
+
+
+class Flyweight(object):
+    _cache = weakref.WeakValueDictionary()
+
+    def __new__(cls, *args, **kwargs):
+        if not args and not kwargs:
+            return object.__new__(cls)
+        key = to_immutable(args, list(kwargs.items()))
+        v = cls._cache.get(key, None)
+        if not v:
+            v = object.__new__(cls)
+            cls._cache[key] = v
+        return v
+
+    def __init__(self, *args, **kwargs):
+        pass
 
 
 def is_exact(v):
     from ..semantics import mpq_type
-    return isinstance(v, (int, long, mpq_type))
+    return isinstance(v, (int, mpq_type))
 
 
 def is_expr(e):
-    from parser import Expr
+    from .parser import Expr
     return isinstance(e, Expr)

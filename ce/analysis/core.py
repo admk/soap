@@ -22,7 +22,7 @@ class Analysis(DynamicMethods):
 
     def analyse(self):
         if self.p:
-            print 'Analysing results.'
+            print('Analysing results.')
         a = []
         n = len(self.s)
         for i, t in enumerate(self.s):
@@ -76,7 +76,7 @@ class AreaAnalysis(Analysis):
 
 
 def pareto_frontier(s, keys=None):
-    keys = keys or range(len(s[0]))
+    keys = keys or list(range(len(s[0])))
     s = sorted(s, key=lambda e: tuple(e[k] for k in keys))
     frontier = s[:]
     for m, n in itertools.product(s, s):
@@ -85,6 +85,8 @@ def pareto_frontier(s, keys=None):
         if not n in frontier:
             continue
         if all(m[k] <= n[k] for k in keys):
+            if all(m[k] == n[k] for k in keys):
+                continue
             frontier.remove(n)
     return frontier
 
@@ -102,8 +104,12 @@ class AreaErrorAnalysis(ErrorAnalysis, AreaAnalysis):
 
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
-    e = '((a + 1) * ((a + 1) * (a + 1)))'
-    a = AreaErrorAnalysis(e, {'a': cast_error('0.01')}, print_progress=True)
+    e = '(((a + b) * (a + b)) * (a + b))'
+    s = {
+        'a': cast_error('0.01', '0.02'),
+        'b': cast_error('0.02', '0.03')
+    }
+    a = AreaErrorAnalysis(e, s, print_progress=True)
     a, f = a.analyse()
     ax = [v['area_analysis'] for v in a]
     ay = [v['error_analysis'] for v in a]
