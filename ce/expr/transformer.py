@@ -307,10 +307,26 @@ def _walk_r(t, f, v, c):
     return s
 
 
+def par_union(sl):
+    return functools.reduce(lambda s, t: s | t, sl)
+
+
 _pool = multiprocessing.Pool()
 
 
-def _step(s, fs, v=None, c=False):
+def _iunion(sl, no_processes):
+    def chunks(l, n):
+        for i in range(0, len(l), n):
+            yield l[i:i+n]
+    chunksize = int(len(sl) / no_processes) + 2
+    while len(sl) > 1:
+        sys.stdout.write('\rUnion: %d.' % len(sl))
+        sys.stdout.flush()
+        sl = list(_pool.imap_unordered(par_union, chunks(sl, chunksize)))
+    return sl.pop()
+
+
+def _step(s, fs, v=None, c=False, m=True):
     """Find the set of trees related by the function f.
 
     Args:
@@ -324,10 +340,18 @@ def _step(s, fs, v=None, c=False):
     Returns:
         A set of trees related by f.
     """
-    chunksize = int(len(s) / multiprocessing.cpu_count()) + 1
+    if m:
+        cpu_count = multiprocessing.cpu_count()
+        chunksize = int(len(s) / cpu_count) + 1
+        map = _pool.imap_unordered
+        union = _iunion
+    else:
+        map = lambda f, l, _: [f(a) for a in l]
+        union = lambda s, _: functools.reduce(lambda x, y: x | y, s)
     for f in fs:
-        s = _pool.imap(_walk, [(t, f, v, c) for t in s], chunksize)
-        s = functools.reduce(lambda x, y: x | y, s)
+        s = [(t, f, v, c) for i, t in enumerate(s)]
+        s = list(map(_walk, s, chunksize))
+        s = union(s, cpu_count)
     return s
 
 
