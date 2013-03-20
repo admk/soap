@@ -7,13 +7,9 @@ import sys
 import multiprocessing
 import random
 import functools
-import itertools
-
-from ..common import DynamicMethods
-from ..semantics import mpq_type
 
 from . import common
-from .common import is_exact, is_expr
+from .common import cached, is_exact, is_expr
 from .parser import Expr
 
 
@@ -52,14 +48,12 @@ class TreeTransformer(object):
         i = 0
         while trees != prev_trees:
             # print set size
-            i += 1
             if self._p:
-                if not reduced:
-                    sys.stdout.write('\rIteration: %d, Trees: %d' %
-                            (i, len(trees)))
-                else:
-                    sys.stdout.write('\rReduction: %d, Trees: %d' %
-                            (i, len(trees)))
+                i += 1
+                sys.stdout.write(
+                    '\r%s: %d, Trees: %d.' %
+                    ('Reduction' if not reduced else 'Iteration',
+                     i, len(trees)))
                 sys.stdout.flush()
             # iterative transition
             prev_trees = trees
@@ -79,22 +73,7 @@ class TreeTransformer(object):
         s = self._closure_r([self._t])
         if self._p:
             print('Finished finding closure.')
-            print('Reducing commutatively equivalent expressions.')
-        # reduce commutatively equivalent expressions
-        # FIXME complexity, try hashing instead
-        l = set()
-        n = len(s)
-        for i, e in enumerate(s):
-            if self._p:
-                sys.stdout.write('\r%d/%d' % (i, n))
-                sys.stdout.flush()
-            has = False
-            for f in l:
-                if e.equiv(f):
-                    has = True
-            if not has:
-                l.add(e)
-        return l
+        return s
 
     def validate(self, t, tn):
         """Perform validation of tree.
@@ -117,17 +96,18 @@ class TreeTransformer(object):
 
 @none_to_list
 def associativity(t):
-    s = []
+    def expr_from_args(args):
+        for a in args:
+            al = list(args)
+            al.remove(a)
+            yield Expr(t.op, a, Expr(t.op, al))
     if not t.op in common.ASSOCIATIVITY_OPERATORS:
         return
-    if is_expr(t.a1):
-        if t.a1.op == t.op:
-            s.append(Expr(op=t.op, a1=t.a1.a1,
-                          a2=Expr(op=t.op, a1=t.a1.a2, a2=t.a2)))
-    if is_expr(t.a2):
-        if t.a2.op == t.op:
-            s.append(Expr(op=t.op, a1=Expr(op=t.op, a1=t.a1, a2=t.a2.a1),
-                          a2=t.a2.a2))
+    s = []
+    if is_expr(t.a1) and t.a1.op == t.op:
+        s.extend(list(expr_from_args(t.a1.args + [t.a2])))
+    if is_expr(t.a2) and t.a2.op == t.op:
+        s.extend(list(expr_from_args(t.a2.args + [t.a1])))
     return s
 
 
@@ -135,66 +115,48 @@ def distribute_for_distributivity(t):
     s = []
     if t.op in common.LEFT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a2):
         if (t.op, t.a2.op) in common.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
-            s.append(
-                Expr(op=t.a2.op,
-                     a1=Expr(op=t.op, a1=t.a1, a2=t.a2.a1),
-                     a2=Expr(op=t.op, a1=t.a1, a2=t.a2.a2)))
+            s.append(Expr(t.a2.op,
+                          Expr(t.op, t.a1, t.a2.a1),
+                          Expr(t.op, t.a1, t.a2.a2)))
     if t.op in common.RIGHT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a1):
-        if (t.op, t.a1.op) in common.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
-            s.append(
-                Expr(op=t.a1.op,
-                     a1=Expr(op=t.op, a1=t.a1.a1, a2=t.a2),
-                     a2=Expr(op=t.op, a1=t.a1.a2, a2=t.a2)))
+        if (t.op, t.a1.op) in common.RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS:
+            s.append(Expr(t.a1.op,
+                          Expr(t.op, t.a1.a1, t.a2),
+                          Expr(t.op, t.a1.a2, t.a2)))
     return s
 
 
 @none_to_list
 def collect_for_distributivity(t):
-    op, a1, a2 = t
-    if not op in (common.LEFT_DISTRIBUTION_OVER_OPERATORS +
-                  common.RIGHT_DISTRIBUTION_OVER_OPERATORS):
-        return
+
+    def al(a):
+        if not is_expr(a):
+            return [a, 1]
+        if (a.op, t.op) == (common.MULTIPLY_OP, common.ADD_OP):
+            return a.args
+        return [a, 1]
+
+    def sub(l, e):
+        l = list(l)
+        l.remove(e)
+        return l.pop()
+
     # depth test
-    if not is_expr(a1) and not is_expr(a2):
+    if all(not is_expr(a) for a in t.args):
         return
-    # expand by adding identities
-    if is_expr(a2):
-        op2, a21, a22 = a2
-        if op2 == common.MULTIPLY_OP:
-            if a21 == a1:
-                a1 = Expr(op=op2, a1=a1, a2=1)
-            elif a22 == a1:
-                a1 = Expr(op=op2, a1=1, a2=a1)
-    if is_expr(a1):
-        op1, a11, a12 = a1
-        if op1 == common.MULTIPLY_OP:
-            if a11 == a2:
-                a2 = Expr(op=op1, a1=a2, a2=1)
-            elif a12 == a2:
-                a1 = Expr(op=op1, a1=1, a2=a2)
-    # must be all expressions
-    if not is_expr(a1) or not is_expr(a2):
+    # operator tests
+    if t.op != common.ADD_OP:
         return
-    # equivalences
-    op1, a11, a12 = a1
-    op2, a21, a22 = a2
-    if op1 != op2:
+    if all(is_expr(a) and a.op != common.MULTIPLY_OP for a in t.args):
         return
+    # forming list
+    af = [al(arg) for arg in t.args]
+    # find common elements
     s = []
-    if (op1, op) in common.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
-        if a11 == a21:
-            s.append(Expr(op=op1, a1=a11, a2=Expr(op=op, a1=a12, a2=a22)))
-    if (op2, op) in common.RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS:
-        if a12 == a22:
-            s.append(Expr(op=op2, a1=Expr(op=op, a1=a11, a2=a21), a2=a12))
+    for ac in functools.reduce(lambda x, y: set(x) & set(y), af):
+        an = [sub(an, ac) for an in af]
+        s.append(Expr(common.MULTIPLY_OP, ac, Expr(common.ADD_OP, an)))
     return s
-
-
-@none_to_list
-def commutativity(t):
-    if not t.op in common.COMMUTATIVITY_OPERATORS:
-        return
-    return [Expr(op=t.op, a1=t.a2, a2=t.a1)]
 
 
 def _identity_reduction(t, iop, i):
@@ -243,7 +205,7 @@ class ExprTreeTransformer(TreeTransformer):
 
     def transform_methods(self):
         return [associativity, distribute_for_distributivity,
-                collect_for_distributivity, commutativity]
+                collect_for_distributivity]
 
     def reduction_methods(self):
         return [multiplicative_identity_reduction,
@@ -281,6 +243,7 @@ def _walk(a):
     return _walk_r(*a)
 
 
+@cached
 def _walk_r(t, f, v, c):
     s = {t}
     if not is_expr(t):
@@ -356,7 +319,13 @@ def _step(s, fs, v=None, c=False, m=True):
 
 
 if __name__ == '__main__':
-    e = '((a + 2) * (a + 3))'
+    profile = False
+    if profile:
+        import pycallgraph
+        pycallgraph.start_trace()
+    from datetime import datetime
+    startTime = datetime.now()
+    e = '((a + b) * (a + b))'
     t = Expr(e)
     print('Expr:', e)
     print('Tree:', t.tree())
@@ -371,3 +340,6 @@ if __name__ == '__main__':
     for t in r:
         if not t in s:
             print(str(t))
+    print(datetime.now() - startTime)
+    if profile:
+        pycallgraph.make_dot_graph('test.png')

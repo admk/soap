@@ -2,6 +2,9 @@
 # vim: set fileencoding=UTF-8 :
 
 
+import functools
+
+
 ADD_OP = '+'
 MULTIPLY_OP = '*'
 
@@ -31,7 +34,7 @@ def to_immutable(*m):
             return tuple((e, to_immutable(v)) for e, v in d.items())
         if isinstance(d, (list, tuple)):
             return tuple(to_immutable(e) for e in d)
-        return repr(d)
+        return d
     return tuple(r(e) for e in m)
 
 
@@ -46,7 +49,7 @@ def cached(f):
         v = f(*args, **kwargs)
         _cache_map[key] = v
         return v
-    return decorated
+    return functools.wraps(f)(decorated)
 
 
 def is_exact(v):
