@@ -51,7 +51,7 @@ class TreeTransformer(object):
             if self._p:
                 i += 1
                 sys.stdout.write(
-                    '\r%s: %d, Trees: %d' %
+                    '\r%s: %d, Trees: %d.' %
                     ('Reduction' if not reduced else 'Iteration',
                      i, len(trees)))
                 sys.stdout.flush()
@@ -244,10 +244,7 @@ def _walk(a):
 
 
 @cached
-def _walk_r(t, f, v, c, n=None):
-    if n:
-        sys.stdout.write('\rProgress: %d/%d' % n)
-        sys.stdout.flush()
+def _walk_r(t, f, v, c):
     s = {t}
     if not is_expr(t):
         return s
@@ -276,7 +273,7 @@ def _walk_r(t, f, v, c, n=None):
 _pool = multiprocessing.Pool()
 
 
-def _step(s, fs, v=None, c=False, m=False, p=True):
+def _step(s, fs, v=None, c=False, m=True):
     """Find the set of trees related by the function f.
 
     Args:
