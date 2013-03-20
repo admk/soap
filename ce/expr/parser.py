@@ -5,7 +5,7 @@
 from ..common import Comparable
 
 from .common import ADD_OP, MULTIPLY_OP, OPERATORS, ASSOCIATIVITY_OPERATORS, \
-    COMMUTATIVITY_OPERATORS, is_exact, cached
+    COMMUTATIVITY_OPERATORS, is_exact, cached, Flyweight
 from ..semantics import mpq, cast_error, cast_error_constant, Label
 
 
@@ -35,7 +35,7 @@ def _parse_r(s):
     return Expr(string=None, op=s[operator_pos], a1=a1, a2=a2)
 
 
-class Expr(Comparable):
+class Expr(Comparable, Flyweight):
 
     def __init__(self, *args, **kwargs):
         if kwargs:
