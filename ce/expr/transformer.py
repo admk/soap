@@ -251,9 +251,9 @@ def _walk_r(t, f, v, c):
     for e in f(t):
         s.add(e)
     for e in _walk_r(t.a1, f, v, c):
-        s.add(Expr(op=t.op, a1=e, a2=t.a2))
+        s.add(Expr(t.op, e, t.a2))
     for e in _walk_r(t.a2, f, v, c):
-        s.add(Expr(op=t.op, a1=t.a1, a2=e))
+        s.add(Expr(t.op, t.a1, e))
     if not c and len(s) > 1 and t in s:
         # there is more than 1 transformed result. discard the
         # original, because the original is transformed to become
@@ -326,7 +326,7 @@ if __name__ == '__main__':
         pycallgraph.start_trace()
     from datetime import datetime
     startTime = datetime.now()
-    e = '((a + b) * (a + b))'
+    e = '(((a + b) * (a + b)) * a)'
     t = Expr(e)
     print('Expr:', e)
     print('Tree:', t.tree())

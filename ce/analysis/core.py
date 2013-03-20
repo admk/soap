@@ -104,7 +104,7 @@ class AreaErrorAnalysis(ErrorAnalysis, AreaAnalysis):
 
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
-    e = '(((a + b) * (a + b)) * a)'
+    e = '(((a + b) * (a + b)) * (a + b))'
     s = {
         'a': cast_error('0.01', '0.02'),
         'b': cast_error('0.02', '0.03')

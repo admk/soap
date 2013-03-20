@@ -46,10 +46,10 @@ _cache_map = dict()
 def cached(f):
     def decorated(*args, **kwargs):
         key = to_immutable(f, args, list(kwargs.items()))
-        if key in _cache_map:
-            return _cache_map[key]
-        v = f(*args, **kwargs)
-        _cache_map[key] = v
+        v = _cache_map.get(key, None)
+        if not v:
+            v = f(*args, **kwargs)
+            _cache_map[key] = v
         return v
     return functools.wraps(f)(decorated)
 
