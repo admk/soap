@@ -3,6 +3,7 @@
 
 
 import functools
+import weakref
 
 
 ADD_OP = '+'
@@ -52,6 +53,23 @@ def cached(f):
             _cache_map[key] = v
         return v
     return functools.wraps(f)(decorated)
+
+
+class Flyweight(object):
+    _cache = weakref.WeakValueDictionary()
+
+    def __new__(cls, *args, **kwargs):
+        if not args and not kwargs:
+            return object.__new__(cls)
+        key = to_immutable(args, list(kwargs.items()))
+        v = cls._cache.get(key, None)
+        if not v:
+            v = object.__new__(cls)
+            cls._cache[key] = v
+        return v
+
+    def __init__(self, *args, **kwargs):
+        pass
 
 
 def is_exact(v):
