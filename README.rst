@@ -2,11 +2,19 @@ TODOs
 =====
 
 * Support for subtraction & maybe division
-* Multiprocessing
 * Much needed documentation and unit testing
 
 Changelog
 =========
+
+Version 0.5
+-----------
+
+Wed Mar 20 16:42:30 GMT 2013
+
+* Multiprocessing
+* Caching optimisations. Add Flyweight for ``Expr`` class.
+* Eliminate commutativity for performance
 
 Version 0.4
 -----------
