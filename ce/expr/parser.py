@@ -132,8 +132,12 @@ class Expr(Comparable, Flyweight):
     def __eq__(self, other):
         if not isinstance(other, Expr):
             return False
+        if self.op != other.op:
+            return False
         if hash(self) != hash(other):
             return False
+        if id(self) == id(other):
+            return True
         return self._symmetric_id() == other._symmetric_id()
 
     def __lt__(self, other):
