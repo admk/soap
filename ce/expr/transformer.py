@@ -321,9 +321,13 @@ def _step(s, fs, v=None, c=False, m=True):
 
 if __name__ == '__main__':
     profile = False
+    memory_profile = True
     if profile:
         import pycallgraph
         pycallgraph.start_trace()
+    if memory_profile:
+        import objgraph
+        objgraph.show_growth()
     from datetime import datetime
     startTime = datetime.now()
     e = '(((a + b) * (a + b)) * a)'
@@ -342,5 +346,7 @@ if __name__ == '__main__':
         if not t in s:
             print(str(t))
     print(datetime.now() - startTime)
+    if memory_profile:
+        objgraph.show_growth()
     if profile:
         pycallgraph.make_dot_graph('test.png')
