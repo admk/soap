@@ -4,6 +4,7 @@
 
 import functools
 import weakref
+import pickle
 
 
 ADD_OP = '+'
@@ -29,27 +30,21 @@ RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTION_OVER_OPERATORS = \
     list(zip(*RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS))
 
 
-def to_immutable(*m):
-    def r(d):
-        if isinstance(d, dict):
-            return tuple((e, to_immutable(v)) for e, v in d.items())
-        if isinstance(d, (list, tuple)):
-            return tuple(to_immutable(e) for e in d)
-        if isinstance(d, set):
-            return frozenset(to_immutable(e) for e in d)
-        return d
-    return tuple(r(e) for e in m)
-
-
+CACHE_CAPACITY = 100000
+CACHE_KEY_LENGTH = 1000
 _cache_map = dict()
 
 
 def cached(f):
     def decorated(*args, **kwargs):
-        key = to_immutable(f, args, list(kwargs.items()))
+        key = pickle.dumps((f.__name__, args, list(kwargs.items())))
+        if len(key) > CACHE_KEY_LENGTH:
+            return f(*args, **kwargs)
         v = _cache_map.get(key, None)
-        if not v:
-            v = f(*args, **kwargs)
+        if v:
+            return v
+        v = f(*args, **kwargs)
+        if len(_cache_map) < CACHE_CAPACITY:
             _cache_map[key] = v
         return v
     return functools.wraps(f)(decorated)
@@ -61,15 +56,16 @@ class Flyweight(object):
     def __new__(cls, *args, **kwargs):
         if not args and not kwargs:
             return object.__new__(cls)
-        key = to_immutable(args, list(kwargs.items()))
+        key = pickle.dumps((args, list(kwargs.items())))
+        if len(key) > CACHE_KEY_LENGTH:
+            return object.__new__(cls)
         v = cls._cache.get(key, None)
-        if not v:
-            v = object.__new__(cls)
+        if v:
+            return v
+        v = object.__new__(cls)
+        if len(cls._cache) < CACHE_CAPACITY:
             cls._cache[key] = v
         return v
-
-    def __init__(self, *args, **kwargs):
-        pass
 
 
 def is_exact(v):
