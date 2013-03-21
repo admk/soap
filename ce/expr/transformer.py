@@ -335,16 +335,6 @@ if __name__ == '__main__':
     print('Expr:', e)
     print('Tree:', t.tree())
     s = ExprTreeTransformer(t, print_progress=True).closure()
-    for n in s:
-        print('>', n)
-    print('Validating...')
-    t = random.sample(s, 1)[0]
-    print('Sample Expr:', t)
-    r = ExprTreeTransformer(t, print_progress=True).closure()
-    print('Listing inconsistent closure items...')
-    for t in r:
-        if not t in s:
-            print(str(t))
     print(datetime.now() - startTime)
     if memory_profile:
         objgraph.show_growth()
