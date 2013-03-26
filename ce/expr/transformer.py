@@ -31,10 +31,10 @@ class ValidationError(Exception):
 class TreeTransformer(object):
 
     def __init__(self, tree, validate=False, print_progress=False):
-        super(TreeTransformer, self).__init__()
         self._t = tree
         self._v = validate
         self._p = print_progress
+        super().__init__()
 
     def reduction_methods(self):
         raise NotImplementedError
@@ -201,7 +201,7 @@ def constant_reduction(t):
 class ExprTreeTransformer(TreeTransformer):
 
     def __init__(self, *args, **kwargs):
-        super(ExprTreeTransformer, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def transform_methods(self):
         return [associativity, distribute_for_distributivity,

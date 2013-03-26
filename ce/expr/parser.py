@@ -52,7 +52,7 @@ class Expr(Comparable, Flyweight):
             op, *al = args
         self.op = op
         self.a1, self.a2 = [_try_to_number(a) for a in al]
-        super(Expr, self).__init__()
+        super().__init__()
 
     def tree(self):
         def to_tuple(a):
@@ -157,7 +157,7 @@ class Expr(Comparable, Flyweight):
 class BExpr(Expr):
 
     def __init__(self, **kwargs):
-        super(BExpr, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         if not isinstance(self.a1, Label) or not isinstance(self.a2, Label):
             raise ValueError('BExpr allows only binary expressions.')
 

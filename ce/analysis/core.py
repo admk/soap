@@ -14,11 +14,11 @@ from ..semantics import cast_error
 class Analysis(DynamicMethods):
 
     def __init__(self, e, print_progress=False, **kwargs):
-        super(Analysis, self).__init__()
         self.e = e
         self.s = ExprTreeTransformer(
             Expr(e), print_progress=print_progress, **kwargs).closure()
         self.p = print_progress
+        super().__init__()
 
     def analyse(self):
         if self.p:
@@ -52,8 +52,8 @@ class Analysis(DynamicMethods):
 class ErrorAnalysis(Analysis):
 
     def __init__(self, e, v, **kwargs):
-        super(ErrorAnalysis, self).__init__(e, **kwargs)
         self.v = v
+        super().__init__(e, **kwargs)
 
     def error_analysis(self, t):
         return t.error(self.v)
@@ -95,7 +95,7 @@ class AreaErrorAnalysis(ErrorAnalysis, AreaAnalysis):
     """Collect area and error analysis."""
 
     def analyse(self):
-        analysis = super(AreaErrorAnalysis, self).analyse()
+        analysis = super().analyse()
         frontier = pareto_frontier(
             analysis, keys=(self.area_analysis.__name__,
                             self.error_analysis.__name__))

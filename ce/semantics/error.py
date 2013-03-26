@@ -107,7 +107,7 @@ class FloatInterval(Interval):
             min_val = mpfr(min_val)
         with gmpy2.local_context(round=RoundUp):
             max_val = mpfr(max_val)
-        super(FloatInterval, self).__init__((min_val, max_val))
+        super().__init__((min_val, max_val))
 
     def __add__(self, other):
         f = round_op(lambda x, y: x + y)
@@ -134,7 +134,7 @@ class FractionInterval(Interval):
 
     def __init__(self, v):
         min_val, max_val = v
-        super(FractionInterval, self).__init__((mpq(min_val), mpq(max_val)))
+        super().__init__((mpq(min_val), mpq(max_val)))
 
     def __str__(self):
         return '[~%s, ~%s]' % (str(mpfr(self.min)), str(mpfr(self.max)))

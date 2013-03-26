@@ -22,7 +22,7 @@ class Label(object):
         self.l = l or fresh_int(e)
         self.e = e
         self.__slots__ = []
-        super(Label, self).__init__()
+        super().__init__()
 
     def __str__(self):
         return 'l%s' % str(self.l)
@@ -48,7 +48,7 @@ class Labels(object):
 
     def __init__(self, s):
         self.s = {fresh_int: e for e in s}
-        super(Labels, self).__init__()
+        super().__init__()
 
     def add(self, e):
         if e in list(self.s.items()):
