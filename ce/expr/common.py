@@ -40,12 +40,13 @@ def cached(f):
         key = pickle.dumps((f.__name__, args, list(kwargs.items())))
         if len(key) > CACHE_KEY_LENGTH:
             return f(*args, **kwargs)
-        v = _cache_map.get(key, None)
-        if v:
-            return v
+        try:
+            return pickle.loads(_cache_map.get(key, None))
+        except TypeError:
+            pass
         v = f(*args, **kwargs)
         if len(_cache_map) < CACHE_CAPACITY:
-            _cache_map[key] = v
+            _cache_map[key] = pickle.dumps(v)
         return v
     return functools.wraps(f)(decorated)
 
@@ -57,14 +58,11 @@ class Flyweight(object):
         if not args and not kwargs:
             return object.__new__(cls)
         key = pickle.dumps((args, list(kwargs.items())))
-        if len(key) > CACHE_KEY_LENGTH:
-            return object.__new__(cls)
         v = cls._cache.get(key, None)
         if v:
             return v
         v = object.__new__(cls)
-        if len(cls._cache) < CACHE_CAPACITY:
-            cls._cache[key] = v
+        cls._cache[key] = v
         return v
 
 
