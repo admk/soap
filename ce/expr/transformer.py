@@ -325,18 +325,26 @@ if __name__ == '__main__':
     if profile:
         import pycallgraph
         pycallgraph.start_trace()
-    if memory_profile:
-        import objgraph
-        objgraph.show_growth()
     from datetime import datetime
     startTime = datetime.now()
     e = '(((a + b) * (a + b)) * a)'
     t = Expr(e)
     print('Expr:', e)
     print('Tree:', t.tree())
+    if memory_profile:
+        from pympler.classtracker import ClassTracker
+        from ce.expr.common import Flyweight, _cache_map
+        tracker = ClassTracker()
+        tracker.track_object(Flyweight._cache)
+        tracker.track_class(Expr)
     s = ExprTreeTransformer(t, print_progress=True).closure()
     print(datetime.now() - startTime)
     if memory_profile:
-        objgraph.show_growth()
+        from pympler.asizeof import asizeof
+        tracker.track_object(s)
+        tracker.create_snapshot()
+        tracker.stats.print_summary()
+        print(asizeof(Flyweight._cache))
+        print(asizeof(_cache_map))
     if profile:
         pycallgraph.make_dot_graph('test.png')
