@@ -311,11 +311,10 @@ def _step(s, fs, v=None, c=False, m=True):
         cpu_count = multiprocessing.cpu_count()
         chunksize = int(len(s) / cpu_count) + 1
         map = _pool.imap_unordered
-        union = _iunion
     else:
         cpu_count = chunksize = 1
         map = lambda f, l, _: [f(a) for a in l]
-        union = lambda s, _: functools.reduce(lambda x, y: x | y, s)
+    union = lambda s, _: functools.reduce(lambda x, y: x | y, s)
     for f in fs:
         s = [(t, f, v, c) for i, t in enumerate(s)]
         s = list(map(_walk, s, chunksize))
@@ -331,7 +330,7 @@ if __name__ == '__main__':
         pycallgraph.start_trace()
     from datetime import datetime
     startTime = datetime.now()
-    e = '(((a + b) * (a + b)) * a)'
+    e = '(((a + 1) * (a + 1)) * (b + 1))'
     t = Expr(e)
     print('Expr:', e)
     print('Tree:', t.tree())
@@ -343,6 +342,7 @@ if __name__ == '__main__':
         tracker.track_class(Expr)
     s = ExprTreeTransformer(t, print_progress=True).closure()
     print(datetime.now() - startTime)
+    print(len(s))
     if memory_profile:
         from pympler.asizeof import asizeof
         tracker.track_object(s)
