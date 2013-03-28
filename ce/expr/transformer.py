@@ -44,25 +44,30 @@ class TreeTransformer(object):
 
     def _closure_r(self, trees, reduced=False):
         v = self._validate if self._v else None
-        prev_trees = None
+        done_trees = set()
+        todo_trees = set(trees)
         i = 0
-        while trees != prev_trees:
+        while todo_trees:
             # print set size
             if self._p:
                 i += 1
                 sys.stdout.write(
                     '\r%s: %d, Trees: %d.' %
                     ('Reduction' if reduced else 'Iteration',
-                     i, len(trees)))
+                     i, len(todo_trees)))
                 sys.stdout.flush()
-            # iterative transition
-            prev_trees = trees
             if not reduced:
-                trees = _step(trees, self.transform_methods(), v, True)
-                trees = self._closure_r(trees, True)
+                f = self.transform_methods()
+                step_trees = _step(todo_trees, f, v, not reduced)
+                step_trees -= done_trees
+                step_trees = self._closure_r(step_trees, True)
+                done_trees |= todo_trees
+                todo_trees = step_trees - done_trees
             else:
-                trees = _step(trees, self.reduction_methods(), v, False)
-        return trees
+                f = self.reduction_methods()
+                step_trees = _step(todo_trees, f, v, not reduced)
+                done_trees, todo_trees = todo_trees, step_trees - done_trees
+        return done_trees
 
     def closure(self):
         """Perform transforms until transitive closure is reached.
@@ -239,26 +244,25 @@ def tuplify_args(f):
     return functools.wraps(f)(wrapper)
 
 
-def _walk(a):
-    return _walk_r(*a)
+def _walk(t_f_v_c):
+    t, f, v, c = t_f_v_c
+    s = _walk_r(t, f, v)
+    if c:
+        return s | {t}
+    else:
+        return s if s else {t}
 
 
 @cached
-def _walk_r(t, f, v, c):
-    s = {t}
+def _walk_r(t, f, v):
+    s = set()
     if not is_expr(t):
         return s
     for e in f(t):
         s.add(e)
-    for e in _walk_r(t.a1, f, v, c):
-        s.add(Expr(t.op, e, t.a2))
-    for e in _walk_r(t.a2, f, v, c):
-        s.add(Expr(t.op, t.a1, e))
-    if not c and len(s) > 1 and t in s:
-        # there is more than 1 transformed result. discard the
-        # original, because the original is transformed to become
-        # something else
-        s.remove(t)
+    for a, b in (t.args, t.args[::-1]):
+        for e in _walk_r(a, f, v):
+            s.add(Expr(t.op, e, b))
     if not v:
         return s
     try:
@@ -307,11 +311,10 @@ def _step(s, fs, v=None, c=False, m=True):
         cpu_count = multiprocessing.cpu_count()
         chunksize = int(len(s) / cpu_count) + 1
         map = _pool.imap_unordered
-        union = _iunion
     else:
         cpu_count = chunksize = 1
         map = lambda f, l, _: [f(a) for a in l]
-        union = lambda s, _: functools.reduce(lambda x, y: x | y, s)
+    union = lambda s, _: functools.reduce(lambda x, y: x | y, s)
     for f in fs:
         s = [(t, f, v, c) for i, t in enumerate(s)]
         s = list(map(_walk, s, chunksize))
@@ -327,7 +330,7 @@ if __name__ == '__main__':
         pycallgraph.start_trace()
     from datetime import datetime
     startTime = datetime.now()
-    e = '(((a + b) * (a + b)) * a)'
+    e = '(((a + 1) * (a + 1)) * (b + 1))'
     t = Expr(e)
     print('Expr:', e)
     print('Tree:', t.tree())
@@ -339,6 +342,7 @@ if __name__ == '__main__':
         tracker.track_class(Expr)
     s = ExprTreeTransformer(t, print_progress=True).closure()
     print(datetime.now() - startTime)
+    print(len(s))
     if memory_profile:
         from pympler.asizeof import asizeof
         tracker.track_object(s)
