@@ -37,16 +37,14 @@ _cache_map = dict()
 
 def cached(f):
     def decorated(*args, **kwargs):
-        key = pickle.dumps((f.__name__, args, list(kwargs.items())))
+        key = pickle.dumps((f.__name__, args, tuple(kwargs.items())))
         if len(key) > CACHE_KEY_LENGTH:
             return f(*args, **kwargs)
-        try:
-            return pickle.loads(_cache_map.get(key, None))
-        except TypeError:
-            pass
-        v = f(*args, **kwargs)
+        v = _cache_map.get(key, None)
+        if not v:
+            v = f(*args, **kwargs)
         if len(_cache_map) < CACHE_CAPACITY:
-            _cache_map[key] = pickle.dumps(v)
+            _cache_map[key] = v
         return v
     return functools.wraps(f)(decorated)
 
