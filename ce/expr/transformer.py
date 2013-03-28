@@ -147,7 +147,7 @@ def collect_for_distributivity(t):
     # operator tests
     if t.op != common.ADD_OP:
         return
-    if all(is_expr(a) and a.op != common.MULTIPLY_OP for a in t.args):
+    if all(a.op != common.MULTIPLY_OP for a in t.args if is_expr(a)):
         return
     # forming list
     af = [al(arg) for arg in t.args]
