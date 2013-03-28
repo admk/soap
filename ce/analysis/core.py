@@ -104,6 +104,8 @@ class AreaErrorAnalysis(ErrorAnalysis, AreaAnalysis):
 
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
+    import gmpy2
+    gmpy2.set_context(gmpy2.ieee(32))
     e = '(((a + b) * (a + b)) * (a + b))'
     s = {
         'a': cast_error('0.01', '0.02'),
