@@ -56,7 +56,7 @@ class Flyweight(object):
     def __new__(cls, *args, **kwargs):
         if not args and not kwargs:
             return object.__new__(cls)
-        key = pickle.dumps((args, list(kwargs.items())))
+        key = pickle.dumps((cls, args, list(kwargs.items())))
         if len(key) > CACHE_KEY_LENGTH:
             return object.__new__(cls)
         v = cls._cache.get(key, None)
