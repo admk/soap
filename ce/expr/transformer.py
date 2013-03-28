@@ -52,7 +52,7 @@ class TreeTransformer(object):
                 i += 1
                 sys.stdout.write(
                     '\r%s: %d, Trees: %d.' %
-                    ('Reduction' if not reduced else 'Iteration',
+                    ('Reduction' if reduced else 'Iteration',
                      i, len(trees)))
                 sys.stdout.flush()
             # iterative transition
