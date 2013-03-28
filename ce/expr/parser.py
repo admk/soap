@@ -37,6 +37,8 @@ def _parse_r(s):
 
 class Expr(Comparable, Flyweight):
 
+    __slots__ = ('op', 'a1', 'a2', '_hash')
+
     def __init__(self, *args, **kwargs):
         if kwargs:
             op = kwargs.setdefault('op')
@@ -53,6 +55,9 @@ class Expr(Comparable, Flyweight):
         self.op = op
         self.a1, self.a2 = [_try_to_number(a) for a in al]
         super().__init__()
+
+    def __getnewargs__(self):
+        return self.op, self.a1, self.a2
 
     def tree(self):
         def to_tuple(a):
@@ -119,22 +124,16 @@ class Expr(Comparable, Flyweight):
         return Expr(op=MULTIPLY_OP, a1=self, a2=other)
 
     def _symmetric_id(self):
-        try:
-            return self._sym_id
-        except AttributeError:
-            pass
         if self.op in COMMUTATIVITY_OPERATORS:
-            self._sym_id = (self.op, frozenset(self.args))
+            _sym_id = (self.op, frozenset(self.args))
         else:
-            self._sym_id = tuple(self)
-        return self._sym_id
+            _sym_id = tuple(self)
+        return _sym_id
 
     def __eq__(self, other):
         if not isinstance(other, Expr):
             return False
         if self.op != other.op:
-            return False
-        if hash(self) != hash(other):
             return False
         if id(self) == id(other):
             return True
@@ -155,6 +154,8 @@ class Expr(Comparable, Flyweight):
 
 
 class BExpr(Expr):
+
+    __slots__ = Expr.__slots__
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
