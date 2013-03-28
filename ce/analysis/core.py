@@ -104,13 +104,15 @@ class AreaErrorAnalysis(ErrorAnalysis, AreaAnalysis):
 
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
+    from matplotlib.backends import backend_pdf
     import gmpy2
     gmpy2.set_context(gmpy2.ieee(32))
-    e = '(((a + b) * (a + b)) * (a + b))'
+    e = '(((a + 1) * (a + 1)) * (a + 1))'
     s = {
         'a': cast_error('0.01', '0.02'),
         'b': cast_error('0.02', '0.03')
     }
+    print(s['a'])
     a = AreaErrorAnalysis(e, s, print_progress=True)
     a, f = a.analyse()
     ax = [v['area_analysis'] for v in a]
@@ -123,3 +125,7 @@ if __name__ == '__main__':
     subplt.scatter(ax, ay)
     subplt.plot(fx, fy)
     plt.show()
+    pp = backend_pdf.PdfPages('analysis.pdf')
+    pp.savefig(fig)
+    pp.close()
+    plt.savefig('analysis.png')
