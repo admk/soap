@@ -56,6 +56,9 @@ class Expr(Comparable, Flyweight):
         self.a1, self.a2 = [_try_to_number(a) for a in al]
         super(Expr, self).__init__()
 
+    def __getnewargs__(self):
+        return self.op, self.a1, self.a2
+
     def tree(self):
         def to_tuple(a):
             if isinstance(a, Expr):
@@ -131,8 +134,6 @@ class Expr(Comparable, Flyweight):
         if not isinstance(other, Expr):
             return False
         if self.op != other.op:
-            return False
-        if hash(self) != hash(other):
             return False
         if id(self) == id(other):
             return True
