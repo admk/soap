@@ -246,13 +246,14 @@ def tuplify_args(f):
     return functools.wraps(f)(wrapper)
 
 
-def _walk(t_f_v_c):
-    t, f, v, c = t_f_v_c
-    s = _walk_r(t, f, v)
+def _walk(t_fs_v_c):
+    t, fs, v, c = t_fs_v_c
+    s = set()
+    for f in fs:
+        s |= _walk_r(t, f, v)
     if c:
-        return s | {t}
-    else:
-        return s if s else {t}
+        s.add(t)
+    return True if not c and not s else False, s
 
 
 @cached
@@ -312,16 +313,16 @@ def _step(s, fs, v=None, c=False, m=True):
     if m:
         cpu_count = multiprocessing.cpu_count()
         chunksize = int(len(s) / cpu_count) + 1
-        map = _pool.imap_unordered
+        map = _pool.imap
     else:
         cpu_count = chunksize = 1
         map = lambda f, l, _: [f(a) for a in l]
     union = lambda s, _: functools.reduce(lambda x, y: x | y, s)
-    for f in fs:
-        s = [(t, f, v, c) for i, t in enumerate(s)]
-        s = list(map(_walk, s, chunksize))
-        s = union(s, cpu_count)
-    return s
+    r = [(t, fs, v, c) for i, t in enumerate(s)]
+    b, r = list(zip(*map(_walk, r, chunksize)))
+    s = {t for i, t in enumerate(s) if b[i]}
+    r = union(r, cpu_count)
+    return s, r
 
 
 if __name__ == '__main__':
