@@ -14,7 +14,10 @@ from .parser import Expr
 
 
 def item_to_list(f):
-    return functools.wraps(f)(lambda t: [f(t)])
+    def wrapper(t):
+        v = f(t)
+        return [v] if not v is None else []
+    return functools.wraps(f)(wrapper)
 
 
 def none_to_list(f):
@@ -166,12 +169,11 @@ def collect_for_distributivity(t):
 
 def _identity_reduction(t, iop, i):
     if t.op != iop:
-        return t
+        return
     if t.a1 == i:
         return t.a2
     if t.a2 == i:
         return t.a1
-    return t
 
 
 @item_to_list
@@ -187,16 +189,16 @@ def additive_identity_reduction(t):
 @item_to_list
 def zero_reduction(t):
     if t.op != common.MULTIPLY_OP:
-        return t
+        return
     if t.a1 != 0 and t.a2 != 0:
-        return t
+        return
     return 0
 
 
 @item_to_list
 def constant_reduction(t):
     if not is_exact(t.a1) or not is_exact(t.a2):
-        return t
+        return
     if t.op == common.MULTIPLY_OP:
         return t.a1 * t.a2
     if t.op == common.ADD_OP:
