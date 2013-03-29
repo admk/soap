@@ -55,21 +55,22 @@ class TreeTransformer(object):
             if self._p:
                 i += 1
                 sys.stdout.write(
-                    '\r%s: %d, Trees: %d.' %
+                    '\r%s: %d, Trees: %d, Todo: %d.' %
                     ('Reduction' if reduced else 'Iteration',
-                     i, len(todo_trees)))
+                     i, len(done_trees), len(todo_trees)))
                 sys.stdout.flush()
             if not reduced:
                 f = self.transform_methods()
-                step_trees = _step(todo_trees, f, v, not reduced)
+                _, step_trees = _step(todo_trees, f, v, not reduced)
                 step_trees -= done_trees
                 step_trees = self._closure_r(step_trees, True)
                 done_trees |= todo_trees
                 todo_trees = step_trees - done_trees
             else:
                 f = self.reduction_methods()
-                step_trees = _step(todo_trees, f, v, not reduced)
-                done_trees, todo_trees = todo_trees, step_trees - done_trees
+                nore_trees, step_trees = _step(todo_trees, f, v, not reduced)
+                done_trees |= nore_trees
+                todo_trees = step_trees - nore_trees
         return done_trees
 
     def closure(self):
@@ -333,7 +334,7 @@ if __name__ == '__main__':
         pycallgraph.start_trace()
     from datetime import datetime
     startTime = datetime.now()
-    e = '(((a + 1) * (a + 1)) * (b + 1))'
+    e = '(((a + 1) * (a + 1)) * a)'
     t = Expr(e)
     print('Expr:', e)
     print('Tree:', t.tree())
@@ -346,6 +347,8 @@ if __name__ == '__main__':
     s = ExprTreeTransformer(t, print_progress=True).closure()
     print(datetime.now() - startTime)
     print(len(s))
+    for t in s:
+        print(t)
     if memory_profile:
         from pympler.asizeof import asizeof
         tracker.track_object(s)
