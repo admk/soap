@@ -8,6 +8,7 @@ import multiprocessing
 import random
 import functools
 
+import ce.logger as logger
 from . import common
 from .common import cached, is_exact, is_expr
 from .parser import Expr
@@ -33,10 +34,9 @@ class ValidationError(Exception):
 
 class TreeTransformer(object):
 
-    def __init__(self, tree, validate=False, print_progress=False):
+    def __init__(self, tree, validate=False):
         self._t = tree
         self._v = validate
-        self._p = print_progress
         super().__init__()
 
     def reduction_methods(self):
@@ -53,13 +53,10 @@ class TreeTransformer(object):
         try:
             while todo_trees:
                 # print set size
-                if self._p:
-                    i += 1
-                    sys.stdout.write(
-                        '\r%s: %d, Trees: %d, Todo: %d.' %
-                        ('Reduction' if reduced else 'Iteration',
-                         i, len(done_trees), len(todo_trees)))
-                    sys.stdout.flush()
+                i += 1
+                logger.persistent('Iteration:' if reduced else 'Reduction:', i)
+                logger.persistent('Trees:', len(done_trees))
+                logger.persistent('Todo:', len(todo_trees))
                 if not reduced:
                     f = self.transform_methods()
                     _, step_trees = _step(todo_trees, f, v, not reduced)
@@ -75,6 +72,7 @@ class TreeTransformer(object):
         except KeyboardInterrupt:
             if reduced:
                 raise
+        logger.unpersistent('Iteration:', 'Reduction:', 'Trees:', 'Todo:')
         return done_trees
 
     def closure(self):
@@ -84,8 +82,7 @@ class TreeTransformer(object):
             A set of trees after transform.
         """
         s = self._closure_r([self._t])
-        if self._p:
-            print('Finished finding closure.')
+        logger.info('Finished finding closure.')
         return s
 
     def validate(self, t, tn):
@@ -277,7 +274,7 @@ def _walk_r(t, f, v):
         for tn in s:
             v(t, tn)
     except ValidationError:
-        print('Violating transformation:', f.__name__)
+        logger.error('Violating transformation:', f.__name__)
         raise
     return s
 
@@ -340,19 +337,17 @@ if __name__ == '__main__':
     startTime = datetime.now()
     e = '(((a + 1) * (a + 1)) * a)'
     t = Expr(e)
-    print('Expr:', e)
-    print('Tree:', t.tree())
+    logger.debug('Expr:', e)
+    logger.debug('Tree:', t.tree())
     if memory_profile:
         from pympler.classtracker import ClassTracker
         from ce.expr.common import Flyweight, _cache_map
         tracker = ClassTracker()
         tracker.track_object(Flyweight._cache)
         tracker.track_class(Expr)
-    s = ExprTreeTransformer(t, print_progress=True).closure()
-    print(datetime.now() - startTime)
-    print(len(s))
-    for t in s:
-        print(t)
+    s = ExprTreeTransformer(t).closure()
+    logger.debug(datetime.now() - startTime)
+    logger.debug(len(s))
     if memory_profile:
         from pympler.asizeof import asizeof
         tracker.track_object(s)

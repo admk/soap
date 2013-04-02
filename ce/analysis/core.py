@@ -5,31 +5,27 @@
 import sys
 import itertools
 
+import ce.logger as logger
 from ..common import DynamicMethods
 from ..expr import Expr, ExprTreeTransformer
-
 from ..semantics import cast_error
 
 
 class Analysis(DynamicMethods):
 
-    def __init__(self, e, print_progress=False, **kwargs):
+    def __init__(self, e, **kwargs):
         self.e = e
-        self.s = ExprTreeTransformer(
-            Expr(e), print_progress=print_progress, **kwargs).closure()
-        self.p = print_progress
+        self.s = ExprTreeTransformer(Expr(e), **kwargs).closure()
         super().__init__()
 
     def analyse(self):
-        if self.p:
-            print('Analysing results.')
+        logger.info('Analysing results.')
         a = []
         n = len(self.s)
         for i, t in enumerate(self.s):
-            if self.p:
-                sys.stdout.write('\r%d/%d' % (i, n))
-                sys.stdout.flush()
+            logger.persistent('Analysing:', '\r%d/%d' % (i, n))
             a.append(self._analyse(t))
+        logger.unpersistent('Analysing:')
         a = sorted(
             a, key=lambda k: tuple(k[m.__name__] for m in self.methods()))
         return [self._select(d) for d in a]
@@ -106,13 +102,14 @@ if __name__ == '__main__':
     from matplotlib import pyplot as plt
     from matplotlib.backends import backend_pdf
     import gmpy2
+    logger.set_context(level=logger.levels.info)
     gmpy2.set_context(gmpy2.ieee(32))
     e = '(((a + 1) * (a + 1)) * (a + 1))'
     s = {
         'a': cast_error('0.01', '0.02'),
         'b': cast_error('0.02', '0.03')
     }
-    a = AreaErrorAnalysis(e, s, print_progress=True)
+    a = AreaErrorAnalysis(e, s)
     a, f = a.analyse()
     ax = [v['area_analysis'] for v in a]
     ay = [v['error_analysis'] for v in a]
