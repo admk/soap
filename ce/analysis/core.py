@@ -75,19 +75,19 @@ class AreaAnalysis(Analysis):
         return d
 
 
-def pareto_frontier(s, keys=None):
-    keys = keys or list(range(len(s[0])))
-    s = sorted(s, key=lambda e: tuple(e[k] for k in keys))
-    frontier = s[:]
-    for m, n in itertools.product(s, s):
-        if m == n:
-            continue
-        if not n in frontier:
-            continue
-        if all(m[k] <= n[k] for k in keys):
-            if all(m[k] == n[k] for k in keys):
-                continue
-            frontier.remove(n)
+def pareto_frontier_2d(s, keys=None):
+    if keys:
+        a = keys[1]
+        sort_key = lambda e: tuple(e[k] for k in keys)
+    else:
+        a = 1
+        sort_key = None
+    s = sorted(s, key=sort_key)
+    n = len(s) - 1
+    frontier = s[:1]
+    for i, m in enumerate(s[1:]):
+        if m[a] <= frontier[-1][a]:
+            frontier.append(m)
     return frontier
 
 
@@ -96,7 +96,7 @@ class AreaErrorAnalysis(ErrorAnalysis, AreaAnalysis):
 
     def analyse(self):
         analysis = super().analyse()
-        frontier = pareto_frontier(
+        frontier = pareto_frontier_2d(
             analysis, keys=(self.area_analysis.__name__,
                             self.error_analysis.__name__))
         return (analysis, frontier)
@@ -112,13 +112,14 @@ if __name__ == '__main__':
         'a': cast_error('0.01', '0.02'),
         'b': cast_error('0.02', '0.03')
     }
-    print(s['a'])
     a = AreaErrorAnalysis(e, s, print_progress=True)
     a, f = a.analyse()
     ax = [v['area_analysis'] for v in a]
     ay = [v['error_analysis'] for v in a]
     fx = [v['area_analysis'] for v in f]
     fy = [v['error_analysis'] for v in f]
+    for r in f:
+        print(r['e'])
     fig = plt.figure()
     subplt = fig.add_subplot(111)
     subplt.set_ylim(0.8 * min(ay), 1.2 * max(ay))
