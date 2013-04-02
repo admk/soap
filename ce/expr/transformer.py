@@ -50,27 +50,31 @@ class TreeTransformer(object):
         done_trees = set()
         todo_trees = set(trees)
         i = 0
-        while todo_trees:
-            # print set size
-            if self._p:
-                i += 1
-                sys.stdout.write(
-                    '\r%s: %d, Trees: %d, Todo: %d.' %
-                    ('Reduction' if reduced else 'Iteration',
-                     i, len(done_trees), len(todo_trees)))
-                sys.stdout.flush()
-            if not reduced:
-                f = self.transform_methods()
-                _, step_trees = _step(todo_trees, f, v, not reduced)
-                step_trees -= done_trees
-                step_trees = self._closure_r(step_trees, True)
-                done_trees |= todo_trees
-                todo_trees = step_trees - done_trees
-            else:
-                f = self.reduction_methods()
-                nore_trees, step_trees = _step(todo_trees, f, v, not reduced)
-                done_trees |= nore_trees
-                todo_trees = step_trees - nore_trees
+        try:
+            while todo_trees:
+                # print set size
+                if self._p:
+                    i += 1
+                    sys.stdout.write(
+                        '\r%s: %d, Trees: %d, Todo: %d.' %
+                        ('Reduction' if reduced else 'Iteration',
+                         i, len(done_trees), len(todo_trees)))
+                    sys.stdout.flush()
+                if not reduced:
+                    f = self.transform_methods()
+                    _, step_trees = _step(todo_trees, f, v, not reduced)
+                    step_trees -= done_trees
+                    step_trees = self._closure_r(step_trees, True)
+                    done_trees |= todo_trees
+                    todo_trees = step_trees - done_trees
+                else:
+                    f = self.reduction_methods()
+                    nore_trees, step_trees = _step(todo_trees, f, v, not reduced)
+                    done_trees |= nore_trees
+                    todo_trees = step_trees - nore_trees
+        except KeyboardInterrupt:
+            if reduced:
+                raise
         return done_trees
 
     def closure(self):
