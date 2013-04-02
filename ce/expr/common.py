@@ -30,18 +30,15 @@ RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTION_OVER_OPERATORS = \
     list(zip(*RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS))
 
 
-CACHE_CAPACITY = 100000
-CACHE_KEY_LENGTH = 1000
+CACHE_CAPACITY = 1000000
 _cache_map = dict()
 
 
 def cached(f):
     def decorated(*args, **kwargs):
         key = pickle.dumps((f.__name__, args, tuple(kwargs.items())))
-        if len(key) > CACHE_KEY_LENGTH:
-            return f(*args, **kwargs)
-        v = _cache_map.get(key, None)
-        if not v:
+        v = _cache_map.get(key)
+        if v is None:
             v = f(*args, **kwargs)
         if len(_cache_map) < CACHE_CAPACITY:
             _cache_map[key] = v
