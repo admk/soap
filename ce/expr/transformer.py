@@ -330,6 +330,7 @@ def _step(s, fs, v=None, c=False, m=True):
 if __name__ == '__main__':
     profile = False
     memory_profile = True
+    logger.set_context(level=logger.levels.debug)
     if profile:
         import pycallgraph
         pycallgraph.start_trace()
