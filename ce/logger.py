@@ -19,6 +19,7 @@ context = {
     'level': levels.off,
     'file': None,
     'persistent': {},
+    'cr': False,
 }
 
 
@@ -31,12 +32,17 @@ def get_context():
 
 
 def log(*args, l=levels.info):
-    if l >= get_context()['level']:
-        f = context['file'] or sys.stdout
-        print(*args, end='', file=f)
+    if l < get_context()['level']:
+        return
+    f = context['file'] or sys.stdout
+    s = ' '.join(str(a) for a in args)
+    print(s, end='', file=f)
 
 
 def line(*args, l=levels.info):
+    if get_context()['cr']:
+        print('\n')
+        set_context(cr=False)
     args += ('\n', )
     log(*args, l=l)
 
@@ -47,7 +53,14 @@ def rewrite(*args, l=levels.info):
 
 def persistent(name, *args, l=levels.info):
     get_context()['persistent'][name] = args + (l, )
-    _persistent()
+    log('\r')
+    s = []
+    for k, v in get_context()['persistent'].items():
+        *v, l = v
+        s.append(k + ': ' + ','.join(str(a) for a in v))
+    s = '; '.join(s)
+    s += ' ' * (78 - len(s))
+    log(s, l=l)
 
 
 def unpersistent(*args):
@@ -56,14 +69,8 @@ def unpersistent(*args):
         if not n in p:
             continue
         del p[n]
-
-
-def _persistent():
-    log('\r')
-    for k, v in get_context()['persistent'].items():
-        *v, l = v
-        v += ('.', )
-        log(' ', k, *v, l=l)
+    if not p:
+        set_context(cr=True)
 
 
 def log_level(l):

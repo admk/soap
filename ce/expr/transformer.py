@@ -54,9 +54,10 @@ class TreeTransformer(object):
             while todo_trees:
                 # print set size
                 i += 1
-                logger.persistent('Iteration:' if reduced else 'Reduction:', i)
-                logger.persistent('Trees:', len(done_trees))
-                logger.persistent('Todo:', len(todo_trees))
+                logger.persistent(
+                    'Iteration' if not reduced else 'Reduction', i)
+                logger.persistent('Trees', len(done_trees))
+                logger.persistent('Todo', len(todo_trees))
                 if not reduced:
                     f = self.transform_methods()
                     _, step_trees = _step(todo_trees, f, v, not reduced)
@@ -72,7 +73,7 @@ class TreeTransformer(object):
         except KeyboardInterrupt:
             if reduced:
                 raise
-        logger.unpersistent('Iteration:', 'Reduction:', 'Trees:', 'Todo:')
+        logger.unpersistent('Iteration', 'Reduction', 'Trees', 'Todo')
         return done_trees
 
     def closure(self):

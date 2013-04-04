@@ -23,9 +23,9 @@ class Analysis(DynamicMethods):
         a = []
         n = len(self.s)
         for i, t in enumerate(self.s):
-            logger.persistent('Analysing:', '\r%d/%d' % (i, n))
+            logger.persistent('Analysing', '%d/%d' % (i, n))
             a.append(self._analyse(t))
-        logger.unpersistent('Analysing:')
+        logger.unpersistent('Analysing')
         a = sorted(
             a, key=lambda k: tuple(k[m.__name__] for m in self.methods()))
         return [self._select(d) for d in a]
@@ -126,4 +126,3 @@ if __name__ == '__main__':
     pp = backend_pdf.PdfPages('analysis.pdf')
     pp.savefig(fig)
     pp.close()
-    plt.savefig('analysis.png')
