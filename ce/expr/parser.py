@@ -46,8 +46,12 @@ class Expr(Comparable, Flyweight):
             a2 = kwargs.setdefault('a2')
             al = a1, a2
         if len(args) == 1:
-            expr = _parse_r(list(args).pop())
-            op, al = expr.op, expr.args
+            expr = list(args).pop()
+            try:
+                op, al = expr.op, expr.args
+            except AttributeError:
+                self.__init__(_parse_r(expr))
+                return
         elif len(args) == 2:
             op, al = args
         elif len(args) == 3:
