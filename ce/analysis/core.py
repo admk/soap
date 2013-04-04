@@ -79,7 +79,6 @@ def pareto_frontier_2d(s, keys=None):
         a = 1
         sort_key = None
     s = sorted(s, key=sort_key)
-    n = len(s) - 1
     frontier = s[:1]
     for i, m in enumerate(s[1:]):
         if m[a] <= frontier[-1][a]:
@@ -115,8 +114,11 @@ if __name__ == '__main__':
     ay = [v['error_analysis'] for v in a]
     fx = [v['area_analysis'] for v in f]
     fy = [v['error_analysis'] for v in f]
-    for r in f:
-        print(r['e'])
+    for r in a:
+        if r in f:
+            logger.info('>', r['e'])
+        else:
+            logger.debug(' ', r['e'])
     fig = plt.figure()
     subplt = fig.add_subplot(111)
     subplt.set_ylim(0.8 * min(ay), 1.2 * max(ay))
