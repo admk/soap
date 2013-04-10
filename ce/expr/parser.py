@@ -32,7 +32,7 @@ def _parse_r(s):
         return s
     a1 = _parse_r(s[1:operator_pos].strip())
     a2 = _parse_r(s[operator_pos + 1:-1].strip())
-    return Expr(string=None, op=s[operator_pos], a1=a1, a2=a2)
+    return Expr(s[operator_pos], a1, a2)
 
 
 class Expr(Comparable, Flyweight):
