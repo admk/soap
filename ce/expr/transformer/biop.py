@@ -5,11 +5,13 @@
 import re
 import random
 
-import ce.common as common
+from ce.expr.common import ADD_OP, MULTIPLY_OP, ASSOCIATIVITY_OPERATORS, \
+    LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS, \
+    RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS
 import ce.logger as logger
 from ..common import is_exact, is_expr
 from ..parser import Expr
-from core import item_to_list, none_to_list, TreeTransformer, ValidationError
+from .core import item_to_list, none_to_list, TreeTransformer, ValidationError
 
 
 @none_to_list
@@ -19,7 +21,7 @@ def associativity(t):
             al = list(args)
             al.remove(a)
             yield Expr(t.op, a, Expr(t.op, al))
-    if not t.op in common.ASSOCIATIVITY_OPERATORS:
+    if not t.op in ASSOCIATIVITY_OPERATORS:
         return
     s = []
     if is_expr(t.a1) and t.a1.op == t.op:
@@ -31,13 +33,13 @@ def associativity(t):
 
 def distribute_for_distributivity(t):
     s = []
-    if t.op in common.LEFT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a2):
-        if (t.op, t.a2.op) in common.LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
+    if t.op in LEFT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a2):
+        if (t.op, t.a2.op) in LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
             s.append(Expr(t.a2.op,
                           Expr(t.op, t.a1, t.a2.a1),
                           Expr(t.op, t.a1, t.a2.a2)))
-    if t.op in common.RIGHT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a1):
-        if (t.op, t.a1.op) in common.RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS:
+    if t.op in RIGHT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a1):
+        if (t.op, t.a1.op) in RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS:
             s.append(Expr(t.a1.op,
                           Expr(t.op, t.a1.a1, t.a2),
                           Expr(t.op, t.a1.a2, t.a2)))
@@ -50,7 +52,7 @@ def collect_for_distributivity(t):
     def al(a):
         if not is_expr(a):
             return [a, 1]
-        if (a.op, t.op) == (common.MULTIPLY_OP, common.ADD_OP):
+        if (a.op, t.op) == (MULTIPLY_OP, ADD_OP):
             return a.args
         return [a, 1]
 
@@ -63,17 +65,17 @@ def collect_for_distributivity(t):
     if all(not is_expr(a) for a in t.args):
         return
     # operator tests
-    if t.op != common.ADD_OP:
+    if t.op != ADD_OP:
         return
-    if all(a.op != common.MULTIPLY_OP for a in t.args if is_expr(a)):
+    if all(a.op != MULTIPLY_OP for a in t.args if is_expr(a)):
         return
     # forming list
     af = [al(arg) for arg in t.args]
     # find common elements
     s = []
-    for ac in set.intersection(*af):
+    for ac in set.intersection(*(set(a) for a in af)):
         an = [sub(an, ac) for an in af]
-        s.append(Expr(common.MULTIPLY_OP, ac, Expr(common.ADD_OP, an)))
+        s.append(Expr(MULTIPLY_OP, ac, Expr(ADD_OP, an)))
     return s
 
 
@@ -88,17 +90,17 @@ def _identity_reduction(t, iop, i):
 
 @item_to_list
 def multiplicative_identity_reduction(t):
-    return _identity_reduction(t, common.MULTIPLY_OP, 1)
+    return _identity_reduction(t, MULTIPLY_OP, 1)
 
 
 @item_to_list
 def additive_identity_reduction(t):
-    return _identity_reduction(t, common.ADD_OP, 0)
+    return _identity_reduction(t, ADD_OP, 0)
 
 
 @item_to_list
 def zero_reduction(t):
-    if t.op != common.MULTIPLY_OP:
+    if t.op != MULTIPLY_OP:
         return
     if t.a1 != 0 and t.a2 != 0:
         return
@@ -109,13 +111,13 @@ def zero_reduction(t):
 def constant_reduction(t):
     if not is_exact(t.a1) or not is_exact(t.a2):
         return
-    if t.op == common.MULTIPLY_OP:
+    if t.op == MULTIPLY_OP:
         return t.a1 * t.a2
-    if t.op == common.ADD_OP:
+    if t.op == ADD_OP:
         return t.a1 + t.a2
 
 
-class ExprTreeTransformer(TreeTransformer):
+class BiOpTreeTransformer(TreeTransformer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -134,7 +136,7 @@ class ExprTreeTransformer(TreeTransformer):
     def validate(t, tn):
         # FIXME: broken after ErrorSemantics
         def vars(tree_str):
-            return set(ExprTreeTransformer.VAR_RE.findall(tree_str))
+            return set(BiOpTreeTransformer.VAR_RE.findall(tree_str))
         to, no = ts, ns = str(t), str(tn)
         tsv, nsv = vars(ts), vars(ns)
         if tsv != nsv:
@@ -169,7 +171,7 @@ if __name__ == '__main__':
         tracker = ClassTracker()
         tracker.track_object(Flyweight._cache)
         tracker.track_class(Expr)
-    s = ExprTreeTransformer(t).closure()
+    s = BiOpTreeTransformer(t).closure()
     logger.debug(datetime.now() - startTime)
     logger.debug(len(s))
     if memory_profile:

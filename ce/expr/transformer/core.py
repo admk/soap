@@ -140,7 +140,14 @@ def par_union(sl):
     return functools.reduce(lambda s, t: s | t, sl)
 
 
-_pool = multiprocessing.Pool()
+_pool = None
+
+
+def pool():
+    if _pool is None:
+        global _pool
+        _pool = multiprocessing.Pool()
+    return _pool
 
 
 def _iunion(sl, no_processes):
@@ -151,7 +158,7 @@ def _iunion(sl, no_processes):
     while len(sl) > 1:
         sys.stdout.write('\rUnion: %d.' % len(sl))
         sys.stdout.flush()
-        sl = list(_pool.imap_unordered(par_union, chunks(sl, chunksize)))
+        sl = list(pool().imap_unordered(par_union, chunks(sl, chunksize)))
     return sl.pop()
 
 
@@ -172,7 +179,7 @@ def _step(s, fs, v=None, c=False, m=True):
     if m:
         cpu_count = multiprocessing.cpu_count()
         chunksize = int(len(s) / cpu_count) + 1
-        map = _pool.imap
+        map = pool().imap_unordered
     else:
         cpu_count = chunksize = 1
         map = lambda f, l, _: [f(a) for a in l]
