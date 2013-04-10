@@ -2,13 +2,12 @@
 # vim: set fileencoding=UTF-8 :
 
 
-import sys
-import itertools
+import gmpy2
 
 import ce.logger as logger
 from ..common import DynamicMethods
 from ..expr import Expr, ExprTreeTransformer
-from ..semantics import cast_error
+from ..semantics import cast_error, mpfr
 
 
 class Analysis(DynamicMethods):
@@ -56,7 +55,8 @@ class ErrorAnalysis(Analysis):
 
     def error_select(self, d):
         m = self.error_analysis.__name__
-        d[m] = float(max(abs(d[m].e.min), abs(d[m].e.max)))
+        with gmpy2.local_context(round=gmpy2.RoundAwayZero):
+            d[m] = mpfr(max(abs(d[m].e.min), abs(d[m].e.max)))
         return d
 
 
@@ -100,7 +100,6 @@ class AreaErrorAnalysis(ErrorAnalysis, AreaAnalysis):
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
     from matplotlib.backends import backend_pdf
-    import gmpy2
     logger.set_context(level=logger.levels.info)
     gmpy2.set_context(gmpy2.ieee(32))
     e = '(((a + 1) * (a + 1)) * (a + 1))'
@@ -111,9 +110,9 @@ if __name__ == '__main__':
     a = AreaErrorAnalysis(e, s)
     a, f = a.analyse()
     ax = [v['area_analysis'] for v in a]
-    ay = [v['error_analysis'] for v in a]
+    ay = [float(v['error_analysis']) for v in a]
     fx = [v['area_analysis'] for v in f]
-    fy = [v['error_analysis'] for v in f]
+    fy = [float(v['error_analysis']) for v in f]
     for r in a:
         if r in f:
             logger.info('>', r['e'])
