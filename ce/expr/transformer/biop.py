@@ -10,7 +10,7 @@ from ce.expr.common import ADD_OP, MULTIPLY_OP, ASSOCIATIVITY_OPERATORS, \
     RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS
 import ce.logger as logger
 from ..common import is_exact, is_expr
-from ..parser import Expr
+from ..biop import Expr
 from .core import item_to_list, none_to_list, TreeTransformer, ValidationError
 
 
