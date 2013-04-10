@@ -2,6 +2,8 @@
 # vim: set fileencoding=UTF-8 :
 
 
+import ast
+
 from ..semantics import mpq
 from .common import OPERATORS, ADD_OP, MULTIPLY_OP
 
@@ -13,20 +15,24 @@ def try_to_number(s):
         return s
 
 
-def _parse_r(s):
-    s = s.strip()
-    bracket_level = 0
-    operator_pos = -1
-    for i, v in enumerate(s):
-        if v == '(':
-            bracket_level += 1
-        if v == ')':
-            bracket_level -= 1
-        if bracket_level == 1 and v in OPERATORS:
-            operator_pos = i
-            break
-    if operator_pos == -1:
-        return s
-    a1 = _parse_r(s[1:operator_pos].strip())
-    a2 = _parse_r(s[operator_pos + 1:-1].strip())
-    return Expr(s[operator_pos], a1, a2)
+OPERATOR_MAP = {
+    ast.Add: ADD_OP,
+    ast.Mult: MULTIPLY_OP,
+}
+
+
+def parse(s):
+    from .biop import Expr
+    def _parse_r(t):
+        try:
+            return t.n
+        except AttributeError:
+            pass
+        try:
+            return t.id
+        except AttributeError:
+            op = OPERATOR_MAP[t.op.__class__]
+            a1 = _parse_r(t.left)
+            a2 = _parse_r(t.right)
+            return Expr(op, a1, a2)
+    return _parse_r(ast.parse(s, mode='eval').body)
