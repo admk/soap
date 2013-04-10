@@ -6,7 +6,7 @@ import gmpy2
 
 import ce.logger as logger
 from ..common import DynamicMethods
-from ..expr import Expr, ExprTreeTransformer
+from ..expr import Expr, BiOpTreeTransformer
 from ..semantics import cast_error, mpfr
 
 
@@ -14,7 +14,7 @@ class Analysis(DynamicMethods):
 
     def __init__(self, e, **kwargs):
         self.e = e
-        self.s = ExprTreeTransformer(Expr(e), **kwargs).closure()
+        self.s = BiOpTreeTransformer(Expr(e), **kwargs).closure()
         super().__init__()
 
     def analyse(self):
@@ -22,7 +22,7 @@ class Analysis(DynamicMethods):
         a = []
         n = len(self.s)
         for i, t in enumerate(self.s):
-            logger.persistent('Analysing', '%d/%d' % (i, n))
+            logger.persistent('Analysing', '%d/%d' % (i + 1, n))
             a.append(self._analyse(t))
         logger.unpersistent('Analysing')
         a = sorted(
@@ -102,10 +102,10 @@ if __name__ == '__main__':
     from matplotlib.backends import backend_pdf
     logger.set_context(level=logger.levels.info)
     gmpy2.set_context(gmpy2.ieee(32))
-    e = '(((a + 1) * (a + 1)) * (a + 1))'
+    e = Expr('((a + b) * (a + b))')
     s = {
-        'a': cast_error('0.01', '0.02'),
-        'b': cast_error('0.02', '0.03')
+        'a': cast_error('5', '10'),
+        'b': cast_error('0', '0.001')
     }
     a = AreaErrorAnalysis(e, s)
     a, f = a.analyse()
