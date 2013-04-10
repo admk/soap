@@ -72,6 +72,8 @@ class Interval(object):
     def __init__(self, v):
         min_val, max_val = v
         self.min, self.max = min_val, max_val
+        if min_val > max_val:
+            raise ValueError('min_val cannot be greater than max_val')
 
     def __iter__(self):
         return iter((self.min, self.max))
