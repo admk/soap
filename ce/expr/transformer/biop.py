@@ -161,9 +161,9 @@ if __name__ == '__main__':
         pycallgraph.start_trace()
     from datetime import datetime
     startTime = datetime.now()
-    e = '(((a + 1) * (a + 1)) * a)'
+    e = '(a + 1) * (a + 1) * a'
     t = Expr(e)
-    logger.debug('Expr:', e)
+    logger.debug('Expr:', str(t))
     logger.debug('Tree:', t.tree())
     if memory_profile:
         from pympler.classtracker import ClassTracker

@@ -67,5 +67,5 @@ def is_exact(v):
 
 
 def is_expr(e):
-    from .parser import Expr
+    from .biop import Expr
     return isinstance(e, Expr)
