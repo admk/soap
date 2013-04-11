@@ -8,7 +8,7 @@ import multiprocessing
 
 import ce.logger as logger
 from ..common import cached, is_expr
-from ..parser import Expr
+from ..biop import Expr
 
 
 def item_to_list(f):

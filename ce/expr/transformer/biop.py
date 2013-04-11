@@ -10,7 +10,7 @@ from ce.expr.common import ADD_OP, MULTIPLY_OP, ASSOCIATIVITY_OPERATORS, \
     RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS
 import ce.logger as logger
 from ..common import is_exact, is_expr
-from ..parser import Expr
+from ..biop import Expr
 from .core import item_to_list, none_to_list, TreeTransformer, ValidationError
 
 
@@ -161,9 +161,9 @@ if __name__ == '__main__':
         pycallgraph.start_trace()
     from datetime import datetime
     startTime = datetime.now()
-    e = '(((a + 1) * (a + 1)) * a)'
+    e = '(a + 1) * (a + 1) * a'
     t = Expr(e)
-    logger.debug('Expr:', e)
+    logger.debug('Expr:', str(t))
     logger.debug('Tree:', t.tree())
     if memory_profile:
         from pympler.classtracker import ClassTracker
