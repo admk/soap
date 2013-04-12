@@ -31,8 +31,18 @@ def parse(s):
         try:
             return t.id
         except AttributeError:
+            pass
+        try:
             op = OPERATOR_MAP[t.op.__class__]
             a1 = _parse_r(t.left)
             a2 = _parse_r(t.right)
             return Expr(op, a1, a2)
+        except AttributeError:
+            raise SyntaxError('Unknown token %s' % str(t))
+        except KeyError:
+            raise SyntaxError('Unrecognised binary operator %s' % str(t.op))
     return _parse_r(ast.parse(s, mode='eval').body)
+
+
+if __name__ == '__main__':
+    print(parse('a + b * c + d'))
