@@ -21,7 +21,7 @@ class Expr(Comparable, Flyweight):
             try:
                 op, al = expr.op, expr.args
             except AttributeError:
-                self.__init__(parse(expr))
+                self.__init__(parse(expr, self.__class__))
                 return
         elif len(args) == 2:
             op, al = args
