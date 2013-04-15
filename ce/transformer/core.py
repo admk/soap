@@ -3,6 +3,7 @@ import functools
 import multiprocessing
 
 import ce.logger as logger
+from ce.logger import levels
 from ce.expr.common import cached, is_expr
 from ce.expr.biop import Expr
 
@@ -46,9 +47,12 @@ class TreeTransformer(object):
                 # print set size
                 i += 1
                 logger.persistent(
-                    'Iteration' if not reduced else 'Reduction', i)
-                logger.persistent('Trees', len(done_trees))
-                logger.persistent('Todo', len(todo_trees))
+                    'Iteration' if not reduced else 'Reduction', i,
+                    l=levels.debug)
+                logger.persistent('Trees', len(done_trees),
+                    l=levels.debug)
+                logger.persistent('Todo', len(todo_trees),
+                    l=levels.debug)
                 if not reduced:
                     f = self.transform_methods
                     _, step_trees = \
@@ -76,7 +80,7 @@ class TreeTransformer(object):
             A set of trees after transform.
         """
         s = self._closure_r([self._t])
-        logger.info('Finished finding closure.')
+        logger.debug('Finished finding closure.')
         return s
 
     def validate(self, t, tn):

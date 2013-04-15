@@ -1,4 +1,5 @@
 import sys
+from pprint import pformat
 
 
 class levels():
@@ -15,7 +16,6 @@ context = {
     'level': levels.off,
     'file': None,
     'persistent': {},
-    'cr': False,
 }
 
 
@@ -27,36 +27,36 @@ def get_context():
     return context
 
 
+def format(*args):
+    return ' '.join(pformat(a) if not isinstance(a, str) else a for a in args)
+
+
 def log(*args, l=levels.info):
     if l < get_context()['level']:
         return
     f = context['file'] or sys.stdout
-    s = ' '.join(str(a) for a in args)
-    print(s, end='', file=f)
+    print(format(*args), end='', file=f)
 
 
 def line(*args, l=levels.info):
-    if get_context()['cr']:
-        print('\n')
-        set_context(cr=False)
     args += ('\n', )
     log(*args, l=l)
 
 
 def rewrite(*args, l=levels.info):
-    log('\r', *args, l=l)
+    args += ('\r', )
+    log(*args, l=l)
 
 
 def persistent(name, *args, l=levels.info):
     get_context()['persistent'][name] = args + (l, )
-    log('\r')
     s = []
     for k, v in get_context()['persistent'].items():
         *v, l = v
-        s.append(k + ': ' + ','.join(str(a) for a in v))
+        s.append(k + ': ' + ','.join(format(*v)))
     s = '; '.join(s)
     s += ' ' * (78 - len(s))
-    log(s, l=l)
+    rewrite(s, l=l)
 
 
 def unpersistent(*args):
@@ -65,8 +65,6 @@ def unpersistent(*args):
         if not n in p:
             continue
         del p[n]
-    if not p:
-        set_context(cr=True)
 
 
 def log_level(l):
