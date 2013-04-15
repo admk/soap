@@ -57,11 +57,6 @@ class Flyweight(object):
         return v
 
 
-def is_exact(v):
-    from ..semantics import mpq_type
-    return isinstance(v, (int, mpq_type))
-
-
 def is_expr(e):
-    from .biop import Expr
+    from ce.expr.biop import Expr
     return isinstance(e, Expr)

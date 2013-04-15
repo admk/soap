@@ -1,13 +1,15 @@
 import re
 import random
 
+import ce.logger as logger
 from ce.expr.common import ADD_OP, MULTIPLY_OP, ASSOCIATIVITY_OPERATORS, \
     LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS, \
-    RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS
-import ce.logger as logger
-from ..common import is_exact, is_expr
-from ..biop import Expr
-from .core import item_to_list, none_to_list, TreeTransformer, ValidationError
+    RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS, \
+    is_expr
+from ce.expr import Expr
+from ce.transformer.core import item_to_list, none_to_list, \
+    TreeTransformer, ValidationError
+from ce.semantics import mpq_type
 
 
 @none_to_list
@@ -105,6 +107,8 @@ def zero_reduction(t):
 
 @item_to_list
 def constant_reduction(t):
+    def is_exact(v):
+        return isinstance(v, (int, mpq_type))
     if not is_exact(t.a1) or not is_exact(t.a2):
         return
     if t.op == MULTIPLY_OP:

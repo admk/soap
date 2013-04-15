@@ -1,7 +1,6 @@
-from ..common import Comparable
 import ce.expr
-
-from . import Lattice
+from ce.common import Comparable
+from ce.semantics import Lattice
 
 
 ADDER_SIZE = 576

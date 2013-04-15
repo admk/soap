@@ -3,8 +3,8 @@ import functools
 import multiprocessing
 
 import ce.logger as logger
-from ..common import cached, is_expr
-from ..biop import Expr
+from ce.expr.common import cached, is_expr
+from ce.expr.biop import Expr
 
 
 def item_to_list(f):

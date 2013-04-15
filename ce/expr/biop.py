@@ -1,9 +1,9 @@
-from ..common import Comparable
+from ce.common import Comparable
 
-from .common import ADD_OP, MULTIPLY_OP, COMMUTATIVITY_OPERATORS, \
-    is_exact, cached, Flyweight
-from ..semantics import cast_error, cast_error_constant, Label
-from .parser import parse, try_to_number
+from ce.expr.common import ADD_OP, MULTIPLY_OP, COMMUTATIVITY_OPERATORS, \
+    cached, Flyweight
+from ce.semantics import cast_error, cast_error_constant, Label, AreaSemantics
+from ce.expr.parser import parse, try_to_number
 
 
 class Expr(Comparable, Flyweight):
@@ -82,7 +82,6 @@ class Expr(Comparable, Flyweight):
 
     @cached
     def area(self):
-        from ..semantics import AreaSemantics
         return AreaSemantics(self)
 
     def __iter__(self):

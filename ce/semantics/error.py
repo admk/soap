@@ -2,7 +2,7 @@ import itertools
 import gmpy2
 from gmpy2 import RoundUp, RoundDown, mpfr, mpq as _mpq
 
-from ..common import Comparable
+from ce.common import Comparable
 
 
 mpfr_type = type(mpfr('1.0'))

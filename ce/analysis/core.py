@@ -1,9 +1,10 @@
 import gmpy2
 
 import ce.logger as logger
-from ..common import DynamicMethods
-from ..expr import Expr, BiOpTreeTransformer
-from ..semantics import cast_error, mpfr
+from ce.common import DynamicMethods
+from ce.expr import Expr
+from ce.transformer import BiOpTreeTransformer
+from ce.semantics import cast_error, mpfr
 
 
 class Analysis(DynamicMethods):

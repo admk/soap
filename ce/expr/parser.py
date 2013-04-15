@@ -1,7 +1,7 @@
 import ast
 
-from ..semantics import mpq
-from .common import OPERATORS, ADD_OP, MULTIPLY_OP
+from ce.semantics import mpq
+from ce.expr.common import OPERATORS, ADD_OP, MULTIPLY_OP
 
 
 def try_to_number(s):
@@ -18,7 +18,7 @@ OPERATOR_MAP = {
 
 
 def parse(s):
-    from .biop import Expr
+    from ce.expr.biop import Expr
     def _parse_r(t):
         try:
             return t.n
