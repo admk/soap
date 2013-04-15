@@ -28,10 +28,13 @@ class ValidationError(Exception):
 
 class TreeTransformer(object):
 
-    def __init__(self, tree, validate=False, multiprocessing=True):
+    def __init__(self, tree,
+                 validate=False, depth=sys.getrecursionlimit(),
+                 multiprocessing=False):
         self._t = Expr(tree)
         self._v = validate
         self._m = multiprocessing
+        self._d = depth
         super().__init__()
 
     reduction_methods = None
@@ -56,7 +59,7 @@ class TreeTransformer(object):
                 if not reduced:
                     f = self.transform_methods
                     _, step_trees = \
-                        _step(todo_trees, f, v, not reduced, self._m)
+                        _step(todo_trees, f, v, not reduced, self._d, self._m)
                     step_trees -= done_trees
                     step_trees = self._closure_r(step_trees, True)
                     done_trees |= todo_trees
@@ -64,7 +67,7 @@ class TreeTransformer(object):
                 else:
                     f = self.reduction_methods
                     nore_trees, step_trees = \
-                        _step(todo_trees, f, v, not reduced, self._m)
+                        _step(todo_trees, f, v, not reduced, None, self._m)
                     done_trees |= nore_trees
                     todo_trees = step_trees - nore_trees
         except KeyboardInterrupt:
@@ -102,25 +105,27 @@ class TreeTransformer(object):
             self.validate(t, tn)
 
 
-def _walk(t_fs_v_c):
-    t, fs, v, c = t_fs_v_c
+def _walk(t_fs_v_c_d):
+    t, fs, v, c, d = t_fs_v_c_d
     s = set()
     for f in fs:
-        s |= _walk_r(t, f, v)
+        s |= _walk_r(t, f, v, d if c else sys.getrecursionlimit())
     if c:
         s.add(t)
     return True if not c and not s else False, s
 
 
 @cached
-def _walk_r(t, f, v):
+def _walk_r(t, f, v, d):
     s = set()
+    if d == 0:
+        return s
     if not is_expr(t):
         return s
     for e in f(t):
         s.add(e)
     for a, b in (t.args, t.args[::-1]):
-        for e in _walk_r(a, f, v):
+        for e in _walk_r(a, f, v, d - 1):
             s.add(Expr(t.op, e, b))
     if not v:
         return s
@@ -159,7 +164,7 @@ def _iunion(sl, no_processes):
     return sl.pop()
 
 
-def _step(s, fs, v=None, c=False, m=True):
+def _step(s, fs, v=None, c=False, d=None, m=True):
     """Find the set of trees related by the function f.
 
     Args:
@@ -169,6 +174,8 @@ def _step(s, fs, v=None, c=False, m=True):
         v: A function which validates the transform.
         c: If set, it will include everything in s. Otherwise only derived
             trees.
+        d: Depth of node traversal in trees.
+        m: Whether multiprocessing is used.
 
     Returns:
         A set of trees related by f.
@@ -181,7 +188,7 @@ def _step(s, fs, v=None, c=False, m=True):
         cpu_count = chunksize = 1
         map = lambda f, l, _: [f(a) for a in l]
     union = lambda s, _: functools.reduce(lambda x, y: x | y, s)
-    r = [(t, fs, v, c) for i, t in enumerate(s)]
+    r = [(t, fs, v, c, d) for i, t in enumerate(s)]
     b, r = list(zip(*map(_walk, r, chunksize)))
     s = {t for i, t in enumerate(s) if b[i]}
     r = union(r, cpu_count)
