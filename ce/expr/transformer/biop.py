@@ -118,14 +118,13 @@ class BiOpTreeTransformer(TreeTransformer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def transform_methods(self):
-        return [associativity, distribute_for_distributivity,
-                collect_for_distributivity]
+    transform_methods = [associativity,
+                         distribute_for_distributivity,
+                         collect_for_distributivity]
 
-    def reduction_methods(self):
-        return [multiplicative_identity_reduction,
-                additive_identity_reduction, zero_reduction,
-                constant_reduction]
+    reduction_methods = [multiplicative_identity_reduction,
+                         additive_identity_reduction, zero_reduction,
+                         constant_reduction]
 
     VAR_RE = re.compile(r"[^\d\W]\w*", re.UNICODE)
 

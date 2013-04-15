@@ -28,16 +28,13 @@ class ValidationError(Exception):
 class TreeTransformer(object):
 
     def __init__(self, tree, validate=False, multiprocessing=True):
-        self._t = tree
+        self._t = Expr(tree)
         self._v = validate
         self._m = multiprocessing
         super().__init__()
 
-    def reduction_methods(self):
-        raise NotImplementedError
-
-    def transform_methods(self):
-        raise NotImplementedError
+    reduction_methods = None
+    transform_methods = None
 
     def _closure_r(self, trees, reduced=False):
         v = self._validate if self._v else None
@@ -53,7 +50,7 @@ class TreeTransformer(object):
                 logger.persistent('Trees', len(done_trees))
                 logger.persistent('Todo', len(todo_trees))
                 if not reduced:
-                    f = self.transform_methods()
+                    f = self.transform_methods
                     _, step_trees = \
                         _step(todo_trees, f, v, not reduced, self._m)
                     step_trees -= done_trees
@@ -61,7 +58,7 @@ class TreeTransformer(object):
                     done_trees |= todo_trees
                     todo_trees = step_trees - done_trees
                 else:
-                    f = self.reduction_methods()
+                    f = self.reduction_methods
                     nore_trees, step_trees = \
                         _step(todo_trees, f, v, not reduced, self._m)
                     done_trees |= nore_trees
