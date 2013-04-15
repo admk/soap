@@ -5,7 +5,7 @@ import multiprocessing
 import ce.logger as logger
 from ce.logger import levels
 from ce.expr.common import cached, is_expr
-from ce.expr.biop import Expr
+from ce.expr import Expr
 
 
 def item_to_list(f):
