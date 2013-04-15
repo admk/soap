@@ -1,7 +1,3 @@
-#!/usr/bin/env python
-# vim: set fileencoding=UTF-8 :
-
-
 import functools
 import weakref
 import pickle

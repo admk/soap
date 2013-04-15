@@ -1,7 +1,3 @@
-#!/usr/bin/env python
-# vim: set fileencoding=UTF-8 :
-
-
 import itertools
 import gmpy2
 from gmpy2 import RoundUp, RoundDown, mpfr, mpq as _mpq

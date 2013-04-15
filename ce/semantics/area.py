@@ -1,7 +1,3 @@
-#!/usr/bin/env python
-# vim: set fileencoding=UTF-8 :
-
-
 from ..common import Comparable
 import ce.expr
 

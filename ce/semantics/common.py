@@ -1,7 +1,3 @@
-#!/usr/bin/env python
-# vim: set fileencoding=UTF-8 :
-
-
 _label_count = 0
 _labels = None
 

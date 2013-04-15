@@ -1,7 +1,3 @@
-#!/usr/bin/env python
-# vim: set fileencoding=UTF-8 :
-
-
 from ..common import Comparable
 
 from .common import ADD_OP, MULTIPLY_OP, COMMUTATIVITY_OPERATORS, \
