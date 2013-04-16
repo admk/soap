@@ -11,7 +11,7 @@ def closure(tree, depth=None):
 
 
 def transform(tree,
-              depth=None, reduction_methods=None, transform_methods=None):
+              reduction_methods=None, transform_methods=None, depth=None):
     t = TreeTransformer(tree)
     t.reduction_methods = reduction_methods or []
     t.transform_methods = transform_methods or []
