@@ -23,6 +23,20 @@ def expand(tree):
     return transform(tree, [distribute_for_distributivity]).pop()
 
 
+def reduce(tree):
+    logger.debug('Reducing tree %s' % str(tree))
+    try:
+        tree = Expr(tree)
+    except TypeError:
+        return {reduce(t) for t in tree}
+    s = set(transform(tree, BiOpTreeTransformer.reduction_methods))
+    if len(s) > 1:
+        s.remove(tree)
+    if len(s) == 1:
+        return s.pop()
+    raise Exception
+
+
 def parsings(tree):
     logger.debug('Generating parsings for tree: %s' % str(tree))
     return transform(tree, None, [associativity])
@@ -51,12 +65,17 @@ class MartelExpr(Expr):
 
 def martel(tree, depth=3):
     logger.debug('Generating martel for tree: %s' % str(tree))
-    return MartelExpr(tree).traces(depth)
+    return reduce(MartelExpr(tree).traces(depth))
 
 
 if __name__ == '__main__':
     import ce.logger as logger
-    logger.set_context(level=logger.levels.debug)
-    logger.info(expand('(a + 3) * (a + 3)'))
-    logger.info(parsings('a + b + c'))
-    logger.info(martel(expand('(a + 1) * (a + 1) * (a + 1)')))
+    logger.set_context(level=logger.levels.info)
+    logger.info('Expand', expand('(a + 3) * (a + 3)'))
+    logger.info('Parsings', parsings('a + b + c'))
+    logger.info('Reduction', reduce('a + 2 * 3 * 4 + 6 * b + 3'))
+    e = '(a + 1) * (a + 1) * (a + 1)'
+    e_closure = closure(e)
+    e_martel = martel(e)
+    logger.info('Closure', len(e_closure))
+    logger.info('Martel', len(e_martel))
