@@ -5,7 +5,7 @@ import multiprocessing
 import ce.logger as logger
 from ce.logger import levels
 from ce.expr.common import cached, is_expr
-from ce.expr.biop import Expr
+from ce.expr import Expr
 
 
 def item_to_list(f):
@@ -28,10 +28,13 @@ class ValidationError(Exception):
 
 class TreeTransformer(object):
 
-    def __init__(self, tree,
+    def __init__(self, tree_or_trees,
                  validate=False, depth=sys.getrecursionlimit(),
                  multiprocessing=False):
-        self._t = Expr(tree)
+        try:
+            self._t = [Expr(tree_or_trees)]
+        except TypeError:
+            self._t = tree_or_trees
         self._v = validate
         self._m = multiprocessing
         self._d = depth
@@ -82,7 +85,7 @@ class TreeTransformer(object):
         Returns:
             A set of trees after transform.
         """
-        s = self._closure_r([self._t])
+        s = self._closure_r(self._t)
         logger.debug('Finished finding closure.')
         return s
 
