@@ -19,10 +19,12 @@ def transform(tree,
 
 
 def expand(tree):
+    logger.debug('Expanding tree: %s' % str(tree))
     return transform(tree, [distribute_for_distributivity]).pop()
 
 
 def parsings(tree):
+    logger.debug('Generating parsings for tree: %s' % str(tree))
     return transform(tree, None, [associativity])
 
 
@@ -44,6 +46,7 @@ class MartelExpr(Expr):
 
 
 def martel(tree, depth=3):
+    logger.debug('Generating martel for tree: %s' % str(tree))
     return MartelExpr(tree).traces(depth)
 
 
