@@ -53,7 +53,7 @@ def persistent(name, *args, l=levels.info):
     s = []
     for k, v in get_context()['persistent'].items():
         *v, l = v
-        s.append(k + ': ' + ','.join(format(*v)))
+        s.append(k + ': ' + format(*v))
     s = '; '.join(s)
     s += ' ' * (78 - len(s))
     rewrite(s, l=l)
