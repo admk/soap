@@ -42,9 +42,6 @@ class TreeTransformer(object):
         self._d = depth or RECURSION_LIMIT
         super().__init__()
 
-    reduction_methods = None
-    transform_methods = None
-
     def _closure_r(self, trees, reduced=False):
         v = self._validate if self._v else None
         done_trees = set()

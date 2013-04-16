@@ -42,6 +42,13 @@ def parsings(tree):
     return transform(tree, None, [associativity])
 
 
+def martel_closure(tree, depth=None):
+    t = BiOpTreeTransformer(tree, depth=depth)
+    print(t.transform_methods)
+    t.transform_methods.remove(distribute_for_distributivity)
+    return t.closure()
+
+
 class MartelExpr(Expr):
 
     def traces(self, depth):
@@ -55,7 +62,7 @@ class MartelExpr(Expr):
         logger.debug('Generating %s~=%d traces for tree: %s' %
                      ('*'.join([str(len(s)) for s in stl]),
                       len(sts), str(self)))
-        cll = closure(sts, depth=depth)
+        cll = martel_closure(sts, depth=depth)
         return cll
 
     def __repr__(self):
@@ -75,7 +82,7 @@ if __name__ == '__main__':
     logger.info('Expand', expand('(a + 3) * (a + 3)'))
     logger.info('Parsings', parsings('a + b + c'))
     logger.info('Reduction', reduce('a + 2 * 3 * 4 + 6 * b + 3'))
-    e = '(a + 1) * (a + 1) * (a + 1)'
+    e = '(a + 1) * (a + 1)'
     e_closure = timeit(closure)(e)
     e_martel = timeit(martel)(e)
     logger.info('Closure', len(e_closure))
