@@ -28,8 +28,11 @@ class ValidationError(Exception):
 
 class TreeTransformer(object):
 
-    def __init__(self, tree, validate=False, multiprocessing=True):
-        self._t = Expr(tree)
+    def __init__(self, tree_or_trees, validate=False, multiprocessing=True):
+        try:
+            self._t = [Expr(tree_or_trees)]
+        except TypeError:
+            self._t = tree_or_trees
         self._v = validate
         self._m = multiprocessing
         super().__init__()
@@ -79,7 +82,7 @@ class TreeTransformer(object):
         Returns:
             A set of trees after transform.
         """
-        s = self._closure_r([self._t])
+        s = self._closure_r(self._t)
         logger.debug('Finished finding closure.')
         return s
 
