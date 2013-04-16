@@ -37,7 +37,11 @@ def parse(s):
             raise SyntaxError('Unknown token %s' % str(t))
         except KeyError:
             raise SyntaxError('Unrecognised binary operator %s' % str(t.op))
-    return _parse_r(ast.parse(s, mode='eval').body)
+    try:
+        body = ast.parse(s, mode='eval').body
+    except TypeError:
+        raise TypeError('Parse argument must be a string')
+    return _parse_r(body)
 
 
 if __name__ == '__main__':

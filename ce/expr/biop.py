@@ -21,8 +21,11 @@ class Expr(Comparable, Flyweight):
             try:
                 op, al = expr.op, expr.args
             except AttributeError:
-                self.__init__(parse(expr))
-                return
+                expr = parse(expr)
+            try:
+                op, al = expr.op, expr.args
+            except AttributeError:
+                raise ValueError('String is not an expression')
         elif len(args) == 2:
             op, al = args
         elif len(args) == 3:
