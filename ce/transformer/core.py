@@ -8,6 +8,9 @@ from ce.expr.common import cached, is_expr
 from ce.expr import Expr
 
 
+RECURSION_LIMIT = sys.getrecursionlimit()
+
+
 def item_to_list(f):
     def wrapper(t):
         v = f(t)
@@ -29,15 +32,14 @@ class ValidationError(Exception):
 class TreeTransformer(object):
 
     def __init__(self, tree_or_trees,
-                 validate=False, depth=sys.getrecursionlimit(),
-                 multiprocessing=False):
+                 validate=False, depth=None, multiprocessing=True):
         try:
             self._t = [Expr(tree_or_trees)]
         except TypeError:
             self._t = tree_or_trees
         self._v = validate
         self._m = multiprocessing
-        self._d = depth
+        self._d = depth or RECURSION_LIMIT
         super().__init__()
 
     reduction_methods = None
@@ -112,7 +114,7 @@ def _walk(t_fs_v_c_d):
     t, fs, v, c, d = t_fs_v_c_d
     s = set()
     for f in fs:
-        s |= _walk_r(t, f, v, d if c else sys.getrecursionlimit())
+        s |= _walk_r(t, f, v, d if c else RECURSION_LIMIT)
     if c:
         s.add(t)
     return True if not c and not s else False, s
