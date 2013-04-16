@@ -1,13 +1,19 @@
 from ce.transformer.core import TreeTransformer
-from ce.transformer.biop import associativity, distribute_for_distributivity
+from ce.transformer.biop import associativity, distribute_for_distributivity, \
+    BiOpTreeTransformer
 
 
-def transform(tree, reduction_methods=None, transform_methods=None):
+def closure(tree, depth=None):
+    return BiOpTreeTransformer(tree, depth=depth).closure()
+
+
+def transform(tree,
+              depth=None, reduction_methods=None, transform_methods=None):
     t = TreeTransformer(tree)
     t.reduction_methods = reduction_methods or []
     t.transform_methods = transform_methods or []
     return t.closure()
-    
+
 
 def expand(tree):
     return transform(tree, [distribute_for_distributivity]).pop()
