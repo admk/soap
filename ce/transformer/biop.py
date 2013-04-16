@@ -159,7 +159,7 @@ if __name__ == '__main__':
         import pycallgraph
         pycallgraph.start_trace()
     from datetime import datetime
-    startTime = datetime.now()
+    start_time = datetime.now()
     e = '(a + 1) * (a + 1) * a'
     t = Expr(e)
     logger.debug('Expr:', str(t))
@@ -171,7 +171,7 @@ if __name__ == '__main__':
         tracker.track_object(Flyweight._cache)
         tracker.track_class(Expr)
     s = BiOpTreeTransformer(t).closure()
-    logger.debug(datetime.now() - startTime)
+    logger.debug(datetime.now() - start_time)
     logger.debug(len(s))
     if memory_profile:
         from pympler.asizeof import asizeof
