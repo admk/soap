@@ -70,12 +70,13 @@ def martel(tree, depth=3):
 
 if __name__ == '__main__':
     import ce.logger as logger
+    from ce.common import timeit
     logger.set_context(level=logger.levels.info)
     logger.info('Expand', expand('(a + 3) * (a + 3)'))
     logger.info('Parsings', parsings('a + b + c'))
     logger.info('Reduction', reduce('a + 2 * 3 * 4 + 6 * b + 3'))
     e = '(a + 1) * (a + 1) * (a + 1)'
-    e_closure = closure(e)
-    e_martel = martel(e)
+    e_closure = timeit(closure)(e)
+    e_martel = timeit(martel)(e)
     logger.info('Closure', len(e_closure))
     logger.info('Martel', len(e_martel))

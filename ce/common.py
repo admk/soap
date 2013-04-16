@@ -1,4 +1,6 @@
 import inspect
+import time                                                
+import ce.logger as logger
 
 
 class DynamicMethods(object):
@@ -32,3 +34,13 @@ class Comparable(object):
 
     def __le__(self, other):
         return not self.__gt__(other)
+
+
+def timeit(f):
+    def timed(*args, **kwargs):
+        ts = time.time()
+        result = f(*args, **kwargs)
+        te = time.time()
+        logger.info('%r %2.2f sec' % (f.__name__, te - ts))
+        return result
+    return timed
