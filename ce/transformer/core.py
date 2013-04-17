@@ -4,7 +4,8 @@ import multiprocessing
 
 import ce.logger as logger
 from ce.logger import levels
-from ce.expr.common import cached, is_expr
+from ce.common import cached
+from ce.expr.common import is_expr
 from ce.expr import Expr
 
 
