@@ -31,6 +31,9 @@ class ValidationError(Exception):
 
 class TreeTransformer(object):
 
+    transform_methods = None
+    reduction_methods = None
+
     def __init__(self, tree_or_trees,
                  validate=False, depth=None, multiprocessing=True):
         try:
@@ -40,6 +43,8 @@ class TreeTransformer(object):
         self._v = validate
         self._m = multiprocessing
         self._d = depth or RECURSION_LIMIT
+        self.transform_methods = list(self.__class__.transform_methods or [])
+        self.reduction_methods = list(self.__class__.reduction_methods or [])
         super().__init__()
 
     def _closure_r(self, trees, reduced=False):
