@@ -4,6 +4,7 @@ from ce.expr import Expr
 from ce.transformer.core import TreeTransformer
 from ce.transformer.biop import associativity, distribute_for_distributivity, \
     BiOpTreeTransformer
+from ce.analysis import expr_frontier
 
 
 def closure(tree, depth=None):
@@ -47,7 +48,7 @@ def martel_closure(tree, depth=None):
 
 class MartelExpr(Expr):
 
-    def traces(self, depth):
+    def traces(self, var_env=None, depth=None):
         def subtraces(a):
             try:
                 return MartelExpr(a).traces(depth)
@@ -59,6 +60,8 @@ class MartelExpr(Expr):
                      ('*'.join([str(len(s)) for s in stl]),
                       len(sts), str(self)))
         cll = martel_closure(sts, depth=depth)
+        if var_env:
+            cll = expr_frontier(cll, var_env)
         return cll
 
     def __repr__(self):
@@ -66,19 +69,26 @@ class MartelExpr(Expr):
             (self.op, repr(self.a1), repr(self.a2))
 
 
-def martel(tree, depth=3):
-    return reduce(MartelExpr(tree).traces(depth))
+def martel(tree, var_env=None, depth=2):
+    return reduce(MartelExpr(expand(tree)).traces(var_env, depth))
 
 
 if __name__ == '__main__':
     import ce.logger as logger
     from ce.common import timeit
+    from ce.semantics import cast_error
     logger.set_context(level=logger.levels.info)
     logger.info('Expand', expand('(a + 3) * (a + 3)'))
     logger.info('Parsings', parsings('a + b + c'))
     logger.info('Reduction', reduce('a + 2 * 3 * 4 + 6 * b + 3'))
-    e = '(a + 1) * (a + 1)'
-    e_closure = timeit(closure)(e)
-    e_martel = timeit(martel)(e)
-    logger.info('Closure', len(e_closure))
-    logger.info('Martel', len(e_martel))
+    e = 'a * a * b * b + a * a * b + 2 * a * b + 3 * a + 4'
+    v = {
+        'a': cast_error('0.1', '0.2'),
+        'b': cast_error('100', '200'),
+    }
+    def frontier(e, v):
+        return expr_frontier(closure(e), v)
+    e_closure = timeit(frontier)(e, v)
+    e_martel = timeit(martel)(e, v)
+    logger.info('Closure', len(e_closure), e_closure)
+    logger.info('Martel', len(e_martel), e_martel)
