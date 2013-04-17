@@ -3,28 +3,32 @@ import gmpy2
 import ce.logger as logger
 from ce.common import DynamicMethods
 from ce.expr import Expr
-from ce.transformer import BiOpTreeTransformer
 from ce.semantics import cast_error, mpfr
 
 
 class Analysis(DynamicMethods):
 
-    def __init__(self, e, **kwargs):
-        self.e = e
-        self.s = BiOpTreeTransformer(Expr(e), **kwargs).closure()
+    def __init__(self, s):
+        self.s = s
         super().__init__()
 
     def analyse(self):
-        logger.info('Analysing results.')
+        try:
+            return self.result
+        except AttributeError:
+            pass
+        logger.debug('Analysing results.')
         a = []
         n = len(self.s)
         for i, t in enumerate(self.s):
-            logger.persistent('Analysing', '%d/%d' % (i + 1, n))
+            logger.persistent('Analysing', '%d/%d' % (i + 1, n),
+                              l=logger.levels.debug)
             a.append(self._analyse(t))
         logger.unpersistent('Analysing')
         a = sorted(
             a, key=lambda k: tuple(k[m.__name__] for m in self.methods()))
-        return [self._select(d) for d in a]
+        self.result = [self._select(d) for d in a]
+        return self.result
 
     def _analyse(self, t):
         d = {'e': t}
@@ -43,9 +47,9 @@ class Analysis(DynamicMethods):
 
 class ErrorAnalysis(Analysis):
 
-    def __init__(self, e, v, **kwargs):
+    def __init__(self, s, v):
         self.v = v
-        super().__init__(e, **kwargs)
+        super().__init__(s)
 
     def error_analysis(self, t):
         return t.error(self.v)
@@ -86,17 +90,16 @@ def pareto_frontier_2d(s, keys=None):
 class AreaErrorAnalysis(ErrorAnalysis, AreaAnalysis):
     """Collect area and error analysis."""
 
-    def analyse(self):
-        analysis = super().analyse()
-        frontier = pareto_frontier_2d(
-            analysis, keys=(self.area_analysis.__name__,
-                            self.error_analysis.__name__))
-        return (analysis, frontier)
+    def frontier(self):
+        return pareto_frontier_2d(
+            self.analyse(), keys=(self.area_analysis.__name__,
+                                  self.error_analysis.__name__))
 
 
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
     from matplotlib.backends import backend_pdf
+    from ce.transformer import BiOpTreeTransformer
     logger.set_context(level=logger.levels.info)
     gmpy2.set_context(gmpy2.ieee(32))
     e = Expr('((a + b) * (a + b))')
@@ -104,8 +107,8 @@ if __name__ == '__main__':
         'a': cast_error('5', '10'),
         'b': cast_error('0', '0.001')
     }
-    a = AreaErrorAnalysis(e, s)
-    a, f = a.analyse()
+    a = AreaErrorAnalysis(BiOpTreeTransformer(e).closure(), s)
+    a, f = a.analyse(), a.frontier()
     ax = [v['area_analysis'] for v in a]
     ay = [float(v['error_analysis']) for v in a]
     fx = [v['area_analysis'] for v in f]
