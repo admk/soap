@@ -1,13 +1,13 @@
 import gmpy2
 
 import ce.logger as logger
-from ce.common import DynamicMethods
+from ce.common import DynamicMethods, Flyweight, cached
 from ce.expr import Expr
 from ce.transformer import BiOpTreeTransformer
 from ce.semantics import cast_error, mpfr
 
 
-class Analysis(DynamicMethods):
+class Analysis(DynamicMethods, Flyweight):
 
     def __init__(self, e, **kwargs):
         self.e = e
