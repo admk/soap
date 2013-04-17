@@ -19,12 +19,10 @@ def transform(tree,
 
 
 def expand(tree):
-    logger.debug('Expanding tree: %s' % str(tree))
     return transform(tree, [distribute_for_distributivity]).pop()
 
 
 def reduce(tree):
-    logger.debug('Reducing tree %s' % str(tree))
     try:
         tree = Expr(tree)
     except TypeError:
@@ -38,13 +36,11 @@ def reduce(tree):
 
 
 def parsings(tree):
-    logger.debug('Generating parsings for tree: %s' % str(tree))
     return transform(tree, None, [associativity])
 
 
 def martel_closure(tree, depth=None):
     t = BiOpTreeTransformer(tree, depth=depth)
-    print(t.transform_methods)
     t.transform_methods.remove(distribute_for_distributivity)
     return t.closure()
 
@@ -71,7 +67,6 @@ class MartelExpr(Expr):
 
 
 def martel(tree, depth=3):
-    logger.debug('Generating martel for tree: %s' % str(tree))
     return reduce(MartelExpr(tree).traces(depth))
 
 
