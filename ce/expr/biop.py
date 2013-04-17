@@ -1,7 +1,6 @@
-from ce.common import Comparable
+from ce.common import Comparable, Flyweight, cached
 
-from ce.expr.common import ADD_OP, MULTIPLY_OP, COMMUTATIVITY_OPERATORS, \
-    cached, Flyweight
+from ce.expr.common import ADD_OP, MULTIPLY_OP, COMMUTATIVITY_OPERATORS
 from ce.semantics import cast_error, cast_error_constant, Label, AreaSemantics
 from ce.expr.parser import parse, try_to_number
 
