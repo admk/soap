@@ -74,10 +74,13 @@ def martel(tree, var_env=None, depth=2):
 
 
 if __name__ == '__main__':
+    from matplotlib import pyplot as plt
     import ce.logger as logger
     from ce.common import timeit
     from ce.semantics import cast_error
+    from ce.analysis import analyse, frontier, zip_result
     logger.set_context(level=logger.levels.info)
+    Expr.__repr__ = Expr.__str__
     logger.info('Expand', expand('(a + 3) * (a + 3)'))
     logger.info('Parsings', parsings('a + b + c'))
     logger.info('Reduction', reduce('a + 2 * 3 * 4 + 6 * b + 3'))
@@ -86,9 +89,14 @@ if __name__ == '__main__':
         'a': cast_error('0.1', '0.2'),
         'b': cast_error('100', '200'),
     }
-    def frontier(e, v):
-        return expr_frontier(closure(e), v)
-    e_closure = timeit(frontier)(e, v)
-    e_martel = timeit(martel)(e, v)
-    logger.info('Closure', len(e_closure), e_closure)
-    logger.info('Martel', len(e_martel), e_martel)
+    def closure_frontier(e, v):
+        c = closure(e)
+        return c, expr_frontier(c, v)
+    complete, complete_front = timeit(closure_frontier)(e, v)
+    martel_front = timeit(martel)(e, v)
+    logger.info('Closure', len(complete_front), complete_front)
+    logger.info('Martel', len(martel_front), martel_front)
+    plt.scatter(*zip_result(analyse(complete, v)))
+    plt.plot(*zip_result(frontier(complete, v)))
+    plt.plot(*zip_result(analyse(martel_front, v)))
+    plt.show()

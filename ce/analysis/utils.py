@@ -18,6 +18,16 @@ def list_from_keys(result, keys=None):
     return [r[keys] for r in result]
 
 
+def zip_from_keys(result, keys='e'):
+    return zip(*list_from_keys(result, keys))
+
+
+def zip_result(result):
+    return zip_from_keys(
+        result, keys=(AreaErrorAnalysis.area_analysis.__name__,
+                      AreaErrorAnalysis.error_analysis.__name__))
+
+
 def expr_list(result):
     return list_from_keys(result, keys='e')
 
