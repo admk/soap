@@ -107,28 +107,12 @@ if __name__ == '__main__':
     from ce.transformer import BiOpTreeTransformer
     logger.set_context(level=logger.levels.info)
     gmpy2.set_context(gmpy2.ieee(32))
-    e = Expr('((a + b) * (a + b))')
+    e = Expr('(a + b) * (a + b)')
     s = {
         'a': cast_error('5', '10'),
         'b': cast_error('0', '0.001')
     }
     a = AreaErrorAnalysis(BiOpTreeTransformer(e).closure(), s)
     a, f = a.analyse(), a.frontier()
-    ax = [v['area_analysis'] for v in a]
-    ay = [float(v['error_analysis']) for v in a]
-    fx = [v['area_analysis'] for v in f]
-    fy = [float(v['error_analysis']) for v in f]
-    for r in a:
-        if r in f:
-            logger.info('>', r['e'])
-        else:
-            logger.debug(' ', r['e'])
-    fig = plt.figure()
-    subplt = fig.add_subplot(111)
-    subplt.set_ylim(0.8 * min(ay), 1.2 * max(ay))
-    subplt.scatter(ax, ay)
-    subplt.plot(fx, fy)
-    plt.show()
-    pp = backend_pdf.PdfPages('analysis.pdf')
-    pp.savefig(fig)
-    pp.close()
+    logger.info('Results', a)
+    logger.info('Frontier', f)
