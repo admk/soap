@@ -18,18 +18,16 @@ def list_from_keys(result, keys=None):
     return [r[keys] for r in result]
 
 
-def zip_from_keys(result, keys='e'):
+def zip_from_keys(result, keys='expression'):
     return zip(*list_from_keys(result, keys))
 
 
 def zip_result(result):
-    return zip_from_keys(
-        result, keys=(AreaErrorAnalysis.area_analysis.__name__,
-                      AreaErrorAnalysis.error_analysis.__name__))
+    return zip_from_keys(result, keys=AreaErrorAnalysis.names())
 
 
 def expr_list(result):
-    return list_from_keys(result, keys='e')
+    return list_from_keys(result, keys='expression')
 
 
 def expr_frontier(expr_set, var_env):

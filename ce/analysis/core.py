@@ -8,8 +8,8 @@ from ce.semantics import cast_error, mpfr
 
 class Analysis(DynamicMethods, Flyweight):
 
-    def __init__(self, s):
-        self.s = s
+    def __init__(self, expr_set):
+        self.expr_set = expr_set
         super().__init__()
 
     def analyse(self):
@@ -17,32 +17,43 @@ class Analysis(DynamicMethods, Flyweight):
             return self.result
         except AttributeError:
             pass
+        analysis_names, analysis_methods, select_methods = self.methods()
         logger.debug('Analysing results.')
-        a = []
-        n = len(self.s)
-        for i, t in enumerate(self.s):
+        result = []
+        n = len(self.expr_set)
+        for i, t in enumerate(self.expr_set):
             logger.persistent('Analysing', '%d/%d' % (i + 1, n),
                               l=logger.levels.debug)
-            a.append(self._analyse(t))
+            analysis_dict = {'expression': t}
+            for name, func in zip(analysis_names, analysis_methods):
+                analysis_dict[name] = func(t)
+            result.append(analysis_dict)
         logger.unpersistent('Analysing')
-        a = sorted(
-            a, key=lambda k: tuple(k[m.__name__] for m in self.methods()))
-        self.result = [self._select(d) for d in a]
+        result = sorted(
+            result, key=lambda k: tuple(k[n] for n in analysis_names))
+        for analysis_dict in result:
+            for n, f in zip(analysis_names, select_methods):
+                analysis_dict[n] = f(analysis_dict[n])
+        self.result = result
         return self.result
 
-    def _analyse(self, t):
-        d = {'e': t}
-        d.update({m.__name__: m(t) for m in self.methods()})
-        return d
-
-    def _select(self, d):
-        d['e'] = str(d['e'])
-        for f in self.list_methods(lambda m: m.endswith('select')):
-            d = f(d)
-        return d
+    @classmethod
+    def names(cls):
+        method_list = cls.list_method_names(lambda m: m.endswith('_analysis'))
+        names = []
+        for m in method_list:
+            m = m.replace('_analysis', '')
+            names.append(m)
+        return names
 
     def methods(self):
-        return self.list_methods(lambda m: m.endswith('analysis'))
+        method_names = self.names()
+        analysis_methods = []
+        select_methods = []
+        for m in method_names:
+            analysis_methods.append(getattr(self, m + '_analysis'))
+            select_methods.append(getattr(self, m + '_select'))
+        return method_names, analysis_methods, select_methods
 
 
 class ErrorAnalysis(Analysis):
@@ -54,11 +65,9 @@ class ErrorAnalysis(Analysis):
     def error_analysis(self, t):
         return t.error(self.v)
 
-    def error_select(self, d):
-        m = self.error_analysis.__name__
+    def error_select(self, v):
         with gmpy2.local_context(round=gmpy2.RoundAwayZero):
-            d[m] = mpfr(max(abs(d[m].e.min), abs(d[m].e.max)))
-        return d
+            return float(mpfr(max(abs(v.e.min), abs(v.e.max))))
 
 
 class AreaAnalysis(Analysis):
@@ -66,10 +75,8 @@ class AreaAnalysis(Analysis):
     def area_analysis(self, t):
         return t.area()
 
-    def area_select(self, d):
-        m = self.area_analysis.__name__
-        d[m] = d[m].area
-        return d
+    def area_select(self, v):
+        return v.area
 
 
 def pareto_frontier_2d(s, keys=None):
@@ -91,9 +98,7 @@ class AreaErrorAnalysis(ErrorAnalysis, AreaAnalysis):
     """Collect area and error analysis."""
 
     def frontier(self):
-        return pareto_frontier_2d(
-            self.analyse(), keys=(self.area_analysis.__name__,
-                                  self.error_analysis.__name__))
+        return pareto_frontier_2d(self.analyse(), keys=self.names())
 
 
 if __name__ == '__main__':
