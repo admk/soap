@@ -1,7 +1,7 @@
 import gmpy2
 
 import ce.logger as logger
-from ce.common import DynamicMethods, Flyweight, cached
+from ce.common import DynamicMethods, Flyweight
 from ce.expr import Expr
 from ce.semantics import cast_error, mpfr
 
@@ -102,8 +102,6 @@ class AreaErrorAnalysis(ErrorAnalysis, AreaAnalysis):
 
 
 if __name__ == '__main__':
-    from matplotlib import pyplot as plt
-    from matplotlib.backends import backend_pdf
     from ce.transformer import BiOpTreeTransformer
     logger.set_context(level=logger.levels.info)
     gmpy2.set_context(gmpy2.ieee(32))

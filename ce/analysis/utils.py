@@ -1,5 +1,4 @@
 from matplotlib import pyplot
-from matplotlib.backends import backend_pdf
 
 from ce.analysis.core import AreaErrorAnalysis, pareto_frontier_2d
 

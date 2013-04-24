@@ -77,7 +77,13 @@ if __name__ == '__main__':
     import ce.logger as logger
     from ce.common import timeit
     from ce.semantics import cast_error
-    from ce.analysis import analyse, frontier, Plot
+    from ce.analysis import analyse, Plot
+
+    @timeit
+    def closure_frontier(e, v):
+        c = closure(e)
+        return c, set(expr_frontier(c, v))
+
     logger.set_context(level=logger.levels.debug)
     Expr.__repr__ = Expr.__str__
     logger.info('Expand', expand('(a + 3) * (a + 3)'))
@@ -89,10 +95,6 @@ if __name__ == '__main__':
         'b': cast_error('100', '200'),
         'c': cast_error('10000', '2000000'),
     }
-    @timeit
-    def closure_frontier(e, v):
-        c = closure(e)
-        return c, expr_frontier(c, v)
     complete, complete_front = closure_frontier(e, v)
     martel_front = timeit(martel)(e, v)
     logger.info('Closure', len(complete_front), complete_front)
