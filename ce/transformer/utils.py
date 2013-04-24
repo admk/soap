@@ -100,6 +100,8 @@ if __name__ == '__main__':
     logger.info('Closure', len(complete_front), complete_front)
     logger.info('Martel', len(martel_front), martel_front)
     p = Plot()
-    p.add(analyse(complete, v), legend='Complete')
+    p.add(analyse(complete, v),
+          legend='Complete', color='black', linestyle='--')
     p.add(analyse(martel_front, v), legend='Martel')
+    p.add(analyse(e, v), frontier=False, legend='Original', marker='x')
     p.show()
