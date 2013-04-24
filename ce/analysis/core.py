@@ -9,6 +9,10 @@ from ce.semantics import cast_error, mpfr
 class Analysis(DynamicMethods, Flyweight):
 
     def __init__(self, expr_set):
+        try:
+            expr_set = {Expr(expr_set)}
+        except TypeError:
+            pass
         self.expr_set = expr_set
         super().__init__()
 

@@ -32,6 +32,10 @@ def expr_list(result):
     return list_from_keys(result, keys='expression')
 
 
+def expr_set(result):
+    return set(expr_list(result))
+
+
 def expr_frontier(expr_set, var_env):
     return expr_list(frontier(expr_set, var_env))
 
