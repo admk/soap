@@ -1,19 +1,23 @@
 import inspect
+import time                                                
 import functools
 import weakref
 import pickle
 
+import ce.logger as logger
+
 
 class DynamicMethods(object):
 
-    def list_method_names(self, predicate):
+    @classmethod
+    def list_method_names(cls, predicate):
         """Find all transform methods within the class that satisfies the
         predicate.
 
         Returns:
             A list of tuples containing method names.
         """
-        methods = [member[0] for member in inspect.getmembers(self,
+        methods = [member[0] for member in inspect.getmembers(cls,
                    predicate=inspect.isroutine)]
         return [m for m in methods if not m.startswith('_') and
                 'list_method' not in m and predicate(m)]
@@ -35,6 +39,16 @@ class Comparable(object):
 
     def __le__(self, other):
         return not self.__gt__(other)
+
+
+def timeit(f):
+    def timed(*args, **kwargs):
+        ts = time.time()
+        result = f(*args, **kwargs)
+        te = time.time()
+        logger.info('%r %2.2f sec' % (f.__name__, te - ts))
+        return result
+    return timed
 
 
 CACHE_CAPACITY = 1000000

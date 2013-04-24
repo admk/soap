@@ -119,9 +119,6 @@ def constant_reduction(t):
 
 class BiOpTreeTransformer(TreeTransformer):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
     transform_methods = [associativity,
                          distribute_for_distributivity,
                          collect_for_distributivity]
@@ -129,6 +126,9 @@ class BiOpTreeTransformer(TreeTransformer):
     reduction_methods = [multiplicative_identity_reduction,
                          additive_identity_reduction, zero_reduction,
                          constant_reduction]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     VAR_RE = re.compile(r"[^\d\W]\w*", re.UNICODE)
 

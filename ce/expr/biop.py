@@ -20,7 +20,7 @@ class Expr(Comparable, Flyweight):
             try:
                 op, al = expr.op, expr.args
             except AttributeError:
-                expr = parse(expr)
+                expr = parse(expr, self.__class__)
             try:
                 op, al = expr.op, expr.args
             except AttributeError:

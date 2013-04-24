@@ -17,8 +17,7 @@ OPERATOR_MAP = {
 }
 
 
-def parse(s):
-    from ce.expr.biop import Expr
+def parse(s, cls):
     def _parse_r(t):
         try:
             return t.n
@@ -32,7 +31,7 @@ def parse(s):
             op = OPERATOR_MAP[t.op.__class__]
             a1 = _parse_r(t.left)
             a2 = _parse_r(t.right)
-            return Expr(op, a1, a2)
+            return cls(op, a1, a2)
         except AttributeError:
             raise SyntaxError('Unknown token %s' % str(t))
         except KeyError:
