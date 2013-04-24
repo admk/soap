@@ -90,7 +90,8 @@ class Expr(Comparable, Flyweight):
         return iter((self.op, self.a1, self.a2))
 
     def __str__(self):
-        return '(%s %s %s)' % (str(self.a1), self.op, str(self.a2))
+        a1, a2 = sorted([str(self.a1), str(self.a2)])
+        return '(%s %s %s)' % (a1, self.op, a2)
 
     def __repr__(self):
         return "Expr(op='%s', a1=%s, a2=%s)" % \
