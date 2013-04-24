@@ -38,7 +38,7 @@ def expr_frontier(expr_set, var_env):
 
 
 class Plot(object):
-    
+
     def __init__(self, result=None, legend=None):
         self.result_list = []
         if result:
@@ -75,6 +75,7 @@ class Plot(object):
                 legend = r['legend'] + ' frontier' if r['legend'] else None
                 plot.plot(area, error, label=legend)
         plot.set_ylim(0.9 * ymin, 1.1 * ymax)
+        plot.legend()
         return self.figure
 
     def show(self):
