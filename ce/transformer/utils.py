@@ -78,15 +78,16 @@ if __name__ == '__main__':
     from ce.common import timeit
     from ce.semantics import cast_error
     from ce.analysis import analyse, frontier, Plot
-    logger.set_context(level=logger.levels.info)
+    logger.set_context(level=logger.levels.debug)
     Expr.__repr__ = Expr.__str__
     logger.info('Expand', expand('(a + 3) * (a + 3)'))
     logger.info('Parsings', parsings('a + b + c'))
     logger.info('Reduction', reduce('a + 2 * 3 * 4 + 6 * b + 3'))
-    e = 'a * a * b * b + a * a * b + 2 * a * b + 3 * a + 4'
+    e = '(a + 2) * (b + 3) * c'
     v = {
         'a': cast_error('0.1', '0.2'),
         'b': cast_error('100', '200'),
+        'c': cast_error('10000', '2000000'),
     }
     @timeit
     def closure_frontier(e, v):
