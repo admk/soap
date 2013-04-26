@@ -1,5 +1,5 @@
 import inspect
-import time                                                
+import time
 import functools
 import weakref
 import pickle
@@ -46,9 +46,9 @@ def timeit(f):
         ts = time.time()
         result = f(*args, **kwargs)
         te = time.time()
-        logger.info('%r %2.2f sec' % (f.__name__, te - ts))
+        logger.info('%r %f sec' % (f.__name__, te - ts))
         return result
-    return timed
+    return functools.wraps(f)(timed)
 
 
 CACHE_CAPACITY = 1000000
