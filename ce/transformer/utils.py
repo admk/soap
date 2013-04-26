@@ -78,30 +78,41 @@ if __name__ == '__main__':
     from ce.common import timeit
     from ce.semantics import cast_error
     from ce.analysis import analyse, Plot
+    logger.set_context(level=logger.levels.debug)
+    Expr.__repr__ = Expr.__str__
+
+    depth = 2
 
     @timeit
     def closure_frontier(e, v):
         c = closure(e)
         return c, set(expr_frontier(c, v))
 
-    logger.set_context(level=logger.levels.debug)
-    Expr.__repr__ = Expr.__str__
+    @timeit
+    def depth_frontier(e, v):
+        c = collecting_closure(expand(e), depth=depth)
+        return c, set(expr_frontier(c, v))
+
+    @timeit
+    def martel_frontier(e, v):
+        return None, martel(e, v, depth=depth)
+
     logger.info('Expand', expand('(a + 3) * (a + 3)'))
     logger.info('Parsings', parsings('a + b + c'))
     logger.info('Reduction', reduce('a + 2 * 3 * 4 + 6 * b + 3'))
+
     e = '(a + 2) * (b + 3) * c'
     v = {
         'a': cast_error('0.1', '0.2'),
         'b': cast_error('100', '200'),
         'c': cast_error('10000', '2000000'),
     }
-    complete, complete_front = closure_frontier(e, v)
-    martel_front = timeit(martel)(e, v)
-    logger.info('Closure', len(complete_front), complete_front)
-    logger.info('Martel', len(martel_front), martel_front)
     p = Plot()
-    p.add(analyse(complete, v),
-          legend='Complete', color='black', linestyle='--')
-    p.add(analyse(martel_front, v), legend='Martel')
-    p.add(analyse(e, v), frontier=False, legend='Original', marker='x')
+    for f in [depth_frontier, martel_frontier]:
+        derived, front = f(e, v)
+        logger.info(f.__name__, len(front), front)
+        derived = derived or front
+        p.add(analyse(derived, v),
+              legend=f.__name__, alpha=0.7, linestyle='--')
+    p.add(analyse(e, v), frontier=False, legend='Original')
     p.show()
