@@ -1,12 +1,8 @@
-#!/usr/bin/env python
-# vim: set fileencoding=UTF-8 :
-
-
 import itertools
 import gmpy2
 from gmpy2 import RoundUp, RoundDown, mpfr, mpq as _mpq
 
-from ..common import Comparable
+from ce.common import Comparable
 
 
 mpfr_type = type(mpfr('1.0'))
@@ -72,6 +68,8 @@ class Interval(object):
     def __init__(self, v):
         min_val, max_val = v
         self.min, self.max = min_val, max_val
+        if min_val > max_val:
+            raise ValueError('min_val cannot be greater than max_val')
 
     def __iter__(self):
         return iter((self.min, self.max))
@@ -107,7 +105,7 @@ class FloatInterval(Interval):
             min_val = mpfr(min_val)
         with gmpy2.local_context(round=RoundUp):
             max_val = mpfr(max_val)
-        super(FloatInterval, self).__init__((min_val, max_val))
+        super().__init__((min_val, max_val))
 
     def __add__(self, other):
         f = round_op(lambda x, y: x + y)
@@ -134,7 +132,7 @@ class FractionInterval(Interval):
 
     def __init__(self, v):
         min_val, max_val = v
-        super(FractionInterval, self).__init__((mpq(min_val), mpq(max_val)))
+        super().__init__((mpq(min_val), mpq(max_val)))
 
     def __str__(self):
         return '[~%s, ~%s]' % (str(mpfr(self.min)), str(mpfr(self.max)))

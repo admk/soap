@@ -1,11 +1,6 @@
-#!/usr/bin/env python
-# vim: set fileencoding=UTF-8 :
-
-
-from ..common import Comparable
 import ce.expr
-
-from . import Lattice
+from ce.common import Comparable
+from ce.semantics import Lattice
 
 
 ADDER_SIZE = 576
@@ -17,7 +12,7 @@ class AreaSemantics(Comparable, Lattice):
     def __init__(self, e):
         self.e = e
         self.l, self.s = e.as_labels()
-        super(AreaSemantics, self).__init__()
+        super().__init__()
 
     def join(self, other):
         pass
