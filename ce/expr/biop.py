@@ -158,7 +158,7 @@ class BExpr(Expr):
 
 
 if __name__ == '__main__':
-    r = Expr('(a + 1) * (a + b + 1)')
+    r = Expr('(a + 1) * (a + b + [2, 3])')
     r.update_depth(2)
     print(r)
     print(repr(r))
