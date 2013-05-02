@@ -7,7 +7,7 @@ from ce.expr.parser import parse, try_to_number
 
 class Expr(Comparable, Flyweight):
 
-    __slots__ = ('op', 'a1', 'a2', '_hash')
+    __slots__ = ('op', 'a1', 'a2', '_hash', 'transformable')
 
     def __init__(self, *args, **kwargs):
         if kwargs:
@@ -31,6 +31,7 @@ class Expr(Comparable, Flyweight):
             op, *al = args
         self.op = op
         self.a1, self.a2 = [try_to_number(a) for a in al]
+        self.transformable = True
         super().__init__()
 
     def __getnewargs__(self):
@@ -47,6 +48,14 @@ class Expr(Comparable, Flyweight):
     def args(self):
         return [self.a1, self.a2]
 
+    def update_depth(self, depth):
+        self.transformable = depth > 0
+        for a in self.args:
+            try:
+                a.update_depth(depth - 1)
+            except AttributeError:
+                pass
+
     @cached
     def error(self, v):
         def eval(a):
@@ -58,7 +67,10 @@ class Expr(Comparable, Flyweight):
                 return v[a]
             except KeyError:
                 pass
-            return cast_error_constant(a)
+            try:
+                return cast_error_constant(a)
+            except TypeError:
+                return a
         e1, e2 = eval(self.a1), eval(self.a2)
         if self.op == ADD_OP:
             return e1 + e2
@@ -91,11 +103,13 @@ class Expr(Comparable, Flyweight):
 
     def __str__(self):
         a1, a2 = sorted([str(self.a1), str(self.a2)])
-        return '(%s %s %s)' % (a1, self.op, a2)
+        s = '%s %s %s' % (a1, self.op, a2)
+        v = '(%s)' if self.transformable else '[%s]'
+        return v % s
 
     def __repr__(self):
-        return "Expr(op='%s', a1=%s, a2=%s)" % \
-            (self.op, repr(self.a1), repr(self.a2))
+        return "Expr(op='%s', a1=%s, a2=%s, transformable=%d)" % \
+            (self.op, repr(self.a1), repr(self.a2), self.transformable)
 
     def __add__(self, other):
         return Expr(op=ADD_OP, a1=self, a2=other)
@@ -145,6 +159,7 @@ class BExpr(Expr):
 
 if __name__ == '__main__':
     r = Expr('(a + 1) * (a + b + 1)')
+    r.update_depth(2)
     print(r)
     print(repr(r))
     print(r.error({

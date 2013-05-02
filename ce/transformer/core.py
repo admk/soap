@@ -41,6 +41,11 @@ class TreeTransformer(object):
             self._t = [Expr(tree_or_trees)]
         except TypeError:
             self._t = tree_or_trees
+        for t in self._t:
+            try:
+                t.update_depth(self._d)
+            except AttributeError:
+                pass
         self._v = validate
         self._m = multiprocessing
         self._d = depth or RECURSION_LIMIT
@@ -124,14 +129,14 @@ def _walk(t_fs_v_c_d):
 @cached
 def _walk_r(t, f, v, d):
     s = set()
-    if d == 0:
-        return s
     if not is_expr(t):
+        return s
+    if not t.transformable:
         return s
     for e in f(t):
         s.add(e)
     for a, b in (t.args, t.args[::-1]):
-        for e in _walk_r(a, f, v, d - 1):
+        for e in _walk_r(a, f, v, d):
             s.add(Expr(t.op, e, b))
     if not v:
         return s

@@ -101,11 +101,12 @@ if __name__ == '__main__':
     logger.info('Parsings', parsings('a + b + c'))
     logger.info('Reduction', reduce('a + 2 * 3 * 4 + 6 * b + 3'))
 
-    e = '(a + 2) * (b + 3) * c'
+    e = '(a + 2) * (b + 3) * (c + 4)'
     v = {
         'a': cast_error('0.1', '0.2'),
         'b': cast_error('100', '200'),
         'c': cast_error('10000', '2000000'),
+        'd': cast_error('0.1', '0.2'),
     }
     p = Plot()
     for f in [depth_frontier, martel_frontier]:
