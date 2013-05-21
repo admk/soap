@@ -100,8 +100,11 @@ class Plot(object):
                 if r['annotate']:
                     for x, y, e in zip(area, error, expr):
                         plot.annotate(str(e), xy=(x, y), alpha=0.5)
-        plot.set_ylim(0.9 * ymin, 1.1 * ymax)
-        plot.legend()
+        plot.set_ylim(0.95 * ymin, 1.05 * ymax)
+        plot.set_ymargin(0)
+        plot.legend(loc='upper center', bbox_to_anchor=(0.5, 1.05), ncol=3)
+        plot.set_xlabel('Area (Number of LUTs)')
+        plot.set_ylabel('Absolute Error')
         return self.figure
 
     def show(self):
