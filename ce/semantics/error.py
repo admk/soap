@@ -101,10 +101,8 @@ class FloatInterval(Interval):
 
     def __init__(self, v):
         min_val, max_val = v
-        with gmpy2.local_context(round=RoundDown):
-            min_val = mpfr(min_val)
-        with gmpy2.local_context(round=RoundUp):
-            max_val = mpfr(max_val)
+        min_val = mpfr(min_val)
+        max_val = mpfr(max_val)
         super().__init__((min_val, max_val))
 
     def __add__(self, other):
