@@ -36,22 +36,35 @@ class TreeTransformer(object):
     reduction_methods = None
 
     def __init__(self, tree_or_trees,
-                 validate=False, depth=None, multiprocessing=True):
+                 validate=False, depth=None, plugin_function=None,
+                 multiprocessing=True):
         try:
             self._t = [Expr(tree_or_trees)]
         except TypeError:
             self._t = tree_or_trees
-        for t in self._t:
-            try:
-                t.update_depth(self._d)
-            except AttributeError:
-                pass
         self._v = validate
         self._m = multiprocessing
         self._d = depth or RECURSION_LIMIT
         self.transform_methods = list(self.__class__.transform_methods or [])
         self.reduction_methods = list(self.__class__.reduction_methods or [])
+        if self._d < RECURSION_LIMIT:
+            self._t, self._n = self._harvest(self._t, self._d)
+        else:
+            self._n = {}
         super().__init__()
+
+    def _harvest(self, trees, depth):
+        logger.debug('Cropping trees')
+        cropped = []
+        env = {}
+        for t in trees:
+            try:
+                t, e = t.crop(depth)
+            except AttributeError:
+                t, e = t, {}
+            cropped.append(t)
+            env.update(e)
+        return cropped, env
 
     def _closure_r(self, trees, reduced=False):
         v = self._validate if self._v else None
@@ -95,6 +108,9 @@ class TreeTransformer(object):
         """
         s = self._closure_r(self._t)
         logger.debug('Finished finding closure.')
+        if self._n:
+            logger.debug('Stitching back leaves.')
+            s = {t.stitch(self._n) for t in s}
         return s
 
     def validate(self, t, tn):
@@ -130,8 +146,6 @@ def _walk(t_fs_v_c_d):
 def _walk_r(t, f, v, d):
     s = set()
     if not is_expr(t):
-        return s
-    if not t.transformable:
         return s
     for e in f(t):
         s.add(e)
