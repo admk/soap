@@ -45,6 +45,7 @@ class TreeTransformer(object):
         self._v = validate
         self._m = multiprocessing
         self._d = depth or RECURSION_LIMIT
+        self._p = plugin_function
         self.transform_methods = list(self.__class__.transform_methods or [])
         self.reduction_methods = list(self.__class__.reduction_methods or [])
         if self._d < RECURSION_LIMIT:
@@ -86,6 +87,8 @@ class TreeTransformer(object):
                         _step(todo_trees, f, v, not reduced, self._d, self._m)
                     step_trees -= done_trees
                     step_trees = self._closure_r(step_trees, True)
+                    if self._p:
+                        step_trees = set(self._p(step_trees))
                     done_trees |= todo_trees
                     todo_trees = step_trees - done_trees
                 else:

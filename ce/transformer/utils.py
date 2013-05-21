@@ -1,5 +1,6 @@
 import itertools
 
+import ce.logger as logger
 from ce.expr import Expr
 from ce.transformer.core import TreeTransformer
 from ce.transformer.biop import associativity, distribute_for_distributivity, \
@@ -9,6 +10,15 @@ from ce.analysis import expr_frontier
 
 def closure(tree, depth=None):
     return BiOpTreeTransformer(tree, depth=depth).closure()
+
+
+def greedy_frontier_closure(tree, depth=None, var_env=None):
+    if var_env:
+        func = lambda s: expr_frontier(s, var_env)
+    else:
+        func = None
+    return BiOpTreeTransformer(
+        tree, depth=depth, plugin_function=func).closure()
 
 
 def transform(tree,
@@ -46,12 +56,12 @@ def collecting_closure(tree, depth=None):
     return t.closure()
 
 
-class MartelExpr(Expr):
+class TraceExpr(Expr):
 
     def traces(self, var_env=None, depth=None):
         def subtraces(a):
             try:
-                return MartelExpr(a).traces(depth)
+                return self.__class__(a).traces(var_env, depth)
             except (ValueError, TypeError):
                 return {a}
         stl = [subtraces(a) for a in self.args]
@@ -59,18 +69,34 @@ class MartelExpr(Expr):
         logger.debug('Generating %s~=%d traces for tree: %s' %
                      ('*'.join([str(len(s)) for s in stl]),
                       len(sts), str(self)))
-        cll = collecting_closure(sts, depth=depth)
-        if var_env:
-            cll = expr_frontier(cll, var_env)
-        return cll
+        cls = set(self.closure(sts, depth=depth, var_env=var_env))
+        return cls | sts
+
+    def clousure(self, trees, **kwargs):
+        raise NotImplementedError
 
     def __repr__(self):
-        return "MartelExpr(op='%s', a1=%s, a2=%s)" % \
+        return "TraceExpr(op='%s', a1=%s, a2=%s)" % \
             (self.op, repr(self.a1), repr(self.a2))
 
 
-def martel(tree, var_env=None, depth=2):
-    return reduce(MartelExpr(expand(tree)).traces(var_env, depth))
+class GreedyTraceExpr(TraceExpr):
+    def closure(self, trees, **kwargs):
+        return greedy_frontier_closure(trees, **kwargs)
+
+
+class FrontierTraceExpr(TraceExpr):
+    def closure(self, trees, **kwargs):
+        return expr_frontier(
+            closure(trees, depth=kwargs['depth']), kwargs['var_env'])
+
+
+def greedy_trace(tree, var_env=None, depth=2):
+    return reduce(GreedyTraceExpr(tree).traces(var_env, depth))
+
+
+def frontier_trace(tree, var_env=None, depth=2):
+    return reduce(FrontierTraceExpr(tree).traces(var_env, depth))
 
 
 if __name__ == '__main__':
