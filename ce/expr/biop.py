@@ -7,7 +7,7 @@ from ce.expr.parser import parse, try_to_number
 
 class Expr(Comparable, Flyweight):
 
-    __slots__ = ('op', 'a1', 'a2', '_hash', 'transformable')
+    __slots__ = ('op', 'a1', 'a2', '_hash')
 
     def __init__(self, *args, **kwargs):
         if kwargs:
@@ -31,7 +31,6 @@ class Expr(Comparable, Flyweight):
             op, *al = args
         self.op = op
         self.a1, self.a2 = [try_to_number(a) for a in al]
-        self.transformable = True
         super().__init__()
 
     def __getnewargs__(self):
@@ -47,14 +46,6 @@ class Expr(Comparable, Flyweight):
     @property
     def args(self):
         return [self.a1, self.a2]
-
-    def update_depth(self, depth):
-        self.transformable = depth > 0
-        for a in self.args:
-            try:
-                a.update_depth(depth - 1)
-            except AttributeError:
-                pass
 
     @cached
     def error(self, v):
@@ -94,6 +85,32 @@ class Expr(Comparable, Flyweight):
         s.update(s2)
         return l, s
 
+    def crop(self, depth):
+        def subcrop(a):
+            try:
+                return a.crop(depth - 1)
+            except AttributeError:
+                return a, {}
+        if depth > 0:
+            l1, s1 = subcrop(self.a1)
+            l2, s2 = subcrop(self.a2)
+            s1.update(s2)
+            return self.__class__(self.op, l1, l2), s1
+        l = Label(self)
+        return l, {l: self}
+
+    def stitch(self, env):
+        def substitch(a):
+            try:
+                return a.stitch(env)
+            except AttributeError:
+                pass
+            try:
+                return env[a]
+            except KeyError:
+                return a
+        return self.__class__(self.op, substitch(self.a1), substitch(self.a2))
+
     @cached
     def area(self):
         return AreaSemantics(self)
@@ -103,13 +120,11 @@ class Expr(Comparable, Flyweight):
 
     def __str__(self):
         a1, a2 = sorted([str(self.a1), str(self.a2)])
-        s = '%s %s %s' % (a1, self.op, a2)
-        v = '(%s)' if self.transformable else '[%s]'
-        return v % s
+        return '(%s %s %s)' % (a1, self.op, a2)
 
     def __repr__(self):
-        return "Expr(op='%s', a1=%s, a2=%s, transformable=%d)" % \
-            (self.op, repr(self.a1), repr(self.a2), self.transformable)
+        return "Expr(op='%s', a1=%s, a2=%s)" % \
+            (self.op, repr(self.a1), repr(self.a2))
 
     def __add__(self, other):
         return Expr(op=ADD_OP, a1=self, a2=other)
@@ -158,13 +173,20 @@ class BExpr(Expr):
 
 
 if __name__ == '__main__':
+    import gmpy2
+    gmpy2.set_context(gmpy2.ieee(32))
     r = Expr('(a + 1) * (a + b + [2, 3])')
-    r.update_depth(2)
+    n, e = r.crop(1)
+    print('cropped', n, e)
+    print('stitched', n.stitch(e))
     print(r)
     print(repr(r))
-    print(r.error({
+    v = {
         'a': cast_error('0.2', '0.3'),
-        'b': cast_error('2.3', '2.4')}))
+        'b': cast_error('2.3', '2.4')
+    }
+    print(v)
+    print(r.error(v))
     for e, v in r.as_labels()[1].items():
         print(str(e), ':', str(v))
     print(r.area())
