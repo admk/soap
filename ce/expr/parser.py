@@ -1,7 +1,7 @@
 import ast
 
-from ce.semantics import mpq
-from ce.expr.common import OPERATORS, ADD_OP, MULTIPLY_OP
+from ce.semantics import mpq, cast_error
+from ce.expr.common import ADD_OP, MULTIPLY_OP
 
 
 def try_to_number(s):
@@ -32,6 +32,11 @@ def parse(s, cls):
             a1 = _parse_r(t.left)
             a2 = _parse_r(t.right)
             return cls(op, a1, a2)
+        except AttributeError:
+            pass
+        try:
+            bounds = [_parse_r(v) for v in t.elts]
+            return cast_error(*bounds)
         except AttributeError:
             raise SyntaxError('Unknown token %s' % str(t))
         except KeyError:

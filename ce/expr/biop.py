@@ -58,7 +58,10 @@ class Expr(Comparable, Flyweight):
                 return v[a]
             except KeyError:
                 pass
-            return cast_error_constant(a)
+            try:
+                return cast_error_constant(a)
+            except TypeError:
+                return a
         e1, e2 = eval(self.a1), eval(self.a2)
         if self.op == ADD_OP:
             return e1 + e2
@@ -81,6 +84,32 @@ class Expr(Comparable, Flyweight):
         s.update(s1)
         s.update(s2)
         return l, s
+
+    def crop(self, depth):
+        def subcrop(a):
+            try:
+                return a.crop(depth - 1)
+            except AttributeError:
+                return a, {}
+        if depth > 0:
+            l1, s1 = subcrop(self.a1)
+            l2, s2 = subcrop(self.a2)
+            s1.update(s2)
+            return self.__class__(self.op, l1, l2), s1
+        l = Label(self)
+        return l, {l: self}
+
+    def stitch(self, env):
+        def substitch(a):
+            try:
+                return a.stitch(env)
+            except AttributeError:
+                pass
+            try:
+                return env[a]
+            except KeyError:
+                return a
+        return self.__class__(self.op, substitch(self.a1), substitch(self.a2))
 
     @cached
     def area(self):
@@ -144,12 +173,20 @@ class BExpr(Expr):
 
 
 if __name__ == '__main__':
-    r = Expr('(a + 1) * (a + b + 1)')
+    import gmpy2
+    gmpy2.set_context(gmpy2.ieee(32))
+    r = Expr('(a + 1) * (a + b + [2, 3])')
+    n, e = r.crop(1)
+    print('cropped', n, e)
+    print('stitched', n.stitch(e))
     print(r)
     print(repr(r))
-    print(r.error({
+    v = {
         'a': cast_error('0.2', '0.3'),
-        'b': cast_error('2.3', '2.4')}))
+        'b': cast_error('2.3', '2.4')
+    }
+    print(v)
+    print(r.error(v))
     for e, v in r.as_labels()[1].items():
         print(str(e), ':', str(v))
     print(r.area())

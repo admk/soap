@@ -36,7 +36,8 @@ class TreeTransformer(object):
     reduction_methods = None
 
     def __init__(self, tree_or_trees,
-                 validate=False, depth=None, multiprocessing=True):
+                 validate=False, depth=None, plugin_function=None,
+                 multiprocessing=True):
         try:
             self._t = [Expr(tree_or_trees)]
         except TypeError:
@@ -44,9 +45,27 @@ class TreeTransformer(object):
         self._v = validate
         self._m = multiprocessing
         self._d = depth or RECURSION_LIMIT
+        self._p = plugin_function
         self.transform_methods = list(self.__class__.transform_methods or [])
         self.reduction_methods = list(self.__class__.reduction_methods or [])
+        if self._d < RECURSION_LIMIT:
+            self._t, self._n = self._harvest(self._t, self._d)
+        else:
+            self._n = {}
         super().__init__()
+
+    def _harvest(self, trees, depth):
+        logger.debug('Cropping trees')
+        cropped = []
+        env = {}
+        for t in trees:
+            try:
+                t, e = t.crop(depth)
+            except AttributeError:
+                t, e = t, {}
+            cropped.append(t)
+            env.update(e)
+        return cropped, env
 
     def _closure_r(self, trees, reduced=False):
         v = self._validate if self._v else None
@@ -68,6 +87,8 @@ class TreeTransformer(object):
                         _step(todo_trees, f, v, not reduced, self._d, self._m)
                     step_trees -= done_trees
                     step_trees = self._closure_r(step_trees, True)
+                    if self._p:
+                        step_trees = set(self._p(step_trees))
                     done_trees |= todo_trees
                     todo_trees = step_trees - done_trees
                 else:
@@ -90,6 +111,9 @@ class TreeTransformer(object):
         """
         s = self._closure_r(self._t)
         logger.debug('Finished finding closure.')
+        if self._n:
+            logger.debug('Stitching back leaves.')
+            s = {t.stitch(self._n) for t in s}
         return s
 
     def validate(self, t, tn):
@@ -124,14 +148,12 @@ def _walk(t_fs_v_c_d):
 @cached
 def _walk_r(t, f, v, d):
     s = set()
-    if d == 0:
-        return s
     if not is_expr(t):
         return s
     for e in f(t):
         s.add(e)
     for a, b in (t.args, t.args[::-1]):
-        for e in _walk_r(a, f, v, d - 1):
+        for e in _walk_r(a, f, v, d):
             s.add(Expr(t.op, e, b))
     if not v:
         return s
