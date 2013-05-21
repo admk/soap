@@ -61,13 +61,14 @@ class Plot(object):
         })
 
     plot_defaults = {
-        'marker': 'o',
-        'alpha': 0.7
+        'alpha': 0.7,
     }
 
     def _colors(self, length):
-        color_index = [float(i) / length for i in range(length)]
-        return itertools.cycle(pyplot.cm.rainbow_r(color_index))
+        return itertools.cycle('bgrcmyk')
+
+    def _markers(self):
+        return itertools.cycle('so+x.v^<>')
 
     def _plot(self):
         try:
@@ -78,19 +79,25 @@ class Plot(object):
         plot = self.figure.add_subplot(111)
         ymin = ymax = None
         colors = self._colors(len(self.result_list))
+        markers = self._markers()
         for i, r in enumerate(self.result_list):
             kwargs = dict(self.plot_defaults)
             kwargs.update(r['kwargs'])
             if not 'color' in kwargs:
                 kwargs['color'] = next(colors)
+            if not 'marker' in kwargs:
+                kwargs['marker'] = next(markers)
             area, error = zip_result(r['result'])
-            plot.scatter(area, error, label=r['legend'], **kwargs)
+            plot.scatter(area, error,
+                         label=r['legend'],
+                         **dict(kwargs, linestyle='-', linewidth=1, s=20))
             emin, emax = min(error), max(error)
             if ymin is None:
                 ymin, ymax = emin, emax
             else:
                 ymin, ymax = min(ymin, emin), max(ymax, emax)
             if r['frontier']:
+                kwargs['marker'] = None
                 keys = AreaErrorAnalysis.names()
                 f = pareto_frontier_2d(r['result'], keys=keys)
                 keys.append('expression')
