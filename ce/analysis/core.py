@@ -93,7 +93,7 @@ def pareto_frontier_2d(s, keys=None):
     s = sorted(s, key=sort_key)
     frontier = s[:1]
     for i, m in enumerate(s[1:]):
-        if m[a] <= frontier[-1][a]:
+        if m[a] < frontier[-1][a]:
             frontier.append(m)
     return frontier
 
