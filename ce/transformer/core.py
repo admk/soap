@@ -45,27 +45,38 @@ class TreeTransformer(object):
         self._v = validate
         self._m = multiprocessing
         self._d = depth or RECURSION_LIMIT
+        self._n = {}
         self._p = plugin_function
         self.transform_methods = list(self.__class__.transform_methods or [])
         self.reduction_methods = list(self.__class__.reduction_methods or [])
-        if self._d < RECURSION_LIMIT:
-            self._t, self._n = self._harvest(self._t, self._d)
-        else:
-            self._n = {}
         super().__init__()
 
-    def _harvest(self, trees, depth):
+    def _harvest(self, trees):
+        if self._d >= RECURSION_LIMIT:
+            return trees
         logger.debug('Cropping trees')
         cropped = []
-        env = {}
         for t in trees:
             try:
-                t, e = t.crop(depth)
+                t, e = t.crop(self._d)
             except AttributeError:
                 t, e = t, {}
             cropped.append(t)
-            env.update(e)
-        return cropped, env
+            self._n.update(e)
+        return cropped
+
+    def _seed(self, trees):
+        if not self._n:
+            return trees
+        logger.debug('Stitching back trees')
+        seeded = set()
+        for t in trees:
+            try:
+                t = t.stitch(self._n)
+            except AttributeError:
+                pass
+            seeded.add(t)
+        return seeded
 
     def _closure_r(self, trees, reduced=False):
         v = self._validate if self._v else None
@@ -88,7 +99,9 @@ class TreeTransformer(object):
                     step_trees -= done_trees
                     step_trees = self._closure_r(step_trees, True)
                     if self._p:
-                        step_trees = set(self._p(step_trees))
+                        step_trees = self._seed(step_trees)
+                        step_trees = self._p(step_trees)
+                        step_trees = set(self._harvest(step_trees))
                     done_trees |= todo_trees
                     todo_trees = step_trees - done_trees
                 else:
@@ -109,11 +122,10 @@ class TreeTransformer(object):
         Returns:
             A set of trees after transform.
         """
-        s = self._closure_r(self._t)
-        logger.debug('Finished finding closure.')
-        if self._n:
-            logger.debug('Stitching back leaves.')
-            s = {t.stitch(self._n) for t in s}
+        s = self._harvest(self._t)
+        logger.debug('Computing equivalent expressions.')
+        s = self._closure_r(s)
+        s = self._seed(s)
         return s
 
     def validate(self, t, tn):

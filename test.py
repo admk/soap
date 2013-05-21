@@ -35,7 +35,8 @@ def frontier_trace(e, v):
 
 @timeit
 def greedy_trace(e, v):
-    return None, utils.greedy_trace(e, v, depth=DEPTH)
+    c = utils.greedy_trace(e, v, depth=3)
+    return c, set(expr_frontier(c, v))
 
 
 gmpy2.set_context(gmpy2.ieee(32))
