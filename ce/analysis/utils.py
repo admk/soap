@@ -42,6 +42,21 @@ def expr_frontier(expr_set, var_env):
     return expr_list(frontier(expr_set, var_env))
 
 
+def _insert_region_frontier(sx, sy):
+    lx = []
+    ly = []
+    py = sy[0] * 10
+    for x, y in zip(sx, sy):
+        lx.append(x)
+        ly.append(py)
+        lx.append(x)
+        ly.append(y)
+        py = y
+    lx.append(sx[-1] * 10)
+    ly.append(py)
+    return lx, ly
+
+
 class Plot(object):
 
     def __init__(self, result=None, **kwargs):
@@ -77,7 +92,7 @@ class Plot(object):
             pass
         self.figure = pyplot.figure()
         plot = self.figure.add_subplot(111)
-        ymin = ymax = None
+        xmin = xmax = ymin = ymax = None
         colors = self._colors(len(self.result_list))
         markers = self._markers()
         for i, r in enumerate(self.result_list):
@@ -92,9 +107,12 @@ class Plot(object):
                          label=r['legend'],
                          **dict(kwargs, linestyle='-', linewidth=1, s=20))
             emin, emax = min(error), max(error)
+            amin, amax = min(area), max(area)
             if ymin is None:
+                xmin, xmax = amin, amax
                 ymin, ymax = emin, emax
             else:
+                xmin, xmax = min(xmin, amin), max(xmax, amax)
                 ymin, ymax = min(ymin, emin), max(ymax, emax)
             if r['frontier']:
                 kwargs['marker'] = None
@@ -103,11 +121,15 @@ class Plot(object):
                 keys.append('expression')
                 area, error, expr = zip_from_keys(f, keys=keys)
                 legend = r['legend'] + ' frontier' if r['legend'] else None
-                plot.plot(area, error, label=legend, **kwargs)
+                lx, ly = _insert_region_frontier(area, error)
+                plot.plot(lx, ly, label=legend, **kwargs)
+                plot.fill_between(lx, ly, 10 * max(ly),
+                                  alpha=0.1, color=kwargs['color'])
                 if r['annotate']:
                     for x, y, e in zip(area, error, expr):
                         plot.annotate(str(e), xy=(x, y), alpha=0.5)
         plot.set_ylim(0.95 * ymin, 1.05 * ymax)
+        plot.set_xlim(0.95 * xmin, 1.05 * xmax)
         plot.set_ymargin(0)
         plot.legend(loc='upper center', bbox_to_anchor=(0.5, 1.05), ncol=3)
         plot.set_xlabel('Area (Number of LUTs)')
