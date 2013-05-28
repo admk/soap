@@ -1,8 +1,7 @@
 from ce.common import Comparable, Flyweight, cached
 
 from ce.expr.common import ADD_OP, MULTIPLY_OP, COMMUTATIVITY_OPERATORS
-from ce.semantics import cast_error, cast_error_constant, Label, AreaSemantics
-from ce.expr.parser import parse, try_to_number
+from ce.expr.parser import parse
 
 
 class Expr(Comparable, Flyweight):
@@ -50,16 +49,21 @@ class Expr(Comparable, Flyweight):
     @cached
     def error(self, v):
         def eval(a):
+            from ce.semantics import cast_error, cast_error_constant
             try:
                 return a.error(v)
             except AttributeError:
                 pass
             try:
-                return v[a]
-            except KeyError:
+                return eval(v[a])
+            except (TypeError, KeyError):
                 pass
             try:
                 return cast_error_constant(a)
+            except TypeError:
+                pass
+            try:
+                return cast_error(*a)
             except TypeError:
                 return a
         e1, e2 = eval(self.a1), eval(self.a2)
@@ -69,13 +73,21 @@ class Expr(Comparable, Flyweight):
             return e1 * e2
 
     @cached
+    def area(self, v):
+        from ce.semantics import AreaSemantics
+        return AreaSemantics(self, v)
+
+    @cached
     def as_labels(self):
+        from ce.semantics import Label
+
         def to_label(e):
             try:
                 return e.as_labels()
             except AttributeError:
                 l = Label(e)
                 return l, {l: e}
+
         l1, s1 = to_label(self.a1)
         l2, s2 = to_label(self.a2)
         e = BExpr(op=self.op, a1=l1, a2=l2)
@@ -96,6 +108,7 @@ class Expr(Comparable, Flyweight):
             l2, s2 = subcrop(self.a2)
             s1.update(s2)
             return self.__class__(self.op, l1, l2), s1
+        from ce.semantics import Label
         l = Label(self)
         return l, {l: self}
 
@@ -110,10 +123,6 @@ class Expr(Comparable, Flyweight):
             except KeyError:
                 return a
         return self.__class__(self.op, substitch(self.a1), substitch(self.a2))
-
-    @cached
-    def area(self):
-        return AreaSemantics(self)
 
     def __iter__(self):
         return iter((self.op, self.a1, self.a2))
@@ -167,6 +176,7 @@ class BExpr(Expr):
     __slots__ = Expr.__slots__
 
     def __init__(self, **kwargs):
+        from ce.semantics import Label
         super().__init__(**kwargs)
         if not isinstance(self.a1, Label) or not isinstance(self.a2, Label):
             raise ValueError('BExpr allows only binary expressions.')
@@ -182,8 +192,8 @@ if __name__ == '__main__':
     print(r)
     print(repr(r))
     v = {
-        'a': cast_error('0.2', '0.3'),
-        'b': cast_error('2.3', '2.4')
+        'a': ['0.2', '0.3'],
+        'b': ['2.3', '2.4']
     }
     print(v)
     print(r.error(v))
