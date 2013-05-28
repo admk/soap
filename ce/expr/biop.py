@@ -188,6 +188,6 @@ if __name__ == '__main__':
     }
     print(v)
     print(r.error(v))
-    for e, v in r.as_labels()[1].items():
-        print(str(e), ':', str(v))
+    for l, e in r.as_labels()[1].items():
+        print(str(l), ':', str(e))
     print(r.area(v))
