@@ -1,16 +1,17 @@
+import math
+import gmpy2
+
 import ce.expr
 from ce.common import Comparable
 from ce.semantics import Lattice
-
-
-ADDER_SIZE = 576
-MULTIPLIER_SIZE = 138
+from ce.semantics import flopoco
 
 
 class AreaSemantics(Comparable, Lattice):
 
-    def __init__(self, e):
+    def __init__(self, e, v):
         self.e = e
+        self.v = v
         self.l, self.s = e.as_labels()
         super().__init__()
 
@@ -20,8 +21,7 @@ class AreaSemantics(Comparable, Lattice):
     def meet(self, other):
         pass
 
-    @property
-    def area(self):
+    def _op_counts(self):
         mult, add = 0, 0
         for _, e in self.s.items():
             try:
@@ -31,16 +31,36 @@ class AreaSemantics(Comparable, Lattice):
                     add += 1
             except AttributeError:
                 pass
-        return ADDER_SIZE * add + MULTIPLIER_SIZE * mult
+        return mult, add
+
+    @property
+    def area(self):
+        b = self.e.error(self.v).v
+        bmax = max(abs(b.min), abs(b.max))
+        expmax = math.floor(math.log(bmax, 2))
+        we = int(math.ceil(math.log(expmax + 1, 2) + 1))
+        we = max(we, flopoco.we_min)
+        wf = gmpy2.get_context().precision
+        mult, add = self._op_counts()
+        try:
+            return flopoco.add[we, wf] * add + flopoco.mul[we, wf] * mult
+        except KeyError:
+            if not wf in flopoco.wf_range:
+                raise OverflowError('Precision %d out of range' % wf)
+            elif not we in flopoco.we_range:
+                raise OverflowError('Exponent width %d out of range' % we)
+            else:
+                raise KeyError('Precision %d exponent %d does not synthesize' %
+                               (wf, we))
 
     def __add__(self, other):
-        return AreaSemantics(self.e + other.e)
+        return AreaSemantics(self.e + other.e, self.v)
 
     def __sub__(self, other):
-        return AreaSemantics(self.e - other.e)
+        return AreaSemantics(self.e - other.e, self.v)
 
     def __mul__(self, other):
-        return AreaSemantics(self.e * other.e)
+        return AreaSemantics(self.e * other.e, self.v)
 
     def __lt__(self, other):
         if not isinstance(other, AreaSemantics):
@@ -62,5 +82,8 @@ class AreaSemantics(Comparable, Lattice):
 
 
 if __name__ == '__main__':
+    gmpy2.set_context(gmpy2.ieee(128))
+    gmpy2.get_context().precision = 24
     e = ce.expr.Expr('((a + 1) * (a + 1))')
-    print(AreaSemantics(e))
+    v = {'a': ['0.2', '0.3']}
+    print(AreaSemantics(e, v))
