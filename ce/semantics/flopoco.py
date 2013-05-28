@@ -1,23 +1,17 @@
-import itertools
 import os
-import pickle
-from multiprocessing import Pool
-
-import sh
-from bs4 import BeautifulSoup
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-
 
 from ce.common import timeit
 
 
-we_range = list(range(5, 16))
-wf_range = list(range(10, 113))
-default_file = 'ce/analysis/area.pkl'
+we_min, we_max = 5, 16
+wf_min, wf_max = 10, 113
+we_range = list(range(we_min, we_max))
+wf_range = list(range(wf_min, wf_max))
+default_file = 'ce/semantics/area.pkl'
 
 
 def get_luts(file_name):
+    from bs4 import BeautifulSoup
     with open(file_name, 'r') as f:
         f = BeautifulSoup(f.read())
         app = f.document.application
@@ -28,6 +22,7 @@ def get_luts(file_name):
 
 @timeit
 def _para_synth(op_we_wf):
+    import sh
     op, we, wf = op_we_wf
     flo_cmd = []
     if op == 'add':
@@ -59,26 +54,35 @@ def _para_synth(op_we_wf):
     return item
 
 
-pool = Pool(8)
+pool = None
 
 
 @timeit
 def synth(we_range, wf_range):
+    import itertools
+    from multiprocessing import Pool
+    global pool
+    if not pool:
+        pool = Pool(8)
     args = itertools.product(['add', 'mul'], we_range, wf_range)
     return list(pool.imap_unordered(_para_synth, args))
 
 
 def load(file_name):
+    import pickle
     with open(file_name, 'rb') as f:
         return pickle.loads(f.read())
 
 
 def save(file_name, results):
+    import pickle
     with open(file_name + '.pkl', 'wb') as f:
         pickle.dump(results, f)
 
 
 def plot(results):
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
     fig = plt.figure()
     ax = Axes3D(fig)
     vl = []
