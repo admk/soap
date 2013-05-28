@@ -1,4 +1,4 @@
-from ce.common import Comparable, Flyweight, cached
+from ce.common import Comparable, Flyweight, cached, ignored
 
 from ce.expr.common import ADD_OP, MULTIPLY_OP, COMMUTATIVITY_OPERATORS
 from ce.expr.parser import parse
@@ -50,22 +50,13 @@ class Expr(Comparable, Flyweight):
     def error(self, v):
         def eval(a):
             from ce.semantics import cast_error, cast_error_constant
-            try:
+            with ignored(AttributeError):
                 return a.error(v)
-            except AttributeError:
-                pass
-            try:
+            with ignored(TypeError, KeyError):
                 return eval(v[a])
-            except (TypeError, KeyError):
-                pass
-            try:
+            with ignored(TypeError):
                 return cast_error_constant(a)
-            except TypeError:
-                pass
-            try:
-                return cast_error(*a)
-            except TypeError:
-                return a
+            return cast_error(*a)
         e1, e2 = eval(self.a1), eval(self.a2)
         if self.op == ADD_OP:
             return e1 + e2

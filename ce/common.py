@@ -3,6 +3,7 @@ import time
 import functools
 import weakref
 import pickle
+from contextlib import contextmanager
 
 import ce.logger as logger
 
@@ -49,6 +50,22 @@ def timeit(f):
         logger.info('%r %f sec' % (f.__name__, te - ts))
         return result
     return functools.wraps(f)(timed)
+
+
+@contextmanager
+def timed(name):
+    ts = time.time()
+    yield
+    ts = time.time()
+    logger.info('%s %f sec' % (name, te - ts))
+
+
+@contextmanager
+def ignored(*exceptions):
+    try:
+        yield
+    except exceptions:
+        pass
 
 
 CACHE_CAPACITY = 1000000
