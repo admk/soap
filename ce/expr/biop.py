@@ -1,12 +1,26 @@
+import gmpy2
+
 from ce.common import Comparable, Flyweight, cached
 
 from ce.expr.common import ADD_OP, MULTIPLY_OP, COMMUTATIVITY_OPERATORS
 from ce.expr.parser import parse
 
 
+class Var(Comparable, Flyweight):
+
+    __slots__ = ()
+
+    def __init__(self, v, prec):
+        self.v = v
+        self.prec = prec
+
+    def context(self):
+        return gmpy2.context(precision=self.prec)
+
+
 class Expr(Comparable, Flyweight):
 
-    __slots__ = ('op', 'a1', 'a2', '_hash')
+    __slots__ = ('op', 'a1', 'a2', 'prec', '_hash')
 
     def __init__(self, *args, **kwargs):
         if kwargs:
@@ -183,7 +197,6 @@ class BExpr(Expr):
 
 
 if __name__ == '__main__':
-    import gmpy2
     gmpy2.set_context(gmpy2.ieee(32))
     r = Expr('(a + 1) * (a + b + [2, 3])')
     n, e = r.crop(1)
