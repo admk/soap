@@ -2,14 +2,14 @@ import itertools
 
 from matplotlib import pyplot
 
-from ce.analysis.core import AreaErrorAnalysis, pareto_frontier_2d
-
 
 def analyse(expr_set, var_env):
+    from ce.analysis.core import AreaErrorAnalysis
     return AreaErrorAnalysis(expr_set, var_env).analyse()
 
 
 def frontier(expr_set, var_env):
+    from ce.analysis.core import AreaErrorAnalysis
     return AreaErrorAnalysis(expr_set, var_env).frontier()
 
 
@@ -27,6 +27,7 @@ def zip_from_keys(result, keys='expression'):
 
 
 def zip_result(result):
+    from ce.analysis.core import AreaErrorAnalysis
     return zip_from_keys(result, keys=AreaErrorAnalysis.names())
 
 
@@ -71,6 +72,7 @@ class Plot(object):
         return itertools.cycle('so+x.v^<>')
 
     def _plot(self):
+        from ce.analysis.core import AreaErrorAnalysis, pareto_frontier_2d
         try:
             return self.figure
         except AttributeError:
