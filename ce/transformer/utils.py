@@ -33,9 +33,12 @@ def transform(tree,
 
 
 def expand(tree):
-    return transform(tree,
-                     reduction_methods=[distribute_for_distributivity],
-                     reduce_plugin=lambda s: [s.pop()]).pop()
+    def pop(s):
+        if s:
+            return [s.pop()]
+        return s
+    return transform(tree, reduction_methods=[distribute_for_distributivity],
+                     reduce_plugin=pop).pop()
 
 
 def reduce(tree):
