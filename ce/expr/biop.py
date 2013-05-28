@@ -29,7 +29,7 @@ class Expr(Comparable, Flyweight):
         elif len(args) == 3:
             op, *al = args
         self.op = op
-        self.a1, self.a2 = [try_to_number(a) for a in al]
+        self.a1, self.a2 = al
         super().__init__()
 
     def __getnewargs__(self):
@@ -199,4 +199,4 @@ if __name__ == '__main__':
     print(r.error(v))
     for e, v in r.as_labels()[1].items():
         print(str(e), ':', str(v))
-    print(r.area())
+    print(r.area(v))
