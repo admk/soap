@@ -39,6 +39,11 @@ def greedy_trace(e, v):
     return c, set(expr_frontier(c, v))
 
 
+@timeit
+def crazy_trace(e, v):
+    return greedy_trace(utils.expand(e), v)
+
+
 gmpy2.set_context(gmpy2.ieee(32))
 logger.set_context(level=logger.levels.debug)
 Expr.__repr__ = Expr.__str__
