@@ -18,19 +18,24 @@ def greedy_frontier_closure(tree, depth=None, var_env=None):
     else:
         func = None
     return BiOpTreeTransformer(
-        tree, depth=depth, plugin_function=func).closure()
+        tree, depth=depth, step_plugin=func).closure()
 
 
 def transform(tree,
-              reduction_methods=None, transform_methods=None, depth=None):
-    t = TreeTransformer(tree)
+              reduction_methods=None, transform_methods=None,
+              step_plugin=None, reduce_plugin=None, depth=None):
+    t = TreeTransformer(
+        tree, step_plugin=step_plugin, reduce_plugin=reduce_plugin,
+        depth=depth)
     t.reduction_methods = reduction_methods or []
     t.transform_methods = transform_methods or []
     return t.closure()
 
 
 def expand(tree):
-    return transform(tree, [distribute_for_distributivity]).pop()
+    return transform(tree,
+                     reduction_methods=[distribute_for_distributivity],
+                     reduce_plugin=lambda s: [s.pop()]).pop()
 
 
 def reduce(tree):
