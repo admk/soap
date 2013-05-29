@@ -145,4 +145,6 @@ class Plot(object):
 
 
 def plot(result, **kwargs):
-    Plot(result, **kwargs).show()
+    p = Plot(result, **kwargs)
+    p.show()
+    return p
