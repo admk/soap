@@ -42,16 +42,7 @@ class AreaSemantics(Comparable, Lattice):
         we = max(we, flopoco.we_min)
         wf = gmpy2.get_context().precision
         mult, add = self._op_counts()
-        try:
-            return flopoco.add[we, wf] * add + flopoco.mul[we, wf] * mult
-        except KeyError:
-            if not wf in flopoco.wf_range:
-                raise OverflowError('Precision %d out of range' % wf)
-            elif not we in flopoco.we_range:
-                raise OverflowError('Exponent width %d out of range' % we)
-            else:
-                raise KeyError('Precision %d exponent %d does not synthesize' %
-                               (wf, we))
+        return flopoco.adder(we, wf) * add + flopoco.multiplier(we, wf) * mult
 
     def __add__(self, other):
         return AreaSemantics(self.e + other.e, self.v)
