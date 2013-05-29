@@ -179,7 +179,6 @@ class BExpr(Expr):
 
 if __name__ == '__main__':
     import gmpy2
-    gmpy2.set_context(gmpy2.ieee(32))
     r = Expr('(a + 1) * (a + b + [2, 3])')
     n, e = r.crop(1)
     print('cropped', n, e)
@@ -188,10 +187,11 @@ if __name__ == '__main__':
     print(repr(r))
     v = {
         'a': ['0.2', '0.3'],
-        'b': ['2.3', '2.4']
+        'b': ['2.3', '2.4'],
     }
     print(v)
-    print(r.error(v))
+    prec = gmpy2.ieee(32).precision
+    print(r.error(v, prec))
     for l, e in r.as_labels()[1].items():
         print(str(l), ':', str(e))
-    print(r.area(v))
+    print(r.area(v, prec))
