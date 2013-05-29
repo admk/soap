@@ -8,12 +8,13 @@ from ce.semantics import cast_error, mpfr
 
 class Analysis(DynamicMethods, Flyweight):
 
-    def __init__(self, expr_set):
+    def __init__(self, expr_set, var_env):
         try:
             expr_set = {Expr(expr_set)}
         except TypeError:
             pass
         self.expr_set = expr_set
+        self.var_env = var_env
         super().__init__()
 
     def analyse(self):
@@ -62,22 +63,18 @@ class Analysis(DynamicMethods, Flyweight):
 
 class ErrorAnalysis(Analysis):
 
-    def __init__(self, s, v):
-        self.v = v
-        super().__init__(s)
-
     def error_analysis(self, t):
-        return t.error(self.v)
+        return t.error(self.var_env)
 
     def error_select(self, v):
-        with gmpy2.local_context(round=gmpy2.RoundAwayZero):
+        with gmpy2.local_context(gmpy2.ieee(64), round=gmpy2.RoundAwayZero):
             return float(mpfr(max(abs(v.e.min), abs(v.e.max))))
 
 
 class AreaAnalysis(Analysis):
 
     def area_analysis(self, t):
-        return t.area()
+        return t.area(self.var_env)
 
     def area_select(self, v):
         return v.area
@@ -110,9 +107,9 @@ if __name__ == '__main__':
     logger.set_context(level=logger.levels.info)
     gmpy2.set_context(gmpy2.ieee(32))
     e = Expr('(a + b) * (a + b)')
-    s = {
-        'a': cast_error('5', '10'),
-        'b': cast_error('0', '0.001')
+    v = {
+        'a': ['5', '10'],
+        'b': ['0', '0.001'],
     }
     a = AreaErrorAnalysis(BiOpTreeTransformer(e).closure(), s)
     a, f = a.analyse(), a.frontier()
