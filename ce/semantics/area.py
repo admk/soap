@@ -13,6 +13,7 @@ class AreaSemantics(Comparable, Lattice):
         self.e = e
         self.v = v
         self.l, self.s = e.as_labels()
+        self.area = self._area()
         super().__init__()
 
     def join(self, other):
@@ -33,8 +34,7 @@ class AreaSemantics(Comparable, Lattice):
                 pass
         return mult, add
 
-    @property
-    def area(self):
+    def _area(self):
         b = self.e.error(self.v).v
         bmax = max(abs(b.min), abs(b.max))
         expmax = math.floor(math.log(bmax, 2))
