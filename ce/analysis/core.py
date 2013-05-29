@@ -1,5 +1,4 @@
 import gmpy2
-from contextlib import contextmanager
 
 import ce.logger as logger
 from ce.common import DynamicMethods, Flyweight
@@ -19,11 +18,8 @@ class Analysis(DynamicMethods, Flyweight):
         self.var_env = var_env
         super().__init__()
 
-    def contexts(self):
-        @contextmanager
-        def withable():
-            yield
-        return [withable()]
+    def precisions(self):
+        return [gmpy2.ieee(32).precision]
 
     def analyse(self):
         try:
@@ -34,15 +30,14 @@ class Analysis(DynamicMethods, Flyweight):
         logger.debug('Analysing results.')
         result = []
         n = len(self.expr_set)
-        for w in self.contexts():
-            with w:
-                for i, t in enumerate(self.expr_set):
-                    logger.persistent('Analysing', '%d/%d' % (i + 1, n),
-                                      l=logger.levels.debug)
-                    analysis_dict = {'expression': t}
-                    for name, func in zip(analysis_names, analysis_methods):
-                        analysis_dict[name] = func(t)
-                    result.append(analysis_dict)
+        for p in self.precisions():
+            for i, t in enumerate(self.expr_set):
+                logger.persistent('Analysing', '%d/%d' % (i + 1, n),
+                                  l=logger.levels.debug)
+                analysis_dict = {'expression': t}
+                for name, func in zip(analysis_names, analysis_methods):
+                    analysis_dict[name] = func(t, p)
+                result.append(analysis_dict)
         logger.unpersistent('Analysing')
         result = sorted(
             result, key=lambda k: tuple(k[n] for n in analysis_names))
@@ -73,8 +68,8 @@ class Analysis(DynamicMethods, Flyweight):
 
 class ErrorAnalysis(Analysis):
 
-    def error_analysis(self, t):
-        return t.error(self.var_env)
+    def error_analysis(self, t, p):
+        return t.error(self.var_env, p)
 
     def error_select(self, v):
         with gmpy2.local_context(gmpy2.ieee(64), round=gmpy2.RoundAwayZero):
@@ -83,8 +78,8 @@ class ErrorAnalysis(Analysis):
 
 class AreaAnalysis(Analysis):
 
-    def area_analysis(self, t):
-        return t.area(self.var_env)
+    def area_analysis(self, t, p):
+        return t.area(self.var_env, p)
 
     def area_select(self, v):
         return v.area
@@ -114,12 +109,8 @@ class AreaErrorAnalysis(ErrorAnalysis, AreaAnalysis):
 
 class VaryWidthAnalysis(AreaErrorAnalysis):
 
-    def contexts(self):
-        gmpy2.set_context(gmpy2.ieee(128))
-        gmpy2.get_context().round=gmpy2.RoundToNearest
-        ctx = gmpy2.get_context()
-        return [gmpy2.local_context(ctx, precision=wf)
-                for wf in flopoco.wf_range]
+    def precisions(self):
+        return flopoco.wf_range
 
 
 if __name__ == '__main__':

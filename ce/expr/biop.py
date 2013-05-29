@@ -1,3 +1,5 @@
+import gmpy2
+
 from ce.common import Comparable, Flyweight, cached, ignored
 
 from ce.expr.common import ADD_OP, MULTIPLY_OP, COMMUTATIVITY_OPERATORS
@@ -47,26 +49,28 @@ class Expr(Comparable, Flyweight):
         return [self.a1, self.a2]
 
     @cached
-    def error(self, v):
-        def eval(a):
-            from ce.semantics import cast_error, cast_error_constant
-            with ignored(AttributeError):
-                return a.error(v)
-            with ignored(TypeError, KeyError):
-                return eval(v[a])
-            with ignored(TypeError):
-                return cast_error_constant(a)
-            return cast_error(*a)
-        e1, e2 = eval(self.a1), eval(self.a2)
-        if self.op == ADD_OP:
-            return e1 + e2
-        if self.op == MULTIPLY_OP:
-            return e1 * e2
+    def error(self, var_env, prec):
+        from ce.semantics import cast_error, cast_error_constant, \
+            precision_context
+        with precision_context(prec):
+            def eval(a):
+                with ignored(AttributeError):
+                    return a.error(var_env, prec)
+                with ignored(TypeError, KeyError):
+                    return eval(var_env[a])
+                with ignored(TypeError):
+                    return cast_error_constant(a)
+                return cast_error(*a)
+            e1, e2 = eval(self.a1), eval(self.a2)
+            if self.op == ADD_OP:
+                return e1 + e2
+            if self.op == MULTIPLY_OP:
+                return e1 * e2
 
     @cached
-    def area(self, v):
-        from ce.semantics import AreaSemantics
-        return AreaSemantics(self, v)
+    def area(self, var_env, prec):
+        from ce.semantics import AreaSemantics, precision_context
+        return AreaSemantics(self, var_env, prec)
 
     @cached
     def as_labels(self):

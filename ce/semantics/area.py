@@ -9,9 +9,10 @@ from ce.semantics import flopoco
 
 class AreaSemantics(Comparable, Lattice):
 
-    def __init__(self, e, v):
+    def __init__(self, e, v, p):
         self.e = e
         self.v = v
+        self.p = p
         self.l, self.s = e.as_labels()
         self.area = self._area()
         super().__init__()
@@ -35,12 +36,12 @@ class AreaSemantics(Comparable, Lattice):
         return mult, add
 
     def _area(self):
-        b = self.e.error(self.v).v
+        b = self.e.error(self.v, self.p).v
         bmax = max(abs(b.min), abs(b.max))
         expmax = math.floor(math.log(bmax, 2))
         we = int(math.ceil(math.log(expmax + 1, 2) + 1))
         we = max(we, flopoco.we_min)
-        wf = gmpy2.get_context().precision
+        wf = self.p
         mult, add = self._op_counts()
         return flopoco.adder(we, wf) * add + flopoco.multiplier(we, wf) * mult
 
