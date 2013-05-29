@@ -144,5 +144,5 @@ class Plot(object):
         self._plot().savefig(*args, **kwargs)
 
 
-def plot(result):
-    Plot(result).show()
+def plot(result, **kwargs):
+    Plot(result, **kwargs).show()
