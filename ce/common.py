@@ -53,10 +53,10 @@ def timeit(f):
 
 
 @contextmanager
-def timed(name):
+def timed(name=''):
     ts = time.time()
     yield
-    ts = time.time()
+    te = time.time()
     logger.info('%s %f sec' % (name, te - ts))
 
 
