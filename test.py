@@ -7,6 +7,10 @@ from ce.analysis import analyse, Plot, expr_frontier
 import ce.transformer.utils as utils
 
 
+gmpy2.set_context(gmpy2.ieee(32))
+logger.set_context(level=logger.levels.info)
+Expr.__repr__ = Expr.__str__
+
 DEPTH = 2
 
 
