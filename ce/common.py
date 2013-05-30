@@ -68,6 +68,25 @@ def ignored(*exceptions):
         pass
 
 
+@contextmanager
+def profiled():
+    import pycallgraph
+    from pympler.classtracker import ClassTracker
+    from pympler.asizeof import asizeof
+    from ce.common import Flyweight, _cache_map
+    from ce.expr import Expr
+    pycallgraph.start_trace()
+    tracker = ClassTracker()
+    tracker.track_object(Flyweight._cache)
+    tracker.track_class(Expr)
+    yield
+    tracker.create_snapshot()
+    tracker.stats.print_summary()
+    print('Flyweight cache size', asizeof(Flyweight._cache))
+    print('Global cache size', asizeof(_cache_map))
+    pycallgraph.make_dot_graph('profile.png')
+
+
 CACHE_CAPACITY = 1000000
 _cache_map = dict()
 
