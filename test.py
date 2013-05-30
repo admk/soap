@@ -62,12 +62,12 @@ v = {
 }
 logger.info(Expr(e).error(v, gmpy2.ieee(32).precision))
 p = Plot()
-for f in [frontier_trace, greedy_trace]:
+for f in [greedy_trace, frontier_trace]:
     derived, front = f(e, v)
     derived = derived or front
     logger.info(f.__name__, len(front), len(derived))
     p.add(analyse(derived, v, vary_width=True), legend=f.__name__,
-          alpha=0.7, linestyle='-', linewidth=1)
-p.add(analyse(e, v), frontier=False, legend='original', marker='o')
+          alpha=0.7, linestyle='-', linewidth=1, marker='.')
+p.add(analyse(e, v), frontier=False, legend='original', marker='.')
 p.save('a.pdf')
 p.show()
