@@ -63,8 +63,8 @@ class Expr(Comparable, Flyweight):
 
     @cached
     def error(self, var_env, prec):
-        from ce.semantics import cast_error, cast_error_constant, \
-            precision_context
+        from ce.semantics import cast_error, cast_error_constant
+        from ce.precision import precision_context
         with precision_context(prec):
             def eval(a):
                 with ignored(AttributeError):

@@ -1,6 +1,3 @@
-import gmpy2
-
-
 _label_count = 0
 _labels = None
 
@@ -68,7 +65,3 @@ class Lattice(object):
 
     def __and__(self, other):
         return self.meet(other)
-
-
-def precision_context(prec):
-    return gmpy2.local_context(gmpy2.ieee(128), precision=prec)
