@@ -2,7 +2,6 @@ import gmpy2
 import ce.logger as logger
 from ce.common import timeit
 from ce.expr import Expr
-from ce.semantics import cast_error
 from ce.analysis import analyse, Plot, expr_frontier
 import ce.transformer.utils as utils
 
