@@ -66,8 +66,9 @@ def _insert_region_frontier(sx, sy):
 
 class Plot(object):
 
-    def __init__(self, result=None, **kwargs):
+    def __init__(self, result=None, log=False, **kwargs):
         self.result_list = []
+        self.log = log
         if result:
             self.add(result, **kwargs)
         super().__init__()
@@ -100,10 +101,11 @@ class Plot(object):
             pass
         self.figure = pyplot.figure()
         plot = self.figure.add_subplot(111)
-        xmin = xmax = ymin = ymax = None
+        if self.log:
+            plot.set_yscale('log')
         colors = self._colors(len(self.result_list))
         markers = self._markers()
-        for i, r in enumerate(self.result_list):
+        for r in self.result_list:
             kwargs = dict(self.plot_defaults)
             kwargs.update(r['kwargs'])
             if not 'color' in kwargs:
@@ -114,15 +116,11 @@ class Plot(object):
             plot.scatter(area, error,
                          label=r['legend'],
                          **dict(kwargs, linestyle='-', linewidth=1, s=20))
-            emin, emax = min(error), max(error)
-            amin, amax = min(area), max(area)
-            if ymin is None:
-                xmin, xmax = amin, amax
-                ymin, ymax = emin, emax
-            else:
-                xmin, xmax = min(xmin, amin), max(xmax, amax)
-                ymin, ymax = min(ymin, emin), max(ymax, emax)
+            r['kwargs'] = kwargs
+        xlim, ylim = plot.get_xlim(), plot.get_ylim()
+        for r in self.result_list:
             if r['frontier']:
+                kwargs = r['kwargs']
                 kwargs['marker'] = None
                 keys = AreaErrorAnalysis.names()
                 f = pareto_frontier_2d(r['result'], keys=keys)
@@ -136,12 +134,10 @@ class Plot(object):
                 if r['annotate']:
                     for x, y, e in zip(area, error, expr):
                         plot.annotate(str(e), xy=(x, y), alpha=0.5)
-        plot.set_ylim(0.1 * ymin, 10.0 * ymax)
-        plot.set_xlim(max(0, xmin - 0.1 * xmax), 1.1 * xmax)
-        plot.set_xmargin(0)
-        plot.set_ymargin(0)
-        plot.set_yscale('log')
-        plot.legend(loc='upper center', bbox_to_anchor=(0.5, 1.05), ncol=3)
+        plot.set_xlim(xlim)
+        plot.set_ylim(ylim)
+        plot.legend(bbox_to_anchor=(1.1, 1.1), ncol=1)
+        plot.grid(True, which='both', ls=':')
         plot.set_xlabel('Area (Number of LUTs)')
         plot.set_ylabel('Absolute Error')
         return self.figure

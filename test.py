@@ -47,7 +47,7 @@ def crazy_trace(e, v):
     return greedy_trace(utils.expand(e), v)
 
 
-logger.set_context(level=logger.levels.debug)
+logger.set_context(level=logger.levels.info)
 Expr.__repr__ = Expr.__str__
 
 e = """
@@ -59,13 +59,14 @@ v = {
     'b': ['10', '20'],
     'c': ['100', '200'],
 }
+vary_width = True
 logger.info(Expr(e).error(v, gmpy2.ieee(32).precision))
-p = Plot()
+p = Plot(log=vary_width)
 for f in [greedy_trace, frontier_trace]:
     derived, front = f(e, v)
     derived = derived or front
     logger.info(f.__name__, len(front), len(derived))
-    p.add(analyse(derived, v, vary_width=True), legend=f.__name__,
+    p.add(analyse(derived, v, vary_width=vary_width), legend=f.__name__,
           alpha=0.7, linestyle='-', linewidth=1, marker='.')
 p.add(analyse(e, v), frontier=False, legend='original', marker='.')
 p.save('a.pdf')
