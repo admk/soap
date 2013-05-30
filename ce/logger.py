@@ -1,5 +1,6 @@
 import sys
 from pprint import pformat
+from contextlib import contextmanager
 
 
 class levels():
@@ -83,6 +84,14 @@ def log_enable(l):
             return f(*args, **kwargs)
         return wrapped
     return wrapper
+
+
+@contextmanager
+def local_context(**kwargs):
+    ctx = dict(get_context())
+    set_context(**kwargs)
+    yield
+    set_context(**ctx)
 
 
 labels = ['debug', 'info', 'warning', 'error', 'off']

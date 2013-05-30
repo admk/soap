@@ -46,7 +46,8 @@ def reduce(tree):
     try:
         tree = Expr(tree)
     except TypeError:
-        return {reduce(t) for t in tree}
+        with logger.local_context(level=logger.levels.info):
+            return {reduce(t) for t in tree}
     t = transform(tree, BiOpTreeTransformer.reduction_methods,
                   multiprocessing=False)
     s = set(t)
