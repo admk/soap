@@ -52,7 +52,8 @@ Expr.__repr__ = Expr.__str__
 
 e = """
     (a + a + b) * (a + b + b) * (b + b + c) *
-    (b + c + c) * (c + c + a) * (c + a + a)
+    (b + c + c) * (c + c + a) * (c + a + a) |
+    (1 + b + c) * (a + 1 + b) * (a + b + 1)
     """
 v = {
     'a': ['1', '2'],
