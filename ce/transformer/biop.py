@@ -153,6 +153,7 @@ class BiOpTreeTransformer(TreeTransformer):
 
 if __name__ == '__main__':
     from ce.common import profiled, timed
+    Expr.__repr__ = Expr.__str__
     logger.set_context(level=logger.levels.info)
     e = '(a + 1) * b | (b + 1) * a | a * b'
     t = Expr(e)
@@ -160,4 +161,9 @@ if __name__ == '__main__':
     logger.info('Tree:', t.tree())
     with profiled(), timed():
         s = BiOpTreeTransformer(t).closure()
-    logger.debug(len(s))
+    logger.info('Transformed:', len(s))
+    from ce.analysis.utils import plot, analyse
+    v = {'a': ['1', '2'], 'b': ['100', '200']}
+    a = analyse(s, v)
+    logger.info(a)
+    plot(a)

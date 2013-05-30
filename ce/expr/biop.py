@@ -2,7 +2,8 @@ import gmpy2
 
 from ce.common import Comparable, Flyweight, cached, ignored
 
-from ce.expr.common import ADD_OP, MULTIPLY_OP, COMMUTATIVITY_OPERATORS
+from ce.expr.common import ADD_OP, MULTIPLY_OP, BARRIER_OP, \
+    COMMUTATIVITY_OPERATORS
 from ce.expr.parser import parse
 
 
@@ -66,10 +67,12 @@ class Expr(Comparable, Flyweight):
                 return e1 + e2
             if self.op == MULTIPLY_OP:
                 return e1 * e2
+            if self.op == BARRIER_OP:
+                return e1 | e2
 
     @cached
     def area(self, var_env, prec):
-        from ce.semantics import AreaSemantics, precision_context
+        from ce.semantics import AreaSemantics
         return AreaSemantics(self, var_env, prec)
 
     @cached
@@ -181,7 +184,6 @@ class BExpr(Expr):
 
 
 if __name__ == '__main__':
-    import gmpy2
     r = Expr('(a + 1) * (a + b + [2, 3])')
     n, e = r.crop(1)
     print('cropped', n, e)
