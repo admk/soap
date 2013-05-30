@@ -48,7 +48,6 @@ def crazy_trace(e, v):
     return greedy_trace(utils.expand(e), v)
 
 
-gmpy2.set_context(gmpy2.ieee(32))
 logger.set_context(level=logger.levels.debug)
 Expr.__repr__ = Expr.__str__
 
@@ -57,17 +56,17 @@ e = """
     (b + c + c) * (c + c + a) * (c + a + a)
     """.replace('\n', '').replace(' ', '')
 v = {
-    'a': cast_error('1', '2'),
-    'b': cast_error('10', '20'),
-    'c': cast_error('100', '200'),
+    'a': ['1', '2'],
+    'b': ['10', '20'],
+    'c': ['100', '200'],
 }
-logger.info(Expr(e).error(v))
+logger.info(Expr(e).error(v, gmpy2.ieee(32).precision))
 p = Plot()
-for f in [frontier_trace, greedy_trace, crazy_trace]:
+for f in [frontier_trace, greedy_trace]:
     derived, front = f(e, v)
     derived = derived or front
     logger.info(f.__name__, len(front), len(derived))
-    p.add(analyse(derived, v), legend=f.__name__,
+    p.add(analyse(derived, v, vary_width=True), legend=f.__name__,
           alpha=0.7, linestyle='-', linewidth=1)
 p.add(analyse(e, v), frontier=False, legend='original', marker='o')
 p.save('a.pdf')
