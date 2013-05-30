@@ -29,10 +29,12 @@ class Analysis(DynamicMethods, Flyweight):
         analysis_names, analysis_methods, select_methods = self.methods()
         logger.debug('Analysing results.')
         result = []
-        n = len(self.expr_set)
+        i = 0
+        n = len(self.expr_set) * len(self.precisions())
         for p in self.precisions():
-            for i, t in enumerate(self.expr_set):
-                logger.persistent('Analysing', '%d/%d' % (i + 1, n),
+            for t in self.expr_set:
+                i += 1
+                logger.persistent('Analysing', '%d/%d' % (i, n),
                                   l=logger.levels.debug)
                 analysis_dict = {'expression': t}
                 for name, func in zip(analysis_names, analysis_methods):
@@ -118,7 +120,6 @@ if __name__ == '__main__':
     from ce.analysis.utils import plot
     from ce.common import timed
     logger.set_context(level=logger.levels.info)
-    gmpy2.set_context(gmpy2.ieee(32))
     e = Expr('(a + b) * (a + b)')
     v = {
         'a': ['5', '10'],
