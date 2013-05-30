@@ -23,10 +23,11 @@ def greedy_frontier_closure(tree, depth=None, var_env=None):
 
 def transform(tree,
               reduction_methods=None, transform_methods=None,
-              step_plugin=None, reduce_plugin=None, depth=None):
+              step_plugin=None, reduce_plugin=None, depth=None,
+              multiprocessing=True):
     t = TreeTransformer(
         tree, step_plugin=step_plugin, reduce_plugin=reduce_plugin,
-        depth=depth)
+        depth=depth, multiprocessing=multiprocessing)
     t.reduction_methods = reduction_methods or []
     t.transform_methods = transform_methods or []
     return t.closure()
@@ -38,7 +39,7 @@ def expand(tree):
             return [s.pop()]
         return s
     return transform(tree, reduction_methods=[distribute_for_distributivity],
-                     reduce_plugin=pop).pop()
+                     reduce_plugin=pop, multiprocessing=False).pop()
 
 
 def reduce(tree):
@@ -46,7 +47,9 @@ def reduce(tree):
         tree = Expr(tree)
     except TypeError:
         return {reduce(t) for t in tree}
-    s = set(transform(tree, BiOpTreeTransformer.reduction_methods))
+    t = transform(tree, BiOpTreeTransformer.reduction_methods,
+                  multiprocessing=False)
+    s = set(t)
     if len(s) > 1:
         s.remove(tree)
     if len(s) == 1:
