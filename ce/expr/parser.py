@@ -1,7 +1,8 @@
 import ast
 
-from ce.semantics import mpq, cast_error
-from ce.expr.common import ADD_OP, MULTIPLY_OP
+from ce.common import ignored
+from ce.semantics import mpq
+from ce.expr.common import ADD_OP, MULTIPLY_OP, BARRIER_OP
 
 
 def try_to_number(s):
@@ -14,37 +15,39 @@ def try_to_number(s):
 OPERATOR_MAP = {
     ast.Add: ADD_OP,
     ast.Mult: MULTIPLY_OP,
+    ast.BitOr: BARRIER_OP,
 }
+
+
+class ParserSyntaxError(SyntaxError):
+    pass
 
 
 def parse(s, cls):
     def _parse_r(t):
-        try:
+        with ignored(AttributeError):
             return t.n
-        except AttributeError:
-            pass
-        try:
+        with ignored(AttributeError):
             return t.id
-        except AttributeError:
-            pass
+        with ignored(AttributeError):
+            return tuple(_parse_r(v) for v in t.elts)
         try:
             op = OPERATOR_MAP[t.op.__class__]
             a1 = _parse_r(t.left)
             a2 = _parse_r(t.right)
             return cls(op, a1, a2)
-        except AttributeError:
-            pass
-        try:
-            return tuple(_parse_r(v) for v in t.elts)
-        except AttributeError:
-            raise SyntaxError('Unknown token %s' % str(t))
         except KeyError:
-            raise SyntaxError('Unrecognised binary operator %s' % str(t.op))
+            raise ParserSyntaxError(
+                'Unrecognised binary operator %s' % str(t.op))
+        except AttributeError:
+            raise ParserSyntaxError('Unknown token %s' % str(t))
     try:
-        body = ast.parse(s, mode='eval').body
-    except TypeError:
+        body = ast.parse(s.replace('\n', '').strip(), mode='eval').body
+        return _parse_r(body)
+    except (TypeError, AttributeError):
         raise TypeError('Parse argument must be a string')
-    return _parse_r(body)
+    except SyntaxError as e:
+        raise ParserSyntaxError(e)
 
 
 if __name__ == '__main__':

@@ -9,10 +9,12 @@ from ce.semantics import flopoco
 
 class AreaSemantics(Comparable, Lattice):
 
-    def __init__(self, e, v):
+    def __init__(self, e, v, p):
         self.e = e
         self.v = v
+        self.p = p
         self.l, self.s = e.as_labels()
+        self.area = self._area()
         super().__init__()
 
     def join(self, other):
@@ -33,25 +35,15 @@ class AreaSemantics(Comparable, Lattice):
                 pass
         return mult, add
 
-    @property
-    def area(self):
-        b = self.e.error(self.v).v
+    def _area(self):
+        b = self.e.error(self.v, self.p).v
         bmax = max(abs(b.min), abs(b.max))
         expmax = math.floor(math.log(bmax, 2))
         we = int(math.ceil(math.log(expmax + 1, 2) + 1))
         we = max(we, flopoco.we_min)
-        wf = gmpy2.get_context().precision
+        wf = self.p
         mult, add = self._op_counts()
-        try:
-            return flopoco.add[we, wf] * add + flopoco.mul[we, wf] * mult
-        except KeyError:
-            if not wf in flopoco.wf_range:
-                raise OverflowError('Precision %d out of range' % wf)
-            elif not we in flopoco.we_range:
-                raise OverflowError('Exponent width %d out of range' % we)
-            else:
-                raise KeyError('Precision %d exponent %d does not synthesize' %
-                               (wf, we))
+        return flopoco.adder(we, wf) * add + flopoco.multiplier(we, wf) * mult
 
     def __add__(self, other):
         return AreaSemantics(self.e + other.e, self.v)

@@ -36,7 +36,8 @@ class TreeTransformer(object):
     reduction_methods = None
 
     def __init__(self, tree_or_trees,
-                 validate=False, depth=None, plugin_function=None,
+                 validate=False, depth=None,
+                 step_plugin=None, reduce_plugin=None,
                  multiprocessing=True):
         try:
             self._t = [Expr(tree_or_trees)]
@@ -46,7 +47,8 @@ class TreeTransformer(object):
         self._m = multiprocessing
         self._d = depth or RECURSION_LIMIT
         self._n = {}
-        self._p = plugin_function
+        self._sp = step_plugin
+        self._rp = reduce_plugin
         self.transform_methods = list(self.__class__.transform_methods or [])
         self.reduction_methods = list(self.__class__.reduction_methods or [])
         super().__init__()
@@ -78,6 +80,14 @@ class TreeTransformer(object):
             seeded.add(t)
         return seeded
 
+    def _plugin(self, trees, plugin):
+        if not plugin:
+            return trees
+        trees = self._seed(trees)
+        trees = plugin(trees)
+        trees = set(self._harvest(trees))
+        return trees
+
     def _closure_r(self, trees, reduced=False):
         v = self._validate if self._v else None
         done_trees = set()
@@ -98,16 +108,14 @@ class TreeTransformer(object):
                         _step(todo_trees, f, v, not reduced, self._d, self._m)
                     step_trees -= done_trees
                     step_trees = self._closure_r(step_trees, True)
-                    if self._p:
-                        step_trees = self._seed(step_trees)
-                        step_trees = self._p(step_trees)
-                        step_trees = set(self._harvest(step_trees))
+                    step_trees = self._plugin(step_trees, self._sp)
                     done_trees |= todo_trees
                     todo_trees = step_trees - done_trees
                 else:
                     f = self.reduction_methods
                     nore_trees, step_trees = \
                         _step(todo_trees, f, v, not reduced, None, self._m)
+                    step_trees = self._plugin(step_trees, self._rp)
                     done_trees |= nore_trees
                     todo_trees = step_trees - nore_trees
         except KeyboardInterrupt:

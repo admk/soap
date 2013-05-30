@@ -1,6 +1,10 @@
 import os
 
-from ce.common import timeit
+from ce.common import cached, timeit
+
+
+class FlopocoMissingImplementationError(Exception):
+    """Unsynthesizable operator"""
 
 
 we_min, we_max = 5, 16
@@ -99,17 +103,42 @@ if not os.path.isfile(default_file):
     print('area statistics file does not exist, synthesizing...')
     save(default_file, synth(we_range, wf_range))
 
-add = {}
-mul = {}
+_add = {}
+_mul = {}
 for i in load(default_file):
     xv, yv, zv = int(i['we']), int(i['wf']), int(i['value'])
     if zv <= 0:
         continue
     if i['op'] == 'add':
-        add[xv, yv] = zv
+        _add[xv, yv] = zv
     elif i['op'] == 'mul':
-        mul[xv, yv] = zv
-keys = sorted(list(set(add.keys()) & set(mul.keys())))
+        _mul[xv, yv] = zv
+
+
+def _impl(_dict, we, wf):
+    try:
+        return _dict[we, wf]
+    except KeyError:
+        if not wf in wf_range:
+            raise FlopocoMissingImplementationError(
+                'Precision %d out of range' % wf)
+        elif not we in we_range:
+            raise FlopocoMissingImplementationError(
+                'Exponent width %d out of range' % we)
+        return _impl(_dict, we + 1, wf)
+
+
+def adder(we, wf):
+    return _impl(_add, we, wf)
+
+
+def multiplier(we, wf):
+    return _impl(_mul, we, wf)
+
+
+@cached
+def keys():
+    return sorted(list(set(_add.keys()) & set(_mul.keys())))
 
 
 if __name__ == '__main__':

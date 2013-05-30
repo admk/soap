@@ -152,33 +152,18 @@ class BiOpTreeTransformer(TreeTransformer):
 
 
 if __name__ == '__main__':
-    profile = False
-    memory_profile = True
-    logger.set_context(level=logger.levels.debug)
-    if profile:
-        import pycallgraph
-        pycallgraph.start_trace()
-    from datetime import datetime
-    start_time = datetime.now()
-    e = '(a + 1) * (a + 1) * a'
+    from ce.common import profiled, timed
+    Expr.__repr__ = Expr.__str__
+    logger.set_context(level=logger.levels.info)
+    e = '(a + 1) * b | (b + 1) * a | a * b'
     t = Expr(e)
-    logger.debug('Expr:', str(t))
-    logger.debug('Tree:', t.tree())
-    if memory_profile:
-        from pympler.classtracker import ClassTracker
-        from ce.expr.common import Flyweight, _cache_map
-        tracker = ClassTracker()
-        tracker.track_object(Flyweight._cache)
-        tracker.track_class(Expr)
-    s = BiOpTreeTransformer(t).closure()
-    logger.debug(datetime.now() - start_time)
-    logger.debug(len(s))
-    if memory_profile:
-        from pympler.asizeof import asizeof
-        tracker.track_object(s)
-        tracker.create_snapshot()
-        tracker.stats.print_summary()
-        print(asizeof(Flyweight._cache))
-        print(asizeof(_cache_map))
-    if profile:
-        pycallgraph.make_dot_graph('test.png')
+    logger.info('Expr:', str(t))
+    logger.info('Tree:', t.tree())
+    with profiled(), timed():
+        s = BiOpTreeTransformer(t).closure()
+    logger.info('Transformed:', len(s))
+    from ce.analysis.utils import plot, analyse
+    v = {'a': ['1', '2'], 'b': ['100', '200']}
+    a = analyse(s, v)
+    logger.info(a)
+    plot(a)

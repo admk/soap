@@ -3,14 +3,20 @@ import itertools
 from matplotlib import pyplot
 
 
-def analyse(expr_set, var_env):
+def _analyser(vary_width):
+    if vary_width:
+        from ce.analysis.core import VaryWidthAnalysis
+        return VaryWidthAnalysis
     from ce.analysis.core import AreaErrorAnalysis
-    return AreaErrorAnalysis(expr_set, var_env).analyse()
+    return AreaErrorAnalysis
 
 
-def frontier(expr_set, var_env):
-    from ce.analysis.core import AreaErrorAnalysis
-    return AreaErrorAnalysis(expr_set, var_env).frontier()
+def analyse(expr_set, var_env, vary_width=False):
+    return _analyser(vary_width)(expr_set, var_env).analyse()
+
+
+def frontier(expr_set, var_env, vary_width=False):
+    return _analyser(vary_width)(expr_set, var_env).frontier()
 
 
 def list_from_keys(result, keys=None):
@@ -43,16 +49,32 @@ def expr_frontier(expr_set, var_env):
     return expr_list(frontier(expr_set, var_env))
 
 
+def _insert_region_frontier(sx, sy):
+    lx = []
+    ly = []
+    py = sy[0] * 10
+    for x, y in zip(sx, sy):
+        lx.append(x)
+        ly.append(py)
+        lx.append(x)
+        ly.append(y)
+        py = y
+    lx.append(sx[-1] * 10)
+    ly.append(py)
+    return lx, ly
+
+
 class Plot(object):
 
-    def __init__(self, result=None, **kwargs):
+    def __init__(self, result=None, log=False, **kwargs):
         self.result_list = []
+        self.log = log
         if result:
             self.add(result, **kwargs)
         super().__init__()
 
     def add(self, result,
-            legend=None, frontier=True, annotate=True, **kwargs):
+            legend=None, frontier=True, annotate=False, **kwargs):
         self.result_list.append({
             'result': result,
             'legend': legend,
@@ -79,10 +101,14 @@ class Plot(object):
             pass
         self.figure = pyplot.figure()
         plot = self.figure.add_subplot(111)
-        ymin = ymax = None
+        if self.log:
+            plot.set_yscale('log')
+        else:
+            plot.yaxis.get_major_formatter().set_scientific(True)
+            plot.yaxis.get_major_formatter().set_powerlimits((-3, 4))
         colors = self._colors(len(self.result_list))
         markers = self._markers()
-        for i, r in enumerate(self.result_list):
+        for r in self.result_list:
             kwargs = dict(self.plot_defaults)
             kwargs.update(r['kwargs'])
             if not 'color' in kwargs:
@@ -93,25 +119,28 @@ class Plot(object):
             plot.scatter(area, error,
                          label=r['legend'],
                          **dict(kwargs, linestyle='-', linewidth=1, s=20))
-            emin, emax = min(error), max(error)
-            if ymin is None:
-                ymin, ymax = emin, emax
-            else:
-                ymin, ymax = min(ymin, emin), max(ymax, emax)
+            r['kwargs'] = kwargs
+        xlim, ylim = plot.get_xlim(), plot.get_ylim()
+        for r in self.result_list:
             if r['frontier']:
+                kwargs = r['kwargs']
                 kwargs['marker'] = None
                 keys = AreaErrorAnalysis.names()
                 f = pareto_frontier_2d(r['result'], keys=keys)
                 keys.append('expression')
                 area, error, expr = zip_from_keys(f, keys=keys)
                 legend = r['legend'] + ' frontier' if r['legend'] else None
-                plot.plot(area, error, label=legend, **kwargs)
+                lx, ly = _insert_region_frontier(area, error)
+                plot.plot(lx, ly, label=legend, **kwargs)
+                plot.fill_between(lx, ly, 10 * max(ly),
+                                  alpha=0.1, color=kwargs['color'])
                 if r['annotate']:
                     for x, y, e in zip(area, error, expr):
                         plot.annotate(str(e), xy=(x, y), alpha=0.5)
-        plot.set_ylim(0.95 * ymin, 1.05 * ymax)
-        plot.set_ymargin(0)
-        plot.legend(loc='upper center', bbox_to_anchor=(0.5, 1.05), ncol=3)
+        plot.set_xlim(xlim)
+        plot.set_ylim(ylim)
+        plot.legend(bbox_to_anchor=(1.1, 1.1), ncol=1)
+        plot.grid(True, which='both', ls=':')
         plot.set_xlabel('Area (Number of LUTs)')
         plot.set_ylabel('Absolute Error')
         return self.figure
@@ -124,5 +153,7 @@ class Plot(object):
         self._plot().savefig(*args, **kwargs)
 
 
-def plot(result):
-    Plot(result).show()
+def plot(result, **kwargs):
+    p = Plot(result, **kwargs)
+    p.show()
+    return p

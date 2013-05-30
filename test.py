@@ -2,10 +2,13 @@ import gmpy2
 import ce.logger as logger
 from ce.common import timeit
 from ce.expr import Expr
-from ce.semantics import cast_error
 from ce.analysis import analyse, Plot, expr_frontier
 import ce.transformer.utils as utils
 
+
+gmpy2.set_context(gmpy2.ieee(32))
+logger.set_context(level=logger.levels.info)
+Expr.__repr__ = Expr.__str__
 
 DEPTH = 2
 
@@ -39,23 +42,33 @@ def greedy_trace(e, v):
     return c, set(expr_frontier(c, v))
 
 
-gmpy2.set_context(gmpy2.ieee(32))
-logger.set_context(level=logger.levels.debug)
+@timeit
+def crazy_trace(e, v):
+    return greedy_trace(utils.expand(e), v)
+
+
+logger.set_context(level=logger.levels.info)
 Expr.__repr__ = Expr.__str__
 
-e = '(a + a + b) * (a + b + b) * (b + b + c) * (c + c + a) * (c + a + a)'
+e = """
+    (a + a + b) * (a + b + b) * (b + b + c) *
+    (b + c + c) * (c + c + a) * (c + a + a) |
+    (1 + b + c) * (a + 1 + b) * (a + b + 1)
+    """
 v = {
-    'a': cast_error('1', '2'),
-    'b': cast_error('10', '20'),
-    'c': cast_error('100', '200'),
+    'a': ['1', '2'],
+    'b': ['10', '20'],
+    'c': ['100', '200'],
 }
-p = Plot()
-for f in [frontier_trace, greedy_trace]:
+vary_width = True
+logger.info(Expr(e).error(v, gmpy2.ieee(32).precision))
+p = Plot(log=vary_width)
+for f in [greedy_trace, frontier_trace]:
     derived, front = f(e, v)
     derived = derived or front
     logger.info(f.__name__, len(front), len(derived))
-    p.add(analyse(derived, v), legend=f.__name__, annotate=False,
-          alpha=0.7, linestyle='--', linewidth=2)
-p.add(analyse(e, v), frontier=False, legend='original', marker='o')
+    p.add(analyse(derived, v, vary_width=vary_width), legend=f.__name__,
+          alpha=0.7, linestyle='-', linewidth=1, marker='.')
+p.add(analyse(e, v), frontier=False, legend='original', marker='.')
 p.save('a.pdf')
 p.show()

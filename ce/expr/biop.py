@@ -1,8 +1,9 @@
 import gmpy2
 
-from ce.common import Comparable, Flyweight, cached
+from ce.common import Comparable, Flyweight, cached, ignored
 
-from ce.expr.common import ADD_OP, MULTIPLY_OP, COMMUTATIVITY_OPERATORS
+from ce.expr.common import ADD_OP, MULTIPLY_OP, BARRIER_OP, \
+    COMMUTATIVITY_OPERATORS
 from ce.expr.parser import parse
 
 
@@ -61,35 +62,30 @@ class Expr(Comparable, Flyweight):
         return [self.a1, self.a2]
 
     @cached
-    def error(self, v):
-        def eval(a):
-            from ce.semantics import cast_error, cast_error_constant
-            try:
-                return a.error(v)
-            except AttributeError:
-                pass
-            try:
-                return eval(v[a])
-            except (TypeError, KeyError):
-                pass
-            try:
-                return cast_error_constant(a)
-            except TypeError:
-                pass
-            try:
+    def error(self, var_env, prec):
+        from ce.semantics import cast_error, cast_error_constant, \
+            precision_context
+        with precision_context(prec):
+            def eval(a):
+                with ignored(AttributeError):
+                    return a.error(var_env, prec)
+                with ignored(TypeError, KeyError):
+                    return eval(var_env[a])
+                with ignored(TypeError):
+                    return cast_error_constant(a)
                 return cast_error(*a)
-            except TypeError:
-                return a
-        e1, e2 = eval(self.a1), eval(self.a2)
-        if self.op == ADD_OP:
-            return e1 + e2
-        if self.op == MULTIPLY_OP:
-            return e1 * e2
+            e1, e2 = eval(self.a1), eval(self.a2)
+            if self.op == ADD_OP:
+                return e1 + e2
+            if self.op == MULTIPLY_OP:
+                return e1 * e2
+            if self.op == BARRIER_OP:
+                return e1 | e2
 
     @cached
-    def area(self, v):
+    def area(self, var_env, prec):
         from ce.semantics import AreaSemantics
-        return AreaSemantics(self, v)
+        return AreaSemantics(self, var_env, prec)
 
     @cached
     def as_labels(self):
@@ -155,6 +151,9 @@ class Expr(Comparable, Flyweight):
     def __mul__(self, other):
         return Expr(op=MULTIPLY_OP, a1=self, a2=other)
 
+    def __or__(self, other):
+        return Expr(op=BARRIER_OP, a1=self, a2=other)
+
     def _symmetric_id(self):
         if self.op in COMMUTATIVITY_OPERATORS:
             _sym_id = (self.op, frozenset(self.args))
@@ -197,7 +196,6 @@ class BExpr(Expr):
 
 
 if __name__ == '__main__':
-    gmpy2.set_context(gmpy2.ieee(32))
     r = Expr('(a + 1) * (a + b + [2, 3])')
     n, e = r.crop(1)
     print('cropped', n, e)
@@ -206,10 +204,11 @@ if __name__ == '__main__':
     print(repr(r))
     v = {
         'a': ['0.2', '0.3'],
-        'b': ['2.3', '2.4']
+        'b': ['2.3', '2.4'],
     }
     print(v)
-    print(r.error(v))
-    for e, v in r.as_labels()[1].items():
-        print(str(e), ':', str(v))
-    print(r.area(v))
+    prec = gmpy2.ieee(32).precision
+    print(r.error(v, prec))
+    for l, e in r.as_labels()[1].items():
+        print(str(l), ':', str(e))
+    print(r.area(v, prec))
