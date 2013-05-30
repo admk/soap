@@ -1,5 +1,6 @@
 ADD_OP = '+'
 MULTIPLY_OP = '*'
+BARRIER_OP = '|'
 
 OPERATORS = [ADD_OP, MULTIPLY_OP]
 
@@ -24,3 +25,18 @@ RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTION_OVER_OPERATORS = \
 def is_expr(e):
     from ce.expr.biop import Expr
     return isinstance(e, Expr)
+
+
+def concat_multi_expr(*expr_args):
+    from ce.expr.biop import Expr
+    me = None
+    for e in expr_args:
+        e = Expr(e)
+        me = me | e if me else e
+    return me
+
+
+def split_multi_expr(e):
+    if e.op != BARRIER_OP:
+        return [e]
+    return split_multi_expr(e.a1) + split_multi_expr(e.a2)

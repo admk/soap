@@ -136,6 +136,9 @@ class Expr(Comparable, Flyweight):
     def __mul__(self, other):
         return Expr(op=MULTIPLY_OP, a1=self, a2=other)
 
+    def __or__(self, other):
+        return Expr(op=BARRIER_OP, a1=self, a2=other)
+
     def _symmetric_id(self):
         if self.op in COMMUTATIVITY_OPERATORS:
             _sym_id = (self.op, frozenset(self.args))

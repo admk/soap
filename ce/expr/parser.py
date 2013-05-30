@@ -14,7 +14,12 @@ def try_to_number(s):
 OPERATOR_MAP = {
     ast.Add: ADD_OP,
     ast.Mult: MULTIPLY_OP,
+    ast.BitOr: BARRIER_OP,
 }
+
+
+class ParserSyntaxError(SyntaxError):
+    pass
 
 
 def parse(s, cls):
