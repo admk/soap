@@ -7,34 +7,24 @@ from ce.expr.common import ADD_OP, MULTIPLY_OP, BARRIER_OP, \
 from ce.expr.parser import parse
 
 
-class Var(Comparable, Flyweight):
-
-    __slots__ = ()
-
-    def __init__(self, v, prec):
-        self.v = v
-        self.prec = prec
-
-    def context(self):
-        return gmpy2.context(precision=self.prec)
-
-
 class Expr(Comparable, Flyweight):
 
     __slots__ = ('op', 'a1', 'a2', 'prec', '_hash')
 
     def __init__(self, *args, **kwargs):
+        prec = None
         if kwargs:
             op = kwargs.setdefault('op')
-            a1 = kwargs.setdefault('a1')
-            a2 = kwargs.setdefault('a2')
-            al = a1, a2
+            al = kwargs.setdefault('al')
+            al = al or (kwargs.setdefault('a1'), kwargs.setdefault('a2'))
+            prec = kwargs.setdefault('prec')
         if len(args) == 1:
             expr = list(args).pop()
             try:
                 op, al = expr.op, expr.args
+                prec = prec or expr.prec
             except AttributeError:
-                expr = parse(expr, self.__class__)
+                expr = parse(expr, self.__class__, prec)
             try:
                 op, al = expr.op, expr.args
             except AttributeError:
@@ -45,6 +35,7 @@ class Expr(Comparable, Flyweight):
             op, *al = args
         self.op = op
         self.a1, self.a2 = al
+        self.prec = prec
         super().__init__()
 
     def __getnewargs__(self):
@@ -62,9 +53,11 @@ class Expr(Comparable, Flyweight):
         return [self.a1, self.a2]
 
     @cached
-    def error(self, var_env, prec):
+    def error(self, var_env, prec=None):
         from ce.semantics import cast_error, cast_error_constant
         from ce.precision import precision_context
+        if not prec:
+            prec = self.prec
         with precision_context(prec):
             def eval(a):
                 with ignored(AttributeError):
@@ -83,8 +76,10 @@ class Expr(Comparable, Flyweight):
                 return e1 | e2
 
     @cached
-    def area(self, var_env, prec):
+    def area(self, var_env, prec=None):
         from ce.semantics import AreaSemantics
+        if not prec:
+            prec = self.prec
         return AreaSemantics(self, var_env, prec)
 
     @cached
@@ -142,8 +137,8 @@ class Expr(Comparable, Flyweight):
         return '(%s %s %s)' % (a1, self.op, a2)
 
     def __repr__(self):
-        return "Expr(op='%s', a1=%s, a2=%s)" % \
-            (self.op, repr(self.a1), repr(self.a2))
+        return "Expr(op='%s', a1=%s, a2=%s, prec=%s)" % \
+            (self.op, repr(self.a1), repr(self.a2), repr(self.prec))
 
     def __add__(self, other):
         return Expr(op=ADD_OP, a1=self, a2=other)

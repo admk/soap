@@ -23,7 +23,7 @@ class ParserSyntaxError(SyntaxError):
     pass
 
 
-def parse(s, cls):
+def parse(s, cls, prec=None):
     def _parse_r(t):
         with ignored(AttributeError):
             return t.n
@@ -35,7 +35,7 @@ def parse(s, cls):
             op = OPERATOR_MAP[t.op.__class__]
             a1 = _parse_r(t.left)
             a2 = _parse_r(t.right)
-            return cls(op, a1, a2)
+            return cls(op, a1, a2, prec=prec)
         except KeyError:
             raise ParserSyntaxError(
                 'Unrecognised binary operator %s' % str(t.op))
