@@ -2,15 +2,21 @@ import itertools
 
 from matplotlib import pyplot
 
-from ce.analysis.core import AreaErrorAnalysis, pareto_frontier_2d
+
+def _analyser(vary_width):
+    if vary_width:
+        from ce.analysis.core import VaryWidthAnalysis
+        return VaryWidthAnalysis
+    from ce.analysis.core import AreaErrorAnalysis
+    return AreaErrorAnalysis
 
 
-def analyse(expr_set, var_env):
-    return AreaErrorAnalysis(expr_set, var_env).analyse()
+def analyse(expr_set, var_env, vary_width=False):
+    return _analyser(vary_width)(expr_set, var_env).analyse()
 
 
-def frontier(expr_set, var_env):
-    return AreaErrorAnalysis(expr_set, var_env).frontier()
+def frontier(expr_set, var_env, vary_width=False):
+    return _analyser(vary_width)(expr_set, var_env).frontier()
 
 
 def list_from_keys(result, keys=None):
@@ -27,6 +33,7 @@ def zip_from_keys(result, keys='expression'):
 
 
 def zip_result(result):
+    from ce.analysis.core import AreaErrorAnalysis
     return zip_from_keys(result, keys=AreaErrorAnalysis.names())
 
 
@@ -66,7 +73,7 @@ class Plot(object):
         super().__init__()
 
     def add(self, result,
-            legend=None, frontier=True, annotate=True, **kwargs):
+            legend=None, frontier=True, annotate=False, **kwargs):
         self.result_list.append({
             'result': result,
             'legend': legend,
@@ -86,6 +93,7 @@ class Plot(object):
         return itertools.cycle('so+x.v^<>')
 
     def _plot(self):
+        from ce.analysis.core import AreaErrorAnalysis, pareto_frontier_2d
         try:
             return self.figure
         except AttributeError:
@@ -128,9 +136,11 @@ class Plot(object):
                 if r['annotate']:
                     for x, y, e in zip(area, error, expr):
                         plot.annotate(str(e), xy=(x, y), alpha=0.5)
-        plot.set_ylim(0.95 * ymin, 1.05 * ymax)
-        plot.set_xlim(0.95 * xmin, 1.05 * xmax)
+        plot.set_ylim(0.1 * ymin, 10.0 * ymax)
+        plot.set_xlim(max(0, xmin - 0.1 * xmax), 1.1 * xmax)
+        plot.set_xmargin(0)
         plot.set_ymargin(0)
+        plot.set_yscale('log')
         plot.legend(loc='upper center', bbox_to_anchor=(0.5, 1.05), ncol=3)
         plot.set_xlabel('Area (Number of LUTs)')
         plot.set_ylabel('Absolute Error')
@@ -144,5 +154,7 @@ class Plot(object):
         self._plot().savefig(*args, **kwargs)
 
 
-def plot(result):
-    Plot(result).show()
+def plot(result, **kwargs):
+    p = Plot(result, **kwargs)
+    p.show()
+    return p

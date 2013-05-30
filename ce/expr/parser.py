@@ -35,8 +35,7 @@ def parse(s, cls):
         except AttributeError:
             pass
         try:
-            bounds = [_parse_r(v) for v in t.elts]
-            return cast_error(*bounds)
+            return tuple(_parse_r(v) for v in t.elts)
         except AttributeError:
             raise SyntaxError('Unknown token %s' % str(t))
         except KeyError:

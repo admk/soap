@@ -1,8 +1,9 @@
-from ce.common import Comparable, Flyweight, cached
+import gmpy2
+
+from ce.common import Comparable, Flyweight, cached, ignored
 
 from ce.expr.common import ADD_OP, MULTIPLY_OP, COMMUTATIVITY_OPERATORS
-from ce.semantics import cast_error, cast_error_constant, Label, AreaSemantics
-from ce.expr.parser import parse, try_to_number
+from ce.expr.parser import parse
 
 
 class Expr(Comparable, Flyweight):
@@ -30,7 +31,7 @@ class Expr(Comparable, Flyweight):
         elif len(args) == 3:
             op, *al = args
         self.op = op
-        self.a1, self.a2 = [try_to_number(a) for a in al]
+        self.a1, self.a2 = al
         super().__init__()
 
     def __getnewargs__(self):
@@ -48,34 +49,40 @@ class Expr(Comparable, Flyweight):
         return [self.a1, self.a2]
 
     @cached
-    def error(self, v):
-        def eval(a):
-            try:
-                return a.error(v)
-            except AttributeError:
-                pass
-            try:
-                return v[a]
-            except KeyError:
-                pass
-            try:
-                return cast_error_constant(a)
-            except TypeError:
-                return a
-        e1, e2 = eval(self.a1), eval(self.a2)
-        if self.op == ADD_OP:
-            return e1 + e2
-        if self.op == MULTIPLY_OP:
-            return e1 * e2
+    def error(self, var_env, prec):
+        from ce.semantics import cast_error, cast_error_constant, \
+            precision_context
+        with precision_context(prec):
+            def eval(a):
+                with ignored(AttributeError):
+                    return a.error(var_env, prec)
+                with ignored(TypeError, KeyError):
+                    return eval(var_env[a])
+                with ignored(TypeError):
+                    return cast_error_constant(a)
+                return cast_error(*a)
+            e1, e2 = eval(self.a1), eval(self.a2)
+            if self.op == ADD_OP:
+                return e1 + e2
+            if self.op == MULTIPLY_OP:
+                return e1 * e2
+
+    @cached
+    def area(self, var_env, prec):
+        from ce.semantics import AreaSemantics, precision_context
+        return AreaSemantics(self, var_env, prec)
 
     @cached
     def as_labels(self):
+        from ce.semantics import Label
+
         def to_label(e):
             try:
                 return e.as_labels()
             except AttributeError:
                 l = Label(e)
                 return l, {l: e}
+
         l1, s1 = to_label(self.a1)
         l2, s2 = to_label(self.a2)
         e = BExpr(op=self.op, a1=l1, a2=l2)
@@ -96,6 +103,7 @@ class Expr(Comparable, Flyweight):
             l2, s2 = subcrop(self.a2)
             s1.update(s2)
             return self.__class__(self.op, l1, l2), s1
+        from ce.semantics import Label
         l = Label(self)
         return l, {l: self}
 
@@ -110,10 +118,6 @@ class Expr(Comparable, Flyweight):
             except KeyError:
                 return a
         return self.__class__(self.op, substitch(self.a1), substitch(self.a2))
-
-    @cached
-    def area(self):
-        return AreaSemantics(self)
 
     def __iter__(self):
         return iter((self.op, self.a1, self.a2))
@@ -167,6 +171,7 @@ class BExpr(Expr):
     __slots__ = Expr.__slots__
 
     def __init__(self, **kwargs):
+        from ce.semantics import Label
         super().__init__(**kwargs)
         if not isinstance(self.a1, Label) or not isinstance(self.a2, Label):
             raise ValueError('BExpr allows only binary expressions.')
@@ -174,7 +179,6 @@ class BExpr(Expr):
 
 if __name__ == '__main__':
     import gmpy2
-    gmpy2.set_context(gmpy2.ieee(32))
     r = Expr('(a + 1) * (a + b + [2, 3])')
     n, e = r.crop(1)
     print('cropped', n, e)
@@ -182,11 +186,12 @@ if __name__ == '__main__':
     print(r)
     print(repr(r))
     v = {
-        'a': cast_error('0.2', '0.3'),
-        'b': cast_error('2.3', '2.4')
+        'a': ['0.2', '0.3'],
+        'b': ['2.3', '2.4'],
     }
     print(v)
-    print(r.error(v))
-    for e, v in r.as_labels()[1].items():
-        print(str(e), ':', str(v))
-    print(r.area())
+    prec = gmpy2.ieee(32).precision
+    print(r.error(v, prec))
+    for l, e in r.as_labels()[1].items():
+        print(str(l), ':', str(e))
+    print(r.area(v, prec))
