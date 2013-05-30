@@ -103,6 +103,9 @@ class Plot(object):
         plot = self.figure.add_subplot(111)
         if self.log:
             plot.set_yscale('log')
+        else:
+            plot.yaxis.get_major_formatter().set_scientific(True)
+            plot.yaxis.get_major_formatter().set_powerlimits((-3, 4))
         colors = self._colors(len(self.result_list))
         markers = self._markers()
         for r in self.result_list:
