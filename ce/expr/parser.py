@@ -42,9 +42,9 @@ def parse(s, cls):
         except AttributeError:
             raise ParserSyntaxError('Unknown token %s' % str(t))
     try:
-        body = ast.parse(s, mode='eval').body
+        body = ast.parse(s.replace('\n', '').strip(), mode='eval').body
         return _parse_r(body)
-    except TypeError:
+    except (TypeError, AttributeError):
         raise TypeError('Parse argument must be a string')
     except SyntaxError as e:
         raise ParserSyntaxError(e)

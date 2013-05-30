@@ -53,7 +53,7 @@ Expr.__repr__ = Expr.__str__
 e = """
     (a + a + b) * (a + b + b) * (b + b + c) *
     (b + c + c) * (c + c + a) * (c + a + a)
-    """.replace('\n', '').replace(' ', '')
+    """
 v = {
     'a': ['1', '2'],
     'b': ['10', '20'],
