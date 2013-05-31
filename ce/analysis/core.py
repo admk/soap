@@ -121,6 +121,12 @@ class VaryWidthAnalysis(AreaErrorAnalysis):
         return precisions()
 
 
+class MultiWidthAnalysis(AreaErrorAnalysis):
+
+    def precisions(self):
+        return [None]
+
+
 if __name__ == '__main__':
     from ce.transformer import BiOpTreeTransformer
     from ce.analysis.utils import plot
