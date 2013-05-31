@@ -1,11 +1,32 @@
 TODOs
 =====
 
-* Support for subtraction & maybe division
+* Multiple mantissa widths
+* Available expression analysis for straight-line code
 * Much needed documentation and unit testing
+* Support for subtraction & maybe division
 
 Changelog
 =========
+
+Version 0.7
+-----------
+
+Fri May 31 14:38:10 BST 2013
+
+* Greedy frontier
+* Substitution-based depth limit
+* Variable precision analysis
+* Better plotting
+
+Version 0.6
+-----------
+
+Tue 30 Apr 2013 09:56:38 PDT
+
+* Lots more optimisations
+* Trace constructed equivalent expressions
+* Transformation, analysis and plotting utility functions
 
 Version 0.5
 -----------
@@ -45,7 +66,7 @@ Mon Feb 18 17:37:49 GMT 2013
 
 * Non-symmetric reductions
 * Constant propagation
-* Use Expr instead of tuples for expressions
+* Use ``Expr`` instead of tuples for expressions
 
 Version 0.1
 -----------

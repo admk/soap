@@ -1,123 +1,133 @@
-#!/usr/bin/env python
-# vim: set fileencoding=UTF-8 :
+import gmpy2
+
+import ce.logger as logger
+from ce.common import DynamicMethods, Flyweight
+from ce.expr import Expr
+from ce.semantics import cast_error, mpfr
+import ce.semantics.flopoco as flopoco
 
 
-import sys
-import itertools
+class Analysis(DynamicMethods, Flyweight):
 
-from ..common import DynamicMethods
-from ..expr import Expr, ExprTreeTransformer
+    def __init__(self, expr_set, var_env):
+        try:
+            expr_set = {Expr(expr_set)}
+        except TypeError:
+            pass
+        self.expr_set = expr_set
+        self.var_env = var_env
+        super().__init__()
 
-from ..semantics import cast_error
-
-
-class Analysis(DynamicMethods):
-
-    def __init__(self, e, print_progress=False, **kwargs):
-        super(Analysis, self).__init__()
-        self.e = e
-        self.s = ExprTreeTransformer(
-            Expr(e), print_progress=print_progress, **kwargs).closure()
-        self.p = print_progress
+    def precisions(self):
+        return [gmpy2.ieee(32).precision]
 
     def analyse(self):
-        if self.p:
-            print('Analysing results.')
-        a = []
-        n = len(self.s)
-        for i, t in enumerate(self.s):
-            if self.p:
-                sys.stdout.write('\r%d/%d' % (i, n))
-                sys.stdout.flush()
-            a.append(self._analyse(t))
-        a = sorted(
-            a, key=lambda k: tuple(k[m.__name__] for m in self.methods()))
-        return [self._select(d) for d in a]
+        try:
+            return self.result
+        except AttributeError:
+            pass
+        analysis_names, analysis_methods, select_methods = self.methods()
+        logger.debug('Analysing results.')
+        result = []
+        i = 0
+        n = len(self.expr_set) * len(self.precisions())
+        for p in self.precisions():
+            for t in self.expr_set:
+                i += 1
+                logger.persistent('Analysing', '%d/%d' % (i, n),
+                                  l=logger.levels.debug)
+                analysis_dict = {'expression': t}
+                for name, func in zip(analysis_names, analysis_methods):
+                    analysis_dict[name] = func(t, p)
+                result.append(analysis_dict)
+        logger.unpersistent('Analysing')
+        result = sorted(
+            result, key=lambda k: tuple(k[n] for n in analysis_names))
+        for analysis_dict in result:
+            for n, f in zip(analysis_names, select_methods):
+                analysis_dict[n] = f(analysis_dict[n])
+        self.result = result
+        return self.result
 
-    def _analyse(self, t):
-        d = {'e': t}
-        d.update({m.__name__: m(t) for m in self.methods()})
-        return d
-
-    def _select(self, d):
-        d['e'] = str(d['e'])
-        for f in self.list_methods(lambda m: m.endswith('select')):
-            d = f(d)
-        return d
+    @classmethod
+    def names(cls):
+        method_list = cls.list_method_names(lambda m: m.endswith('_analysis'))
+        names = []
+        for m in method_list:
+            m = m.replace('_analysis', '')
+            names.append(m)
+        return names
 
     def methods(self):
-        return self.list_methods(lambda m: m.endswith('analysis'))
+        method_names = self.names()
+        analysis_methods = []
+        select_methods = []
+        for m in method_names:
+            analysis_methods.append(getattr(self, m + '_analysis'))
+            select_methods.append(getattr(self, m + '_select'))
+        return method_names, analysis_methods, select_methods
 
 
 class ErrorAnalysis(Analysis):
 
-    def __init__(self, e, v, **kwargs):
-        super(ErrorAnalysis, self).__init__(e, **kwargs)
-        self.v = v
+    def error_analysis(self, t, p):
+        return t.error(self.var_env, p)
 
-    def error_analysis(self, t):
-        return t.error(self.v)
-
-    def error_select(self, d):
-        m = self.error_analysis.__name__
-        d[m] = float(max(abs(d[m].e.min), abs(d[m].e.max)))
-        return d
+    def error_select(self, v):
+        with gmpy2.local_context(gmpy2.ieee(64), round=gmpy2.RoundAwayZero):
+            return float(mpfr(max(abs(v.e.min), abs(v.e.max))))
 
 
 class AreaAnalysis(Analysis):
 
-    def area_analysis(self, t):
-        return t.area()
+    def area_analysis(self, t, p):
+        return t.area(self.var_env, p)
 
-    def area_select(self, d):
-        m = self.area_analysis.__name__
-        d[m] = d[m].area
-        return d
+    def area_select(self, v):
+        return v.area
 
 
-def pareto_frontier(s, keys=None):
-    keys = keys or list(range(len(s[0])))
-    s = sorted(s, key=lambda e: tuple(e[k] for k in keys))
-    frontier = s[:]
-    for m, n in itertools.product(s, s):
-        if m == n:
-            continue
-        if not n in frontier:
-            continue
-        if all(m[k] <= n[k] for k in keys):
-            if all(m[k] == n[k] for k in keys):
-                continue
-            frontier.remove(n)
+def pareto_frontier_2d(s, keys=None):
+    if keys:
+        a = keys[1]
+        sort_key = lambda e: tuple(e[k] for k in keys)
+    else:
+        a = 1
+        sort_key = None
+    s = sorted(s, key=sort_key)
+    frontier = s[:1]
+    for i, m in enumerate(s[1:]):
+        if m[a] < frontier[-1][a]:
+            frontier.append(m)
     return frontier
 
 
 class AreaErrorAnalysis(ErrorAnalysis, AreaAnalysis):
     """Collect area and error analysis."""
 
-    def analyse(self):
-        analysis = super(AreaErrorAnalysis, self).analyse()
-        frontier = pareto_frontier(
-            analysis, keys=(self.area_analysis.__name__,
-                            self.error_analysis.__name__))
-        return (analysis, frontier)
+    def frontier(self):
+        return pareto_frontier_2d(self.analyse(), keys=self.names())
+
+
+class VaryWidthAnalysis(AreaErrorAnalysis):
+
+    def precisions(self):
+        return flopoco.wf_range
 
 
 if __name__ == '__main__':
-    from matplotlib import pyplot as plt
-    e = '(((a + b) * (a + b)) * (a + b))'
-    s = {
-        'a': cast_error('0.01', '0.02'),
-        'b': cast_error('0.02', '0.03')
+    from ce.transformer import BiOpTreeTransformer
+    from ce.analysis.utils import plot
+    from ce.common import timed
+    logger.set_context(level=logger.levels.info)
+    e = Expr('(a + b) * (a + b)')
+    v = {
+        'a': ['5', '10'],
+        'b': ['0', '0.001'],
     }
-    a = AreaErrorAnalysis(e, s, print_progress=True)
-    a, f = a.analyse()
-    ax = [v['area_analysis'] for v in a]
-    ay = [v['error_analysis'] for v in a]
-    fx = [v['area_analysis'] for v in f]
-    fy = [v['error_analysis'] for v in f]
-    fig = plt.figure()
-    subplt = fig.add_subplot(111)
-    subplt.set_ylim(0.8 * min(ay), 1.2 * max(ay))
-    subplt.scatter(ax, ay)
-    subplt.plot(fx, fy)
-    plt.show()
+    with timed('Analysis'):
+        a = VaryWidthAnalysis(BiOpTreeTransformer(e).closure(), v)
+        a, f = a.analyse(), a.frontier()
+    logger.info('Results', len(a))
+    logger.info('Frontier', len(f))
+    plot(a)

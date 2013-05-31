@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# vim: set fileencoding=UTF-8 :
+import gmpy2
 
 
 _label_count = 0
@@ -22,7 +21,7 @@ class Label(object):
         self.l = l or fresh_int(e)
         self.e = e
         self.__slots__ = []
-        super(Label, self).__init__()
+        super().__init__()
 
     def __str__(self):
         return 'l%s' % str(self.l)
@@ -48,7 +47,7 @@ class Labels(object):
 
     def __init__(self, s):
         self.s = {fresh_int: e for e in s}
-        super(Labels, self).__init__()
+        super().__init__()
 
     def add(self, e):
         if e in list(self.s.items()):
@@ -69,3 +68,7 @@ class Lattice(object):
 
     def __and__(self, other):
         return self.meet(other)
+
+
+def precision_context(prec):
+    return gmpy2.local_context(gmpy2.ieee(128), precision=prec)

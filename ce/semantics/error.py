@@ -1,12 +1,9 @@
-#!/usr/bin/env python
-# vim: set fileencoding=UTF-8 :
-
-
 import itertools
 import gmpy2
 from gmpy2 import RoundUp, RoundDown, mpfr, mpq as _mpq
 
-from ..common import Comparable
+from ce.common import Comparable
+from ce.semantics import Lattice
 
 
 mpfr_type = type(mpfr('1.0'))
@@ -67,11 +64,19 @@ def cast_error(v, w=None):
         [v, w], round_off_error(FractionInterval([v, w])))
 
 
-class Interval(object):
+class Interval(Lattice):
 
     def __init__(self, v):
         min_val, max_val = v
         self.min, self.max = min_val, max_val
+        if min_val > max_val:
+            raise ValueError('min_val cannot be greater than max_val')
+
+    def join(self, other):
+        return Interval([min(self.min, other.min), max(self.max, other.max)])
+
+    def meet(self, other):
+        return Interval([max(self.min, other.min), min(self.max, other.max)])
 
     def __iter__(self):
         return iter((self.min, self.max))
@@ -103,11 +108,9 @@ class FloatInterval(Interval):
 
     def __init__(self, v):
         min_val, max_val = v
-        with gmpy2.local_context(round=RoundDown):
-            min_val = mpfr(min_val)
-        with gmpy2.local_context(round=RoundUp):
-            max_val = mpfr(max_val)
-        super(FloatInterval, self).__init__((min_val, max_val))
+        min_val = mpfr(min_val)
+        max_val = mpfr(max_val)
+        super().__init__((min_val, max_val))
 
     def __add__(self, other):
         f = round_op(lambda x, y: x + y)
@@ -134,17 +137,23 @@ class FractionInterval(Interval):
 
     def __init__(self, v):
         min_val, max_val = v
-        super(FractionInterval, self).__init__((mpq(min_val), mpq(max_val)))
+        super().__init__((mpq(min_val), mpq(max_val)))
 
     def __str__(self):
         return '[~%s, ~%s]' % (str(mpfr(self.min)), str(mpfr(self.max)))
 
 
-class ErrorSemantics(Comparable):
+class ErrorSemantics(Lattice, Comparable):
 
     def __init__(self, v, e):
         self.v = FloatInterval(v)
         self.e = FractionInterval(e)
+
+    def join(self, other):
+        return ErrorSemantics(self.v | other.v, self.e | other.e)
+
+    def meet(self, other):
+        return ErrorSemantics(self.v & other.v, self.e & other.e)
 
     def __add__(self, other):
         v = self.v + other.v

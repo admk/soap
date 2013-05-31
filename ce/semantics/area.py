@@ -1,23 +1,21 @@
-#!/usr/bin/env python
-# vim: set fileencoding=UTF-8 :
+import math
+import gmpy2
 
-
-from ..common import Comparable
 import ce.expr
-
-from . import Lattice
-
-
-ADDER_SIZE = 576
-MULTIPLIER_SIZE = 138
+from ce.common import Comparable
+from ce.semantics import Lattice
+from ce.semantics import flopoco
 
 
 class AreaSemantics(Comparable, Lattice):
 
-    def __init__(self, e):
+    def __init__(self, e, v, p):
         self.e = e
+        self.v = v
+        self.p = p
         self.l, self.s = e.as_labels()
-        super(AreaSemantics, self).__init__()
+        self.area = self._area()
+        super().__init__()
 
     def join(self, other):
         pass
@@ -25,8 +23,7 @@ class AreaSemantics(Comparable, Lattice):
     def meet(self, other):
         pass
 
-    @property
-    def area(self):
+    def _op_counts(self):
         mult, add = 0, 0
         for _, e in self.s.items():
             try:
@@ -36,16 +33,26 @@ class AreaSemantics(Comparable, Lattice):
                     add += 1
             except AttributeError:
                 pass
-        return ADDER_SIZE * add + MULTIPLIER_SIZE * mult
+        return mult, add
+
+    def _area(self):
+        b = self.e.error(self.v, self.p).v
+        bmax = max(abs(b.min), abs(b.max))
+        expmax = math.floor(math.log(bmax, 2))
+        we = int(math.ceil(math.log(expmax + 1, 2) + 1))
+        we = max(we, flopoco.we_min)
+        wf = self.p
+        mult, add = self._op_counts()
+        return flopoco.adder(we, wf) * add + flopoco.multiplier(we, wf) * mult
 
     def __add__(self, other):
-        return AreaSemantics(self.e + other.e)
+        return AreaSemantics(self.e + other.e, self.v)
 
     def __sub__(self, other):
-        return AreaSemantics(self.e - other.e)
+        return AreaSemantics(self.e - other.e, self.v)
 
     def __mul__(self, other):
-        return AreaSemantics(self.e * other.e)
+        return AreaSemantics(self.e * other.e, self.v)
 
     def __lt__(self, other):
         if not isinstance(other, AreaSemantics):
@@ -67,5 +74,8 @@ class AreaSemantics(Comparable, Lattice):
 
 
 if __name__ == '__main__':
+    gmpy2.set_context(gmpy2.ieee(128))
+    gmpy2.get_context().precision = 24
     e = ce.expr.Expr('((a + 1) * (a + 1))')
-    print(AreaSemantics(e))
+    v = {'a': ['0.2', '0.3']}
+    print(AreaSemantics(e, v))
