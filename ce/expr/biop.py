@@ -137,8 +137,7 @@ class Expr(Comparable, Flyweight):
         return '(%s %s%s %s)' % (a1, self.op, str(self.prec or ''), a2)
 
     def __repr__(self):
-        return "Expr(op='%s', a1=%s, a2=%s, prec=%s)" % \
-            (self.op, repr(self.a1), repr(self.a2), repr(self.prec))
+        return self.__str__()
 
     def __add__(self, other):
         return Expr(op=ADD_OP, a1=self, a2=other)
