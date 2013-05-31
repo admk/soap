@@ -1,14 +1,23 @@
 TODOs
 =====
 
-* Substitution-based depth limited search
-* Multiple data representations
+* Multiple mantissa widths
 * Available expression analysis for straight-line code
 * Much needed documentation and unit testing
 * Support for subtraction & maybe division
 
 Changelog
 =========
+
+Version 0.7
+-----------
+
+Fri May 31 14:38:10 BST 2013
+
+* Greedy frontier
+* Substitution-based depth limit
+* Variable precision analysis
+* Better plotting
 
 Version 0.6
 -----------
