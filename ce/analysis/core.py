@@ -3,8 +3,8 @@ import gmpy2
 import ce.logger as logger
 from ce.common import DynamicMethods, Flyweight
 from ce.expr import Expr
-from ce.semantics import cast_error, mpfr
-import ce.semantics.flopoco as flopoco
+from ce.semantics import mpfr
+from ce.precision import precisions
 
 
 class Analysis(DynamicMethods, Flyweight):
@@ -19,7 +19,7 @@ class Analysis(DynamicMethods, Flyweight):
         super().__init__()
 
     def precisions(self):
-        return [gmpy2.ieee(32).precision]
+        return [None]
 
     def analyse(self):
         try:
@@ -70,6 +70,9 @@ class Analysis(DynamicMethods, Flyweight):
 
 class ErrorAnalysis(Analysis):
 
+    def precisions(self):
+        return [gmpy2.ieee(32).precision]
+
     def error_analysis(self, t, p):
         return t.error(self.var_env, p)
 
@@ -79,6 +82,9 @@ class ErrorAnalysis(Analysis):
 
 
 class AreaAnalysis(Analysis):
+
+    def precisions(self):
+        return [gmpy2.ieee(32).precision]
 
     def area_analysis(self, t, p):
         return t.area(self.var_env, p)
@@ -112,7 +118,7 @@ class AreaErrorAnalysis(ErrorAnalysis, AreaAnalysis):
 class VaryWidthAnalysis(AreaErrorAnalysis):
 
     def precisions(self):
-        return flopoco.wf_range
+        return precisions()
 
 
 if __name__ == '__main__':
