@@ -129,9 +129,6 @@ class Expr(Comparable, Flyweight):
                 return a
         return self.__class__(self.op, substitch(self.a1), substitch(self.a2))
 
-    def __iter__(self):
-        return iter((self.op, self.a1, self.a2))
-
     def __str__(self):
         a1, a2 = sorted([str(self.a1), str(self.a2)])
         return '(%s %s%s %s)' % (a1, self.op, str(self.prec or ''), a2)
@@ -150,10 +147,10 @@ class Expr(Comparable, Flyweight):
 
     def _symmetric_id(self):
         if self.op in COMMUTATIVITY_OPERATORS:
-            _sym_id = (self.op, frozenset(self.args))
+            args = frozenset(self.args)
         else:
-            _sym_id = tuple(self)
-        return _sym_id
+            args = tuple(self.args)
+        return (self.op, args, self.prec)
 
     def __eq__(self, other):
         if not isinstance(other, Expr):
