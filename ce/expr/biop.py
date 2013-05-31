@@ -134,7 +134,7 @@ class Expr(Comparable, Flyweight):
 
     def __str__(self):
         a1, a2 = sorted([str(self.a1), str(self.a2)])
-        return '(%s %s %s)' % (a1, self.op, a2)
+        return '(%s %s%s %s)' % (a1, self.op, str(self.prec or ''), a2)
 
     def __repr__(self):
         return "Expr(op='%s', a1=%s, a2=%s, prec=%s)" % \
@@ -191,19 +191,25 @@ class BExpr(Expr):
 
 
 if __name__ == '__main__':
+    import ce.logger as logger
+    from ce.precision import precision_permutations
+    logger.set_context(level=logger.levels.debug)
     r = Expr('(a + 1) * (a + b + [2, 3])')
     n, e = r.crop(1)
-    print('cropped', n, e)
-    print('stitched', n.stitch(e))
-    print(r)
-    print(repr(r))
+    logger.info('cropped', n, e)
+    logger.info('stitched', n.stitch(e))
+    logger.info(r)
+    logger.info(repr(r))
     v = {
         'a': ['0.2', '0.3'],
         'b': ['2.3', '2.4'],
     }
-    print(v)
+    logger.info(v)
     prec = gmpy2.ieee(32).precision
-    print(r.error(v, prec))
-    for l, e in r.as_labels()[1].items():
-        print(str(l), ':', str(e))
-    print(r.area(v, prec))
+    logger.info(r.error(v, prec))
+    logger.info(r.as_labels()[1])
+    logger.info(r.area(v, prec).area)
+    logger.info(
+        precision_permutations(
+            Expr('+', Expr('a + b'), 'c', prec=4),
+            range(5, 8)))

@@ -1,3 +1,4 @@
+import itertools
 import gmpy2
 
 from ce.common import ignored
@@ -13,7 +14,23 @@ def precision_context(prec):
 
 
 def set_precision_recursive(expr, prec):
-    expr.prec = prec
+    from ce.expr import BARRIER_OP
+    if expr.op != BARRIER_OP:
+        expr.prec = prec
     for a in expr.args:
         with ignored(ValueError, AttributeError):
             set_precision_recursive(a, prec)
+
+
+def precision_permutations(expr, permutations=precisions()):
+    from ce.expr import Expr, BARRIER_OP
+    try:
+        p1, p2 = [precision_permutations(a, permutations) for a in expr.args]
+        if expr.op == BARRIER_OP:
+            permutations = [None]
+        elif not expr.prec is None:
+            permutations = [expr.prec]
+        return [Expr(expr.op, a1, a2, prec=p)
+                for p in permutations for a1, a2 in itertools.product(p1, p2)]
+    except AttributeError:
+        return [expr]
