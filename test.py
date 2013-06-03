@@ -48,19 +48,19 @@ def multi_width_greedy_trace(e, v):
     return c, set(expr_frontier(c, v))
 
 
-def analyse_and_plot(e, v, analyser=None):
-    logger.set_context(level=logger.levels.info)
+def analyse_and_plot(e, v):
+    logger.set_context(level=logger.levels.debug)
     Expr.__repr__ = Expr.__str__
     logger.info(Expr(e).error(v, gmpy2.ieee(32).precision))
-    p = Plot(log=(analyser is not None))
+    p = Plot(log=True)
     for f in [greedy_trace, frontier_trace]:
         derived, front = f(e, v)
         derived = derived or front
         logger.info(f.__name__, len(front), len(derived))
-        p.add(analyse(derived, v, analyser), legend=f.__name__,
+        p.add(analyse(derived, v), legend=f.__name__,
               alpha=0.7, linestyle='-', linewidth=1, marker='.')
     p.add(analyse(e, v), frontier=False, legend='original', marker='.')
-    p.save('a.pdf')
+    p.save('analysis.pdf')
     p.show()
 
 
@@ -74,5 +74,4 @@ v = {
     'b': ['10', '20'],
     'c': ['100', '200'],
 }
-a = 'vary_width'
-analyse_and_plot(e, v, a)
+analyse_and_plot(e, v)
