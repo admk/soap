@@ -29,8 +29,9 @@ class Analysis(DynamicMethods, Flyweight):
         n = len(self.expr_set)
         for t in self.expr_set:
             i += 1
-            logger.persistent('Analysing', '%d/%d' % (i, n),
-                              l=logger.levels.debug)
+            if i % 100 == 0:
+                logger.persistent('Analysing', '%d/%d' % (i, n),
+                                  l=logger.levels.debug)
             analysis_dict = {'expression': t}
             for name, func in zip(analysis_names, analysis_methods):
                 analysis_dict[name] = func(t)
