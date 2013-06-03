@@ -4,7 +4,7 @@ import ce.logger as logger
 from ce.common import DynamicMethods, Flyweight
 from ce.expr import Expr
 from ce.semantics import mpfr
-from ce.precision import precisions
+from ce.precision import SINGLE_PRECISION
 
 
 class Analysis(DynamicMethods, Flyweight):
@@ -18,9 +18,6 @@ class Analysis(DynamicMethods, Flyweight):
         self.var_env = var_env
         super().__init__()
 
-    def precisions(self):
-        return [None]
-
     def analyse(self):
         try:
             return self.result
@@ -30,16 +27,15 @@ class Analysis(DynamicMethods, Flyweight):
         logger.debug('Analysing results.')
         result = []
         i = 0
-        n = len(self.expr_set) * len(self.precisions())
-        for p in self.precisions():
-            for t in self.expr_set:
-                i += 1
-                logger.persistent('Analysing', '%d/%d' % (i, n),
-                                  l=logger.levels.debug)
-                analysis_dict = {'expression': t}
-                for name, func in zip(analysis_names, analysis_methods):
-                    analysis_dict[name] = func(t, p)
-                result.append(analysis_dict)
+        n = len(self.expr_set)
+        for t in self.expr_set:
+            i += 1
+            logger.persistent('Analysing', '%d/%d' % (i, n),
+                              l=logger.levels.debug)
+            analysis_dict = {'expression': t}
+            for name, func in zip(analysis_names, analysis_methods):
+                analysis_dict[name] = func(t)
+            result.append(analysis_dict)
         logger.unpersistent('Analysing')
         result = sorted(
             result, key=lambda k: tuple(k[n] for n in analysis_names))
@@ -70,11 +66,8 @@ class Analysis(DynamicMethods, Flyweight):
 
 class ErrorAnalysis(Analysis):
 
-    def precisions(self):
-        return [gmpy2.ieee(32).precision]
-
-    def error_analysis(self, t, p):
-        return t.error(self.var_env, p)
+    def error_analysis(self, t):
+        return t.error(self.var_env)
 
     def error_select(self, v):
         with gmpy2.local_context(gmpy2.ieee(64), round=gmpy2.RoundAwayZero):
@@ -83,11 +76,8 @@ class ErrorAnalysis(Analysis):
 
 class AreaAnalysis(Analysis):
 
-    def precisions(self):
-        return [gmpy2.ieee(32).precision]
-
-    def area_analysis(self, t, p):
-        return t.area(self.var_env, p)
+    def area_analysis(self, t):
+        return t.area(self.var_env)
 
     def area_select(self, v):
         return v.area
@@ -115,30 +105,28 @@ class AreaErrorAnalysis(ErrorAnalysis, AreaAnalysis):
         return pareto_frontier_2d(self.analyse(), keys=self.names())
 
 
-class VaryWidthAnalysis(AreaErrorAnalysis):
+class SinglePrecisionAreaErrorAnalysis(AreaErrorAnalysis):
 
-    def precisions(self):
-        return precisions()
-
-
-class MultiWidthAnalysis(AreaErrorAnalysis):
-
-    def precisions(self):
-        return [None]
+    def __init__(self, expr_set, var_env):
+        for e in expr_set:
+            e.prec = SINGLE_PRECISION
+        super().__init__(expr_set, var_env)
 
 
 if __name__ == '__main__':
+    from ce.common import timed
     from ce.transformer import BiOpTreeTransformer
     from ce.analysis.utils import plot
-    from ce.common import timed
-    logger.set_context(level=logger.levels.info)
+    from ce.precision import precision_variations
+    logger.set_context(level=logger.levels.debug)
     e = Expr('(a + b) * (a + b)')
     v = {
         'a': ['5', '10'],
         'b': ['0', '0.001'],
     }
     with timed('Analysis'):
-        a = VaryWidthAnalysis(BiOpTreeTransformer(e).closure(), v)
+        c = BiOpTreeTransformer(e).closure()
+        a = AreaErrorAnalysis(precision_variations(c), v)
         a, f = a.analyse(), a.frontier()
     logger.info('Results', len(a))
     logger.info('Frontier', len(f))
