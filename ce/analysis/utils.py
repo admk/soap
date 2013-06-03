@@ -1,6 +1,6 @@
 import itertools
 
-from matplotlib import pyplot
+from matplotlib import rc, pyplot
 
 
 def analyse(expr_set, var_env):
@@ -54,23 +54,33 @@ def precision_frontier(expr_set, var_env):
 def _insert_region_frontier(sx, sy):
     lx = []
     ly = []
-    py = sy[0] * 10
+    py = sy[0] * 100.0
     for x, y in zip(sx, sy):
         lx.append(x)
         ly.append(py)
         lx.append(x)
         ly.append(y)
         py = y
-    lx.append(sx[-1] * 10)
+    lx.append(sx[-1] * 100.0)
     ly.append(py)
     return lx, ly
 
 
+def _escape_legend(legend):
+    escapes = '# $ % & ~ \ _ ^ { }'.split(' ')
+    new_legend = []
+    for i, l in enumerate(legend.split('$')):
+        if i % 2 == 0:
+            for s in escapes:
+                l = l.replace(s, '\%s' % s)
+        new_legend.append(l)
+    return '$'.join(new_legend)
+
+
 class Plot(object):
 
-    def __init__(self, result=None, log=False, **kwargs):
+    def __init__(self, result=None, **kwargs):
         self.result_list = []
-        self.log = log
         if result:
             self.add(result, **kwargs)
         super().__init__()
@@ -79,7 +89,7 @@ class Plot(object):
             legend=None, frontier=True, annotate=False, **kwargs):
         self.result_list.append({
             'result': result,
-            'legend': legend,
+            'legend': _escape_legend(legend),
             'frontier': frontier,
             'annotate': annotate,
             'kwargs': kwargs
@@ -95,6 +105,24 @@ class Plot(object):
     def _markers(self):
         return itertools.cycle('so+x.v^<>')
 
+    def _auto_scale(self, plot, xlim, ylim):
+        log_enable = False
+        if min(ylim) <= 0:
+            log_enable = True
+        elif max(ylim) / min(ylim) >= 10:
+            log_enable = True
+        if log_enable:
+            plot.set_yscale('log')
+        else:
+            plot.set_yscale('linear')
+            plot.yaxis.get_major_formatter().set_scientific(True)
+            plot.yaxis.get_major_formatter().set_powerlimits((-3, 4))
+        plot.set_xlim(xlim)
+        if log_enable:
+            plot.set_ylim(min(ylim) * 0.1, max(ylim) * 10.0)
+        else:
+            plot.set_ylim(ylim)
+
     def _plot(self):
         from ce.analysis.core import AreaErrorAnalysis, pareto_frontier_2d
         try:
@@ -103,11 +131,6 @@ class Plot(object):
             pass
         self.figure = pyplot.figure()
         plot = self.figure.add_subplot(111)
-        if self.log:
-            plot.set_yscale('log')
-        else:
-            plot.yaxis.get_major_formatter().set_scientific(True)
-            plot.yaxis.get_major_formatter().set_powerlimits((-3, 4))
         colors = self._colors(len(self.result_list))
         markers = self._markers()
         for r in self.result_list:
@@ -134,13 +157,12 @@ class Plot(object):
                 legend = r['legend'] + ' frontier' if r['legend'] else None
                 lx, ly = _insert_region_frontier(area, error)
                 plot.plot(lx, ly, label=legend, **kwargs)
-                plot.fill_between(lx, ly, 10 * max(ly),
+                plot.fill_between(lx, ly, max(ly),
                                   alpha=0.1, color=kwargs['color'])
                 if r['annotate']:
                     for x, y, e in zip(area, error, expr):
                         plot.annotate(str(e), xy=(x, y), alpha=0.5)
-        plot.set_xlim(xlim)
-        plot.set_ylim(ylim)
+        self._auto_scale(plot, xlim, ylim)
         plot.legend(bbox_to_anchor=(1.1, 1.1), ncol=1)
         plot.grid(True, which='both', ls=':')
         plot.set_xlabel('Area (Number of LUTs)')
@@ -159,3 +181,7 @@ def plot(result, **kwargs):
     p = Plot(result, **kwargs)
     p.show()
     return p
+
+
+rc('font', family='serif', serif='Times')
+rc('text', usetex=True)
