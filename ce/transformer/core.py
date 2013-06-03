@@ -56,7 +56,6 @@ class TreeTransformer(object):
     def _harvest(self, trees):
         if self._d >= RECURSION_LIMIT:
             return trees
-        logger.debug('Cropping trees')
         cropped = []
         for t in trees:
             try:
@@ -70,7 +69,6 @@ class TreeTransformer(object):
     def _seed(self, trees):
         if not self._n:
             return trees
-        logger.debug('Stitching back trees')
         seeded = set()
         for t in trees:
             try:
@@ -131,7 +129,6 @@ class TreeTransformer(object):
             A set of trees after transform.
         """
         s = self._harvest(self._t)
-        logger.debug('Computing equivalent expressions.')
         s = self._closure_r(s)
         s = self._seed(s)
         return s
