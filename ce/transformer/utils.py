@@ -5,7 +5,7 @@ from ce.expr import Expr
 from ce.transformer.core import TreeTransformer
 from ce.transformer.biop import associativity, distribute_for_distributivity, \
     BiOpTreeTransformer
-from ce.analysis import expr_frontier
+from ce.analysis import expr_frontier, precision_frontier
 
 
 def closure(tree, depth=None):
@@ -13,12 +13,16 @@ def closure(tree, depth=None):
 
 
 def greedy_frontier_closure(tree, depth=None, var_env=None):
+    func = None
     if var_env:
         func = lambda s: expr_frontier(s, var_env)
-    else:
-        func = None
     return BiOpTreeTransformer(
         tree, depth=depth, step_plugin=func).closure()
+
+
+def precision_frontier_closure(tree, var_env, depth=None):
+    return BiOpTreeTransformer(
+        tree, depth=depth, step_plugin=precision_frontier).closure()
 
 
 def transform(tree,
@@ -103,9 +107,19 @@ class FrontierTraceExpr(TraceExpr):
             closure(trees, depth=kwargs['depth']), kwargs['var_env'])
 
 
-def greedy_trace(tree, var_env=None, depth=2):
+class MultiWidthGreedyTraceExpr(GreedyTraceExpr):
+    def closure(self, trees, **kwargs):
+        return precision_frontier_closure(
+            trees, kwargs['var_env'], depth=kwargs['depth'])
+
+
+def greedy_trace(tree, var_env=None, depth=None):
     return reduce(GreedyTraceExpr(tree).traces(var_env, depth))
 
 
-def frontier_trace(tree, var_env=None, depth=2):
+def frontier_trace(tree, var_env=None, depth=None):
     return reduce(FrontierTraceExpr(tree).traces(var_env, depth))
+
+
+def multi_width_greedy_trace(tree, var_env=None, depth=None):
+    return reduce(MultiWidthGreedyTraceExpr(tree).traces(var_env, depth))

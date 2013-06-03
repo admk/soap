@@ -43,8 +43,9 @@ def greedy_trace(e, v):
 
 
 @timeit
-def crazy_trace(e, v):
-    return greedy_trace(utils.expand(e), v)
+def multi_width_greedy_trace(e, v):
+    c = utils.multi_width_greedy_trace(e, v)
+    return c, set(expr_frontier(c, v))
 
 
 def analyse_and_plot(e, v, analyser=None):
