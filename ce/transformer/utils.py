@@ -109,8 +109,17 @@ class FrontierTraceExpr(TraceExpr):
 
 class MultiWidthGreedyTraceExpr(GreedyTraceExpr):
     def closure(self, trees, **kwargs):
+        def _safe_prec(e):
+            try:
+                if e.prec is None:
+                    return False
+                return all(_safe_prec(a) for a in e.args)
+            except AttributeError:
+                pass
+            return True
         cls = precision_frontier_closure(trees, **kwargs)
-        return precision_frontier(cls, kwargs['var_env'])
+        cls = {e for e in cls if _safe_prec(e)}
+        return cls
 
 
 class MultiWidthExprOptimizationTrace(TraceExpr):
