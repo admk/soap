@@ -46,3 +46,13 @@ def precision_permutations(expr, prec_list=PRECISIONS):
         return s
     except AttributeError:
         return [expr]
+
+
+def precision_variations(expr_or_set, prec_list=PRECISIONS):
+    from ce.expr import Expr, is_expr
+    if is_expr(expr_or_set):
+        return [Expr(expr_or_set, prec=p) for p in prec_list]
+    s = []
+    for e in expr_or_set:
+        s += precision_variations(e, prec_list)
+    return s
