@@ -1,15 +1,13 @@
 import itertools
 import gmpy2
 
+import ce.logger as logger
 from ce.common import ignored
-
-
-def precisions():
-    import ce.semantics.flopoco as flopoco
-    return flopoco.wf_range
+from ce.precision.common import PRECISIONS
 
 
 def precision_context(prec):
+    prec += 1
     return gmpy2.local_context(gmpy2.ieee(128), precision=prec)
 
 
@@ -22,15 +20,29 @@ def set_precision_recursive(expr, prec):
             set_precision_recursive(a, prec)
 
 
-def precision_permutations(expr, permutations=precisions()):
-    from ce.expr import Expr, BARRIER_OP
+def precision_permutations(expr, prec_list=PRECISIONS):
+    from ce.expr import Expr, BARRIER_OP, is_expr
+    if not is_expr(expr):
+        s = []
+        for e in expr:
+            s += precision_permutations(e, prec_list)
+        return s
     try:
-        p1, p2 = [precision_permutations(a, permutations) for a in expr.args]
+        p1, p2 = [precision_permutations(a, prec_list) for a in expr.args]
         if expr.op == BARRIER_OP:
-            permutations = [None]
+            prec_list = [None]
         elif not expr.prec is None:
-            permutations = [expr.prec]
-        return [Expr(expr.op, a1, a2, prec=p)
-                for p in permutations for a1, a2 in itertools.product(p1, p2)]
+            prec_list = [expr.prec]
+        s = []
+        n = len(p1) * len(p2) * len(prec_list)
+        i = 0
+        for a1, a2 in itertools.product(p1, p2):
+            for p in prec_list:
+                i += 1
+                logger.persistent('Permutation', '%d/%d' % (i, n),
+                                  l=logger.levels.debug)
+                s.append(Expr(expr.op, a1, a2, prec=p))
+        logger.unpersistent('Permutation')
+        return s
     except AttributeError:
         return [expr]
