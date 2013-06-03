@@ -24,7 +24,6 @@ class Analysis(DynamicMethods, Flyweight):
         except AttributeError:
             pass
         analysis_names, analysis_methods, select_methods = self.methods()
-        logger.debug('Analysing results.')
         result = []
         i = 0
         n = len(self.expr_set)

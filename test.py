@@ -3,6 +3,7 @@ import ce.logger as logger
 from ce.common import timeit
 from ce.expr import Expr
 from ce.analysis import analyse, Plot, expr_frontier
+from ce.precision import set_precision_recursive, SINGLE_PRECISION
 import ce.transformer.utils as utils
 
 
@@ -49,21 +50,23 @@ def multi_width_greedy_trace(e, v):
 
 
 def analyse_and_plot(e, v):
-    logger.set_context(level=logger.levels.debug)
-    Expr.__repr__ = Expr.__str__
     logger.info(Expr(e).error(v, gmpy2.ieee(32).precision))
     p = Plot(log=True)
-    for f in [greedy_trace, frontier_trace]:
+    for f in [multi_width_greedy_trace]:
         derived, front = f(e, v)
         derived = derived or front
         logger.info(f.__name__, len(front), len(derived))
         p.add(analyse(derived, v), legend=f.__name__,
               alpha=0.7, linestyle='-', linewidth=1, marker='.')
+    e = Expr(e)
+    set_precision_recursive(e, SINGLE_PRECISION)
     p.add(analyse(e, v), frontier=False, legend='original', marker='.')
     p.save('analysis.pdf')
     p.show()
 
 
+logger.set_context(level=logger.levels.debug)
+Expr.__repr__ = Expr.__str__
 e = """
     (a + a + b) * (a + b + b) * (b + b + c) *
     (b + c + c) * (c + c + a) * (c + a + a) |
