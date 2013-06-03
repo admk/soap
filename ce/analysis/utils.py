@@ -85,6 +85,8 @@ class Plot(object):
 
     def add(self, result,
             legend=None, frontier=True, annotate=False, **kwargs):
+        if not result:
+            return
         self.result_list.append({
             'result': result,
             'legend': _escape_legend(legend),
