@@ -53,6 +53,14 @@ def expr_frontier(expr_set, var_env):
     return expr_list(frontier(expr_set, var_env))
 
 
+def precision_frontier(expr_set, var_env):
+    from ce.precision import precision_permutations
+    permutations = []
+    for e in expr_set:
+        permutations += precision_permutations(e)
+    return expr_frontier(permutations, var_env)
+
+
 def _insert_region_frontier(sx, sy):
     lx = []
     ly = []
