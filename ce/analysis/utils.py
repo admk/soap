@@ -3,24 +3,14 @@ import itertools
 from matplotlib import pyplot
 
 
-def _analyser(analyser):
-    if analyser == 'vary_width':
-        from ce.analysis.core import VaryWidthAnalysis
-        return VaryWidthAnalysis
-    elif analyser == 'multi_width':
-        from ce.analysis.core import MultiWidthAnalysis
-        return MultiWidthAnalysis
-    elif analyser is None or analyser == 'single_precision':
-        from ce.analysis.core import AreaErrorAnalysis
-        return AreaErrorAnalysis
+def analyse(expr_set, var_env):
+    from ce.analysis.core import AreaErrorAnalysis
+    return AreaErrorAnalysis(expr_set, var_env).analyse()
 
 
-def analyse(expr_set, var_env, analyser=None):
-    return _analyser(analyser)(expr_set, var_env).analyse()
-
-
-def frontier(expr_set, var_env, vary_width=False):
-    return _analyser(vary_width)(expr_set, var_env).frontier()
+def frontier(expr_set, var_env):
+    from ce.analysis.core import AreaErrorAnalysis
+    return AreaErrorAnalysis(expr_set, var_env).frontier()
 
 
 def list_from_keys(result, keys=None):
