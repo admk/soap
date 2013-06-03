@@ -6,6 +6,7 @@ from ce.transformer.core import TreeTransformer
 from ce.transformer.biop import associativity, distribute_for_distributivity, \
     BiOpTreeTransformer
 from ce.analysis import expr_frontier, precision_frontier
+from ce.precision import precision_permutations
 
 
 def closure(tree, depth=None):
@@ -16,13 +17,14 @@ def greedy_frontier_closure(tree, depth=None, var_env=None):
     func = None
     if var_env:
         func = lambda s: expr_frontier(s, var_env)
-    return BiOpTreeTransformer(
-        tree, depth=depth, step_plugin=func).closure()
+    return BiOpTreeTransformer(tree, depth=depth, step_plugin=func).closure()
 
 
-def precision_frontier_closure(tree, var_env, depth=None):
-    return BiOpTreeTransformer(
-        tree, depth=depth, step_plugin=precision_frontier).closure()
+def precision_frontier_closure(tree, var_env=None, depth=None):
+    func = None
+    if var_env:
+        func = lambda s: precision_frontier(s, var_env)
+    return BiOpTreeTransformer(tree, depth=depth, step_plugin=func).closure()
 
 
 def transform(tree,
@@ -82,11 +84,9 @@ class TraceExpr(Expr):
                 return {a}
         stl = [subtraces(a) for a in self.args]
         sts = set(Expr(self.op, args) for args in itertools.product(*stl))
-        logger.debug('Generating %s~=%d traces for tree: %s' %
-                     ('*'.join([str(len(s)) for s in stl]),
-                      len(sts), str(self)))
+        logger.debug('Generating %d traces for %s' % (len(sts), str(self)))
         cls = set(self.closure(sts, depth=depth, var_env=var_env))
-        return cls | sts
+        return cls
 
     def clousure(self, trees, **kwargs):
         raise NotImplementedError
@@ -109,8 +109,16 @@ class FrontierTraceExpr(TraceExpr):
 
 class MultiWidthGreedyTraceExpr(GreedyTraceExpr):
     def closure(self, trees, **kwargs):
-        return precision_frontier_closure(
-            trees, kwargs['var_env'], depth=kwargs['depth'])
+        cls = precision_frontier_closure(trees, **kwargs)
+        return precision_frontier(cls, kwargs['var_env'])
+
+
+class MultiWidthExprOptimizationTrace(TraceExpr):
+    def closure(self, trees, **kwargs):
+        s = set()
+        for t in trees:
+            s |= precision_permutations(t)
+        return expr_frontier(s, kwargs['var_env'])
 
 
 def greedy_trace(tree, var_env=None, depth=None):
