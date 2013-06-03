@@ -95,7 +95,7 @@ class Expr(Comparable, Flyweight):
 
         l1, s1 = to_label(self.a1)
         l2, s2 = to_label(self.a2)
-        e = BExpr(op=self.op, a1=l1, a2=l2)
+        e = BExpr(op=self.op, a1=l1, a2=l2, prec=self.prec)
         l = Label(e)
         s = {l: e}
         s.update(s1)
@@ -112,7 +112,7 @@ class Expr(Comparable, Flyweight):
             l1, s1 = subcrop(self.a1)
             l2, s2 = subcrop(self.a2)
             s1.update(s2)
-            return self.__class__(self.op, l1, l2), s1
+            return self.__class__(self.op, l1, l2, prec=self.prec), s1
         from ce.semantics import Label
         l = Label(self)
         return l, {l: self}
@@ -127,7 +127,8 @@ class Expr(Comparable, Flyweight):
                 return env[a]
             except KeyError:
                 return a
-        return self.__class__(self.op, substitch(self.a1), substitch(self.a2))
+        return self.__class__(
+            self.op, substitch(self.a1), substitch(self.a2), prec=self.prec)
 
     def __str__(self):
         a1, a2 = sorted([str(self.a1), str(self.a2)])
