@@ -45,7 +45,7 @@ def greedy_trace(e, v):
 
 @timeit
 def multi_width_greedy_trace(e, v):
-    c = utils.multi_width_greedy_trace(e, v)
+    c = utils.multi_width_greedy_trace(e, v, depth=2)
     return c, set(expr_frontier(c, v))
 
 
