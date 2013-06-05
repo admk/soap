@@ -4,7 +4,6 @@ import ce.logger as logger
 from ce.common import DynamicMethods, Flyweight
 from ce.expr import Expr
 from ce.semantics import mpfr
-from ce.precision import SINGLE_PRECISION
 
 
 class Analysis(DynamicMethods, Flyweight):
@@ -105,11 +104,11 @@ class AreaErrorAnalysis(ErrorAnalysis, AreaAnalysis):
         return pareto_frontier_2d(self.analyse(), keys=self.names())
 
 
-class SinglePrecisionAreaErrorAnalysis(AreaErrorAnalysis):
+class FixedPrecisionAreaErrorAnalysis(AreaErrorAnalysis):
 
-    def __init__(self, expr_set, var_env):
+    def __init__(self, expr_set, var_env, prec):
         for e in expr_set:
-            e.prec = SINGLE_PRECISION
+            e.prec = prec
         super().__init__(expr_set, var_env)
 
 

@@ -51,8 +51,8 @@ def multi_width_greedy_trace(e, v):
 
 def analyse_and_plot(e, v):
     logger.info(Expr(e).error(v, gmpy2.ieee(32).precision))
-    p = Plot(log=True)
-    for f in [multi_width_greedy_trace]:
+    p = Plot()
+    for f in [greedy_trace]:
         derived, front = f(e, v)
         derived = derived or front
         logger.info(f.__name__, len(front), len(derived))

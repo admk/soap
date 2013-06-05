@@ -6,7 +6,7 @@ from ce.transformer.core import TreeTransformer
 from ce.transformer.biop import associativity, distribute_for_distributivity, \
     BiOpTreeTransformer
 from ce.analysis import expr_frontier, precision_frontier
-from ce.precision import precision_permutations
+from ce.precision import precision_permutations, SINGLE_PRECISION
 
 
 def closure(tree, depth=None):
@@ -16,7 +16,7 @@ def closure(tree, depth=None):
 def greedy_frontier_closure(tree, depth=None, var_env=None):
     func = None
     if var_env:
-        func = lambda s: expr_frontier(s, var_env)
+        func = lambda s: expr_frontier(s, var_env, prec=SINGLE_PRECISION)
     return BiOpTreeTransformer(tree, depth=depth, step_plugin=func).closure()
 
 

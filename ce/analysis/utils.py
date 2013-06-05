@@ -3,14 +3,21 @@ import itertools
 from matplotlib import rc, pyplot
 
 
-def analyse(expr_set, var_env):
+def _analyser(expr_set, var_env, prec):
+    if prec:
+        from ce.analysis.core import FixedPrecisionAreaErrorAnalysis
+        return FixedPrecisionAreaErrorAnalysis(
+            expr_set, var_env, prec)
     from ce.analysis.core import AreaErrorAnalysis
-    return AreaErrorAnalysis(expr_set, var_env).analyse()
+    return AreaErrorAnalysis(expr_set, var_env)
 
 
-def frontier(expr_set, var_env):
-    from ce.analysis.core import AreaErrorAnalysis
-    return AreaErrorAnalysis(expr_set, var_env).frontier()
+def analyse(expr_set, var_env, prec=None):
+    return _analyser(expr_set, var_env, prec).analyse()
+
+
+def frontier(expr_set, var_env, prec=None):
+    return _analyser(expr_set, var_env, prec).frontier()
 
 
 def list_from_keys(result, keys=None):
@@ -39,8 +46,8 @@ def expr_set(result):
     return set(expr_list(result))
 
 
-def expr_frontier(expr_set, var_env):
-    return expr_list(frontier(expr_set, var_env))
+def expr_frontier(expr_set, var_env, prec=None):
+    return expr_list(frontier(expr_set, var_env, prec))
 
 
 def precision_frontier(expr_set, var_env):
