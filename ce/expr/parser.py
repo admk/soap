@@ -2,7 +2,7 @@ import ast
 
 from ce.common import ignored
 from ce.semantics import mpq
-from ce.expr.common import ADD_OP, MULTIPLY_OP, BARRIER_OP
+from ce.expr.common import ADD_OP, MULTIPLY_OP, BARRIER_OP, UNARY_SUBTRACT_OP
 
 
 def try_to_number(s):
@@ -16,6 +16,7 @@ OPERATOR_MAP = {
     ast.Add: ADD_OP,
     ast.Mult: MULTIPLY_OP,
     ast.BitOr: BARRIER_OP,
+    ast.USub: UNARY_SUBTRACT_OP,
 }
 
 
@@ -30,15 +31,18 @@ def parse(s, cls):
         with ignored(AttributeError):
             return t.id
         with ignored(AttributeError):
+            return t.s
+        with ignored(AttributeError):
             return tuple(_parse_r(v) for v in t.elts)
         try:
             op = OPERATOR_MAP[t.op.__class__]
+            if op == UNARY_SUBTRACT_OP:
+                return -_parse_r(t.operand)
             a1 = _parse_r(t.left)
             a2 = _parse_r(t.right)
             return cls(op, a1, a2)
         except KeyError:
-            raise ParserSyntaxError(
-                'Unrecognised binary operator %s' % str(t.op))
+            raise ParserSyntaxError('Unrecognised operator %s' % str(t.op))
         except AttributeError:
             raise ParserSyntaxError('Unknown token %s' % str(t))
     try:
