@@ -7,48 +7,21 @@ import ce.transformer.utils as utils
 
 
 gmpy2.set_context(gmpy2.ieee(32))
-logger.set_context(level=logger.levels.info)
+logger.set_context(level=logger.levels.debug)
 Expr.__repr__ = Expr.__str__
 
-DEPTH = 2
 
+def analyse_and_plot(p, f, e, var_env=None, depth=None,
+                     vary_width=False, legend=None):
+    ts = time.time()
+    derived = f(e, var_env=v, depth=depth)
+    te = time.time()
+    logger.info(f.__name__, len(derived))
+    legend = legend or f.__name__ + ', depth=%d' % depth
+    legend += ' (%f s)' % (te - ts)
+    p.add(analyse(derived, v, vary_width=vary_width), legend=legend,
+          alpha=0.7, linestyle='-', linewidth=1, marker='.')
 
-@timeit
-def closure(e, v):
-    c = utils.closure(e)
-    return c, set(expr_frontier(c, v))
-
-
-@timeit
-def depth(e, v):
-    c = utils.closure(e, depth=DEPTH)
-    return c, set(expr_frontier(c, v))
-
-
-@timeit
-def greedy(e, v):
-    return None, utils.greedy_frontier_closure(e, depth=None, var_env=v)
-
-
-@timeit
-def frontier_trace(e, v):
-    c = utils.frontier_trace(e, var_env=v, depth=DEPTH)
-    return c, set(expr_frontier(c, v))
-
-
-@timeit
-def greedy_trace(e, v):
-    c = utils.greedy_trace(e, v, depth=3)
-    return c, set(expr_frontier(c, v))
-
-
-@timeit
-def crazy_trace(e, v):
-    return greedy_trace(utils.expand(e), v)
-
-
-logger.set_context(level=logger.levels.info)
-Expr.__repr__ = Expr.__str__
 
 e = """
     (a + a + b) * (a + b + b) * (b + b + c) *
@@ -60,15 +33,9 @@ v = {
     'b': ['10', '20'],
     'c': ['100', '200'],
 }
-vary_width = True
-logger.info(Expr(e).error(v, gmpy2.ieee(32).precision))
-p = Plot(log=vary_width)
-for f in [greedy_trace, frontier_trace]:
-    derived, front = f(e, v)
-    derived = derived or front
-    logger.info(f.__name__, len(front), len(derived))
-    p.add(analyse(derived, v, vary_width=vary_width), legend=f.__name__,
-          alpha=0.7, linestyle='-', linewidth=1, marker='.')
-p.add(analyse(e, v), frontier=False, legend='original', marker='.')
+p = Plot()
+for d in range(2, 8):
+    analyse_and_plot(p, utils.greedy_trace, e, v, depth=d, legend=str(d))
+p.add(analyse(e, v), frontier=False, legend='orig', marker='.')
 p.save('a.pdf')
 p.show()
