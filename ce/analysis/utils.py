@@ -49,17 +49,20 @@ def expr_frontier(expr_set, var_env):
     return expr_list(frontier(expr_set, var_env))
 
 
+_ZIGZAG_MARGIN = 100.0
+
+
 def _insert_region_frontier(sx, sy):
     lx = []
     ly = []
-    py = sy[0] * 100.0
+    py = sy[0] * _ZIGZAG_MARGIN
     for x, y in zip(sx, sy):
         lx.append(x)
         ly.append(py)
         lx.append(x)
         ly.append(y)
         py = y
-    lx.append(sx[-1] * 100.0)
+    lx.append(sx[-1] * _ZIGZAG_MARGIN)
     ly.append(py)
     return lx, ly
 
@@ -111,15 +114,15 @@ class Plot(object):
             log_enable = True
         if log_enable:
             plot.set_yscale('log')
+            plot.set_ylim(ylim)
         else:
             plot.set_yscale('linear')
+            ymin, ymax = ylim
+            ymar = 0.1 * (ymax - ymin)
+            plot.set_ylim(ymin - ymar, ymax + ymar)
             plot.yaxis.get_major_formatter().set_scientific(True)
             plot.yaxis.get_major_formatter().set_powerlimits((-3, 4))
-        plot.set_xlim(xlim)
-        if log_enable:
-            plot.set_ylim(min(ylim) * 0.1, max(ylim) * 10.0)
-        else:
-            plot.set_ylim(ylim)
+        plot.set_xlim(max(min(xlim), 0), max(xlim))
 
     def _plot(self):
         from ce.analysis.core import AreaErrorAnalysis, pareto_frontier_2d
@@ -131,6 +134,7 @@ class Plot(object):
         plot = self.figure.add_subplot(111)
         colors = self._colors(len(self.result_list))
         markers = self._markers()
+        ymin, ymax = float('Inf'), float('-Inf')
         for r in self.result_list:
             kwargs = dict(self.plot_defaults)
             kwargs.update(r['kwargs'])
@@ -139,11 +143,12 @@ class Plot(object):
             if not 'marker' in kwargs:
                 kwargs['marker'] = next(markers)
             area, error = zip_result(r['result'])
+            ymin, ymax = min(ymin, min(error)), max(ymax, max(error))
             plot.scatter(area, error,
                          label=r['legend'],
                          **dict(kwargs, linestyle='-', linewidth=1, s=20))
             r['kwargs'] = kwargs
-        xlim, ylim = plot.get_xlim(), plot.get_ylim()
+        xlim = plot.get_xlim()
         for r in self.result_list:
             if r['frontier']:
                 kwargs = r['kwargs']
@@ -152,15 +157,14 @@ class Plot(object):
                 f = pareto_frontier_2d(r['result'], keys=keys)
                 keys.append('expression')
                 area, error, expr = zip_from_keys(f, keys=keys)
-                legend = r['legend'] + ' frontier' if r['legend'] else None
                 lx, ly = _insert_region_frontier(area, error)
-                plot.plot(lx, ly, label=legend, **kwargs)
+                plot.plot(lx, ly, **kwargs)
                 plot.fill_between(lx, ly, max(ly),
                                   alpha=0.1, color=kwargs['color'])
                 if r['annotate']:
                     for x, y, e in zip(area, error, expr):
                         plot.annotate(str(e), xy=(x, y), alpha=0.5)
-        self._auto_scale(plot, xlim, ylim)
+        self._auto_scale(plot, xlim, (ymin, ymax))
         plot.legend(bbox_to_anchor=(1.1, 1.1), ncol=1)
         plot.grid(True, which='both', ls=':')
         plot.set_xlabel('Area (Number of LUTs)')
