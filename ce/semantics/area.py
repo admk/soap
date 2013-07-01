@@ -39,7 +39,10 @@ class AreaSemantics(Comparable, Lattice):
         b = self.e.error(self.v, self.p).v
         bmax = max(abs(b.min), abs(b.max))
         expmax = math.floor(math.log(bmax, 2))
-        we = int(math.ceil(math.log(expmax + 1, 2) + 1))
+        try:
+            we = int(math.ceil(math.log(expmax + 1, 2) + 1))
+        except ValueError:
+            we = 1
         we = max(we, flopoco.we_min)
         wf = self.p
         mult, add = self._op_counts()

@@ -91,34 +91,30 @@ class TreeTransformer(object):
         done_trees = set()
         todo_trees = set(trees)
         i = 0
-        try:
-            while todo_trees:
-                # print set size
-                i += 1
-                logger.persistent(
-                    'Iteration' if not reduced else 'Reduction', i,
-                    l=levels.debug)
-                logger.persistent('Trees', len(done_trees), l=levels.debug)
-                logger.persistent('Todo', len(todo_trees), l=levels.debug)
-                if not reduced:
-                    f = self.transform_methods
-                    _, step_trees = \
-                        _step(todo_trees, f, v, not reduced, self._d, self._m)
-                    step_trees -= done_trees
-                    step_trees = self._closure_r(step_trees, True)
-                    step_trees = self._plugin(step_trees, self._sp)
-                    done_trees |= todo_trees
-                    todo_trees = step_trees - done_trees
-                else:
-                    f = self.reduction_methods
-                    nore_trees, step_trees = \
-                        _step(todo_trees, f, v, not reduced, None, self._m)
-                    step_trees = self._plugin(step_trees, self._rp)
-                    done_trees |= nore_trees
-                    todo_trees = step_trees - nore_trees
-        except KeyboardInterrupt:
-            if reduced:
-                raise
+        while todo_trees:
+            # print set size
+            i += 1
+            logger.persistent(
+                'Iteration' if not reduced else 'Reduction', i,
+                l=levels.debug)
+            logger.persistent('Trees', len(done_trees), l=levels.debug)
+            logger.persistent('Todo', len(todo_trees), l=levels.debug)
+            if not reduced:
+                f = self.transform_methods
+                _, step_trees = \
+                    _step(todo_trees, f, v, not reduced, self._d, self._m)
+                step_trees -= done_trees
+                step_trees = self._closure_r(step_trees, True)
+                step_trees = self._plugin(step_trees, self._sp)
+                done_trees |= todo_trees
+                todo_trees = step_trees - done_trees
+            else:
+                f = self.reduction_methods
+                nore_trees, step_trees = \
+                    _step(todo_trees, f, v, not reduced, None, self._m)
+                step_trees = self._plugin(step_trees, self._rp)
+                done_trees |= nore_trees
+                todo_trees = step_trees - nore_trees
         logger.unpersistent('Iteration', 'Reduction', 'Trees', 'Todo')
         return done_trees
 
