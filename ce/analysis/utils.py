@@ -80,10 +80,12 @@ def _escape_legend(legend):
 
 class Plot(object):
 
-    def __init__(self, result=None, **kwargs):
+    def __init__(self, result=None, log=None, **kwargs):
         self.result_list = []
         if result:
             self.add(result, **kwargs)
+        if not log is None:
+            self.log_enable = log
         super().__init__()
 
     def add(self, result,
@@ -107,11 +109,15 @@ class Plot(object):
         return itertools.cycle('so+x.v^<>')
 
     def _auto_scale(self, plot, xlim, ylim):
-        log_enable = False
-        if min(ylim) <= 0:
-            log_enable = True
-        elif max(ylim) / min(ylim) >= 10:
-            log_enable = True
+        try:
+            log_enable = self.log_enable
+        except AttributeError:
+            log_enable = False
+            if min(ylim) <= 0:
+                log_enable = True
+            elif max(ylim) / min(ylim) >= 10:
+                log_enable = True
+            self.log_enable = log_enable
         if log_enable:
             plot.set_yscale('log')
             plot.set_ylim(ylim)
