@@ -1,4 +1,6 @@
 import os
+import sh
+from contextlib import contextmanager
 
 from ce.common import cached, timeit
 
@@ -15,6 +17,16 @@ default_file = 'ce/semantics/area.pkl'
 device = 'xc6vlx760'
 
 
+@contextmanager
+def cd(d):
+    p = os.path.abspath(os.curdir)
+    if d:
+        sh.mkdir('-p', d)
+        sh.cd(d)
+    yield
+    sh.cd(p)
+
+
 def get_luts(file_name):
     from bs4 import BeautifulSoup
     with open(file_name, 'r') as f:
@@ -25,45 +37,60 @@ def get_luts(file_name):
         return luts.get('value')
 
 
-@timeit
-def _para_synth(op_we_wf):
-    import sh
-    op, we, wf = op_we_wf
+def flopoco(op, we, wf, f):
+    flo_fn = 'flopoco.vhdl'
     flo_cmd = []
     if op == 'add':
         flo_cmd += ['FPAdder', we, wf]
     elif op == 'mul':
         flo_cmd += ['FPMultiplier', we, wf, wf]
-    wd = 'syn_%d' % os.getpid()
-    f = 'flopoco.vhdl'
-    g = 'flopoco.ngc'
-    h = g + '_xst.xrpt'
-    s = sh.echo('run', '-p', device,
-                '-ifn', f, '-ifmt', 'VHDL', '-ofn', g, '-ofmt', 'NGC')
-    try:
-        print('Processing', op, we, wf)
-        sh.mkdir('-p', wd)
-        sh.cd(wd)
-        sh.flopoco(*flo_cmd)
-        print('Xilinx', op, we, wf)
-        sh.xst(s)
-        item = dict(op=op, we=we, wf=wf, value=get_luts(h))
-        print(item)
-    except sh.ErrorReturnCode:
-        print('Error processing', op, we, wf)
-        item = dict(op=op, we=we, wf=wf, value=-1)
-    except KeyboardInterrupt:
-        pass
-    sh.cd('..')
-    sh.rm('-rf', wd)
+    wd, fn = os.path.split(f)
+    with cd(wd):
+        try:
+            sh.flopoco(*flo_cmd)
+            if fn != flo_fn:
+                sh.mv(flo_fn, fn)
+        except sh.ErrorReturnCode as e:
+            print('Flopoco failed', op, we, wf)
+    return op, we, wf, f
+
+
+def xilinx(op, we, wf, f):
+    wd, fn = os.path.split(f)
+    g = os.path.splitext(fn)[0] + '.ngc'
+    with cd(wd):
+        try:
+            sh.xst(sh.echo('run', '-p', device,
+                           '-ifn', fn, '-ifmt', 'VHDL',
+                           '-ofn', g, '-ofmt', 'NGC'))
+            item = dict(op=op, we=we, wf=wf, value=get_luts(g + '_xst.xrpt'))
+        except sh.ErrorReturnCode as e:
+            print('Xilinx failed', op, we, wf)
+            item = dict(op=op, we=we, wf=wf, value=-1)
+    if wd:
+        sh.rm('-rf', wd)
     return item
+
+
+def synth_eval(op, we, wf):
+    work_dir = 'syn_%d' % os.getpid()
+    f = os.path.join(work_dir, '%s_%d_%d.vhdl' % (op, we, wf))
+    print('Processing', op, we, wf)
+    item = xilinx(*flopoco(op, we, wf, f=f))
+    print(item)
+    return item
+
+
+@timeit
+def _para_synth(op_we_wf):
+    return synth_eval(*op_we_wf)
 
 
 pool = None
 
 
 @timeit
-def synth(we_range, wf_range):
+def batch_synth(we_range, wf_range):
     import itertools
     from multiprocessing import Pool
     global pool
@@ -102,7 +129,7 @@ def plot(results):
 
 if not os.path.isfile(default_file):
     print('area statistics file does not exist, synthesizing...')
-    save(default_file, synth(we_range, wf_range))
+    save(default_file, batch_synth(we_range, wf_range))
 
 _add = {}
 _mul = {}
