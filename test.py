@@ -1,8 +1,9 @@
+import time
 import gmpy2
+
 import ce.logger as logger
-from ce.common import timeit
 from ce.expr import Expr
-from ce.analysis import analyse, Plot, expr_frontier
+from ce.analysis import analyse, Plot
 import ce.transformer.utils as utils
 
 
@@ -16,9 +17,10 @@ def analyse_and_plot(p, f, e, var_env=None, depth=None,
     ts = time.time()
     derived = f(e, var_env=v, depth=depth)
     te = time.time()
-    logger.info(f.__name__, len(derived))
+    td = ' (%f s)' % (te - ts)
+    logger.info(f.__name__, len(derived), td)
     legend = legend or f.__name__ + ', depth=%d' % depth
-    legend += ' (%f s)' % (te - ts)
+    legend += td
     p.add(analyse(derived, v, vary_width=vary_width), legend=legend,
           alpha=0.7, linestyle='-', linewidth=1, marker='.')
 
@@ -34,8 +36,12 @@ v = {
     'c': ['100', '200'],
 }
 p = Plot()
-for d in range(2, 8):
-    analyse_and_plot(p, utils.greedy_trace, e, v, depth=d, legend=str(d))
+try:
+    for d in range(2, 8):
+        logger.info('Depth:', d)
+        analyse_and_plot(p, utils.greedy_trace, e, v, depth=d, legend=str(d))
+except KeyboardInterrupt:
+    pass
 p.add(analyse(e, v), frontier=False, legend='orig', marker='.')
-p.save('a.pdf')
+p.save('analysis.pdf')
 p.show()
