@@ -12,6 +12,7 @@ wf_min, wf_max = 10, 113
 we_range = list(range(we_min, we_max))
 wf_range = list(range(wf_min, wf_max))
 default_file = 'ce/semantics/area.pkl'
+device = 'xc6vlx760'
 
 
 def get_luts(file_name):
@@ -37,7 +38,7 @@ def _para_synth(op_we_wf):
     f = 'flopoco.vhdl'
     g = 'flopoco.ngc'
     h = g + '_xst.xrpt'
-    s = sh.echo('run', '-p', 'xc6vlx760',
+    s = sh.echo('run', '-p', device,
                 '-ifn', f, '-ifmt', 'VHDL', '-ofn', g, '-ofmt', 'NGC')
     try:
         print('Processing', op, we, wf)
