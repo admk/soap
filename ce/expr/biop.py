@@ -70,6 +70,18 @@ class Expr(Comparable, Flyweight):
             if self.op == BARRIER_OP:
                 return e1 | e2
 
+    def exponent_width(self, var_env, prec):
+        import math
+        from ce.semantics.flopoco import we_min
+        b = self.error(var_env, prec).v
+        bmax = max(abs(b.min), abs(b.max))
+        expmax = math.floor(math.log(bmax, 2))
+        try:
+            we = int(math.ceil(math.log(expmax + 1, 2) + 1))
+        except ValueError:
+            we = 1
+        return max(we, we_min)
+
     @cached
     def area(self, var_env, prec):
         from ce.semantics import AreaSemantics
