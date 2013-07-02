@@ -3,6 +3,8 @@ import sh
 from contextlib import contextmanager
 
 from ce.common import cached, timeit
+from ce.semantics import Label
+from ce.expr import Expr, ADD_OP, MULTIPLY_OP
 
 
 class FlopocoMissingImplementationError(Exception):
@@ -169,5 +171,68 @@ def keys():
     return sorted(list(set(_add.keys()) & set(_mul.keys())))
 
 
+class CodeGenerator(object):
+
+    def __init__(self, expr, var_env, prec):
+        self.expr = Expr(expr)
+        self.var_env = var_env
+        self.wf = prec
+        self.we = self.expr.exponent_width(var_env, prec)
+
+    def generate_op(op):
+        from ce.semantics.flopoco import flopoco
+        if op == ADD_OP:
+            op = 'add'
+        elif op == MULTIPLY_OP:
+            op = 'mul'
+        f = '%s_%d_%d.vhdl' % (op, self.we, self.wf)
+        flopoco(op, self.we, self.wf, f)
+
+    def generate(self):
+        l, ls = self.expr.as_labels()
+        ops = []
+        in_ports = []
+        out_port = l
+        wires = []
+        signals = []
+        def wire_name(i):
+            if i in in_ports or i == out_port:
+                return i.port_name()
+            elif i in signals:
+                return i.signal_name()
+        def wire(op, in1, in2, out):
+            for i in [in1, in2, out]:
+                # a variable represented as a string is a port
+                if isinstance(i.e, str):
+                    in_ports.append(i)
+                # a number is a port
+                try:
+                    float(i.e)
+                    in_ports.append(i)
+                except (TypeError, ValueError):
+                    pass
+                # an expression, need a signal for its output
+                try:
+                    i.e.op
+                    if not i in signals and i != l:
+                        signals.append(i)
+                    continue
+                except AttributeError:
+                    pass
+            wires.append((op, wire_name(in1), wire_name(in2), wire_name(out)))
+        for out, e in ls.items():
+            try:
+                op, in1, in2 = e.op, e.a1, e.a2
+                wire(op, in1, in2, out)
+                if not op in ops:
+                    ops.append(e.op)
+            except AttributeError:
+                pass
+        in_ports = [i.port_name() for i in in_ports]
+        out_port = out_port.port_name()
+        signals = [i.signal_name() for i in signals]
+
+
 if __name__ == '__main__':
     plot(load(default_file))
+    CodeGenerator('a + b + 1', {'a': ['0', '1'], 'b': ['0', '100']}, 23).generate()
