@@ -23,6 +23,12 @@ class Label(object):
         self.__slots__ = []
         super().__init__()
 
+    def signal_name(self):
+        return 's_%d' % self.l
+
+    def port_name(self):
+        return 'p_%d' % self.l
+
     def __str__(self):
         return 'l%s' % str(self.l)
 
