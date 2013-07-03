@@ -1,10 +1,10 @@
 import os
 import sh
+import tempfile
 from contextlib import contextmanager
 
 from ce.common import cached, timeit
-from ce.semantics import Label
-from ce.expr import Expr, ADD_OP, MULTIPLY_OP
+import ce.logger as logger
 
 
 class FlopocoMissingImplementationError(Exception):
@@ -15,8 +15,13 @@ we_min, we_max = 5, 16
 wf_min, wf_max = 10, 113
 we_range = list(range(we_min, we_max))
 wf_range = list(range(wf_min, wf_max))
-default_file = 'ce/semantics/area.pkl'
-device = 'xc6vlx760'
+
+directory = 'ce/semantics/'
+default_file = directory + 'area.pkl'
+template_file = directory + 'template.vhdl'
+
+device_name = 'Virtex6'
+device_model = 'xc6vlx760'
 
 
 @contextmanager
@@ -39,54 +44,60 @@ def get_luts(file_name):
         return luts.get('value')
 
 
-def flopoco(op, we, wf, f):
-    flo_fn = 'flopoco.vhdl'
-    flo_cmd = []
-    if op == 'add':
-        flo_cmd += ['FPAdder', we, wf]
-    elif op == 'mul':
-        flo_cmd += ['FPMultiplier', we, wf, wf]
-    wd, fn = os.path.split(f)
-    with cd(wd):
-        try:
-            sh.flopoco(*flo_cmd)
-            if fn != flo_fn:
-                sh.mv(flo_fn, fn)
-        except sh.ErrorReturnCode as e:
-            print('Flopoco failed', op, we, wf)
-    return op, we, wf, f
+def flopoco(op, we, wf, f=None, dir=None):
+    from ce.expr import ADD_OP, MULTIPLY_OP
+    flopoco_cmd = []
+    flopoco_cmd += ['-target=' + device_name]
+    dir = dir or tempfile.mktemp(suffix='/')
+    with cd(dir):
+        if f is None:
+            f = tempfile.mktemp(suffix='.vhdl', dir=dir)
+        flopoco_cmd += ['-outputfile=%s' % f]
+        if op == 'add' or op == ADD_OP:
+            flopoco_cmd += ['FPAdder', we, wf]
+        elif op == 'mul' or op == MULTIPLY_OP:
+            flopoco_cmd += ['FPMultiplier', we, wf, wf]
+        else:
+            raise ValueError('Unrecognised operator %s' % str(op))
+        sh.flopoco(*flopoco_cmd)
+    return dir, f
 
 
-def xilinx(op, we, wf, f):
-    wd, fn = os.path.split(f)
-    g = os.path.splitext(fn)[0] + '.ngc'
-    with cd(wd):
-        try:
-            sh.xst(sh.echo('run', '-p', device,
-                           '-ifn', fn, '-ifmt', 'VHDL',
-                           '-ofn', g, '-ofmt', 'NGC'))
-            item = dict(op=op, we=we, wf=wf, value=get_luts(g + '_xst.xrpt'))
-        except sh.ErrorReturnCode as e:
-            print('Xilinx failed', op, we, wf)
-            item = dict(op=op, we=we, wf=wf, value=-1)
-    if wd:
-        sh.rm('-rf', wd)
-    return item
+def xilinx(f, dir=None):
+    file_base = os.path.split(f)[1]
+    file_base = os.path.splitext(file_base)[0]
+    g = file_base + '.ngc'
+    cmd = ['run', '-p', device_model]
+    cmd += ['-ifn', f, '-ifmt', 'VHDL']
+    cmd += ['-ofn', g, '-ofmt', 'NGC']
+    dir = dir or tempfile.mktemp(suffix='/')
+    with cd(dir):
+        sh.xst(sh.echo(*cmd), _out='out.log', _err='err.log')
+        return get_luts(file_base + '.ngc_xst.xrpt')
 
 
-def synth_eval(op, we, wf):
-    work_dir = 'syn_%d' % os.getpid()
-    f = os.path.join(work_dir, '%s_%d_%d.vhdl' % (op, we, wf))
-    print('Processing', op, we, wf)
-    item = xilinx(*flopoco(op, we, wf, f=f))
-    print(item)
-    return item
+def eval_operator(op, we, wf, f=None, dir=None):
+    dir, f = flopoco(op, we, wf, f, dir)
+    return dict(op=op, we=we, wf=wf, value=xilinx(f, dir))
 
 
 @timeit
 def _para_synth(op_we_wf):
-    return synth_eval(*op_we_wf)
-
+    op, we, wf = op_we_wf
+    logger.info('Processing', op, we, wf)
+    work_dir = 'syn_%d' % os.getpid()
+    with cd(work_dir):
+        try:
+            item = eval_operator(op, we, wf, f=None, dir=work_dir)
+            logger.info(item)
+            return item
+        except sh.ErrorReturnCode as e:
+            logger.error('Command failed:')
+            logger.error(e.full_cmd, e.args)
+            logger.error('Standard Output:')
+            logger.error(str(e.stdout).replace('\\n', '\n'))
+            logger.error('Standard Error Output:')
+            logger.error(str(e.stderr).replace('\\n', '\n'))
 
 pool = None
 
@@ -130,7 +141,7 @@ def plot(results):
 
 
 if not os.path.isfile(default_file):
-    print('area statistics file does not exist, synthesizing...')
+    logger.warning('area statistics file does not exist, synthesizing...')
     save(default_file, batch_synth(we_range, wf_range))
 
 _add = {}
@@ -173,66 +184,96 @@ def keys():
 
 class CodeGenerator(object):
 
-    def __init__(self, expr, var_env, prec):
+    def __init__(self, expr, var_env, prec, file_name=None, dir=None):
+        from ce.expr import Expr
         self.expr = Expr(expr)
         self.var_env = var_env
         self.wf = prec
         self.we = self.expr.exponent_width(var_env, prec)
-
-    def generate_op(op):
-        from ce.semantics.flopoco import flopoco
-        if op == ADD_OP:
-            op = 'add'
-        elif op == MULTIPLY_OP:
-            op = 'mul'
-        f = '%s_%d_%d.vhdl' % (op, self.we, self.wf)
-        flopoco(op, self.we, self.wf, f)
+        self.dir = dir or tempfile.mktemp(suffix='/')
+        with cd(self.dir):
+            self.f = file_name or tempfile.mktemp(suffix='.vhdl', dir=dir)
 
     def generate(self):
-        l, ls = self.expr.as_labels()
-        ops = []
-        in_ports = []
-        out_port = l
-        wires = []
-        signals = []
-        def wire_name(i):
-            if i in in_ports or i == out_port:
-                return i.port_name()
-            elif i in signals:
-                return i.signal_name()
+        from akpytemp import Template
+
+        ops = set()
+        in_ports = set()
+        out_port, ls = self.expr.as_labels()
+        wires = set()
+        signals = set()
+
         def wire(op, in1, in2, out):
+            def wire_name(i):
+                if i in signals:
+                    return i.signal_name()
+                if i in in_ports:
+                    return i.port_name()
+                if i == out_port:
+                    return 'p_out'
             for i in [in1, in2, out]:
                 # a variable represented as a string is a port
                 if isinstance(i.e, str):
-                    in_ports.append(i)
+                    in_ports.add(i)
+                    continue
                 # a number is a port
                 try:
                     float(i.e)
-                    in_ports.append(i)
+                    in_ports.add(i)
+                    continue
+                except (TypeError, ValueError):
+                    pass
+                # a range is a port
+                try:
+                    a, b = i.e
+                    float(a), float(b)
+                    in_ports.add(i)
+                    continue
                 except (TypeError, ValueError):
                     pass
                 # an expression, need a signal for its output
                 try:
                     i.e.op
-                    if not i in signals and i != l:
-                        signals.append(i)
-                    continue
+                    if i != out_port:
+                        signals.add(i)
                 except AttributeError:
                     pass
-            wires.append((op, wire_name(in1), wire_name(in2), wire_name(out)))
+            wires.add((op, wire_name(in1), wire_name(in2), wire_name(out)))
+
         for out, e in ls.items():
             try:
                 op, in1, in2 = e.op, e.a1, e.a2
                 wire(op, in1, in2, out)
-                if not op in ops:
-                    ops.append(e.op)
+                ops.add(e.op)
             except AttributeError:
                 pass
         in_ports = [i.port_name() for i in in_ports]
-        out_port = out_port.port_name()
+        out_port = 'p_out'
         signals = [i.signal_name() for i in signals]
+        logger.debug(in_ports, signals, wires)
+        Template(path=template_file).save(
+            path=self.f, directory=self.dir, flopoco=flopoco,
+            ops=ops, e=self.expr,
+            we=self.we, wf=self.wf,
+            in_ports=in_ports, out_port=out_port,
+            signals=signals, wires=wires)
+        return self.f
+
+
+def eval_expr(expr, var_env, prec):
+    logger.set_context(level=logger.levels.debug)
+    dir = tempfile.mktemp(suffix='/')
+    logger.debug('Generating files in', dir)
+    f = CodeGenerator(expr, var_env, prec, dir=dir).generate()
+    logger.debug('Synthesising', f)
+    return xilinx(f, dir=dir)
 
 
 if __name__ == '__main__':
+    from ce.expr import Expr
+    e = Expr('a + b + c')
+    v = {'a': ['0', '1'], 'b': ['0', '100'], 'c': ['0', '100000']}
+    logger.info(_para_synth(('add', 5, 10)))
+    logger.info(e.area(v, 23))
+    logger.info(eval_expr(e, v, 23))
     plot(load(default_file))
-    CodeGenerator('a + b + 1', {'a': ['0', '1'], 'b': ['0', '100']}, 23).generate()
