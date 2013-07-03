@@ -1,0 +1,3 @@
+[submodule "akpytemp"]
+	path = akpytemp
+	url = https://github.com/admk/akpytemp.git

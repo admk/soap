@@ -88,6 +88,11 @@ class Expr(Comparable, Flyweight):
         return AreaSemantics(self, var_env, prec)
 
     @cached
+    def real_area(self, var_env, prec):
+        from ce.semantics.flopoco import eval_expr
+        return eval_expr(self, var_env, prec)
+
+    @cached
     def as_labels(self):
         from ce.semantics import Label
 
@@ -207,8 +212,9 @@ if __name__ == '__main__':
         'b': ['2.3', '2.4'],
     }
     print(v)
-    prec = gmpy2.ieee(32).precision
+    prec = gmpy2.ieee(32).precision - 1
     print(r.error(v, prec))
     for l, e in r.as_labels()[1].items():
         print(str(l), ':', str(e))
     print(r.area(v, prec))
+    print(r.real_area(v, prec))

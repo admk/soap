@@ -23,6 +23,18 @@ class Label(object):
         self.__slots__ = []
         super().__init__()
 
+    def signal_name(self):
+        return 's_%d' % self.l
+
+    def port_name(self):
+        from ce.expr.common import OPERATORS
+        forbidden = OPERATORS + [',', '(', ')', '[', ']']
+        if any(k in str(self.e) for k in forbidden):
+            s = self.l
+        else:
+            s = self.e
+        return 'p_%s' % str(s)
+
     def __str__(self):
         return 'l%s' % str(self.l)
 
@@ -71,4 +83,7 @@ class Lattice(object):
 
 
 def precision_context(prec):
+    # prec is the mantissa width
+    # need to include the implicit integer bit for gmpy2
+    prec += 1
     return gmpy2.local_context(gmpy2.ieee(128), precision=prec)
