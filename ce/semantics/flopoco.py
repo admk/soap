@@ -152,20 +152,15 @@ def plot(results):
     plt.show()
 
 
-if not os.path.isfile(default_file):
-    logger.warning('area statistics file does not exist, synthesizing...')
-    save(default_file, batch_synth(we_range, wf_range))
-
 _add = {}
 _mul = {}
-for i in load(default_file):
-    xv, yv, zv = int(i['we']), int(i['wf']), int(i['value'])
-    if zv <= 0:
-        continue
-    if i['op'] == 'add':
-        _add[xv, yv] = zv
-    elif i['op'] == 'mul':
-        _mul[xv, yv] = zv
+if os.path.isfile(default_file):
+    for i in load(default_file):
+        xv, yv, zv = int(i['we']), int(i['wf']), int(i['value'])
+        if i['op'] == 'add':
+            _add[xv, yv] = zv
+        elif i['op'] == 'mul':
+            _mul[xv, yv] = zv
 
 
 def _impl(_dict, we, wf):
@@ -282,9 +277,12 @@ def eval_expr(expr, var_env, prec):
 if __name__ == '__main__':
     from ce.expr import Expr
     logger.set_context(level=logger.levels.info)
-    p = 23
-    e = Expr('a + b + c')
-    v = {'a': ['0', '1'], 'b': ['0', '100'], 'c': ['0', '100000']}
-    logger.info(e.area(v, p).area)
-    logger.info(e.real_area(v, p))
-    plot(load(default_file))
+    if 'synth' in sys.argv:
+        save(default_file, batch_synth(we_range, wf_range))
+    else:
+        p = 23
+        e = Expr('a + b + c')
+        v = {'a': ['0', '1'], 'b': ['0', '100'], 'c': ['0', '100000']}
+        logger.info(e.area(v, p).area)
+        logger.info(e.real_area(v, p))
+        plot(load(default_file))
