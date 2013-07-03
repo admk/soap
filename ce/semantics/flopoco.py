@@ -30,8 +30,12 @@ def cd(d):
     if d:
         sh.mkdir('-p', d)
         sh.cd(d)
-    yield
-    sh.cd(p)
+    try:
+        yield
+    except Exception:
+        raise
+    finally:
+        sh.cd(p)
 
 
 def get_luts(file_name):
@@ -51,7 +55,7 @@ def flopoco(op, we, wf, f=None, dir=None):
     dir = dir or tempfile.mktemp(suffix='/')
     with cd(dir):
         if f is None:
-            f = tempfile.mktemp(suffix='.vhdl', dir=dir)
+            f = tempfile.mktemp(suffix='.vhdl')
         flopoco_cmd += ['-outputfile=%s' % f]
         if op == 'add' or op == ADD_OP:
             flopoco_cmd += ['FPAdder', we, wf]
@@ -60,6 +64,13 @@ def flopoco(op, we, wf, f=None, dir=None):
         else:
             raise ValueError('Unrecognised operator %s' % str(op))
         sh.flopoco(*flopoco_cmd)
+        try:
+            with open(f) as fh:
+                if not fh.read():
+                    raise IOError()
+        except (IOError, FileNotFoundError):
+            logger.error('Flopoco failed to generate file %s' % f)
+            raise
     return dir, f
 
 
@@ -86,18 +97,12 @@ def _para_synth(op_we_wf):
     op, we, wf = op_we_wf
     logger.info('Processing', op, we, wf)
     work_dir = 'syn_%d' % os.getpid()
-    with cd(work_dir):
-        try:
-            item = eval_operator(op, we, wf, f=None, dir=work_dir)
-            logger.info(item)
-            return item
-        except sh.ErrorReturnCode as e:
-            logger.error('Command failed:')
-            logger.error(e.full_cmd, e.args)
-            logger.error('Standard Output:')
-            logger.error(str(e.stdout).replace('\\n', '\n'))
-            logger.error('Standard Error Output:')
-            logger.error(str(e.stderr).replace('\\n', '\n'))
+    try:
+        item = eval_operator(op, we, wf, f=None, dir=work_dir)
+        logger.info('Processed', item)
+        return item
+    except sh.ErrorReturnCode:
+        logger.error('Error processing %s, %d, %d' % op_we_wf)
 
 pool = None
 
@@ -121,7 +126,8 @@ def load(file_name):
 
 def save(file_name, results):
     import pickle
-    with open(file_name + '.pkl', 'wb') as f:
+    results = [i for i in results if not i is None]
+    with open(file_name, 'wb') as f:
         pickle.dump(results, f)
 
 
@@ -269,9 +275,10 @@ def eval_expr(expr, var_env, prec):
 
 if __name__ == '__main__':
     from ce.expr import Expr
+    logger.set_context(level=logger.levels.info)
+    p = 23
     e = Expr('a + b + c')
     v = {'a': ['0', '1'], 'b': ['0', '100'], 'c': ['0', '100000']}
-    logger.info(_para_synth(('add', 5, 10)))
-    logger.info(e.area(v, 23))
-    logger.info(eval_expr(e, v, 23))
+    logger.info(e.area(v, p).area)
+    logger.info(e.real_area(v, p))
     plot(load(default_file))
