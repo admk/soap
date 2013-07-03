@@ -27,7 +27,13 @@ class Label(object):
         return 's_%d' % self.l
 
     def port_name(self):
-        return 'p_%d' % self.l
+        from ce.expr.common import OPERATORS
+        forbidden = OPERATORS + [',', '(', ')', '[', ']']
+        if any(k in str(self.e) for k in forbidden):
+            s = self.l
+        else:
+            s = self.e
+        return 'p_%s' % str(s)
 
     def __str__(self):
         return 'l%s' % str(self.l)
