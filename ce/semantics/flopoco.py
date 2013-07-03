@@ -261,9 +261,7 @@ class CodeGenerator(object):
 
 
 def eval_expr(expr, var_env, prec):
-    logger.set_context(level=logger.levels.debug)
     dir = tempfile.mktemp(suffix='/')
-    logger.debug('Generating files in', dir)
     f = CodeGenerator(expr, var_env, prec, dir=dir).generate()
     logger.debug('Synthesising', f)
     return xilinx(f, dir=dir)
