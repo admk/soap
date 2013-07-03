@@ -3,7 +3,7 @@ import gmpy2
 import ce.logger as logger
 from ce.common import DynamicMethods, Flyweight
 from ce.expr import Expr
-from ce.semantics import cast_error, mpfr
+from ce.semantics import mpfr
 import ce.semantics.flopoco as flopoco
 
 
@@ -19,7 +19,7 @@ class Analysis(DynamicMethods, Flyweight):
         super().__init__()
 
     def precisions(self):
-        return [gmpy2.ieee(32).precision]
+        return [gmpy2.ieee(32).precision - 1]
 
     def analyse(self):
         try:

@@ -83,4 +83,7 @@ class Lattice(object):
 
 
 def precision_context(prec):
+    # prec is the mantissa width
+    # need to include the implicit integer bit for gmpy2
+    prec += 1
     return gmpy2.local_context(gmpy2.ieee(128), precision=prec)

@@ -212,7 +212,7 @@ if __name__ == '__main__':
         'b': ['2.3', '2.4'],
     }
     print(v)
-    prec = gmpy2.ieee(32).precision
+    prec = gmpy2.ieee(32).precision - 1
     print(r.error(v, prec))
     for l, e in r.as_labels()[1].items():
         print(str(l), ':', str(e))
