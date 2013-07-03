@@ -11,10 +11,10 @@ class FlopocoMissingImplementationError(Exception):
     """Unsynthesizable operator"""
 
 
-we_min, we_max = 5, 16
-wf_min, wf_max = 10, 113
-we_range = list(range(we_min, we_max))
-wf_range = list(range(wf_min, wf_max))
+we_min, we_max = 5, 15
+wf_min, wf_max = 10, 112
+we_range = list(range(we_min, we_max + 1))
+wf_range = list(range(wf_min, wf_max + 1))
 
 directory = 'ce/semantics/'
 default_file = directory + 'area.pkl'
