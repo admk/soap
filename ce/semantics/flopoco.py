@@ -63,6 +63,7 @@ def flopoco(op, we, wf, f=None, dir=None):
             flopoco_cmd += ['FPMultiplier', we, wf, wf]
         else:
             raise ValueError('Unrecognised operator %s' % str(op))
+        logger.debug('Flopoco', flopoco_cmd)
         sh.flopoco(*flopoco_cmd)
         try:
             with open(f) as fh:
@@ -83,6 +84,7 @@ def xilinx(f, dir=None):
     cmd += ['-ofn', g, '-ofmt', 'NGC']
     dir = dir or tempfile.mktemp(suffix='/')
     with cd(dir):
+        logger.debug('Xilinx', repr(cmd))
         sh.xst(sh.echo(*cmd), _out='out.log', _err='err.log')
         return get_luts(file_base + '.ngc_xst.xrpt')
 
@@ -95,7 +97,6 @@ def eval_operator(op, we, wf, f=None, dir=None):
 @timeit
 def _para_synth(op_we_wf):
     op, we, wf = op_we_wf
-    logger.info('Processing', op, we, wf)
     work_dir = 'syn_%d' % os.getpid()
     try:
         item = eval_operator(op, we, wf, f=None, dir=work_dir)
@@ -104,18 +105,23 @@ def _para_synth(op_we_wf):
     except sh.ErrorReturnCode:
         logger.error('Error processing %s, %d, %d' % op_we_wf)
 
-pool = None
+
+_pool = None
+
+
+def pool():
+    global _pool
+    if _pool is None:
+        import multiprocessing
+        _pool = multiprocessing.Pool()
+    return _pool
 
 
 @timeit
 def batch_synth(we_range, wf_range):
     import itertools
-    from multiprocessing import Pool
-    global pool
-    if not pool:
-        pool = Pool(8)
     args = itertools.product(['add', 'mul'], we_range, wf_range)
-    return list(pool.imap_unordered(_para_synth, args))
+    return list(pool().imap_unordered(_para_synth, args))
 
 
 def load(file_name):
