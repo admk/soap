@@ -1,5 +1,6 @@
 import os
 import sh
+import shutil
 import tempfile
 from contextlib import contextmanager
 
@@ -55,7 +56,7 @@ def flopoco(op, we, wf, f=None, dir=None):
     dir = dir or tempfile.mktemp(suffix='/')
     with cd(dir):
         if f is None:
-            f = tempfile.mktemp(suffix='.vhdl')
+            f = tempfile.mktemp(suffix='.vhdl', dir=dir)
         flopoco_cmd += ['-outputfile=%s' % f]
         if op == 'add' or op == ADD_OP:
             flopoco_cmd += ['FPAdder', we, wf]
@@ -271,7 +272,9 @@ def eval_expr(expr, var_env, prec):
     dir = tempfile.mktemp(suffix='/')
     f = CodeGenerator(expr, var_env, prec, dir=dir).generate()
     logger.debug('Synthesising', f)
-    return xilinx(f, dir=dir)
+    v = xilinx(f, dir=dir)
+    shutil.rmtree(dir)
+    return v
 
 
 if __name__ == '__main__':
