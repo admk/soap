@@ -8,8 +8,8 @@ from ce.transformer.biop import associativity, distribute_for_distributivity, \
 from ce.analysis import expr_frontier
 
 
-def closure(tree, depth=None):
-    return BiOpTreeTransformer(tree, depth=depth).closure()
+def closure(tree, **kwargs):
+    return BiOpTreeTransformer(tree, **kwargs).closure()
 
 
 def greedy_frontier_closure(tree, depth=None, var_env=None):

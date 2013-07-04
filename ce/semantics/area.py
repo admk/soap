@@ -1,10 +1,12 @@
-import math
-import gmpy2
+import sh
+import itertools
+
+from matplotlib import rc, pyplot
 
 import ce.expr
+import ce.logger as logger
 from ce.common import Comparable
-from ce.semantics import Lattice
-from ce.semantics import flopoco
+from ce.semantics import Lattice, flopoco
 
 
 class AreaSemantics(Comparable, Lattice):
@@ -69,9 +71,64 @@ class AreaSemantics(Comparable, Lattice):
         return 'AreaSemantics(%s)' % repr(self.e)
 
 
+class AreaEstimateValidator(object):
+
+    def __init__(self, expr_set, var_env, prec_list):
+        self.e = expr_set
+        self.v = var_env
+        self.p = prec_list
+
+    def scatter_points(self):
+        try:
+            return self.points
+        except AttributeError:
+            pass
+        points = []
+        n = len(self.e) * len(self.p)
+        try:
+            for i, (e, p) in enumerate(itertools.product(self.e, self.p)):
+                logger.persistent('Estimating', '%d/%d' % (i + 1, n))
+                try:
+                    points.append(
+                        (e.real_area(self.v, p), e.area(self.v, p).area))
+                except sh.ErrorReturnCode:
+                    logger.error(
+                        'Unable to synthesise', e, 'with precision', p)
+        except KeyboardInterrupt:
+            pass
+        logger.unpersistent('Estimating')
+        logger.info('Done estimation')
+        self.points = points
+        return points
+
+    def _plot(self):
+        self.figure = pyplot.figure()
+        plot = self.figure.add_subplot(111)
+        plot.scatter(*zip(*self.scatter_points()))
+        plot.grid(True, which='both', ls=':')
+        plot.set_xlabel('Actual Area (Number of LUTs)')
+        plot.set_ylabel('Estimated Area (Number of LUTs)')
+        return self.figure
+
+    def show(self):
+        self._plot()
+        pyplot.show()
+
+    def save(self, *args, **kwargs):
+        self._plot().savefig(*args, **kwargs)
+
+
+rc('font', family='serif', serif='Times')
+rc('text', usetex=True)
+
 if __name__ == '__main__':
-    gmpy2.set_context(gmpy2.ieee(128))
-    gmpy2.get_context().precision = 24
-    e = ce.expr.Expr('((a + 1) * (a + 1))')
-    v = {'a': ['0.2', '0.3']}
-    print(AreaSemantics(e, v))
+    from ce.transformer.utils import closure
+    from ce.semantics.flopoco import wf_range
+    logger.set_context(level=logger.levels.info)
+    e = ce.expr.Expr('(a + 1) * (b + 1)')
+    v = {
+        'a': ['0', '10'],
+        'b': ['0', '1000'],
+    }
+    a = AreaEstimateValidator(closure(e, multiprocessing=False), v, wf_range)
+    a.save('area.pdf')
