@@ -45,7 +45,7 @@ def get_luts(file_name):
         app = f.document.application
         util = app.find('section', stringid='XST_DEVICE_UTILIZATION_SUMMARY')
         luts = util.find('item', stringid='XST_NUMBER_OF_SLICE_LUTS')
-        return luts.get('value')
+        return int(luts.get('value'))
 
 
 def flopoco(op, we, wf, f=None, dir=None):
@@ -275,6 +275,7 @@ def eval_expr(expr, var_env, prec):
 
 
 if __name__ == '__main__':
+    import sys
     from ce.expr import Expr
     logger.set_context(level=logger.levels.info)
     if 'synth' in sys.argv:
