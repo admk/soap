@@ -46,7 +46,7 @@ def get_luts(file_name):
         app = f.document.application
         util = app.find('section', stringid='XST_DEVICE_UTILIZATION_SUMMARY')
         luts = util.find('item', stringid='XST_NUMBER_OF_SLICE_LUTS')
-        return luts.get('value')
+        return int(luts.get('value'))
 
 
 def flopoco(op, we, wf, f=None, dir=None):
