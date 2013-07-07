@@ -201,15 +201,17 @@ class BExpr(Expr):
 
 
 if __name__ == '__main__':
-    r = Expr('(a + 1) * (a + b + [2, 3])')
+    r = Expr("""(a + a + b) * (a + b + b) * (b + b + c) *
+                (b + c + c) * (c + c + a) * (c + a + a)""")
     n, e = r.crop(1)
     print('cropped', n, e)
     print('stitched', n.stitch(e))
     print(r)
     print(repr(r))
     v = {
-        'a': ['0.2', '0.3'],
-        'b': ['2.3', '2.4'],
+        'a': ['1', '2'],
+        'b': ['10', '20'],
+        'c': ['100', '200'],
     }
     print(v)
     prec = gmpy2.ieee(32).precision - 1
