@@ -272,9 +272,12 @@ def eval_expr(expr, var_env, prec):
     dir = tempfile.mktemp(suffix='/')
     f = CodeGenerator(expr, var_env, prec, dir=dir).generate()
     logger.debug('Synthesising', f)
-    v = xilinx(f, dir=dir)
-    shutil.rmtree(dir)
-    return v
+    try:
+        return xilinx(f, dir=dir)
+    except (sh.ErrorReturnCode, KeyboardInterrupt):
+        raise
+    finally:
+        shutil.rmtree(dir)
 
 
 if __name__ == '__main__':
