@@ -1,3 +1,4 @@
+import os
 import sys
 from pprint import pformat
 from contextlib import contextmanager
@@ -13,8 +14,18 @@ for i, l in enumerate(labels):
     levels.__dict__[l] = i
 
 
+colours = {
+    levels.debug: '\033[94m',
+    levels.info: '\033[92m',
+    levels.warning: '\033[93m',
+    levels.error: '\033[91m',
+}
+colours_end = '\033[0m'
+
+
 context = {
     'level': levels.off,
+    'colour': True,
     'file': None,
     'persistent': {},
 }
@@ -28,6 +39,14 @@ def get_context():
     return context
 
 
+def colourise(s, l=levels.info):
+    if not 'colour' in os.environ['TERM']:
+        return s
+    if not get_context()['colour']:
+        return s
+    return colours[l] + s + colours_end
+
+
 def format(*args):
     return ' '.join(pformat(a) if not isinstance(a, str) else a for a in args)
 
@@ -36,7 +55,7 @@ def log(*args, l=levels.info):
     if l < get_context()['level']:
         return
     f = context['file'] or sys.stdout
-    print(format(*args), end='', file=f)
+    print(colourise(format(*args), l), end='', file=f)
 
 
 def line(*args, l=levels.info):
