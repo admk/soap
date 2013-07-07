@@ -1,5 +1,4 @@
 import os
-import sh
 import tempfile
 from contextlib import contextmanager
 
@@ -26,6 +25,7 @@ device_model = 'xc6vlx760'
 
 @contextmanager
 def cd(d):
+    import sh
     p = os.path.abspath(os.curdir)
     if d:
         sh.mkdir('-p', d)
@@ -49,6 +49,7 @@ def get_luts(file_name):
 
 
 def flopoco(op, we, wf, f=None, dir=None):
+    import sh
     from ce.expr import ADD_OP, MULTIPLY_OP
     flopoco_cmd = []
     flopoco_cmd += ['-target=' + device_name]
@@ -76,6 +77,7 @@ def flopoco(op, we, wf, f=None, dir=None):
 
 
 def xilinx(f, dir=None):
+    import sh
     file_base = os.path.split(f)[1]
     file_base = os.path.splitext(file_base)[0]
     g = file_base + '.ngc'
@@ -96,6 +98,7 @@ def eval_operator(op, we, wf, f=None, dir=None):
 
 @timeit
 def _para_synth(op_we_wf):
+    import sh
     op, we, wf = op_we_wf
     work_dir = 'syn_%d' % os.getpid()
     try:
