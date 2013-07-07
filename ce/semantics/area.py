@@ -82,8 +82,9 @@ def _para_area(i_n_e_v_p):
         return real_area, estimated_area
     except sh.ErrorReturnCode:
         logger.error('Unable to synthesise', str(e), 'with precision', p)
-    except Exception:
-        logger.error('Unknown failure', str(e), 'with precision', p)
+    except Exception as exc:
+        logger.error('Unknown failure', exc, 'when synthesising', str(e),
+                     'with precision', p)
 
 
 _pool = None
@@ -114,7 +115,7 @@ class AreaEstimateValidator(object):
         n = len(self.e) * len(self.p)
         s = [(i, n, e, v, p)
              for i, (e, p) in enumerate(itertools.product(self.e, self.p))]
-        self.points = list(pool().imap_unordered(_para_area, s))
+        self.points = pool().imap_unordered(_para_area, s)
         self.points = [p for p in self.points if not p is None]
         return self.points
 
@@ -169,4 +170,5 @@ if __name__ == '__main__':
         s += greedy_trace(e, v, depth=3)
     a = AreaEstimateValidator(s, v, p)
     a.save_points('area.pkl')
+    a.save_plot('area.pdf')
     a.show_plot()

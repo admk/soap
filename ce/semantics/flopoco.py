@@ -271,7 +271,7 @@ class CodeGenerator(object):
 def eval_expr(expr, var_env, prec):
     dir = tempfile.mktemp(suffix='/')
     f = CodeGenerator(expr, var_env, prec, dir=dir).generate()
-    logger.debug('Synthesising', f)
+    logger.debug('Synthesising', str(expr), 'with precision', prec, 'in', f)
     try:
         return xilinx(f, dir=dir)
     except (sh.ErrorReturnCode, KeyboardInterrupt):
