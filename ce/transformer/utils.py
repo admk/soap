@@ -12,13 +12,12 @@ def closure(tree, **kwargs):
     return BiOpTreeTransformer(tree, **kwargs).closure()
 
 
-def greedy_frontier_closure(tree, depth=None, var_env=None):
+def greedy_frontier_closure(tree, var_env=None, **kwargs):
     if var_env:
         func = lambda s: expr_frontier(s, var_env)
     else:
         func = None
-    return BiOpTreeTransformer(
-        tree, depth=depth, step_plugin=func).closure()
+    return BiOpTreeTransformer(tree, step_plugin=func, **kwargs).closure()
 
 
 def transform(tree,
@@ -70,10 +69,10 @@ def collecting_closure(tree, depth=None):
 
 class TraceExpr(Expr):
 
-    def traces(self, var_env=None, depth=None):
+    def traces(self, var_env=None, depth=None, **kwargs):
         def subtraces(a):
             try:
-                return self.__class__(a).traces(var_env, depth)
+                return self.__class__(a).traces(var_env, depth, **kwargs)
             except (ValueError, TypeError):
                 return {a}
         stl = [subtraces(a) for a in self.args]
@@ -81,7 +80,7 @@ class TraceExpr(Expr):
         logger.debug('Generating %s~=%d traces for tree: %s' %
                      ('*'.join([str(len(s)) for s in stl]),
                       len(sts), str(self)))
-        cls = set(self.closure(sts, depth=depth, var_env=var_env))
+        cls = set(self.closure(sts, depth=depth, var_env=var_env, **kwargs))
         return cls | sts
 
     def clousure(self, trees, **kwargs):
@@ -103,9 +102,9 @@ class FrontierTraceExpr(TraceExpr):
             closure(trees, depth=kwargs['depth']), kwargs['var_env'])
 
 
-def greedy_trace(tree, var_env=None, depth=2):
-    return reduce(GreedyTraceExpr(tree).traces(var_env, depth))
+def greedy_trace(tree, var_env=None, depth=2, **kwargs):
+    return reduce(GreedyTraceExpr(tree).traces(var_env, depth, **kwargs))
 
 
-def frontier_trace(tree, var_env=None, depth=2):
-    return reduce(FrontierTraceExpr(tree).traces(var_env, depth))
+def frontier_trace(tree, var_env=None, depth=2, **kwargs):
+    return reduce(FrontierTraceExpr(tree).traces(var_env, depth, **kwargs))

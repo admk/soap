@@ -1,4 +1,5 @@
 import sh
+import pickle
 import itertools
 
 from matplotlib import rc, pyplot
@@ -71,6 +72,32 @@ class AreaSemantics(Comparable, Lattice):
         return 'AreaSemantics(%s)' % repr(self.e)
 
 
+def _para_area(i_n_e_v_p):
+    i, n, e, v, p = i_n_e_v_p
+    try:
+        real_area, estimated_area = e.real_area(v, p), e.area(v, p).area
+        logger.info(
+            '%d/%d, Expr: %s, Prec: %d, Real Area: %d, Estimated Area: %d' %
+            (i + 1, n, str(e), p, real_area, estimated_area))
+        return real_area, estimated_area
+    except sh.ErrorReturnCode:
+        logger.error('Unable to synthesise', str(e), 'with precision', p)
+    except Exception:
+        logger.error('Unknown failure', str(e), 'with precision', p)
+
+
+_pool = None
+
+
+def pool():
+    global _pool
+    if _pool:
+        return _pool
+    from multiprocessing import Pool
+    _pool = Pool()
+    return _pool
+
+
 class AreaEstimateValidator(object):
 
     def __init__(self, expr_set, var_env, prec_list):
@@ -83,23 +110,13 @@ class AreaEstimateValidator(object):
             return self.points
         except AttributeError:
             pass
-        points = []
+        v = self.v
         n = len(self.e) * len(self.p)
-        try:
-            for i, (e, p) in enumerate(itertools.product(self.e, self.p)):
-                logger.persistent('Estimating', '%d/%d' % (i + 1, n))
-                try:
-                    points.append(
-                        (e.real_area(self.v, p), e.area(self.v, p).area))
-                except sh.ErrorReturnCode:
-                    logger.error(
-                        'Unable to synthesise', e, 'with precision', p)
-        except KeyboardInterrupt:
-            pass
-        logger.unpersistent('Estimating')
-        logger.info('Done estimation')
-        self.points = points
-        return points
+        s = [(i, n, e, v, p)
+             for i, (e, p) in enumerate(itertools.product(self.e, self.p))]
+        self.points = list(pool().imap_unordered(_para_area, s))
+        self.points = [p for p in self.points if not p is None]
+        return self.points
 
     def _plot(self):
         self.figure = pyplot.figure()
@@ -110,25 +127,46 @@ class AreaEstimateValidator(object):
         plot.set_ylabel('Estimated Area (Number of LUTs)')
         return self.figure
 
-    def show(self):
+    def show_plot(self):
         self._plot()
         pyplot.show()
 
-    def save(self, *args, **kwargs):
+    def save_plot(self, *args, **kwargs):
         self._plot().savefig(*args, **kwargs)
+
+    def load_points(self, f):
+        with open(f, 'rb') as f:
+            self.points = pickle.load(f)
+
+    def save_points(self, f):
+        with open(f, 'wb') as f:
+            pickle.dump(self.scatter_points(), f)
 
 
 rc('font', family='serif', serif='Times')
 rc('text', usetex=True)
 
+
 if __name__ == '__main__':
-    from ce.transformer.utils import closure
+    from ce.transformer.utils import greedy_trace
     from ce.semantics.flopoco import wf_range
     logger.set_context(level=logger.levels.info)
-    e = ce.expr.Expr('(a + 1) * (b + 1)')
+    exprs = [
+        """(a + a + b) * (a + b + b) * (b + b + c) *
+           (b + c + c) * (c + c + a) * (c + a + a)""",
+        '(1 + b + c) * (a + 1 + b) * (a + b + 1)',
+        '(a + 1) * (b + 1) * (c + 1)',
+        'a + b + c',
+    ]
     v = {
-        'a': ['0', '10'],
-        'b': ['0', '1000'],
+        'a': ['1', '2'],
+        'b': ['10', '20'],
+        'c': ['100', '200'],
     }
-    a = AreaEstimateValidator(closure(e, multiprocessing=False), v, wf_range)
-    a.save('area.pdf')
+    p = wf_range
+    s = []
+    for e in exprs:
+        s += greedy_trace(e, v, depth=3)
+    a = AreaEstimateValidator(s, v, p)
+    a.save_points('area.pkl')
+    a.show_plot()
