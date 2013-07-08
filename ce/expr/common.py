@@ -1,5 +1,7 @@
 ADD_OP = '+'
+SUBTRACT_OP = '-'
 MULTIPLY_OP = '*'
+DIVIDE_OP = '/'
 BARRIER_OP = '|'
 UNARY_SUBTRACT_OP = '-'
 

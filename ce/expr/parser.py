@@ -1,8 +1,10 @@
 import ast
+import gmpy2
 
 from ce.common import ignored
 from ce.semantics import mpq
-from ce.expr.common import ADD_OP, MULTIPLY_OP, BARRIER_OP, UNARY_SUBTRACT_OP
+from ce.expr.common import ADD_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, \
+    UNARY_SUBTRACT_OP
 
 
 def try_to_number(s):
@@ -15,6 +17,7 @@ def try_to_number(s):
 OPERATOR_MAP = {
     ast.Add: ADD_OP,
     ast.Mult: MULTIPLY_OP,
+    ast.Div: DIVIDE_OP,
     ast.BitOr: BARRIER_OP,
     ast.USub: UNARY_SUBTRACT_OP,
 }
@@ -40,6 +43,11 @@ def parse(s, cls):
                 return -_parse_r(t.operand)
             a1 = _parse_r(t.left)
             a2 = _parse_r(t.right)
+            if op == DIVIDE_OP:
+                try:
+                    return gmpy2.mpq(a1, a2)
+                except TypeError:
+                    pass
             return cls(op, a1, a2)
         except KeyError:
             raise ParserSyntaxError('Unrecognised operator %s' % str(t.op))
@@ -52,7 +60,3 @@ def parse(s, cls):
         raise TypeError('Parse argument must be a string')
     except SyntaxError as e:
         raise ParserSyntaxError(e)
-
-
-if __name__ == '__main__':
-    print(parse('a + b * c + d'))
