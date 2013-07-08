@@ -1,6 +1,7 @@
 import itertools
-
 from matplotlib import rc, pyplot
+
+import ce.logger as logger
 
 
 def _analyser(vary_width):
@@ -68,6 +69,8 @@ def _insert_region_frontier(sx, sy):
 
 
 def _escape_legend(legend):
+    if not legend:
+        return
     escapes = '# $ % & ~ \ _ ^ { }'.split(' ')
     new_legend = []
     for i, l in enumerate(legend.split('$')):
@@ -80,18 +83,55 @@ def _escape_legend(legend):
 
 class Plot(object):
 
-    def __init__(self, result=None, log=None, **kwargs):
+    def __init__(self, result=None, var_env=None, depth=None, vary_width=False,
+                 log=None, **kwargs):
         self.result_list = []
         if result:
             self.add(result, **kwargs)
+        self.var_env = var_env
+        self.depth = depth
+        self.vary_width = vary_width
         if not log is None:
             self.log_enable = log
         super().__init__()
 
-    def add(self, result,
-            legend=None, frontier=True, annotate=False, **kwargs):
+    def add_analysis(self, expr, func=None,
+                     var_env=None, depth=None, vary_width=False,
+                     annotate=False, legend=None,
+                     legend_depth=False, legend_time=False, **kwargs):
+        import time
+        var_env = var_env or self.var_env
+        vary_width = vary_width or self.vary_width
+        d = depth or self.depth
+        if func:
+            t = time.time()
+            derived = func(expr, var_env=var_env, depth=d)
+            t = time.time() - t
+            frontier = True
+            marker = '.'
+        else:
+            derived = expr
+            frontier = False
+            marker = '+'
+        if not legend_depth:
+            d = None
+        if not legend_time:
+            t = None
+        kwargs.setdefault('marker', marker)
+        r = analyse(derived, var_env, vary_width)
+        self.add(r, legend=legend, frontier=frontier, annotate=annotate,
+                 time=t, depth=d, **kwargs)
+
+    def add(self, result, expr=None,
+            legend=None, frontier=True, annotate=False, time=None, depth=None,
+            **kwargs):
         if not result:
             return
+        if legend:
+            if depth:
+                legend += ', %d' % depth
+            if time:
+                legend += ', %1.2fs' % time
         self.result_list.append({
             'result': result,
             'legend': _escape_legend(legend),
@@ -102,6 +142,8 @@ class Plot(object):
 
     plot_defaults = {
         'alpha': 0.7,
+        'linestyle': '-',
+        'linewidth': 1.0,
     }
 
     def _colors(self, length):
@@ -163,6 +205,7 @@ class Plot(object):
                 kwargs['marker'] = None
                 keys = AreaErrorAnalysis.names()
                 f = pareto_frontier_2d(r['result'], keys=keys)
+                logger.info('Pareto frontier', f)
                 keys.append('expression')
                 area, error, expr = zip_from_keys(f, keys=keys)
                 lx, ly = _insert_region_frontier(area, error)
@@ -173,7 +216,9 @@ class Plot(object):
                     for x, y, e in zip(area, error, expr):
                         plot.annotate(str(e), xy=(x, y), alpha=0.5)
         self._auto_scale(plot, xlim, (ymin, ymax))
-        plot.legend(bbox_to_anchor=(1.1, 1.1), ncol=1)
+        l = plot.legend(bbox_to_anchor=(1.1, 1.1), ncol=1)
+        if l:
+            l.draggable()
         plot.grid(True, which='both', ls=':')
         plot.set_xlabel('Area (Number of LUTs)')
         plot.set_ylabel('Absolute Error')
@@ -184,7 +229,7 @@ class Plot(object):
         pyplot.show()
 
     def save(self, *args, **kwargs):
-        self._plot().savefig(*args, **kwargs)
+        self._plot().savefig(*args, bbox_inches='tight', **kwargs)
 
 
 def plot(result, **kwargs):
@@ -193,5 +238,27 @@ def plot(result, **kwargs):
     return p
 
 
-rc('font', family='serif', serif='Times')
+def analyse_and_plot(s, v, d=None, f=None):
+    import ce.logger as logger
+    from ce.transformer.utils import greedy_trace
+    f = f or [greedy_trace]
+    logger.set_context(level=logger.levels.debug)
+    p = Plot(var_env=v, depth=d)
+    try:
+        for d, m in itertools.product(s, f):
+            e, depth, legend = d['e'], d.get('d'), d.get('l')
+            if len(f) > 1:
+                fname = '%s' % m.__name__
+                if not legend:
+                    legend = fname
+                else:
+                    legend += ', ' + fname
+            logger.info('Expr', e, 'Label', legend)
+            p.add_analysis(e, func=m, depth=depth, legend=legend)
+    except KeyboardInterrupt:
+        pass
+    return p
+
+
+rc('font', family='serif', size=24, serif='Times')
 rc('text', usetex=True)
