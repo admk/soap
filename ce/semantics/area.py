@@ -150,8 +150,9 @@ class AreaEstimateValidator(object):
         return a
 
     def save_points(self, f):
+        p = self.scatter_points()
         with open(f, 'wb') as f:
-            pickle.dump(self.scatter_points(), f)
+            pickle.dump(p, f)
 
 
 rc('font', family='serif', serif='Times')
@@ -177,7 +178,7 @@ if __name__ == '__main__':
             'b': ['10', '20'],
             'c': ['100', '200'],
         }
-        p = wf_range
+        p = list(reversed(wf_range))
         s = []
         for e in exprs:
             s += greedy_trace(e, v, depth=3)
