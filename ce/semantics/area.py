@@ -101,7 +101,7 @@ def pool():
 
 class AreaEstimateValidator(object):
 
-    def __init__(self, expr_set, var_env, prec_list):
+    def __init__(self, expr_set=None, var_env=None, prec_list=None):
         self.e = expr_set
         self.v = var_env
         self.p = prec_list
@@ -120,24 +120,34 @@ class AreaEstimateValidator(object):
         return self.points
 
     def _plot(self):
+        try:
+            return self.figure
+        except AttributeError:
+            pass
         self.figure = pyplot.figure()
         plot = self.figure.add_subplot(111)
-        plot.scatter(*zip(*self.scatter_points()))
+        plot.scatter(*zip(*self.scatter_points()), marker='+', color='k')
         plot.grid(True, which='both', ls=':')
         plot.set_xlabel('Actual Area (Number of LUTs)')
         plot.set_ylabel('Estimated Area (Number of LUTs)')
+        lim = max(plot.get_xlim())
+        plot.plot([0, lim], [0, lim], linestyle=':')
+        plot.set_xlim(0, lim)
+        plot.set_ylim(0, lim)
         return self.figure
 
     def show_plot(self):
-        self._plot()
-        pyplot.show()
+        pyplot.show(self._plot())
 
     def save_plot(self, *args, **kwargs):
         self._plot().savefig(*args, **kwargs)
 
-    def load_points(self, f):
+    @classmethod
+    def load_points(cls, f):
+        a = cls()
         with open(f, 'rb') as f:
-            self.points = pickle.load(f)
+            a.points = pickle.load(f)
+        return a
 
     def save_points(self, f):
         with open(f, 'wb') as f:
@@ -152,23 +162,26 @@ if __name__ == '__main__':
     from ce.transformer.utils import greedy_trace
     from ce.semantics.flopoco import wf_range
     logger.set_context(level=logger.levels.info)
-    exprs = [
-        """(a + a + b) * (a + b + b) * (b + b + c) *
-           (b + c + c) * (c + c + a) * (c + a + a)""",
-        '(1 + b + c) * (a + 1 + b) * (a + b + 1)',
-        '(a + 1) * (b + 1) * (c + 1)',
-        'a + b + c',
-    ]
-    v = {
-        'a': ['1', '2'],
-        'b': ['10', '20'],
-        'c': ['100', '200'],
-    }
-    p = wf_range
-    s = []
-    for e in exprs:
-        s += greedy_trace(e, v, depth=3)
-    a = AreaEstimateValidator(s, v, p)
-    a.save_points('area.pkl')
+    try:
+        a = AreaEstimateValidator.load_points('area.pkl')
+    except FileNotFoundError:
+        exprs = [
+            """(a + a + b) * (a + b + b) * (b + b + c) *
+               (b + c + c) * (c + c + a) * (c + a + a)""",
+            '(1 + b + c) * (a + 1 + b) * (a + b + 1)',
+            '(a + 1) * (b + 1) * (c + 1)',
+            'a + b + c',
+        ]
+        v = {
+            'a': ['1', '2'],
+            'b': ['10', '20'],
+            'c': ['100', '200'],
+        }
+        p = wf_range
+        s = []
+        for e in exprs:
+            s += greedy_trace(e, v, depth=3)
+        a = AreaEstimateValidator(s, v, p)
+        a.save_points('area.pkl')
     a.save_plot('area.pdf')
     a.show_plot()
