@@ -40,7 +40,7 @@ def get_context():
 
 
 def colourise(s, l=levels.info):
-    if not 'colour' in os.environ['TERM']:
+    if not 'color' in os.environ['TERM']:
         return s
     if not get_context()['colour']:
         return s
@@ -120,7 +120,8 @@ for i, l in enumerate(labels):
 
 
 if __name__ == '__main__':
+    set_context(level=levels.debug)
     info('Hello')
     debug('Hello')
-    import time
-    debug_enable(time.sleep)(100)
+    warning('Hello')
+    error('Hello')
