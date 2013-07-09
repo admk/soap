@@ -1,4 +1,7 @@
 import itertools
+
+import matplotlib
+matplotlib.use('Qt4Agg')
 from matplotlib import rc, pyplot
 
 import ce.logger as logger
@@ -84,8 +87,9 @@ def _escape_legend(legend):
 class Plot(object):
 
     def __init__(self, result=None, var_env=None, depth=None, vary_width=False,
-                 log=None, **kwargs):
+                 log=None, legend_pos=None, **kwargs):
         self.result_list = []
+        self.legend_pos = legend_pos
         if result:
             self.add(result, **kwargs)
         self.var_env = var_env
@@ -121,10 +125,11 @@ class Plot(object):
         r = analyse(derived, var_env, vary_width)
         self.add(r, legend=legend, frontier=frontier, annotate=annotate,
                  time=t, depth=d, **kwargs)
+        return self
 
     def add(self, result, expr=None,
             legend=None, frontier=True, annotate=False, time=None, depth=None,
-            **kwargs):
+            color_group=None, **kwargs):
         if not result:
             return
         if legend:
@@ -137,16 +142,21 @@ class Plot(object):
             'legend': _escape_legend(legend),
             'frontier': frontier,
             'annotate': annotate,
+            'color_group': color_group,
             'kwargs': kwargs
         })
+        return self
 
     plot_defaults = {
         'alpha': 0.7,
         'linestyle': '-',
         'linewidth': 1.0,
     }
+    scatter_defaults = {
+        's': 100,
+    }
 
-    def _colors(self, length):
+    def _colors(self):
         return itertools.cycle('bgrcmyk')
 
     def _markers(self):
@@ -173,6 +183,7 @@ class Plot(object):
             plot.yaxis.get_major_formatter().set_scientific(True)
             plot.yaxis.get_major_formatter().set_powerlimits((-3, 4))
         plot.set_xlim(max(min(xlim), 0), max(xlim))
+        plot.locator_params(axis='x', nbins=8)
 
     def _plot(self):
         from ce.analysis.core import AreaErrorAnalysis, pareto_frontier_2d
@@ -182,13 +193,20 @@ class Plot(object):
             pass
         self.figure = pyplot.figure()
         plot = self.figure.add_subplot(111)
-        colors = self._colors(len(self.result_list))
+        colors = self._colors()
+        color_groups = {}
+        for d in self.result_list:
+            if d['color_group'] is None:
+                continue
+            color_groups[d['color_group']] = next(colors)
         markers = self._markers()
         ymin, ymax = float('Inf'), float('-Inf')
         for r in self.result_list:
             kwargs = dict(self.plot_defaults)
             kwargs.update(r['kwargs'])
-            if not 'color' in kwargs:
+            if not r['color_group'] is None:
+                kwargs['color'] = color_groups[r['color_group']]
+            elif not 'color' in kwargs:
                 kwargs['color'] = next(colors)
             if not 'marker' in kwargs:
                 kwargs['marker'] = next(markers)
@@ -196,7 +214,8 @@ class Plot(object):
             ymin, ymax = min(ymin, min(error)), max(ymax, max(error))
             plot.scatter(area, error,
                          label=r['legend'],
-                         **dict(kwargs, linestyle='-', linewidth=1, s=20))
+                         **dict(kwargs, linestyle='-', linewidth=1,
+                                **self.scatter_defaults))
             r['kwargs'] = kwargs
         xlim = plot.get_xlim()
         for r in self.result_list:
@@ -205,7 +224,6 @@ class Plot(object):
                 kwargs['marker'] = None
                 keys = AreaErrorAnalysis.names()
                 f = pareto_frontier_2d(r['result'], keys=keys)
-                logger.info('Pareto frontier', f)
                 keys.append('expression')
                 area, error, expr = zip_from_keys(f, keys=keys)
                 lx, ly = _insert_region_frontier(area, error)
@@ -216,7 +234,12 @@ class Plot(object):
                     for x, y, e in zip(area, error, expr):
                         plot.annotate(str(e), xy=(x, y), alpha=0.5)
         self._auto_scale(plot, xlim, (ymin, ymax))
-        l = plot.legend(bbox_to_anchor=(1.1, 1.1), ncol=1)
+        legend_pos = self.legend_pos or (1.1, 1.1)
+        l = plot.legend(
+            bbox_to_anchor=legend_pos, ncol=1,
+            fontsize='small', scatterpoints=1, columnspacing=0,
+            labelspacing=0.1, handlelength=0.5, handletextpad=0.3,
+            borderpad=0.3)
         if l:
             l.draggable()
         plot.grid(True, which='both', ls=':')
@@ -238,14 +261,12 @@ def plot(result, **kwargs):
     return p
 
 
-def analyse_and_plot(s, v, d=None, f=None):
-    import ce.logger as logger
+def analyse_and_plot(s, v, d=None, f=None, o=False):
     from ce.transformer.utils import greedy_trace
     f = f or [greedy_trace]
-    logger.set_context(level=logger.levels.debug)
     p = Plot(var_env=v, depth=d)
     try:
-        for d, m in itertools.product(s, f):
+        for i, (d, m) in enumerate(itertools.product(s, f)):
             e, depth, legend = d['e'], d.get('d'), d.get('l')
             if len(f) > 1:
                 fname = '%s' % m.__name__
@@ -254,7 +275,11 @@ def analyse_and_plot(s, v, d=None, f=None):
                 else:
                     legend += ', ' + fname
             logger.info('Expr', e, 'Label', legend)
-            p.add_analysis(e, func=m, depth=depth, legend=legend)
+            p.add_analysis(e, func=m, depth=depth, legend=legend, marker='+',
+                           color_group=i)
+            if o:
+                legend += ' original'
+                p.add_analysis(e, legend=legend, marker='o', color_group=i)
     except KeyboardInterrupt:
         pass
     return p
@@ -262,3 +287,16 @@ def analyse_and_plot(s, v, d=None, f=None):
 
 rc('font', family='serif', size=24, serif='Times')
 rc('text', usetex=True)
+
+
+if __name__ == '__main__':
+    from ce.transformer.utils import greedy_trace, frontier_trace
+    logger.set_context(level=logger.levels.info)
+    p = Plot(var_env={'x': [0, 1]})
+    p.add_analysis('x * x + x + 1', legend='1')
+    p.add_analysis('x * (x + 1) + 1', legend='2')
+    p.add_analysis('1 + x + x * x', legend='3')
+    p.show()
+    analyse_and_plot(
+        [{'e': 'x * x + x + 1'}], {'x': [0, 1]},
+        f=[greedy_trace, frontier_trace]).show()
