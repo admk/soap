@@ -1,4 +1,3 @@
-import sh
 import pickle
 import itertools
 
@@ -73,6 +72,7 @@ class AreaSemantics(Comparable, Lattice):
 
 
 def _para_area(i_n_e_v_p):
+    import sh
     i, n, e, v, p = i_n_e_v_p
     try:
         real_area, estimated_area = e.real_area(v, p), e.area(v, p).area
@@ -126,12 +126,13 @@ class AreaEstimateValidator(object):
             pass
         self.figure = pyplot.figure()
         plot = self.figure.add_subplot(111)
-        plot.scatter(*zip(*self.scatter_points()), marker='+', color='k')
+        plot.scatter(
+            *zip(*self.scatter_points()), marker='+', linewidth=1, color='r')
         plot.grid(True, which='both', ls=':')
         plot.set_xlabel('Actual Area (Number of LUTs)')
         plot.set_ylabel('Estimated Area (Number of LUTs)')
         lim = max(plot.get_xlim())
-        plot.plot([0, lim], [0, lim], linestyle=':')
+        plot.plot([0, lim], [0, lim], linestyle=':', color='k')
         plot.set_xlim(0, lim)
         plot.set_ylim(0, lim)
         return self.figure
@@ -140,7 +141,7 @@ class AreaEstimateValidator(object):
         pyplot.show(self._plot())
 
     def save_plot(self, *args, **kwargs):
-        self._plot().savefig(*args, **kwargs)
+        self._plot().savefig(*args, bbox_inches='tight', **kwargs)
 
     @classmethod
     def load_points(cls, f):
@@ -155,7 +156,7 @@ class AreaEstimateValidator(object):
             pickle.dump(p, f)
 
 
-rc('font', family='serif', serif='Times')
+rc('font', family='serif', size=24, serif='Times')
 rc('text', usetex=True)
 
 
