@@ -92,10 +92,14 @@ _cache_map = {}
 
 
 def invalidate_cache():
-    import gc
-    global _cache_map
-    _cache_map = {}
-    gc.collect()
+    def _process_invalidate_cache():
+        import gc
+        global _cache_map
+        _cache_map = {}
+        gc.collect()
+    from ce.transformer.core import pool
+    _process_invalidate_cache()
+    pool().apply(_process_invalidate_cache)
 
 
 def cached(f):
