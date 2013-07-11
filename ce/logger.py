@@ -59,7 +59,7 @@ def log(*args, l=levels.info):
     print(colourise(format(*args), l), end='', file=f)
     while l >= get_context()['pause_level']:
         r = input('Continue [Return], Abort [q]: ')
-        if r == '\n':
+        if not r:
             break
         if r == 'q':
             sys.exit(-1)
