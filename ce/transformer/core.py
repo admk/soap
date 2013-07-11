@@ -95,10 +95,9 @@ class TreeTransformer(object):
             # print set size
             i += 1
             logger.persistent(
-                'Iteration' if not reduced else 'Reduction', i,
-                l=levels.debug)
-            logger.persistent('Trees', len(done_trees), l=levels.debug)
-            logger.persistent('Todo', len(todo_trees), l=levels.debug)
+                'Iteration' if not reduced else 'Reduction', i)
+            logger.persistent('Trees', len(done_trees))
+            logger.persistent('Todo', len(todo_trees))
             if not reduced:
                 f = self.transform_methods
                 _, step_trees = \
