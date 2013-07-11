@@ -25,6 +25,7 @@ colours_end = '\033[0m'
 
 context = {
     'level': levels.off,
+    'pause_level': levels.off,
     'colour': True,
     'file': None,
     'persistent': {},
@@ -54,8 +55,14 @@ def format(*args):
 def log(*args, l=levels.info):
     if l < get_context()['level']:
         return
-    f = context['file'] or sys.stdout
+    f = get_context()['file'] or sys.stdout
     print(colourise(format(*args), l), end='', file=f)
+    while l >= get_context()['pause_level']:
+        r = input('Continue [Return], Abort [q]: ')
+        if r == '\n':
+            break
+        if r == 'q':
+            sys.exit(-1)
 
 
 def line(*args, l=levels.info):
