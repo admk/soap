@@ -7,20 +7,18 @@ from matplotlib import rc, pyplot
 import ce.logger as logger
 
 
-def _analyser(vary_width):
-    if vary_width:
-        from ce.analysis.core import VaryWidthAnalysis
-        return VaryWidthAnalysis
+def _analyser(expr_set, var_env, prec=None):
     from ce.analysis.core import AreaErrorAnalysis
-    return AreaErrorAnalysis
+    precs = [prec] if prec else None
+    return AreaErrorAnalysis(expr_set, var_env, precs)
 
 
-def analyse(expr_set, var_env, vary_width=False):
-    return _analyser(vary_width)(expr_set, var_env).analyse()
+def analyse(expr_set, var_env, prec=None, vary_width=False):
+    return _analyser(expr_set, var_env, prec).analyse()
 
 
-def frontier(expr_set, var_env, analyser=None):
-    return _analyser(analyser)(expr_set, var_env).frontier()
+def frontier(expr_set, var_env, prec=None, vary_width=None):
+    return _analyser(expr_set, var_env, prec).frontier()
 
 
 def list_from_keys(result, keys=None):
@@ -49,8 +47,8 @@ def expr_set(result):
     return set(expr_list(result))
 
 
-def expr_frontier(expr_set, var_env):
-    return expr_list(frontier(expr_set, var_env))
+def expr_frontier(expr_set, var_env, prec=None):
+    return expr_list(frontier(expr_set, var_env, prec))
 
 
 _ZIGZAG_MARGIN = 100.0
@@ -86,7 +84,7 @@ def _escape_legend(legend):
 
 class Plot(object):
 
-    def __init__(self, result=None, var_env=None, depth=None, vary_width=False,
+    def __init__(self, result=None, var_env=None, depth=None, precs=None,
                  log=None, legend_pos=None, **kwargs):
         self.result_list = []
         self.legend_pos = legend_pos
@@ -94,36 +92,43 @@ class Plot(object):
             self.add(result, **kwargs)
         self.var_env = var_env
         self.depth = depth
-        self.vary_width = vary_width
+        self.precs = precs
         if not log is None:
             self.log_enable = log
         super().__init__()
 
-    def add_analysis(self, expr, func=None,
-                     var_env=None, depth=None, vary_width=False,
-                     annotate=False, legend=None,
+    def add_analysis(self, expr, func=None, precs=None, var_env=None,
+                     depth=None, annotate=False, legend=None,
                      legend_depth=False, legend_time=False, **kwargs):
         import time
+        from ce.common import invalidate_cache
         var_env = var_env or self.var_env
-        vary_width = vary_width or self.vary_width
         d = depth or self.depth
-        if func:
-            t = time.time()
-            derived = func(expr, var_env=var_env, depth=d)
-            t = time.time() - t
-            frontier = True
-            marker = '.'
-        else:
-            derived = expr
-            frontier = False
-            marker = '+'
-        if not legend_depth:
-            d = None
-        if not legend_time:
-            t = None
-        kwargs.setdefault('marker', marker)
-        r = analyse(derived, var_env, vary_width)
-        self.add(r, legend=legend, frontier=frontier, annotate=annotate,
+        precs = precs or self.precs or [None]
+        results = []
+        logger.persistent('Func', func.__name__)
+        for p in precs:
+            invalidate_cache()
+            logger.persistent('Precision', p)
+            if func:
+                t = time.time()
+                derived = func(expr, var_env=var_env, depth=d, prec=p)
+                t = time.time() - t
+                frontier = True
+                marker = 'x'
+            else:
+                derived = expr
+                frontier = False
+                marker = 'o'
+            if not legend_depth:
+                d = None
+            if not legend_time:
+                t = None
+            kwargs.setdefault('marker', marker)
+            results += analyse(derived, var_env, p)
+        logger.unpersistent('Func')
+        logger.unpersistent('Precision')
+        self.add(results, legend=legend, frontier=frontier, annotate=annotate,
                  time=t, depth=d, **kwargs)
         return self
 
@@ -136,7 +141,7 @@ class Plot(object):
             if depth:
                 legend += ', %d' % depth
             if time:
-                legend += ', %1.2fs' % time
+                legend += ' (%1.2fs)' % time
         self.result_list.append({
             'result': result,
             'legend': _escape_legend(legend),

@@ -9,13 +9,14 @@ import ce.semantics.flopoco as flopoco
 
 class Analysis(DynamicMethods, Flyweight):
 
-    def __init__(self, expr_set, var_env):
+    def __init__(self, expr_set, var_env, precs=None):
         try:
             expr_set = {Expr(expr_set)}
         except TypeError:
             pass
         self.expr_set = expr_set
         self.var_env = var_env
+        self.precs = precs if precs else self.precisions()
         super().__init__()
 
     def precisions(self):
@@ -30,8 +31,8 @@ class Analysis(DynamicMethods, Flyweight):
         logger.debug('Analysing results.')
         result = []
         i = 0
-        n = len(self.expr_set) * len(self.precisions())
-        for p in self.precisions():
+        n = len(self.expr_set) * len(self.precs)
+        for p in self.precs:
             for t in self.expr_set:
                 i += 1
                 logger.persistent('Analysing', '%d/%d' % (i, n),
