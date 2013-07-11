@@ -1,5 +1,6 @@
 import sys
 
+from ce.common import invalidate_cache
 from ce.analysis import Plot
 from ce.transformer.utils import greedy_trace, frontier_trace
 from ce.semantics.flopoco import wf_range
@@ -23,6 +24,7 @@ v = {
 }
 p = Plot(var_env=v, precs=(wf_range if vary_width else None))
 for d, f, m in [(2, frontier_trace, 'x'), (3, greedy_trace, '+')]:
+    invalidate_cache()
     p.add_analysis(e, func=f, depth=d, marker=m,
                    legend=f.__name__, legend_time=True)
 p.add_analysis(e, legend='original', marker='o', facecolors='none')

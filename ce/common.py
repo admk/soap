@@ -88,7 +88,14 @@ def profiled():
 
 
 CACHE_CAPACITY = 1000000
-_cache_map = dict()
+_cache_map = {}
+
+
+def invalidate_cache():
+    import gc
+    global _cache_map
+    _cache_map = {}
+    gc.collect()
 
 
 def cached(f):
