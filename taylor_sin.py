@@ -5,7 +5,7 @@ from ce.analysis import analyse_and_plot
 
 logger.set_context(level=logger.levels.debug)
 
-orders = list(range(2, 7))
+orders = list(range(2, 6))
 s = []
 for o in orders:
     e = ['1']

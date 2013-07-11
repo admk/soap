@@ -20,10 +20,10 @@ v = {
 }
 d = 3
 p = Plot(var_env=v, legend_pos=(1.1, 0.3))
-p.add_analysis(e, func=frontier_trace, depth=2,
-               marker='x', legend='frontier_trace')
-p.add_analysis(e, func=greedy_trace, depth=3,
-               marker='+', legend='greedy_trace')
+p.add_analysis(e, func=frontier_trace, depth=2, marker='x',
+               legend='frontier_trace', legend_time=True)
+p.add_analysis(e, func=greedy_trace, depth=3, marker='+',
+               legend='greedy_trace', legend_time=True)
 p.add_analysis(e, legend='original', marker='o')
 p.save('motzkin.pdf')
 p.show()

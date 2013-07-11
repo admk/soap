@@ -107,7 +107,8 @@ class Plot(object):
         precs = precs or self.precs or [None]
         results = []
         for p in precs:
-            logger.persistent('Precision', p)
+            if p:
+                logger.persistent('Precision', p)
             if legend_time:
                 invalidate_cache()
             if func:
@@ -252,6 +253,7 @@ class Plot(object):
         return self.figure
 
     def show(self):
+        logger.info('Showing plot')
         self._plot()
         pyplot.show()
 
@@ -265,7 +267,7 @@ def plot(result, **kwargs):
     return p
 
 
-def analyse_and_plot(s, v, d=None, f=None, o=False):
+def analyse_and_plot(s, v, d=None, f=None, o=False, t=True):
     from ce.transformer.utils import greedy_trace
     f = f or [greedy_trace]
     p = Plot(var_env=v, depth=d)
@@ -280,7 +282,7 @@ def analyse_and_plot(s, v, d=None, f=None, o=False):
                     legend += ', ' + fname
             logger.info('Expr', e, 'Label', legend)
             p.add_analysis(e, func=m, depth=depth, legend=legend, marker='+',
-                           color_group=i)
+                           color_group=i, legend_time=t)
             if o:
                 legend += ' original'
                 p.add_analysis(e, legend=legend, marker='o', color_group=i)
