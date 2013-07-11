@@ -6,7 +6,7 @@ from ce.transformer.utils import greedy_trace, frontier_trace
 from ce.semantics.flopoco import wf_range
 import ce.logger as logger
 
-logger.set_context(level=logger.levels.info)
+logger.set_context(level=logger.levels.debug)
 logger.set_context(pause_level=logger.levels.warning)
 vary_width = 'vary_width' in sys.argv
 multi_expr = 'multi_expr' in sys.argv
@@ -24,7 +24,7 @@ v = {
 }
 p = Plot(var_env=v, precs=(wf_range if vary_width else None))
 for d, f, m in [(2, frontier_trace, 'x'), (3, greedy_trace, '+')]:
-    invalidate_cache()
+    logger.info('Processing', f.__name__)
     p.add_analysis(e, func=f, depth=d, marker=m,
                    legend=f.__name__, legend_time=True)
 p.add_analysis(e, legend='original', marker='o', facecolors='none')

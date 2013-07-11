@@ -91,12 +91,13 @@ CACHE_CAPACITY = 1000000
 _cache_map = {}
 
 
+def _process_invalidate_cache():
+    global _cache_map
+    _cache_map = {}
+    Flyweight._cache.clear()
+
+
 def invalidate_cache():
-    def _process_invalidate_cache():
-        import gc
-        global _cache_map
-        _cache_map = {}
-        gc.collect()
     from ce.transformer.core import pool
     _process_invalidate_cache()
     pool().apply(_process_invalidate_cache)

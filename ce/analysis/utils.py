@@ -106,10 +106,10 @@ class Plot(object):
         d = depth or self.depth
         precs = precs or self.precs or [None]
         results = []
-        logger.persistent('Func', func.__name__)
         for p in precs:
-            invalidate_cache()
             logger.persistent('Precision', p)
+            if legend_time:
+                invalidate_cache()
             if func:
                 t = time.time()
                 derived = func(expr, var_env=var_env, depth=d, prec=p)
@@ -126,7 +126,6 @@ class Plot(object):
                 t = None
             kwargs.setdefault('marker', marker)
             results += analyse(derived, var_env, p)
-        logger.unpersistent('Func')
         logger.unpersistent('Precision')
         self.add(results, legend=legend, frontier=frontier, annotate=annotate,
                  time=t, depth=d, **kwargs)
