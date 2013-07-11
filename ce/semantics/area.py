@@ -1,6 +1,8 @@
 import pickle
 import itertools
 
+import matplotlib
+matplotlib.use('Qt4Agg')
 from matplotlib import rc, pyplot
 
 import ce.expr
@@ -126,8 +128,8 @@ class AreaEstimateValidator(object):
             pass
         self.figure = pyplot.figure()
         plot = self.figure.add_subplot(111)
-        plot.scatter(
-            *zip(*self.scatter_points()), marker='+', linewidth=1, color='r')
+        plot.scatter(*zip(*self.scatter_points()),
+                     marker='.', s=0.5, linewidth=1, color='r', alpha=0.5)
         plot.grid(True, which='both', ls=':')
         plot.set_xlabel('Actual Area (Number of LUTs)')
         plot.set_ylabel('Estimated Area (Number of LUTs)')
