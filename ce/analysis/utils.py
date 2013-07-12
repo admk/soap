@@ -153,6 +153,9 @@ class Plot(object):
         'linestyle': '-',
         'linewidth': 1.0,
     }
+
+    plot_forbidden = ['marker', 'facecolors', 's']
+
     scatter_defaults = {
         's': 100,
     }
@@ -213,16 +216,18 @@ class Plot(object):
                 kwargs['marker'] = next(markers)
             area, error = zip_result(r['result'])
             ymin, ymax = min(ymin, min(error)), max(ymax, max(error))
-            plot.scatter(area, error,
-                         label=r['legend'],
-                         **dict(kwargs, linestyle='-', linewidth=1,
-                                **self.scatter_defaults))
+            scatter_kwargs = dict(self.scatter_defaults)
+            scatter_kwargs.update(kwargs)
+            plot.scatter(area, error, label=r['legend'], **scatter_kwargs)
             r['kwargs'] = kwargs
         xlim = plot.get_xlim()
         for r in self.result_list:
             if r['frontier']:
                 kwargs = r['kwargs']
                 kwargs['marker'] = None
+                for k in self.plot_forbidden:
+                    if k in kwargs:
+                        del kwargs[k]
                 keys = AreaErrorAnalysis.names()
                 f = pareto_frontier_2d(r['result'], keys=keys)
                 keys.append('expression')
@@ -299,6 +304,3 @@ if __name__ == '__main__':
     p.add_analysis('x * (x + 1) + 1', legend='2')
     p.add_analysis('1 + x + x * x', legend='3')
     p.show()
-    analyse_and_plot(
-        [{'e': 'x * x + x + 1'}], {'x': [0, 1]},
-        f=[greedy_trace, frontier_trace]).show()
