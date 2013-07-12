@@ -1,7 +1,5 @@
 import itertools
 
-import matplotlib
-matplotlib.use('Qt4Agg')
 from matplotlib import rc, pyplot
 
 import ce.logger as logger
@@ -106,30 +104,28 @@ class Plot(object):
         d = depth or self.depth
         precs = precs or self.precs or [None]
         results = []
+        if legend_time:
+            invalidate_cache()
+        t = time.time()
         for p in precs:
             if p:
                 logger.persistent('Precision', p)
-            if legend_time:
-                invalidate_cache()
-            if func:
-                t = time.time()
-                derived = func(expr, var_env=var_env, depth=d, prec=p)
-                t = time.time() - t
-                frontier = True
-                marker = 'x'
-            else:
-                derived = expr
-                frontier = False
-                marker = 'o'
-            if not legend_depth:
-                d = None
-            if not legend_time:
-                t = None
-            kwargs.setdefault('marker', marker)
+            derived = func(expr, var_env=var_env, depth=d, prec=p)
             results += analyse(derived, var_env, p)
+        t = time.time() - t
+        if func:
+            frontier = True
+            marker = 'x'
+        else:
+            derived = expr
+            frontier = False
+            marker = 'o'
+        depth = d if legend_depth else None
+        duration = t if legend_time else None
+        kwargs.setdefault('marker', marker)
         logger.unpersistent('Precision')
         self.add(results, legend=legend, frontier=frontier, annotate=annotate,
-                 time=t, depth=d, **kwargs)
+                 time=duration, depth=depth, **kwargs)
         return self
 
     def add(self, result, expr=None,

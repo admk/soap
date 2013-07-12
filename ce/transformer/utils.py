@@ -104,8 +104,9 @@ class FrontierTraceExpr(TraceExpr):
 
 
 def greedy_trace(tree, var_env=None, depth=2, prec=None, **kwargs):
-    return reduce(GreedyTraceExpr(tree).traces(var_env, depth, **kwargs))
+    return reduce(GreedyTraceExpr(tree).traces(var_env, depth, prec, **kwargs))
 
 
 def frontier_trace(tree, var_env=None, depth=2, prec=None, **kwargs):
-    return reduce(FrontierTraceExpr(tree).traces(var_env, depth, **kwargs))
+    return reduce(FrontierTraceExpr(tree).traces(
+                  var_env, depth, prec, **kwargs))

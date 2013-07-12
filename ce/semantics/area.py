@@ -1,8 +1,6 @@
 import pickle
 import itertools
 
-import matplotlib
-matplotlib.use('Qt4Agg')
 from matplotlib import rc, pyplot
 
 import ce.expr
