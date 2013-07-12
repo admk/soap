@@ -58,9 +58,12 @@ def log(*args, l=levels.info):
     f = get_context()['file'] or sys.stdout
     print(colourise(format(*args), l), end='', file=f)
     while l >= get_context()['pause_level']:
-        r = input('Continue [Return], Abort [q]: ')
+        r = input('Continue [Return], Stack trace [t], Abort [q]: ')
         if not r:
             break
+        if r == 't':
+            import traceback
+            traceback.print_stack()
         if r == 'q':
             sys.exit(-1)
 
