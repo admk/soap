@@ -110,21 +110,25 @@ class Plot(object):
         for p in precs:
             if p:
                 logger.persistent('Precision', p)
-            derived = func(expr, var_env=var_env, depth=d, prec=p)
-            results += analyse(derived, var_env, p)
+            if func:
+                derived = func(expr, var_env=var_env, depth=d, prec=p)
+            else:
+                derived = expr
+            analysis_func = frontier if p else analyse
+            r = analysis_func(derived, var_env, p)
+            results += r
         t = time.time() - t
         if func:
-            frontier = True
+            front = True
             marker = 'x'
         else:
-            derived = expr
-            frontier = False
+            front = False
             marker = 'o'
         depth = d if legend_depth else None
         duration = t if legend_time else None
         kwargs.setdefault('marker', marker)
         logger.unpersistent('Precision')
-        self.add(results, legend=legend, frontier=frontier, annotate=annotate,
+        self.add(results, legend=legend, frontier=front, annotate=annotate,
                  time=duration, depth=depth, **kwargs)
         return self
 
@@ -297,7 +301,6 @@ rc('text', usetex=True)
 
 
 if __name__ == '__main__':
-    from ce.transformer.utils import greedy_trace, frontier_trace
     logger.set_context(level=logger.levels.info)
     p = Plot(var_env={'x': [0, 1]})
     p.add_analysis('x * x + x + 1', legend='1')
