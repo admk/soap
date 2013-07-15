@@ -17,7 +17,8 @@ def greedy_frontier_closure(tree, var_env=None, prec=None, **kwargs):
         func = lambda s: expr_frontier(s, var_env, prec)
     else:
         func = None
-    return BiOpTreeTransformer(tree, step_plugin=func, **kwargs).closure()
+    closure = BiOpTreeTransformer(tree, step_plugin=func, **kwargs).closure()
+    return expr_frontier(closure, var_env, prec)
 
 
 def transform(tree,
@@ -70,19 +71,28 @@ def collecting_closure(tree, depth=None):
 class TraceExpr(Expr):
 
     def traces(self, var_env=None, depth=None, prec=None, **kwargs):
-        def subtraces(a):
+        _, discovered = self._traces(var_env, depth, prec, **kwargs)
+        return discovered
+
+    def _traces(self, var_env=None, depth=None, prec=None, **kwargs):
+        subtraces = []
+        discovered = []
+        for a in self.args:
             try:
-                return self.__class__(a).traces(var_env, depth, prec, **kwargs)
+                arg_subtraces, arg_discovered = \
+                    self.__class__(a)._traces(var_env, depth, prec, **kwargs)
             except (ValueError, TypeError):
-                return {a}
-        stl = [subtraces(a) for a in self.args]
-        sts = set(Expr(self.op, args) for args in itertools.product(*stl))
-        logger.debug('Generating %s~=%d traces for tree: %s' %
-                     ('*'.join([str(len(s)) for s in stl]),
-                      len(sts), str(self)))
-        cls = set(self.closure(
-            sts, depth=depth, var_env=var_env, prec=prec, **kwargs))
-        return cls | sts
+                arg_subtraces = arg_discovered = {a}
+            subtraces.append(arg_subtraces)
+            discovered.append(arg_discovered)
+        list_to_expr_set = lambda st: \
+            set(Expr(self.op, args) for args in itertools.product(*st))
+        subtraces = list_to_expr_set(subtraces)
+        logger.debug('Generating %d traces for tree: %s' %
+                     (len(subtraces), str(self)))
+        closure = set(self.closure(
+            subtraces, depth=depth, var_env=var_env, prec=prec, **kwargs))
+        return closure, closure | subtraces | list_to_expr_set(discovered)
 
     def clousure(self, trees, **kwargs):
         raise NotImplementedError
