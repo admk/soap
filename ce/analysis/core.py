@@ -1,6 +1,8 @@
+import itertools
 import gmpy2
 
 import ce.logger as logger
+import ce.parallel as parallel
 from ce.common import DynamicMethods, Flyweight
 from ce.expr import Expr
 from ce.semantics import mpfr
@@ -9,7 +11,7 @@ import ce.semantics.flopoco as flopoco
 
 class Analysis(DynamicMethods, Flyweight):
 
-    def __init__(self, expr_set, var_env, precs=None):
+    def __init__(self, expr_set, var_env, precs=None, multiprocessing=False):
         try:
             expr_set = {Expr(expr_set)}
         except TypeError:
@@ -17,6 +19,7 @@ class Analysis(DynamicMethods, Flyweight):
         self.expr_set = expr_set
         self.var_env = var_env
         self.precs = precs if precs else self.precisions()
+        self.multiprocessing = multiprocessing
         super().__init__()
 
     def precisions(self):
@@ -28,19 +31,20 @@ class Analysis(DynamicMethods, Flyweight):
         except AttributeError:
             pass
         analysis_names, analysis_methods, select_methods = self.methods()
-        logger.debug('Analysing results.')
-        result = []
-        i = 0
-        n = len(self.expr_set) * len(self.precs)
-        for p in self.precs:
-            for t in self.expr_set:
-                i += 1
-                logger.persistent('Analysing', '%d/%d' % (i, n),
-                                  l=logger.levels.debug)
-                analysis_dict = {'expression': t}
-                for name, func in zip(analysis_names, analysis_methods):
-                    analysis_dict[name] = func(t, p)
-                result.append(analysis_dict)
+
+        def _parallel_analyse(expr, prec):
+            analysis_dict = {'expression': expr}
+            for name, func in zip(analysis_names, analysis_methods):
+                analysis_dict[name] = func(expr, prec)
+            return analysis_dict
+
+        args_list = list(itertools.product(self.expr_set, self.precs))
+        logger.debug('Analysing %d results.' % len(args_list))
+        if self.multiprocessing:
+            map_func = parallel.map
+        else:
+            map_func = lambda func, args: [func(*a) for a in args]
+        result = map_func(_parallel_analyse, args_list)
         logger.unpersistent('Analysing')
         result = sorted(
             result, key=lambda k: tuple(k[n] for n in analysis_names))
