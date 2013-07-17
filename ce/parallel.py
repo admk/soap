@@ -8,7 +8,9 @@ def _spawn(f):
         except:
             import traceback
             traceback.print_exc()
-        pipe.close()
+            raise
+        finally:
+            pipe.close()
     return decorated
 
 
