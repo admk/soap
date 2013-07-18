@@ -227,7 +227,7 @@ def _step(s, fs, v=None, c=False, d=None, m=True):
     if m:
         cpu_count = multiprocessing.cpu_count()
         chunksize = int(len(s) / cpu_count) + 1
-        map = pool().imap
+        map = pool().imap_unordered
     else:
         cpu_count = chunksize = 1
         map = lambda f, l, _: [f(a) for a in l]
