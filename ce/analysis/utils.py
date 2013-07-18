@@ -164,6 +164,8 @@ class Plot(object):
         's': 100,
     }
 
+    scatter_forbidden = ['linestyle']
+
     def _colors(self):
         return itertools.cycle('bgrcmyk')
 
@@ -191,7 +193,7 @@ class Plot(object):
             plot.yaxis.get_major_formatter().set_scientific(True)
             plot.yaxis.get_major_formatter().set_powerlimits((-3, 4))
         plot.set_xlim(max(min(xlim), 0), max(xlim))
-        plot.locator_params(axis='x', nbins=8)
+        plot.locator_params(axis='x', nbins=7)
 
     def _plot(self):
         from ce.analysis.core import AreaErrorAnalysis, pareto_frontier_2d
@@ -222,6 +224,9 @@ class Plot(object):
             ymin, ymax = min(ymin, min(error)), max(ymax, max(error))
             scatter_kwargs = dict(self.scatter_defaults)
             scatter_kwargs.update(kwargs)
+            for k in self.scatter_forbidden:
+                if k in scatter_kwargs:
+                    del scatter_kwargs[k]
             plot.scatter(area, error, label=r['legend'], **scatter_kwargs)
             r['kwargs'] = kwargs
         xlim = plot.get_xlim()
