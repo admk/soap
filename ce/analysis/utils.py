@@ -45,6 +45,18 @@ def expr_set(result):
     return set(expr_list(result))
 
 
+def _min_objective(result, key):
+    return sorted(result, key=lambda r: float(r[key]))[0]
+
+
+def min_area(result):
+    return _min_objective(result, 'area')
+
+
+def min_error(result):
+    return _min_objective(result, 'error')
+
+
 def expr_frontier(expr_set, var_env, prec=None):
     return expr_list(frontier(expr_set, var_env, prec))
 
@@ -162,9 +174,10 @@ class Plot(object):
 
     scatter_defaults = {
         's': 100,
+        'linewidth': 100,
     }
 
-    scatter_forbidden = ['linestyle']
+    scatter_forbidden = ['linestyle', 'alpha']
 
     def _colors(self):
         return itertools.cycle('bgrcmyk')
@@ -227,6 +240,8 @@ class Plot(object):
             for k in self.scatter_forbidden:
                 if k in scatter_kwargs:
                     del scatter_kwargs[k]
+            if scatter_kwargs['marker'] == '+':
+                scatter_kwargs['s'] *= 1.5
             plot.scatter(area, error, label=r['legend'], **scatter_kwargs)
             r['kwargs'] = kwargs
         xlim = plot.get_xlim()

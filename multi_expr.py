@@ -22,18 +22,20 @@ v = {
     'b': ['10', '20'],
     'c': ['100', '200'],
 }
-f = [
-    (3, greedy_trace,   '.', '-'),
-    (2, greedy_trace,   'x', '-'),
-    (2, frontier_trace, '+', '-'),
+t = [
+    (2, frontier_trace, 'x', '-'),
+    (2, greedy_trace,   '+', '-'),
 ]
-s = 50
+if vary_width:
+    s = 20
+else:
+    s = 100
 p = Plot(var_env=v, precs=(wf_range if vary_width else None))
-for d, f, m, l in f:
+for d, f, m, l in t:
     logger.info('Processing', f.__name__)
     p.add_analysis(e, func=f, depth=d, marker=m, s=s, linestyle=l,
                    legend=f.__name__, legend_time=True, legend_depth=True)
-p.add_analysis(e, legend='original', marker='o', s=s, facecolors='none')
+p.add_analysis(e, legend='original', marker='o', s=100, facecolors='none')
 p.save('%s_expr_%s.pdf' % ('multi' if multi_expr else 'large',
                            'vary_width' if vary_width else '32'))
 p.show()

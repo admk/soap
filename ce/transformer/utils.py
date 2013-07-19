@@ -12,6 +12,10 @@ def closure(tree, **kwargs):
     return BiOpTreeTransformer(tree, **kwargs).closure()
 
 
+def full_closure(tree, **kwargs):
+    return closure(tree)
+
+
 def greedy_frontier_closure(tree, var_env=None, prec=None, **kwargs):
     if var_env:
         func = lambda s: expr_frontier(s, var_env, prec)
