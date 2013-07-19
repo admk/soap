@@ -102,6 +102,11 @@ class TraceExpr(Expr):
             (self.op, repr(self.a1), repr(self.a2))
 
 
+class MartelTraceExpr(TraceExpr):
+    def closure(self, trees, **kwargs):
+        return closure(trees, depth=kwargs['depth'])
+
+
 class GreedyTraceExpr(TraceExpr):
     def closure(self, trees, **kwargs):
         return greedy_frontier_closure(trees, **kwargs)
@@ -111,6 +116,10 @@ class FrontierTraceExpr(TraceExpr):
     def closure(self, trees, **kwargs):
         return expr_frontier(closure(trees, depth=kwargs['depth']),
                              kwargs['var_env'], prec=kwargs['prec'])
+
+
+def martel_trace(tree, var_env=None, depth=2, prec=None, **kwargs):
+    return reduce(MartelTraceExpr(tree).traces(var_env, depth, prec, **kwargs))
 
 
 def greedy_trace(tree, var_env=None, depth=2, prec=None, **kwargs):
