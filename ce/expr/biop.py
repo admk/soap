@@ -60,8 +60,10 @@ class Expr(Comparable, Flyweight):
                 with ignored(TypeError, KeyError):
                     return eval(var_env[a])
                 with ignored(TypeError):
+                    return cast_error(*a)
+                with ignored(TypeError):
                     return cast_error_constant(a)
-                return cast_error(*a)
+                return a
             e1, e2 = eval(self.a1), eval(self.a2)
             if self.op == ADD_OP:
                 return e1 + e2

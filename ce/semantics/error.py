@@ -12,7 +12,10 @@ mpq_type = type(_mpq('1.0'))
 
 def mpq(v):
     if not isinstance(v, mpfr_type):
-        return _mpq(v)
+        try:
+            return _mpq(v)
+        except ValueError:
+            raise ValueError('Invalid value %s' % str(v))
     try:
         m, e = v.as_mantissa_exp()
     except (OverflowError, ValueError):
@@ -43,15 +46,8 @@ def round_off_error(interval):
 
 
 def round_off_error_from_exact(v):
-    def round(exact):
-        exact = mpq(exact)
-        rounded = mpq(mpfr(exact))
-        return rounded - exact
-    with gmpy2.local_context(round=gmpy2.RoundDown):
-        vr = round(v)
-    with gmpy2.local_context(round=gmpy2.RoundUp):
-        wr = round(v)
-    return FractionInterval([vr, wr])
+    e = mpq(v) - mpq(mpfr(v))
+    return FractionInterval([e, e])
 
 
 def cast_error_constant(v):
@@ -60,8 +56,7 @@ def cast_error_constant(v):
 
 def cast_error(v, w=None):
     w = w if w else v
-    return ErrorSemantics(
-        [v, w], round_off_error(FractionInterval([v, w])))
+    return ErrorSemantics([v, w], round_off_error(FractionInterval([v, w])))
 
 
 class Interval(Lattice):
