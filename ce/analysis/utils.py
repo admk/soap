@@ -186,6 +186,9 @@ class Plot(object):
         return itertools.cycle('so+x.v^<>')
 
     def _auto_scale(self, plot, xlim, ylim):
+        def linear_margin(lmin, lmax):
+            margin = 0.1 * (lmax - lmin)
+            return max(lmin - margin, 0), lmax + margin
         try:
             log_enable = self.log_enable
         except AttributeError:
@@ -200,12 +203,10 @@ class Plot(object):
             plot.set_ylim(ylim)
         else:
             plot.set_yscale('linear')
-            ymin, ymax = ylim
-            ymar = 0.1 * (ymax - ymin)
-            plot.set_ylim(ymin - ymar, ymax + ymar)
+            plot.set_ylim(linear_margin(*ylim))
             plot.yaxis.get_major_formatter().set_scientific(True)
             plot.yaxis.get_major_formatter().set_powerlimits((-3, 4))
-        plot.set_xlim(max(min(xlim), 0), max(xlim))
+        plot.set_xlim(linear_margin(*xlim))
         plot.locator_params(axis='x', nbins=7)
 
     def _plot(self):
@@ -223,7 +224,7 @@ class Plot(object):
                 continue
             color_groups[d['color_group']] = next(colors)
         markers = self._markers()
-        ymin, ymax = float('Inf'), float('-Inf')
+        xmin, xmax = ymin, ymax = float('Inf'), float('-Inf')
         for r in self.result_list:
             kwargs = dict(self.plot_defaults)
             kwargs.update(r['kwargs'])
@@ -231,23 +232,7 @@ class Plot(object):
                 kwargs['color'] = color_groups[r['color_group']]
             elif not 'color' in kwargs:
                 kwargs['color'] = next(colors)
-            if not 'marker' in kwargs:
-                kwargs['marker'] = next(markers)
-            area, error = zip_result(r['result'])
-            ymin, ymax = min(ymin, min(error)), max(ymax, max(error))
-            scatter_kwargs = dict(self.scatter_defaults)
-            scatter_kwargs.update(kwargs)
-            for k in self.scatter_forbidden:
-                if k in scatter_kwargs:
-                    del scatter_kwargs[k]
-            if scatter_kwargs['marker'] == '+':
-                scatter_kwargs['s'] *= 1.5
-            plot.scatter(area, error, label=r['legend'], **scatter_kwargs)
-            r['kwargs'] = kwargs
-        xlim = plot.get_xlim()
-        for r in self.result_list:
             if r['frontier']:
-                kwargs = r['kwargs']
                 kwargs['marker'] = None
                 for k in self.plot_forbidden:
                     if k in kwargs:
@@ -263,7 +248,23 @@ class Plot(object):
                 if r['annotate']:
                     for x, y, e in zip(area, error, expr):
                         plot.annotate(str(e), xy=(x, y), alpha=0.5)
-        self._auto_scale(plot, xlim, (ymin, ymax))
+        for r in self.result_list:
+            kwargs = r['kwargs']
+            if not 'marker' in kwargs:
+                kwargs['marker'] = next(markers)
+            area, error = zip_result(r['result'])
+            xmin, xmax = min(xmin, min(area)), max(xmax, max(area))
+            ymin, ymax = min(ymin, min(error)), max(ymax, max(error))
+            scatter_kwargs = dict(self.scatter_defaults)
+            scatter_kwargs.update(kwargs)
+            for k in self.scatter_forbidden:
+                if k in scatter_kwargs:
+                    del scatter_kwargs[k]
+            if scatter_kwargs['marker'] == '+':
+                scatter_kwargs['s'] *= 1.5
+            plot.scatter(area, error, label=r['legend'], **scatter_kwargs)
+            r['kwargs'] = kwargs
+        self._auto_scale(plot, (xmin, xmax), (ymin, ymax))
         legend_pos = self.legend_pos or (1.1, 1.1)
         l = plot.legend(
             bbox_to_anchor=legend_pos, ncol=1,
