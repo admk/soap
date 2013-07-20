@@ -3,7 +3,6 @@ import functools
 import multiprocessing
 
 import ce.logger as logger
-from ce.logger import levels
 from ce.common import cached
 from ce.expr.common import is_expr
 from ce.expr import Expr
@@ -88,10 +87,26 @@ class TreeTransformer(object):
         trees = set(self._harvest(trees))
         return trees
 
+    def _step(self, s, c=False, d=None):
+        fs = self.transform_methods if c else self.reduction_methods
+        v = self._validate if self._v else None
+        if self._m:
+            cpu_count = multiprocessing.cpu_count()
+            chunksize = int(len(s) / cpu_count) + 1
+            map = pool().imap_unordered
+        else:
+            cpu_count = chunksize = 1
+            map = lambda f, l, _: [f(a) for a in l]
+        union = lambda s, _: functools.reduce(lambda x, y: x | y, s)
+        r = [(t, fs, v, c, d) for i, t in enumerate(s)]
+        b, r = list(zip(*map(_walk, r, chunksize)))
+        s = {t for i, t in enumerate(s) if b[i]}
+        r = union(r, cpu_count)
+        return s, r
+
     def _closure_r(self, trees, reduced=False):
         if self._d >= RECURSION_LIMIT and self.transform_methods:
             logger.warning('Depth limit not set.', self._d)
-        v = self._validate if self._v else None
         done_trees = set()
         todo_trees = set(trees)
         i = 0
@@ -103,18 +118,16 @@ class TreeTransformer(object):
             logger.persistent('Trees', len(done_trees))
             logger.persistent('Todo', len(todo_trees))
             if not reduced:
-                f = self.transform_methods
                 _, step_trees = \
-                    _step(todo_trees, f, v, not reduced, self._d, self._m)
+                    self._step(todo_trees, not reduced, None)
                 step_trees -= done_trees
                 step_trees = self._closure_r(step_trees, True)
                 step_trees = self._plugin(step_trees, self._sp)
                 done_trees |= todo_trees
                 todo_trees = step_trees - done_trees
             else:
-                f = self.reduction_methods
                 nore_trees, step_trees = \
-                    _step(todo_trees, f, v, not reduced, None, self._m)
+                    self._step(todo_trees, not reduced, None)
                 step_trees = self._plugin(step_trees, self._rp)
                 done_trees |= nore_trees
                 todo_trees = step_trees - nore_trees
@@ -154,8 +167,9 @@ class TreeTransformer(object):
 def _walk(t_fs_v_c_d):
     t, fs, v, c, d = t_fs_v_c_d
     s = set()
+    d = d if c and d else RECURSION_LIMIT
     for f in fs:
-        s |= _walk_r(t, f, v, d if c else RECURSION_LIMIT)
+        s |= _walk_r(t, f, v, d)
     if c:
         s.add(t)
     return True if not c and not s else False, s
@@ -164,12 +178,14 @@ def _walk(t_fs_v_c_d):
 @cached
 def _walk_r(t, f, v, d):
     s = set()
+    if d == 0:
+        return s
     if not is_expr(t):
         return s
     for e in f(t):
         s.add(e)
     for a, b in (t.args, t.args[::-1]):
-        for e in _walk_r(a, f, v, d):
+        for e in _walk_r(a, f, v, d - 1):
             s.add(Expr(t.op, e, b))
     if not v:
         return s
@@ -206,34 +222,3 @@ def _iunion(sl, no_processes):
         sys.stdout.flush()
         sl = list(pool().imap_unordered(par_union, chunks(sl, chunksize)))
     return sl.pop()
-
-
-def _step(s, fs, v=None, c=False, d=None, m=True):
-    """Find the set of trees related by the function f.
-
-    Args:
-        s: A set of trees.
-        fs: A set of functions which transforms the trees. Each function has
-            one argument, the tree, and returns a set of trees after transform.
-        v: A function which validates the transform.
-        c: If set, it will include everything in s. Otherwise only derived
-            trees.
-        d: Depth of node traversal in trees.
-        m: Whether multiprocessing is used.
-
-    Returns:
-        A set of trees related by f.
-    """
-    if m:
-        cpu_count = multiprocessing.cpu_count()
-        chunksize = int(len(s) / cpu_count) + 1
-        map = pool().imap_unordered
-    else:
-        cpu_count = chunksize = 1
-        map = lambda f, l, _: [f(a) for a in l]
-    union = lambda s, _: functools.reduce(lambda x, y: x | y, s)
-    r = [(t, fs, v, c, d) for i, t in enumerate(s)]
-    b, r = list(zip(*map(_walk, r, chunksize)))
-    s = {t for i, t in enumerate(s) if b[i]}
-    r = union(r, cpu_count)
-    return s, r

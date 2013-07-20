@@ -5,6 +5,7 @@ from ce.expr import Expr
 from ce.transformer.core import TreeTransformer
 from ce.transformer.biop import associativity, distribute_for_distributivity, \
     BiOpTreeTransformer
+from ce.transformer.martel import MartelBiOpTreeTransformer
 from ce.analysis import expr_frontier
 
 
@@ -108,7 +109,8 @@ class TraceExpr(Expr):
 
 class MartelTraceExpr(TraceExpr):
     def closure(self, trees, **kwargs):
-        return closure(trees, depth=kwargs['depth'])
+        return MartelBiOpTreeTransformer(
+            trees, depth=kwargs['depth']).closure()
 
 
 class GreedyTraceExpr(TraceExpr):
