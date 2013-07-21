@@ -1,7 +1,7 @@
 import pickle
 import itertools
 
-from matplotlib import rc, pyplot
+from matplotlib import rc, pyplot, pylab
 
 import ce.expr
 import ce.logger as logger
@@ -126,12 +126,17 @@ class AreaEstimateValidator(object):
             pass
         self.figure = pyplot.figure()
         plot = self.figure.add_subplot(111)
-        plot.scatter(*zip(*self.scatter_points()),
-                     marker='.', s=0.5, linewidth=1, color='r', alpha=0.5)
+        real_area, estimated_area = zip(*self.scatter_points())
+        plot.scatter(real_area, estimated_area,
+                     marker='.', s=0.5, linewidth=1, color='r', alpha=1)
         plot.grid(True, which='both', ls=':')
         plot.set_xlabel('Actual Area (Number of LUTs)')
         plot.set_ylabel('Estimated Area (Number of LUTs)')
         lim = max(plot.get_xlim())
+        reg_fit = pylab.polyfit(real_area, estimated_area, 1)
+        logger.info(reg_fit)
+        reg_func = pylab.poly1d(reg_fit)
+        plot.plot([0, lim], reg_func([0, lim]), color='k')
         plot.plot([0, lim], [0, lim], linestyle=':', color='k')
         plot.set_xlim(0, lim)
         plot.set_ylim(0, lim)
