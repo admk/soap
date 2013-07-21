@@ -127,8 +127,11 @@ class AreaEstimateValidator(object):
         self.figure = pyplot.figure()
         plot = self.figure.add_subplot(111)
         real_area, estimated_area = zip(*self.scatter_points())
-        plot.scatter(real_area, estimated_area,
-                     marker='.', s=0.5, linewidth=1, color='r', alpha=1)
+        scatter_real_area = [v for i, v in enumerate(real_area) if i % 10 == 0]
+        scatter_estimated_area = [v for i, v in enumerate(estimated_area)
+                                  if i % 10 == 0]
+        plot.scatter(scatter_real_area, scatter_estimated_area,
+                     marker='.', s=0.5, linewidth=1, color='r')
         plot.grid(True, which='both', ls=':')
         plot.set_xlabel('Actual Area (Number of LUTs)')
         plot.set_ylabel('Estimated Area (Number of LUTs)')
@@ -136,7 +139,7 @@ class AreaEstimateValidator(object):
         reg_fit = pylab.polyfit(real_area, estimated_area, 1)
         logger.info(reg_fit)
         reg_func = pylab.poly1d(reg_fit)
-        plot.plot([0, lim], reg_func([0, lim]), color='k')
+        plot.plot([0, lim], reg_func([0, lim]), linestyle='--', color='k')
         plot.plot([0, lim], [0, lim], linestyle=':', color='k')
         plot.set_xlim(0, lim)
         plot.set_ylim(0, lim)

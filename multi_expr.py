@@ -21,17 +21,24 @@ v = {
     'c': ['100', '200'],
 }
 t = [
-    (2, frontier_trace, 'x', '-'),
-    (2, greedy_trace,   '+', '--'),
+    (None, frontier_trace, 'x', '-'),
+    (3,    greedy_trace,   '.', '--'),
+    (None, greedy_trace,   '+', ':'),
 ]
 if vary_width:
-    ss = 1
+    t = [(3, greedy_trace, '.', '-')]
+    ss = 0.5
     w = 1.0
 else:
     ss = 5
     w = 2.0
-p = Plot(var_env=v, precs=(wf_range if vary_width else None))
+p = Plot(depth=2, var_env=v, precs=(wf_range if vary_width else None))
 for d, f, m, l in t:
+    if vary_width:
+        m = '.'
+        facecolor = None
+    else:
+        facecolor = 'none'
     logger.info('Processing', f.__name__)
     p.add_analysis(e, func=f, depth=d,
                    marker=m, s=ss * 20, linestyle=l, linewidth=w,

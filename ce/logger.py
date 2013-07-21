@@ -79,7 +79,11 @@ def rewrite(*args, l=levels.info):
 
 
 def persistent(name, *args, l=levels.info):
-    get_context()['persistent'][name] = args + (l, )
+    prev = get_context()['persistent'].get(name)
+    curr = args + (l, )
+    if prev == curr:
+        return
+    get_context()['persistent'][name] = curr
     s = []
     for k, v in get_context()['persistent'].items():
         *v, l = v

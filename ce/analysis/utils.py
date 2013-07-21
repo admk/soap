@@ -192,7 +192,7 @@ class Plot(object):
     plot_forbidden = ['marker', 'facecolor', 'edgecolor', 's']
 
     scatter_defaults = {
-        's': 20,
+        's': 100,
         'linewidth': 2.0,
         'facecolor': 'none',
     }
@@ -328,9 +328,10 @@ def analyse_and_plot(s, v, d=None, f=None, o=False, t=True):
             logger.info('Expr', e, 'Label', legend)
             p.add_analysis(e, func=m, depth=depth, legend=legend, marker='+',
                            color_group=i, legend_time=t)
-            if o:
-                legend += ' original'
-                p.add_analysis(e, legend=legend, marker='o', color_group=i)
+            if not o:
+                continue
+            legend += ' original'
+            p.add_analysis(e, legend=legend, marker='o', color_group=i, s=400)
     except KeyboardInterrupt:
         pass
     return p
