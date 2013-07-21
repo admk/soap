@@ -1,3 +1,4 @@
+import math
 import itertools
 
 from matplotlib import rc, pyplot
@@ -61,7 +62,8 @@ def expr_frontier(expr_set, var_env, prec=None):
     return expr_list(frontier(expr_set, var_env, prec))
 
 
-_ZIGZAG_MARGIN = 100.0
+_ZIGZAG_MARGIN = 1000.0
+_SCATTER_MARGIN = 0.1
 
 
 def _insert_region_frontier(sx, sy):
@@ -90,6 +92,23 @@ def _escape_legend(legend):
                 l = l.replace(s, '\%s' % s)
         new_legend.append(l)
     return '$'.join(new_legend)
+
+
+def _margin(lmin, lmax):
+    margin = _SCATTER_MARGIN * (lmax - lmin)
+    return lmin - margin, lmax + margin
+
+
+def _linear_margin(lmin, lmax):
+    lmin, lmax = _margin(lmin, lmax)
+    return max(lmin, 0), lmax
+
+
+def _log_margin(lmin, lmax):
+    lmin, lmax = math.log10(lmin), math.log10(lmax)
+    logger.info(lmin, lmax)
+    lmin, lmax = _margin(lmin, lmax)
+    return math.pow(10, lmin), math.pow(10, lmax)
 
 
 class Plot(object):
@@ -170,14 +189,15 @@ class Plot(object):
         'linewidth': 1.0,
     }
 
-    plot_forbidden = ['marker', 'facecolors', 's']
+    plot_forbidden = ['marker', 'facecolor', 'edgecolor', 's']
 
     scatter_defaults = {
-        's': 100,
-        'linewidth': 100,
+        's': 20,
+        'linewidth': 2.0,
+        'facecolor': 'none',
     }
 
-    scatter_forbidden = ['linestyle', 'alpha']
+    scatter_forbidden = ['linestyle', 'alpha', 'color']
 
     def _colors(self):
         return itertools.cycle('bgrcmyk')
@@ -186,9 +206,6 @@ class Plot(object):
         return itertools.cycle('so+x.v^<>')
 
     def _auto_scale(self, plot, xlim, ylim):
-        def linear_margin(lmin, lmax):
-            margin = 0.1 * (lmax - lmin)
-            return max(lmin - margin, 0), lmax + margin
         try:
             log_enable = self.log_enable
         except AttributeError:
@@ -200,13 +217,13 @@ class Plot(object):
             self.log_enable = log_enable
         if log_enable:
             plot.set_yscale('log')
-            plot.set_ylim(ylim)
+            plot.set_ylim(_log_margin(*ylim))
         else:
             plot.set_yscale('linear')
-            plot.set_ylim(linear_margin(*ylim))
+            plot.set_ylim(_linear_margin(*ylim))
             plot.yaxis.get_major_formatter().set_scientific(True)
             plot.yaxis.get_major_formatter().set_powerlimits((-3, 4))
-        plot.set_xlim(linear_margin(*xlim))
+        plot.set_xlim(_linear_margin(*xlim))
         plot.locator_params(axis='x', nbins=7)
 
     def _plot(self):
@@ -223,47 +240,49 @@ class Plot(object):
             if d['color_group'] is None:
                 continue
             color_groups[d['color_group']] = next(colors)
+        for r in self.result_list:
+            d = r['kwargs']
+            if not r['color_group'] is None:
+                d['color'] = color_groups[r['color_group']]
+            elif not 'color' in d:
+                d['color'] = next(colors)
         markers = self._markers()
         xmin, xmax = ymin, ymax = float('Inf'), float('-Inf')
         for r in self.result_list:
-            kwargs = dict(self.plot_defaults)
-            kwargs.update(r['kwargs'])
-            if not r['color_group'] is None:
-                kwargs['color'] = color_groups[r['color_group']]
-            elif not 'color' in kwargs:
-                kwargs['color'] = next(colors)
+            plot_kwargs = dict(self.plot_defaults)
+            plot_kwargs.update(r['kwargs'])
+            r['kwargs']['color'] = plot_kwargs['color']
             if r['frontier']:
-                kwargs['marker'] = None
+                plot_kwargs['marker'] = None
                 for k in self.plot_forbidden:
-                    if k in kwargs:
-                        del kwargs[k]
+                    if k in plot_kwargs:
+                        del plot_kwargs[k]
                 keys = AreaErrorAnalysis.names()
                 f = pareto_frontier_2d(r['result'], keys=keys)
                 keys.append('expression')
                 area, error, expr = zip_from_keys(f, keys=keys)
                 lx, ly = _insert_region_frontier(area, error)
-                plot.plot(lx, ly, **kwargs)
+                plot.plot(lx, ly, **plot_kwargs)
                 plot.fill_between(lx, ly, max(ly),
-                                  alpha=0.1, color=kwargs['color'])
+                                  alpha=0.1, color=plot_kwargs['color'])
                 if r['annotate']:
                     for x, y, e in zip(area, error, expr):
                         plot.annotate(str(e), xy=(x, y), alpha=0.5)
         for r in self.result_list:
-            kwargs = r['kwargs']
-            if not 'marker' in kwargs:
-                kwargs['marker'] = next(markers)
-            area, error = zip_result(r['result'])
-            xmin, xmax = min(xmin, min(area)), max(xmax, max(area))
-            ymin, ymax = min(ymin, min(error)), max(ymax, max(error))
             scatter_kwargs = dict(self.scatter_defaults)
-            scatter_kwargs.update(kwargs)
+            scatter_kwargs.update(r['kwargs'])
+            if not 'marker' in scatter_kwargs:
+                scatter_kwargs['marker'] = next(markers)
+            scatter_kwargs['edgecolor'] = scatter_kwargs['color']
             for k in self.scatter_forbidden:
                 if k in scatter_kwargs:
                     del scatter_kwargs[k]
             if scatter_kwargs['marker'] == '+':
                 scatter_kwargs['s'] *= 1.5
+            area, error = zip_result(r['result'])
+            xmin, xmax = min(xmin, min(area)), max(xmax, max(area))
+            ymin, ymax = min(ymin, min(error)), max(ymax, max(error))
             plot.scatter(area, error, label=r['legend'], **scatter_kwargs)
-            r['kwargs'] = kwargs
         self._auto_scale(plot, (xmin, xmax), (ymin, ymax))
         legend_pos = self.legend_pos or (1.1, 1.1)
         l = plot.legend(
