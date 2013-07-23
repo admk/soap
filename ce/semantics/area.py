@@ -126,6 +126,9 @@ class AreaEstimateValidator(object):
             pass
         self.figure = pyplot.figure()
         plot = self.figure.add_subplot(111)
+        for ax in [plot.xaxis, plot.yaxis]:
+            ax.get_major_formatter().set_scientific(True)
+            ax.get_major_formatter().set_powerlimits((-2, 3))
         real_area, estimated_area = zip(*self.scatter_points())
         scatter_real_area = [v for i, v in enumerate(real_area) if i % 10 == 0]
         scatter_estimated_area = [v for i, v in enumerate(estimated_area)
