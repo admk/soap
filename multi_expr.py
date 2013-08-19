@@ -1,7 +1,7 @@
 import sys
 
 from ce.analysis import Plot
-from ce.transformer.utils import greedy_trace, frontier_trace
+from ce.transformer.utils import greedy_trace, frontier_trace, martel_trace
 from ce.semantics.flopoco import wf_range
 import ce.logger as logger
 
@@ -21,28 +21,32 @@ v = {
     'c': ['100', '200'],
 }
 t = [
-    (None, frontier_trace, 'x', '-'),
-    (3,    greedy_trace,   '.', '--'),
-    (None, greedy_trace,   '+', ':'),
+    (False, 2, frontier_trace, 'x', '-'),
+    (False, 3, greedy_trace,   '.', '--'),
+    (False, 2, greedy_trace,   '+', ':'),
+    (True,  2, martel_trace,   'o',  ''),
 ]
 if vary_width:
-    t = [(3, greedy_trace, '.', '-')]
+    t = [(False, 3, greedy_trace, '.', '-')]
     ss = 0.5
     w = 1.0
 else:
     ss = 5
     w = 2.0
-p = Plot(depth=2, var_env=v, precs=(wf_range if vary_width else None))
-for d, f, m, l in t:
+p = Plot(var_env=v, precs=(wf_range if vary_width else None))
+for s, d, f, m, l in t:
     if vary_width:
         m = '.'
-        facecolor = None
-    else:
-        facecolor = 'none'
     logger.info('Processing', f.__name__)
+    t = True
+    if s:
+        t = r'out of memory'
+        fn = f.__name__
+        f = lambda *args, **kwargs: []
+        f.__name__ = fn
     p.add_analysis(e, func=f, depth=d,
                    marker=m, s=ss * 20, linestyle=l, linewidth=w,
-                   legend=f.__name__, legend_time=True, legend_depth=True)
+                   legend=f.__name__, legend_time=t, legend_depth=True)
 p.add_analysis(e, legend='original',
                marker='o', s=ss * 100, linewidth=w, facecolors='none')
 p.save('multi_expr_%s.pdf' % ('vary_width' if vary_width else '32'))

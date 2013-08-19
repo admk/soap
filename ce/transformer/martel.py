@@ -3,6 +3,8 @@ from ce.transformer.biop import BiOpTreeTransformer
 
 class MartelBiOpTreeTransformer(BiOpTreeTransformer):
 
+    reduction_methods = []
+
     def _harvest(self, trees):
         return trees
 

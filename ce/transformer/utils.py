@@ -92,9 +92,11 @@ class TraceExpr(Expr):
             discovered.append(arg_discovered)
         list_to_expr_set = lambda st: \
             set(Expr(self.op, args) for args in itertools.product(*st))
+        logger.debug('Generating traces')
         subtraces = list_to_expr_set(subtraces)
-        logger.debug('Generating %d traces for tree: %s' %
+        logger.debug('Generated %d traces for tree: %s' %
                      (len(subtraces), str(self)))
+        logger.debug('Finding closure')
         closure = set(self.closure(
             subtraces, depth=depth, var_env=var_env, prec=prec, **kwargs))
         return closure, closure | subtraces | list_to_expr_set(discovered)
