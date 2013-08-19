@@ -13,10 +13,34 @@ def _analyser(expr_set, var_env, prec=None):
 
 
 def analyse(expr_set, var_env, prec=None, vary_width=False):
+    """Provides area and error analysis of expressions with input ranges
+    and precisions.
+
+    :param expr_set: A set of expressions.
+    :type expr_set: set or list
+    :param var_env: The ranges of input variables.
+    :type var_env: dictionary containing mappings from variables to
+        :class:`ce.semantics.error.Interval`
+    :param precs: Precisions used to evaluate the expressions, defaults to
+        single precision.
+    :type precs: int or a list of int
+    """
     return _analyser(expr_set, var_env, prec).analyse()
 
 
 def frontier(expr_set, var_env, prec=None, vary_width=None):
+    """Provides the Pareto frontier of the area and error analysis of
+    expressions with input ranges and precisions.
+
+    :param expr_set: A set of expressions.
+    :type expr_set: set or list
+    :param var_env: The ranges of input variables.
+    :type var_env: dictionary containing mappings from variables to
+        :class:`ce.semantics.error.Interval`
+    :param precs: Precisions used to evaluate the expressions, defaults to
+        single precision.
+    :type precs: int or a list of int
+    """
     return _analyser(expr_set, var_env, prec).frontier()
 
 
@@ -112,9 +136,29 @@ def _log_margin(lmin, lmax):
 
 
 class Plot(object):
-
+    """Provides plotting of results"""
     def __init__(self, result=None, var_env=None, depth=None, precs=None,
                  log=None, legend_pos=None, **kwargs):
+        """Initialisation.
+
+        :param result: results provided by :func:`analyse`.
+        :type result: list
+        :param var_env: The ranges of input variables to be used in transforms.
+        :type var_env: dictionary containing mappings from variables to
+            :class:`ce.semantics.error.Interval`
+        :param depth: the depth limit used in transforms.
+        :type depth: int
+        :param precs: Precisions to be used to evaluate the expressions,
+            defaults to single precision.
+        :type precs: int or a list of int
+        :param log: If set, force figure to log scale; if unset, then linear
+            scale. If unspecified, then the class will automatically detect
+            scaling based on the data.
+        :type log: bool
+        :param legend_pos: The position of the legend, `(x_pos, y_pos)`,
+            automatic positioning in the upper right corner if unspecified.
+        :type legend_pos: tuple
+        """
         self.result_list = []
         self.legend_pos = legend_pos
         if result:
@@ -129,6 +173,31 @@ class Plot(object):
     def add_analysis(self, expr, func=None, precs=None, var_env=None,
                      depth=None, annotate=False, legend=None,
                      legend_depth=False, legend_time=False, **kwargs):
+        """Performs transforms, then analyses expressions and add results to
+        plot.
+        
+        :param expr: original expression to be transformed.
+        :type expr: :class:`ce.expr.Expr`
+        :param func: the function used to transform `expr`.
+        :type func: callable with arguments::
+            `(tree, var_env, depth, prec)`, where `tree` is an expression,
+            `var_env` is the input ranges, `depth` is the depth limit and
+            `prec` is the precision used.
+        :param precs: Precisions used to evaluate the expressions, defaults to
+            single precision.
+        :type precs: int or a list of int
+        :param depth: the depth limit used in transforms.
+        :type depth: int
+        :param annotate: Annotates expressions on the Pareto frontier if set.
+        :type annotate: bool
+        :param legend: The legend name for the results.
+        :type legend: str
+        :param legend_depth: If set, will show depth limit on the legend.
+        :type legend_depth: bool
+        :param legend_time: If set, will show timing of transform on the
+            legend.
+        :type legend_time: bool
+        """
         import time
         from ce.common import invalidate_cache
         var_env = var_env or self.var_env
@@ -167,6 +236,21 @@ class Plot(object):
     def add(self, result, expr=None,
             legend=None, frontier=True, annotate=False, time=None, depth=None,
             color_group=None, **kwargs):
+        """Add analysed results.
+
+        :param expr: Optional, the original expression.
+        :type expr: :class:`ce.expr.Expr`
+        :param legend: The legend name for the results.
+        :type legend: str
+        :param frontier: If set, plots the frontier.
+        :type frontier: bool
+        :param annotate: Annotates expressions on the Pareto frontier if set.
+        :type annotate: bool
+        :param depth: If specifed, will show depth limit on the legend.
+        :type depth: int
+        :param time: If specified, will show timing on the legend.
+        :type time: float
+        """
         if legend:
             if depth:
                 legend += ', %d' % depth
@@ -313,15 +397,18 @@ class Plot(object):
         return self.figure
 
     def show(self):
+        """Shows the plot"""
         logger.info('Showing plot')
         self._plot()
         pyplot.show()
 
     def save(self, *args, **kwargs):
+        """Saves the plot"""
         self._plot().savefig(*args, bbox_inches='tight', **kwargs)
 
 
 def plot(result, **kwargs):
+    """Oneliner for :class:`Plot`"""
     p = Plot(result, **kwargs)
     p.show()
     return p
