@@ -1,1 +1,1 @@
-from .biop import BiOpTreeTransformer
+from ce.transformer.biop import BiOpTreeTransformer
