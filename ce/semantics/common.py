@@ -1,3 +1,7 @@
+"""
+.. module:: ce.semantics.common
+    :synopsis: Common definitions for semantics.
+"""
 import gmpy2
 
 
@@ -6,6 +10,7 @@ _labels = None
 
 
 def fresh_int(e):
+    """Generates a fresh int for the label of the expression `e`."""
     global _label_count, _labels
     _labels = _labels or {}
     if e in _labels:
@@ -16,7 +21,7 @@ def fresh_int(e):
 
 
 class Label(object):
-
+    """Constructs a label for the expression `e`"""
     def __init__(self, e, l=None):
         self.l = l or fresh_int(e)
         self.e = e
@@ -56,7 +61,7 @@ class Label(object):
 
 
 class Labels(object):
-
+    """Not used... Check if this can be removed."""
     def __init__(self, s):
         self.s = {fresh_int: e for e in s}
         super().__init__()
@@ -68,7 +73,7 @@ class Labels(object):
 
 
 class Lattice(object):
-
+    """Common lattice structure."""
     def join(self, other):
         raise NotImplementedError
 
@@ -83,6 +88,12 @@ class Lattice(object):
 
 
 def precision_context(prec):
+    """Withable context for changing precisions. Unifies how precisions can be
+    changed.
+
+    :param prec: The mantissa width.
+    :type prec: int
+    """
     # prec is the mantissa width
     # need to include the implicit integer bit for gmpy2
     prec += 1

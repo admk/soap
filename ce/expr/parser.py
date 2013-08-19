@@ -1,3 +1,7 @@
+"""
+.. module:: ce.expr.parser
+    :synopsis: Parser for class:`ce.expr.Expr`.
+"""
 import ast
 import gmpy2
 

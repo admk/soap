@@ -1,3 +1,7 @@
+"""
+.. module:: ce.semantics.area
+    :synopsis: The area semantics.
+"""
 import pickle
 import itertools
 

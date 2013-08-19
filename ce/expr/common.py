@@ -1,3 +1,7 @@
+"""
+.. module:: ce.expr.common
+    :synopsis: Common definitions for expressions.
+"""
 ADD_OP = '+'
 SUBTRACT_OP = '-'
 MULTIPLY_OP = '*'
