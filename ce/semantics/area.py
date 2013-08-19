@@ -10,8 +10,21 @@ from ce.semantics import Lattice, flopoco
 
 
 class AreaSemantics(Comparable, Lattice):
-
+    """The semantics that captures the area of an expression."""
     def __init__(self, e, v, p):
+        """Initialisation.
+
+        :param e: The expression.
+        :type e: class:`ce.expr.Expr`
+        :param v: The ranges of input variables.
+        :type v: dictionary containing mappings from variables to
+            :class:`ce.semantics.error.Interval`
+        :param p: Precision used to evaluate the expression, defaults to
+            single precision.
+        :type p: int
+
+        Get the area estimation result with the property `area`.
+        """
         self.e = e
         self.v = v
         self.p = p
@@ -100,6 +113,7 @@ def pool():
 
 
 class AreaEstimateValidator(object):
+    """Validates our area model by comparing it against synthesis"""
 
     def __init__(self, expr_set=None, var_env=None, prec_list=None):
         self.e = expr_set
