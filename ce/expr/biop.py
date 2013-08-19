@@ -1,17 +1,30 @@
+"""
+.. module:: ce.expr.biop
+    :synopsis: The class of expressions.
+"""
 import gmpy2
 
 from ce.common import Comparable, Flyweight, cached, ignored
 
-from ce.expr.common import ADD_OP, MULTIPLY_OP, BARRIER_OP, \
-    COMMUTATIVITY_OPERATORS
+from ce.expr.common import (
+    ADD_OP, MULTIPLY_OP, BARRIER_OP, COMMUTATIVITY_OPERATORS
+)
 from ce.expr.parser import parse
 
 
 class Expr(Comparable, Flyweight):
+    """The expression class."""
 
     __slots__ = ('op', 'a1', 'a2', '_hash')
 
     def __init__(self, *args, **kwargs):
+        """Expr allows several ways of instantiation for the expression example
+        (a + b)::
+
+            1. ``Expr('+', a, b)``
+            2. ``Expr(op='+', a1=a, a2=b)``
+            3. ``Expr('+', al=(a, b))``
+        """
         if kwargs:
             op = kwargs.setdefault('op')
             a1 = kwargs.setdefault('a1')
@@ -39,6 +52,7 @@ class Expr(Comparable, Flyweight):
         return self.op, self.a1, self.a2
 
     def tree(self):
+        """Produces a tuple tree for the expression."""
         def to_tuple(a):
             if isinstance(a, Expr):
                 return a.tree()
@@ -47,10 +61,20 @@ class Expr(Comparable, Flyweight):
 
     @property
     def args(self):
+        """Returns the arguments of the expression"""
         return [self.a1, self.a2]
 
     @cached
     def error(self, var_env, prec):
+        """Computes the error bound of its evaulation.
+
+        :param var_env: The ranges of input variables.
+        :type var_env: dictionary containing mappings from variables to
+            :class:`ce.semantics.error.Interval`
+        :param prec: Precision used to evaluate the expression, defaults to
+            single precision.
+        :type prec: int
+        """
         from ce.semantics import cast_error, cast_error_constant, \
             precision_context
         with precision_context(prec):
@@ -73,6 +97,16 @@ class Expr(Comparable, Flyweight):
                 return e1 | e2
 
     def exponent_width(self, var_env, prec):
+        """Computes the exponent width required for its evaluation so that no
+        overflow could occur.
+
+        :param var_env: The ranges of input variables.
+        :type var_env: dictionary containing mappings from variables to
+            :class:`ce.semantics.error.Interval`
+        :param prec: Precision used to evaluate the expression, defaults to
+            single precision.
+        :type prec: int
+        """
         import math
         from ce.semantics.flopoco import we_min
         b = self.error(var_env, prec).v
@@ -86,16 +120,39 @@ class Expr(Comparable, Flyweight):
 
     @cached
     def area(self, var_env, prec):
+        """Computes the area estimation of its evaulation.
+
+        :param var_env: The ranges of input variables.
+        :type var_env: dictionary containing mappings from variables to
+            :class:`ce.semantics.error.Interval`
+        :param prec: Precision used to evaluate the expression, defaults to
+            single precision.
+        :type prec: int
+        """
         from ce.semantics import AreaSemantics
         return AreaSemantics(self, var_env, prec)
 
     @cached
     def real_area(self, var_env, prec):
+        """Computes the actual area by synthesising it using XST with flopoco
+        cores.
+
+        :param var_env: The ranges of input variables.
+        :type var_env: dictionary containing mappings from variables to
+            :class:`ce.semantics.error.Interval`
+        :param prec: Precision used to evaluate the expression, defaults to
+            single precision.
+        :type prec: int
+        """
         from ce.semantics.flopoco import eval_expr
         return eval_expr(self, var_env, prec)
 
     @cached
     def as_labels(self):
+        """Performs labelling analysis on the expression.
+
+        :returns: dictionary containing the labelling scheme.
+        """
         from ce.semantics import Label
 
         def to_label(e):
@@ -115,6 +172,13 @@ class Expr(Comparable, Flyweight):
         return l, s
 
     def crop(self, depth):
+        """Truncate the tree at a certain depth.
+
+        :param depth: the depth used to truncate the tree.
+        :type depth: int
+        :returns: the truncated tree and a dictionary containing truncated
+            subexpressions.
+        """
         def subcrop(a):
             try:
                 return a.crop(depth - 1)
@@ -130,6 +194,13 @@ class Expr(Comparable, Flyweight):
         return l, {l: self}
 
     def stitch(self, env):
+        """Undo truncation by stiching truncated subexpressions back to the
+        leaves of the expression.
+
+        :param env: the truncated expressions.
+        :type env: dict
+        :returns: new expression tree.
+        """
         def substitch(a):
             try:
                 return a.stitch(env)
@@ -193,6 +264,10 @@ class Expr(Comparable, Flyweight):
 
 
 class BExpr(Expr):
+    """An expression class that only allows non-expression arguments.
+
+    This is a subclass of :class:`Expr`.
+    """
 
     __slots__ = Expr.__slots__
 

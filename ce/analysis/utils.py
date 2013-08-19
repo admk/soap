@@ -1,3 +1,7 @@
+"""
+.. module:: ce.analysis.utils
+    :synopsis: Provides utility functions for analysis and plotting.
+"""
 import math
 import itertools
 

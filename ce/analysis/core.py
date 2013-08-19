@@ -1,3 +1,7 @@
+"""
+.. module:: ce.analysis.core
+    :synopsis: Analysis classes.
+"""
 import gmpy2
 
 import ce.logger as logger
