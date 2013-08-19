@@ -26,11 +26,15 @@ RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTION_OVER_OPERATORS = \
 
 
 def is_expr(e):
+    """Check if `e` is an expression."""
     from ce.expr.biop import Expr
     return isinstance(e, Expr)
 
 
 def concat_multi_expr(*expr_args):
+    """Concatenates multiple expressions into a single expression by using the
+    barrier operator `|`.
+    """
     from ce.expr.biop import Expr
     me = None
     for e in expr_args:
@@ -40,6 +44,7 @@ def concat_multi_expr(*expr_args):
 
 
 def split_multi_expr(e):
+    """Splits the single expression into multiple expressions."""
     if e.op != BARRIER_OP:
         return [e]
     return split_multi_expr(e.a1) + split_multi_expr(e.a2)
