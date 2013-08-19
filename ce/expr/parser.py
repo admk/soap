@@ -24,10 +24,17 @@ OPERATOR_MAP = {
 
 
 class ParserSyntaxError(SyntaxError):
-    pass
+    """Syntax Error Exception for :func:`parse`."""
 
 
 def parse(s, cls):
+    """Parses a string into an instance of class `cls`.
+
+    :param s: a string with valid syntax.
+    :type s: str
+    :param cls: the class of the expression.
+    :type cls: types.ClassType
+    """
     def _parse_r(t):
         with ignored(AttributeError):
             return t.n
