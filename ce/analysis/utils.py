@@ -84,7 +84,7 @@ def _insert_region_frontier(sx, sy):
 def _escape_legend(legend):
     if not legend:
         return
-    escapes = '# $ % & ~ \ _ ^ { }'.split(' ')
+    escapes = '# $ % & ~ _ ^ { }'.split(' ')
     new_legend = []
     for i, l in enumerate(legend.split('$')):
         if i % 2 == 0:
@@ -157,6 +157,7 @@ class Plot(object):
             marker = 'o'
         depth = d if legend_depth else None
         duration = t if legend_time else None
+        duration = duration if legend_time is True else legend_time
         kwargs.setdefault('marker', marker)
         logger.unpersistent('Precision')
         self.add(results, legend=legend, frontier=front, annotate=annotate,
@@ -166,13 +167,14 @@ class Plot(object):
     def add(self, result, expr=None,
             legend=None, frontier=True, annotate=False, time=None, depth=None,
             color_group=None, **kwargs):
-        if not result:
-            return
         if legend:
             if depth:
                 legend += ', %d' % depth
             if time:
-                legend += ' (%1.2fs)' % time
+                try:
+                    legend += ' (%1.2fs)' % time
+                except TypeError:
+                    legend += ' (%s)' % time
         self.result_list.append({
             'result': result,
             'legend': _escape_legend(legend),
@@ -260,11 +262,18 @@ class Plot(object):
                 keys = AreaErrorAnalysis.names()
                 f = pareto_frontier_2d(r['result'], keys=keys)
                 keys.append('expression')
-                area, error, expr = zip_from_keys(f, keys=keys)
-                lx, ly = _insert_region_frontier(area, error)
+                try:
+                    area, error, expr = zip_from_keys(f, keys=keys)
+                    logger.debug(r['legend'])
+                    for a, e, x in zip(area, error, expr):
+                        logger.debug(a, e, x)
+                    lx, ly = _insert_region_frontier(area, error)
+                except ValueError:
+                    lx = ly = []
                 plot.plot(lx, ly, **plot_kwargs)
-                plot.fill_between(lx, ly, max(ly),
-                                  alpha=0.1, color=plot_kwargs['color'])
+                if lx and ly:
+                    plot.fill_between(lx, ly, max(ly),
+                                      alpha=0.1, color=plot_kwargs['color'])
                 if r['annotate']:
                     for x, y, e in zip(area, error, expr):
                         plot.annotate(str(e), xy=(x, y), alpha=0.5)
@@ -273,15 +282,21 @@ class Plot(object):
             scatter_kwargs.update(r['kwargs'])
             if not 'marker' in scatter_kwargs:
                 scatter_kwargs['marker'] = next(markers)
-            scatter_kwargs['edgecolor'] = scatter_kwargs['color']
+            scatter_kwargs.setdefault('edgecolor', scatter_kwargs['color'])
             for k in self.scatter_forbidden:
                 if k in scatter_kwargs:
                     del scatter_kwargs[k]
+            if scatter_kwargs['marker'] == '.':
+                scatter_kwargs['color'] = scatter_kwargs['edgecolor']
+                del scatter_kwargs['edgecolor']
             if scatter_kwargs['marker'] == '+':
                 scatter_kwargs['s'] *= 1.5
-            area, error = zip_result(r['result'])
-            xmin, xmax = min(xmin, min(area)), max(xmax, max(area))
-            ymin, ymax = min(ymin, min(error)), max(ymax, max(error))
+            try:
+                area, error = zip_result(r['result'])
+                xmin, xmax = min(xmin, min(area)), max(xmax, max(area))
+                ymin, ymax = min(ymin, min(error)), max(ymax, max(error))
+            except ValueError:
+                area = error = []
             plot.scatter(area, error, label=r['legend'], **scatter_kwargs)
         self._auto_scale(plot, (xmin, xmax), (ymin, ymax))
         legend_pos = self.legend_pos or (1.1, 1.1)

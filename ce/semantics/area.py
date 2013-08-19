@@ -142,7 +142,7 @@ class AreaEstimateValidator(object):
         reg_fit = pylab.polyfit(real_area, estimated_area, 1)
         logger.info(reg_fit)
         reg_func = pylab.poly1d(reg_fit)
-        plot.plot([0, lim], reg_func([0, lim]), linestyle='--', color='k')
+        plot.plot([0, lim], reg_func([0, lim]), color='k')
         plot.plot([0, lim], [0, lim], linestyle=':', color='k')
         plot.set_xlim(0, lim)
         plot.set_ylim(0, lim)
