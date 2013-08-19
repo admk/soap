@@ -1,3 +1,7 @@
+"""
+.. module:: ce.semantics.error
+    :synopsis: Intervals and error semantics.
+"""
 import itertools
 import gmpy2
 from gmpy2 import RoundUp, RoundDown, mpfr, mpq as _mpq
@@ -11,6 +15,7 @@ mpq_type = type(_mpq('1.0'))
 
 
 def mpq(v):
+    """Unifies how mpq behaves when shit (overflow and NaN) happens."""
     if not isinstance(v, mpfr_type):
         try:
             return _mpq(v)
@@ -24,6 +29,11 @@ def mpq(v):
 
 
 def ulp(v):
+    """Computes the unit of the last place for a value.
+
+    :param v: The value.
+    :type v: any gmpy2 values
+    """
     if type(v) is not mpfr_type:
         with gmpy2.local_context(round=gmpy2.RoundAwayZero):
             v = mpfr(v)
@@ -60,7 +70,7 @@ def cast_error(v, w=None):
 
 
 class Interval(Lattice):
-
+    """The interval base class."""
     def __init__(self, v):
         min_val, max_val = v
         self.min, self.max = min_val, max_val
@@ -100,7 +110,7 @@ class Interval(Lattice):
 
 
 class FloatInterval(Interval):
-
+    """The interval containing floating point values."""
     def __init__(self, v):
         min_val, max_val = v
         min_val = mpfr(min_val)
@@ -129,7 +139,7 @@ class FloatInterval(Interval):
 
 
 class FractionInterval(Interval):
-
+    """The interval containing real rational values."""
     def __init__(self, v):
         min_val, max_val = v
         super().__init__((mpq(min_val), mpq(max_val)))
@@ -139,7 +149,7 @@ class FractionInterval(Interval):
 
 
 class ErrorSemantics(Lattice, Comparable):
-
+    """The error semantics."""
     def __init__(self, v, e):
         self.v = FloatInterval(v)
         self.e = FractionInterval(e)
