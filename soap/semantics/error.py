@@ -2,9 +2,8 @@
 .. module:: soap.semantics.error
     :synopsis: Intervals and error semantics.
 """
-import itertools
 import gmpy2
-from gmpy2 import RoundUp, RoundDown, mpfr, mpq as _mpq
+from gmpy2 import mpfr, mpq as _mpq
 
 from soap.common import Comparable
 from soap.semantics import Lattice
@@ -41,13 +40,6 @@ def ulp(v):
         return mpq(2) ** v.as_mantissa_exp()[1]
     except OverflowError:
         return mpfr('Inf')
-
-
-def round_op(f):
-    def wrapped(v1, v2, mode):
-        with gmpy2.local_context(round=mode):
-            return f(v1, v2)
-    return wrapped
 
 
 def round_off_error(interval):
@@ -116,26 +108,6 @@ class FloatInterval(Interval):
         min_val = mpfr(min_val)
         max_val = mpfr(max_val)
         super().__init__((min_val, max_val))
-
-    def __add__(self, other):
-        f = round_op(lambda x, y: x + y)
-        return FloatInterval(
-            [f(self.min, other.min, RoundDown),
-             f(self.max, other.max, RoundUp)])
-
-    def __sub__(self, other):
-        f = round_op(lambda x, y: x - y)
-        return FloatInterval(
-            [f(self.min, other.max, RoundDown),
-             f(self.max, other.min, RoundUp)])
-
-    def __mul__(self, other):
-        f = round_op(lambda x, y: x * y)
-        l = itertools.product((self.min, self.max),
-                              (other.min, other.max),
-                              (RoundDown, RoundUp))
-        v = [f(x, y, m) for x, y, m in l]
-        return FloatInterval([min(v), max(v)])
 
 
 class FractionInterval(Interval):
@@ -214,8 +186,6 @@ if __name__ == '__main__':
     print(float(ulp(mpfr('0.1'))))
     mult = lambda x, y: x * y
     args = [mpfr('0.3'), mpfr('2.6')]
-    print(round_op(mult)(*(args + [gmpy2.RoundDown])))
-    print(round_op(mult)(*(args + [gmpy2.RoundUp])))
     a = FloatInterval(['0.3', '0.3'])
     print(a, round_off_error(a))
     x = cast_error('0.9', '1.1')
