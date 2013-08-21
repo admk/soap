@@ -7,8 +7,9 @@ import gmpy2
 
 from soap.common import ignored
 from soap.semantics import mpq
-from soap.expr.common import ADD_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, \
-    UNARY_SUBTRACT_OP
+from soap.expr.common import (
+    ADD_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP
+)
 
 
 def try_to_number(s):

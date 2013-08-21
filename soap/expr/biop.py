@@ -5,7 +5,6 @@
 import gmpy2
 
 from soap.common import Comparable, Flyweight, cached, ignored
-
 from soap.expr.common import (
     ADD_OP, MULTIPLY_OP, BARRIER_OP, COMMUTATIVITY_OPERATORS
 )
@@ -75,8 +74,9 @@ class Expr(Comparable, Flyweight):
             single precision.
         :type prec: int
         """
-        from soap.semantics import cast_error, cast_error_constant, \
-            precision_context
+        from soap.semantics import (
+            cast_error, cast_error_constant, precision_context
+        )
         with precision_context(prec):
             def eval(a):
                 with ignored(AttributeError):
