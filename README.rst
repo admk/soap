@@ -1,13 +1,22 @@
 TODOs
 =====
 
+* General program transform
 * Multiple mantissa widths
-* Available expression analysis for straight-line code
-* Much needed documentation and unit testing
 * Support for subtraction & maybe division
+* Unit testing
 
 Changelog
 =========
+
+Version 1.0
+-----------
+
+Wed Aug 21 16:13:29 BST 2013
+
+* Lots of changes and fixes
+* Documentation
+* Real area vs estimated area
 
 Version 0.7
 -----------
