@@ -5,7 +5,7 @@ import weakref
 import pickle
 from contextlib import contextmanager
 
-import ce.logger as logger
+import soap.logger as logger
 
 
 class DynamicMethods(object):
@@ -73,8 +73,8 @@ def profiled():
     import pycallgraph
     from pympler.classtracker import ClassTracker
     from pympler.asizeof import asizeof
-    from ce.common import Flyweight, _cache_map
-    from ce.expr import Expr
+    from soap.common import Flyweight, _cache_map
+    from soap.expr import Expr
     pycallgraph.start_trace()
     tracker = ClassTracker()
     tracker.track_object(Flyweight._cache)
@@ -97,7 +97,7 @@ def _process_invalidate_cache():
 
 
 def invalidate_cache():
-    from ce.transformer.core import pool
+    from soap.transformer.core import pool
     _process_invalidate_cache()
     pool().apply(_process_invalidate_cache)
 

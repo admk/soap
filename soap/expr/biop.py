@@ -1,15 +1,15 @@
 """
-.. module:: ce.expr.biop
+.. module:: soap.expr.biop
     :synopsis: The class of expressions.
 """
 import gmpy2
 
-from ce.common import Comparable, Flyweight, cached, ignored
+from soap.common import Comparable, Flyweight, cached, ignored
 
-from ce.expr.common import (
+from soap.expr.common import (
     ADD_OP, MULTIPLY_OP, BARRIER_OP, COMMUTATIVITY_OPERATORS
 )
-from ce.expr.parser import parse
+from soap.expr.parser import parse
 
 
 class Expr(Comparable, Flyweight):
@@ -70,12 +70,12 @@ class Expr(Comparable, Flyweight):
 
         :param var_env: The ranges of input variables.
         :type var_env: dictionary containing mappings from variables to
-            :class:`ce.semantics.error.Interval`
+            :class:`soap.semantics.error.Interval`
         :param prec: Precision used to evaluate the expression, defaults to
             single precision.
         :type prec: int
         """
-        from ce.semantics import cast_error, cast_error_constant, \
+        from soap.semantics import cast_error, cast_error_constant, \
             precision_context
         with precision_context(prec):
             def eval(a):
@@ -102,13 +102,13 @@ class Expr(Comparable, Flyweight):
 
         :param var_env: The ranges of input variables.
         :type var_env: dictionary containing mappings from variables to
-            :class:`ce.semantics.error.Interval`
+            :class:`soap.semantics.error.Interval`
         :param prec: Precision used to evaluate the expression, defaults to
             single precision.
         :type prec: int
         """
         import math
-        from ce.semantics.flopoco import we_min
+        from soap.semantics.flopoco import we_min
         b = self.error(var_env, prec).v
         bmax = max(abs(b.min), abs(b.max))
         expmax = math.floor(math.log(bmax, 2))
@@ -124,12 +124,12 @@ class Expr(Comparable, Flyweight):
 
         :param var_env: The ranges of input variables.
         :type var_env: dictionary containing mappings from variables to
-            :class:`ce.semantics.error.Interval`
+            :class:`soap.semantics.error.Interval`
         :param prec: Precision used to evaluate the expression, defaults to
             single precision.
         :type prec: int
         """
-        from ce.semantics import AreaSemantics
+        from soap.semantics import AreaSemantics
         return AreaSemantics(self, var_env, prec)
 
     @cached
@@ -139,12 +139,12 @@ class Expr(Comparable, Flyweight):
 
         :param var_env: The ranges of input variables.
         :type var_env: dictionary containing mappings from variables to
-            :class:`ce.semantics.error.Interval`
+            :class:`soap.semantics.error.Interval`
         :param prec: Precision used to evaluate the expression, defaults to
             single precision.
         :type prec: int
         """
-        from ce.semantics.flopoco import eval_expr
+        from soap.semantics.flopoco import eval_expr
         return eval_expr(self, var_env, prec)
 
     @cached
@@ -153,7 +153,7 @@ class Expr(Comparable, Flyweight):
 
         :returns: dictionary containing the labelling scheme.
         """
-        from ce.semantics import Label
+        from soap.semantics import Label
 
         def to_label(e):
             try:
@@ -189,7 +189,7 @@ class Expr(Comparable, Flyweight):
             l2, s2 = subcrop(self.a2)
             s1.update(s2)
             return self.__class__(self.op, l1, l2), s1
-        from ce.semantics import Label
+        from soap.semantics import Label
         l = Label(self)
         return l, {l: self}
 
@@ -272,7 +272,7 @@ class BExpr(Expr):
     __slots__ = Expr.__slots__
 
     def __init__(self, **kwargs):
-        from ce.semantics import Label
+        from soap.semantics import Label
         super().__init__(**kwargs)
         if not isinstance(self.a1, Label) or not isinstance(self.a2, Label):
             raise ValueError('BExpr allows only binary expressions.')

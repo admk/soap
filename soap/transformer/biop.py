@@ -1,15 +1,15 @@
 import re
 import random
 
-import ce.logger as logger
-from ce.expr.common import ADD_OP, MULTIPLY_OP, ASSOCIATIVITY_OPERATORS, \
+import soap.logger as logger
+from soap.expr.common import ADD_OP, MULTIPLY_OP, ASSOCIATIVITY_OPERATORS, \
     LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS, \
     RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS, \
     is_expr
-from ce.expr import Expr
-from ce.transformer.core import item_to_list, none_to_list, \
+from soap.expr import Expr
+from soap.transformer.core import item_to_list, none_to_list, \
     TreeTransformer, ValidationError
-from ce.semantics import mpq_type
+from soap.semantics import mpq_type
 
 
 @none_to_list
@@ -152,7 +152,7 @@ class BiOpTreeTransformer(TreeTransformer):
 
 
 if __name__ == '__main__':
-    from ce.common import profiled, timed
+    from soap.common import profiled, timed
     Expr.__repr__ = Expr.__str__
     logger.set_context(level=logger.levels.info)
     e = '(a + 1) * b | (b + 1) * a | a * b'
@@ -162,7 +162,7 @@ if __name__ == '__main__':
     with profiled(), timed():
         s = BiOpTreeTransformer(t).closure()
     logger.info('Transformed:', len(s))
-    from ce.analysis.utils import plot, analyse
+    from soap.analysis.utils import plot, analyse
     v = {'a': ['1', '2'], 'b': ['100', '200']}
     a = analyse(s, v)
     logger.info(a)

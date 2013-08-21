@@ -1,13 +1,13 @@
 """
-.. module:: ce.expr.parser
-    :synopsis: Parser for class:`ce.expr.Expr`.
+.. module:: soap.expr.parser
+    :synopsis: Parser for class:`soap.expr.Expr`.
 """
 import ast
 import gmpy2
 
-from ce.common import ignored
-from ce.semantics import mpq
-from ce.expr.common import ADD_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, \
+from soap.common import ignored
+from soap.semantics import mpq
+from soap.expr.common import ADD_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, \
     UNARY_SUBTRACT_OP
 
 

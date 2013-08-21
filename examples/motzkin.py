@@ -1,6 +1,6 @@
-from ce.analysis import Plot
-from ce.transformer.utils import greedy_trace, frontier_trace, martel_trace
-import ce.logger as logger
+from soap.analysis import Plot
+from soap.transformer.utils import greedy_trace, frontier_trace, martel_trace
+import soap.logger as logger
 
 logger.set_context(level=logger.levels.debug)
 

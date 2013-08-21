@@ -1,14 +1,14 @@
 """
-.. module:: ce.analysis.core
+.. module:: soap.analysis.core
     :synopsis: Analysis classes.
 """
 import gmpy2
 
-import ce.logger as logger
-from ce.common import DynamicMethods, Flyweight
-from ce.expr import Expr
-from ce.semantics import mpfr
-import ce.semantics.flopoco as flopoco
+import soap.logger as logger
+from soap.common import DynamicMethods, Flyweight
+from soap.expr import Expr
+from soap.semantics import mpfr
+import soap.semantics.flopoco as flopoco
 
 
 class Analysis(DynamicMethods, Flyweight):
@@ -22,10 +22,10 @@ class Analysis(DynamicMethods, Flyweight):
         """Analysis class initialisation.
 
         :param expr_set: A set of expressions or a single expression.
-        :type expr_set: `set` or :class:`ce.expr.Expr`
+        :type expr_set: `set` or :class:`soap.expr.Expr`
         :param var_env: The ranges of input variables.
         :type var_env: dictionary containing mappings from variables to
-            :class:`ce.semantics.error.Interval`
+            :class:`soap.semantics.error.Interval`
         :param precs: Precisions used to evaluate the expressions, defaults to
             the return value of :member:`precisions`.
         :type precs: list of integers
@@ -168,9 +168,9 @@ class VaryWidthAnalysis(AreaErrorAnalysis):
 
 
 if __name__ == '__main__':
-    from ce.transformer import BiOpTreeTransformer
-    from ce.analysis.utils import plot
-    from ce.common import timed
+    from soap.transformer import BiOpTreeTransformer
+    from soap.analysis.utils import plot
+    from soap.common import timed
     logger.set_context(level=logger.levels.info)
     e = Expr('(a + b) * (a + b)')
     v = {

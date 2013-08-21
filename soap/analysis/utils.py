@@ -1,5 +1,5 @@
 """
-.. module:: ce.analysis.utils
+.. module:: soap.analysis.utils
     :synopsis: Provides utility functions for analysis and plotting.
 """
 import math
@@ -7,11 +7,11 @@ import itertools
 
 from matplotlib import rc, pyplot
 
-import ce.logger as logger
+import soap.logger as logger
 
 
 def _analyser(expr_set, var_env, prec=None):
-    from ce.analysis.core import AreaErrorAnalysis
+    from soap.analysis.core import AreaErrorAnalysis
     precs = [prec] if prec else None
     return AreaErrorAnalysis(expr_set, var_env, precs)
 
@@ -24,7 +24,7 @@ def analyse(expr_set, var_env, prec=None, vary_width=False):
     :type expr_set: set or list
     :param var_env: The ranges of input variables.
     :type var_env: dictionary containing mappings from variables to
-        :class:`ce.semantics.error.Interval`
+        :class:`soap.semantics.error.Interval`
     :param precs: Precisions used to evaluate the expressions, defaults to
         single precision.
     :type precs: int or a list of int
@@ -40,7 +40,7 @@ def frontier(expr_set, var_env, prec=None, vary_width=None):
     :type expr_set: set or list
     :param var_env: The ranges of input variables.
     :type var_env: dictionary containing mappings from variables to
-        :class:`ce.semantics.error.Interval`
+        :class:`soap.semantics.error.Interval`
     :param precs: Precisions used to evaluate the expressions, defaults to
         single precision.
     :type precs: int or a list of int
@@ -62,7 +62,7 @@ def zip_from_keys(result, keys='expression'):
 
 
 def zip_result(result):
-    from ce.analysis.core import AreaErrorAnalysis
+    from soap.analysis.core import AreaErrorAnalysis
     return zip_from_keys(result, keys=AreaErrorAnalysis.names())
 
 
@@ -149,7 +149,7 @@ class Plot(object):
         :type result: list
         :param var_env: The ranges of input variables to be used in transforms.
         :type var_env: dictionary containing mappings from variables to
-            :class:`ce.semantics.error.Interval`
+            :class:`soap.semantics.error.Interval`
         :param depth: the depth limit used in transforms.
         :type depth: int
         :param precs: Precisions to be used to evaluate the expressions,
@@ -181,7 +181,7 @@ class Plot(object):
         plot.
         
         :param expr: original expression to be transformed.
-        :type expr: :class:`ce.expr.Expr`
+        :type expr: :class:`soap.expr.Expr`
         :param func: the function used to transform `expr`.
         :type func: callable with arguments::
             `(tree, var_env, depth, prec)`, where `tree` is an expression,
@@ -203,7 +203,7 @@ class Plot(object):
         :type legend_time: bool
         """
         import time
-        from ce.common import invalidate_cache
+        from soap.common import invalidate_cache
         var_env = var_env or self.var_env
         d = depth or self.depth
         precs = precs or self.precs or [None]
@@ -243,7 +243,7 @@ class Plot(object):
         """Add analysed results.
 
         :param expr: Optional, the original expression.
-        :type expr: :class:`ce.expr.Expr`
+        :type expr: :class:`soap.expr.Expr`
         :param legend: The legend name for the results.
         :type legend: str
         :param frontier: If set, plots the frontier.
@@ -317,7 +317,7 @@ class Plot(object):
         plot.locator_params(axis='x', nbins=7)
 
     def _plot(self):
-        from ce.analysis.core import AreaErrorAnalysis, pareto_frontier_2d
+        from soap.analysis.core import AreaErrorAnalysis, pareto_frontier_2d
         try:
             return self.figure
         except AttributeError:
@@ -419,7 +419,7 @@ def plot(result, **kwargs):
 
 
 def analyse_and_plot(s, v, d=None, f=None, o=False, t=True):
-    from ce.transformer.utils import greedy_trace
+    from soap.transformer.utils import greedy_trace
     f = f or [greedy_trace]
     p = Plot(var_env=v, depth=d)
     try:

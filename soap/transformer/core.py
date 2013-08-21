@@ -2,10 +2,10 @@ import sys
 import functools
 import multiprocessing
 
-import ce.logger as logger
-from ce.common import cached
-from ce.expr.common import is_expr
-from ce.expr import Expr
+import soap.logger as logger
+from soap.common import cached
+from soap.expr.common import is_expr
+from soap.expr import Expr
 
 
 RECURSION_LIMIT = sys.getrecursionlimit()

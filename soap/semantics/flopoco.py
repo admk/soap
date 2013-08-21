@@ -3,8 +3,8 @@ import shutil
 import tempfile
 from contextlib import contextmanager
 
-from ce.common import cached, timeit
-import ce.logger as logger
+from soap.common import cached, timeit
+import soap.logger as logger
 
 
 class FlopocoMissingImplementationError(Exception):
@@ -16,7 +16,7 @@ wf_min, wf_max = 10, 112
 we_range = list(range(we_min, we_max + 1))
 wf_range = list(range(wf_min, wf_max + 1))
 
-directory = 'ce/semantics/'
+directory = 'soap/semantics/'
 default_file = directory + 'area.pkl'
 template_file = directory + 'template.vhdl'
 
@@ -51,7 +51,7 @@ def get_luts(file_name):
 
 def flopoco(op, we, wf, f=None, dir=None):
     import sh
-    from ce.expr import ADD_OP, MULTIPLY_OP
+    from soap.expr import ADD_OP, MULTIPLY_OP
     flopoco_cmd = []
     flopoco_cmd += ['-target=' + device_name]
     dir = dir or tempfile.mktemp(suffix='/')
@@ -196,7 +196,7 @@ def keys():
 class CodeGenerator(object):
 
     def __init__(self, expr, var_env, prec, file_name=None, dir=None):
-        from ce.expr import Expr
+        from soap.expr import Expr
         self.expr = Expr(expr)
         self.var_env = var_env
         self.wf = prec
@@ -286,7 +286,7 @@ def eval_expr(expr, var_env, prec):
 
 if __name__ == '__main__':
     import sys
-    from ce.expr import Expr
+    from soap.expr import Expr
     logger.set_context(level=logger.levels.info)
     if 'synth' in sys.argv:
         save(default_file, batch_synth(we_range, wf_range))

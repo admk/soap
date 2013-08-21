@@ -1,7 +1,7 @@
 import math
 
-import ce.logger as logger
-from ce.analysis import analyse_and_plot
+import soap.logger as logger
+from soap.analysis import analyse_and_plot
 
 logger.set_context(level=logger.levels.debug)
 

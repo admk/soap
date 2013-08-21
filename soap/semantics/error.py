@@ -1,13 +1,13 @@
 """
-.. module:: ce.semantics.error
+.. module:: soap.semantics.error
     :synopsis: Intervals and error semantics.
 """
 import itertools
 import gmpy2
 from gmpy2 import RoundUp, RoundDown, mpfr, mpq as _mpq
 
-from ce.common import Comparable
-from ce.semantics import Lattice
+from soap.common import Comparable
+from soap.semantics import Lattice
 
 
 mpfr_type = type(mpfr('1.0'))
@@ -200,7 +200,7 @@ class ErrorSemantics(Lattice, Comparable):
 
 
 if __name__ == '__main__':
-    from ce.semantics import precision_context
+    from soap.semantics import precision_context
     with precision_context(52):
         x = cast_error('0.1', '0.2')
         print(x)

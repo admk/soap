@@ -1,12 +1,12 @@
 import itertools
 
-import ce.logger as logger
-from ce.expr import Expr
-from ce.transformer.core import TreeTransformer
-from ce.transformer.biop import associativity, distribute_for_distributivity, \
+import soap.logger as logger
+from soap.expr import Expr
+from soap.transformer.core import TreeTransformer
+from soap.transformer.biop import associativity, distribute_for_distributivity, \
     BiOpTreeTransformer
-from ce.transformer.martel import MartelBiOpTreeTransformer
-from ce.analysis import expr_frontier
+from soap.transformer.martel import MartelBiOpTreeTransformer
+from soap.analysis import expr_frontier
 
 
 def closure(tree, **kwargs):

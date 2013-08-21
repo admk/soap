@@ -1,4 +1,4 @@
-from ce.transformer.biop import BiOpTreeTransformer
+from soap.transformer.biop import BiOpTreeTransformer
 
 
 class MartelBiOpTreeTransformer(BiOpTreeTransformer):

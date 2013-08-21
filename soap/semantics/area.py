@@ -1,5 +1,5 @@
 """
-.. module:: ce.semantics.area
+.. module:: soap.semantics.area
     :synopsis: The area semantics.
 """
 import pickle
@@ -7,10 +7,10 @@ import itertools
 
 from matplotlib import rc, pyplot, pylab
 
-import ce.expr
-import ce.logger as logger
-from ce.common import Comparable
-from ce.semantics import Lattice, flopoco
+import soap.expr
+import soap.logger as logger
+from soap.common import Comparable
+from soap.semantics import Lattice, flopoco
 
 
 class AreaSemantics(Comparable, Lattice):
@@ -19,10 +19,10 @@ class AreaSemantics(Comparable, Lattice):
         """Initialisation.
 
         :param e: The expression.
-        :type e: class:`ce.expr.Expr`
+        :type e: class:`soap.expr.Expr`
         :param v: The ranges of input variables.
         :type v: dictionary containing mappings from variables to
-            :class:`ce.semantics.error.Interval`
+            :class:`soap.semantics.error.Interval`
         :param p: Precision used to evaluate the expression, defaults to
             single precision.
         :type p: int
@@ -46,9 +46,9 @@ class AreaSemantics(Comparable, Lattice):
         mult, add = 0, 0
         for _, e in self.s.items():
             try:
-                if e.op == ce.expr.MULTIPLY_OP:
+                if e.op == soap.expr.MULTIPLY_OP:
                     mult += 1
-                if e.op == ce.expr.ADD_OP:
+                if e.op == soap.expr.ADD_OP:
                     add += 1
             except AttributeError:
                 pass
@@ -190,8 +190,8 @@ rc('text', usetex=True)
 
 
 if __name__ == '__main__':
-    from ce.transformer.utils import greedy_trace
-    from ce.semantics.flopoco import wf_range
+    from soap.transformer.utils import greedy_trace
+    from soap.semantics.flopoco import wf_range
     logger.set_context(level=logger.levels.info)
     try:
         a = AreaEstimateValidator.load_points('area.pkl')
