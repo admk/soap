@@ -70,24 +70,26 @@ class Interval(Lattice):
             raise ValueError('min_val cannot be greater than max_val')
 
     def join(self, other):
-        return Interval([min(self.min, other.min), max(self.max, other.max)])
+        return self.__class__(
+            [min(self.min, other.min), max(self.max, other.max)])
 
     def meet(self, other):
-        return Interval([max(self.min, other.min), min(self.max, other.max)])
+        return self.__class__(
+            [max(self.min, other.min), min(self.max, other.max)])
 
     def __iter__(self):
         return iter((self.min, self.max))
 
     def __add__(self, other):
-        return Interval([self.min + other.min, self.max + other.max])
+        return self.__class__([self.min + other.min, self.max + other.max])
 
     def __sub__(self, other):
-        return Interval([self.min - other.max, self.max - other.min])
+        return self.__class__([self.min - other.max, self.max - other.min])
 
     def __mul__(self, other):
         v = (self.min * other.min, self.min * other.max,
              self.max * other.min, self.max * other.max)
-        return Interval([min(v), max(v)])
+        return self.__class__([min(v), max(v)])
 
     def __str__(self):
         return '[%s, %s]' % (str(self.min), str(self.max))
