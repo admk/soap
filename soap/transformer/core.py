@@ -1,3 +1,7 @@
+"""
+.. module:: soap.transformer.core
+    :synopsis: Base class for transforming expression instances.
+"""
 import sys
 import functools
 import multiprocessing
@@ -12,6 +16,13 @@ RECURSION_LIMIT = sys.getrecursionlimit()
 
 
 def item_to_list(f):
+    """Utility decorator for equivalence rules.
+
+    :param f: The transform function.
+    :type f: function
+    :returns: A new function that returns a list containing the return value of
+        the original function.
+    """
     def wrapper(t):
         v = f(t)
         return [v] if not v is None else []
@@ -19,6 +30,13 @@ def item_to_list(f):
 
 
 def none_to_list(f):
+    """Utility decorator for equivalence rules.
+
+    :param f: The transform function.
+    :type f: function
+    :returns: A new function that returns an empty list if the original
+        function returns None.
+    """
     def wrapper(t):
         v = f(t)
         return v if not v is None else []
@@ -30,7 +48,30 @@ class ValidationError(Exception):
 
 
 class TreeTransformer(object):
+    """The base class that finds the transitive closure of transformed trees.
 
+    :param tree_or_trees: An input expression, or a container of equivalent
+        expressions.
+    :type tree_or_trees: :class:`soap.expr.Expr`
+    :param validate: If set, tries to validate equivalence, subclasses
+        of :class:`TreeTransformer` should implement a member function
+        :member:`TreeTransformer.validate`.
+    :type validate: bool
+    :param depth: The depth limit for equivalence finding, if not specified, a
+        depth limit will not be used.
+    :type depth: int or None
+    :param step_plugin: A plugin function which is called after one step of
+        transitive closure, it should take as argument a set of trees and
+        return a new set of trees.
+    :type step_plugin: function
+    :param reduce_plugin: A plugin function which is called after one step of
+        reduction, it should take as argument a set of trees and turn a new set
+        of trees.
+    :type reduce_plugin: function
+    :param multiprocessing: If set, the class will multiprocess when computing
+        new equivalent trees.
+    :type multiprocessing: bool
+    """
     transform_methods = None
     reduction_methods = None
 
@@ -53,6 +94,7 @@ class TreeTransformer(object):
         super().__init__()
 
     def _harvest(self, trees):
+        """Crops all trees at the depth limit."""
         if self._d >= RECURSION_LIMIT:
             return trees
         logger.debug('Harvesting trees.')
@@ -67,6 +109,7 @@ class TreeTransformer(object):
         return cropped
 
     def _seed(self, trees):
+        """Stitches all trees."""
         logger.debug('Seeding trees.')
         if not self._n:
             return trees
@@ -80,6 +123,7 @@ class TreeTransformer(object):
         return seeded
 
     def _plugin(self, trees, plugin):
+        """Plugin function call setup and cleanup."""
         if not plugin:
             return trees
         trees = self._seed(trees)
@@ -88,6 +132,7 @@ class TreeTransformer(object):
         return trees
 
     def _step(self, s, c=False, d=None):
+        """One step of the transitive closure."""
         fs = self.transform_methods if c else self.reduction_methods
         v = self._validate if self._v else None
         if self._m:
@@ -105,6 +150,7 @@ class TreeTransformer(object):
         return s, r
 
     def _closure_r(self, trees, reduced=False):
+        """Transitive closure algorithm."""
         if self._d >= RECURSION_LIMIT and self.transform_methods:
             logger.warning('Depth limit not set.', self._d)
         done_trees = set()
@@ -137,8 +183,7 @@ class TreeTransformer(object):
     def closure(self):
         """Perform transforms until transitive closure is reached.
 
-        Returns:
-            A set of trees after transform.
+        :returns: A set of trees after transform.
         """
         s = self._harvest(self._t)
         s = self._closure_r(s)
@@ -146,14 +191,15 @@ class TreeTransformer(object):
         return s
 
     def validate(self, t, tn):
-        """Perform validation of tree.
+        """Perform validation of tree, subclasses must implement this method
+        if validation of equivalence is needed. This is useful for discovering
+        bugs in equivalence rules.
 
-        Args:
-            t: An original tree.
-            tn: A transformed tree.
-
-        Raises:
-            ValidationError: If failed to find equivalences between t and tn.
+        :param t: An original tree.
+        :type t: :class:`soap.expr.Expr`
+        :param tn: A transformed tree.
+        :type tn: :class:`soap.expr.Expr`
+        :raises: ValidationError
         """
         pass
 
@@ -177,6 +223,7 @@ def _walk(t_fs_v_c_d):
 
 @cached
 def _walk_r(t, f, v, d):
+    """Tree walker"""
     s = set()
     if d == 0:
         return s
@@ -213,6 +260,7 @@ def pool():
 
 
 def _iunion(sl, no_processes):
+    """Parallel set union, slower than serial implementation."""
     def chunks(l, n):
         for i in range(0, len(l), n):
             yield l[i:i+n]
