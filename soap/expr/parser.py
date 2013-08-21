@@ -32,6 +32,14 @@ class ParserSyntaxError(SyntaxError):
     """Syntax Error Exception for :func:`parse`."""
 
 
+def raise_parser_error(desc, text, token):
+    exc = ParserSyntaxError(str(desc))
+    exc.text = text
+    exc.lineno = token.lineno
+    exc.offset = token.col_offset
+    raise exc
+
+
 def parse(s, cls):
     """Parses a string into an instance of class `cls`.
 
@@ -40,6 +48,8 @@ def parse(s, cls):
     :param cls: the class of the expression.
     :type cls: types.ClassType
     """
+    s = s.replace('\n', '').strip()
+
     def _parse_r(t):
         with ignored(AttributeError):
             return t.n
@@ -62,13 +72,15 @@ def parse(s, cls):
                     pass
             return cls(op, a1, a2)
         except KeyError:
-            raise ParserSyntaxError('Unrecognised operator %s' % str(t.op))
+            raise_parser_error('Unrecognised operator %s' % str(t.op), s, t)
         except AttributeError:
-            raise ParserSyntaxError('Unknown token %s' % str(t))
+            raise_parser_error('Unknown token %s' % str(t), s, t)
     try:
-        body = ast.parse(s.replace('\n', '').strip(), mode='eval').body
+        body = ast.parse(s, mode='eval').body
         return _parse_r(body)
     except (TypeError, AttributeError):
         raise TypeError('Parse argument must be a string')
     except SyntaxError as e:
-        raise ParserSyntaxError(e)
+        if type(e) is not ParserSyntaxError:
+            raise ParserSyntaxError(e)
+        raise e
