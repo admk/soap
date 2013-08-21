@@ -1,3 +1,8 @@
+"""
+.. module:: soap.transformer.martel
+    :synopsis: Some compatibility hacks to support martel's equivalence
+        finding, so we can compare.
+"""
 from soap.transformer.biop import BiOpTreeTransformer
 
 
