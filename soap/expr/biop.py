@@ -1,17 +1,29 @@
+"""
+.. module:: soap.expr.biop
+    :synopsis: The class of expressions.
+"""
 import gmpy2
 
-from ce.common import Comparable, Flyweight, cached, ignored
-
-from ce.expr.common import ADD_OP, MULTIPLY_OP, BARRIER_OP, \
-    COMMUTATIVITY_OPERATORS
-from ce.expr.parser import parse
+from soap.common import Comparable, Flyweight, cached, ignored
+from soap.expr.common import (
+    ADD_OP, MULTIPLY_OP, BARRIER_OP, COMMUTATIVITY_OPERATORS
+)
+from soap.expr.parser import parse
 
 
 class Expr(Comparable, Flyweight):
+    """The expression class."""
 
     __slots__ = ('op', 'a1', 'a2', '_hash')
 
     def __init__(self, *args, **kwargs):
+        """Expr allows several ways of instantiation for the expression example
+        (a + b)::
+
+            1. ``Expr('+', a, b)``
+            2. ``Expr(op='+', a1=a, a2=b)``
+            3. ``Expr('+', al=(a, b))``
+        """
         if kwargs:
             op = kwargs.setdefault('op')
             a1 = kwargs.setdefault('a1')
@@ -39,6 +51,7 @@ class Expr(Comparable, Flyweight):
         return self.op, self.a1, self.a2
 
     def tree(self):
+        """Produces a tuple tree for the expression."""
         def to_tuple(a):
             if isinstance(a, Expr):
                 return a.tree()
@@ -47,12 +60,23 @@ class Expr(Comparable, Flyweight):
 
     @property
     def args(self):
+        """Returns the arguments of the expression"""
         return [self.a1, self.a2]
 
     @cached
     def error(self, var_env, prec):
-        from ce.semantics import cast_error, cast_error_constant, \
-            precision_context
+        """Computes the error bound of its evaulation.
+
+        :param var_env: The ranges of input variables.
+        :type var_env: dictionary containing mappings from variables to
+            :class:`soap.semantics.error.Interval`
+        :param prec: Precision used to evaluate the expression, defaults to
+            single precision.
+        :type prec: int
+        """
+        from soap.semantics import (
+            cast_error, cast_error_constant, precision_context
+        )
         with precision_context(prec):
             def eval(a):
                 with ignored(AttributeError):
@@ -60,8 +84,10 @@ class Expr(Comparable, Flyweight):
                 with ignored(TypeError, KeyError):
                     return eval(var_env[a])
                 with ignored(TypeError):
+                    return cast_error(*a)
+                with ignored(TypeError):
                     return cast_error_constant(a)
-                return cast_error(*a)
+                return a
             e1, e2 = eval(self.a1), eval(self.a2)
             if self.op == ADD_OP:
                 return e1 + e2
@@ -70,14 +96,64 @@ class Expr(Comparable, Flyweight):
             if self.op == BARRIER_OP:
                 return e1 | e2
 
+    def exponent_width(self, var_env, prec):
+        """Computes the exponent width required for its evaluation so that no
+        overflow could occur.
+
+        :param var_env: The ranges of input variables.
+        :type var_env: dictionary containing mappings from variables to
+            :class:`soap.semantics.error.Interval`
+        :param prec: Precision used to evaluate the expression, defaults to
+            single precision.
+        :type prec: int
+        """
+        import math
+        from soap.semantics.flopoco import we_min
+        b = self.error(var_env, prec).v
+        bmax = max(abs(b.min), abs(b.max))
+        expmax = math.floor(math.log(bmax, 2))
+        try:
+            we = int(math.ceil(math.log(expmax + 1, 2) + 1))
+        except ValueError:
+            we = 1
+        return max(we, we_min)
+
     @cached
     def area(self, var_env, prec):
-        from ce.semantics import AreaSemantics
+        """Computes the area estimation of its evaulation.
+
+        :param var_env: The ranges of input variables.
+        :type var_env: dictionary containing mappings from variables to
+            :class:`soap.semantics.error.Interval`
+        :param prec: Precision used to evaluate the expression, defaults to
+            single precision.
+        :type prec: int
+        """
+        from soap.semantics import AreaSemantics
         return AreaSemantics(self, var_env, prec)
 
     @cached
+    def real_area(self, var_env, prec):
+        """Computes the actual area by synthesising it using XST with flopoco
+        cores.
+
+        :param var_env: The ranges of input variables.
+        :type var_env: dictionary containing mappings from variables to
+            :class:`soap.semantics.error.Interval`
+        :param prec: Precision used to evaluate the expression, defaults to
+            single precision.
+        :type prec: int
+        """
+        from soap.semantics.flopoco import eval_expr
+        return eval_expr(self, var_env, prec)
+
+    @cached
     def as_labels(self):
-        from ce.semantics import Label
+        """Performs labelling analysis on the expression.
+
+        :returns: dictionary containing the labelling scheme.
+        """
+        from soap.semantics import Label
 
         def to_label(e):
             try:
@@ -96,6 +172,13 @@ class Expr(Comparable, Flyweight):
         return l, s
 
     def crop(self, depth):
+        """Truncate the tree at a certain depth.
+
+        :param depth: the depth used to truncate the tree.
+        :type depth: int
+        :returns: the truncated tree and a dictionary containing truncated
+            subexpressions.
+        """
         def subcrop(a):
             try:
                 return a.crop(depth - 1)
@@ -106,11 +189,18 @@ class Expr(Comparable, Flyweight):
             l2, s2 = subcrop(self.a2)
             s1.update(s2)
             return self.__class__(self.op, l1, l2), s1
-        from ce.semantics import Label
+        from soap.semantics import Label
         l = Label(self)
         return l, {l: self}
 
     def stitch(self, env):
+        """Undo truncation by stiching truncated subexpressions back to the
+        leaves of the expression.
+
+        :param env: the truncated expressions.
+        :type env: dict
+        :returns: new expression tree.
+        """
         def substitch(a):
             try:
                 return a.stitch(env)
@@ -130,6 +220,7 @@ class Expr(Comparable, Flyweight):
         return '(%s %s %s)' % (a1, self.op, a2)
 
     def __repr__(self):
+        return self.__str__()
         return "Expr(op='%s', a1=%s, a2=%s)" % \
             (self.op, repr(self.a1), repr(self.a2))
 
@@ -173,30 +264,37 @@ class Expr(Comparable, Flyweight):
 
 
 class BExpr(Expr):
+    """An expression class that only allows non-expression arguments.
+
+    This is a subclass of :class:`Expr`.
+    """
 
     __slots__ = Expr.__slots__
 
     def __init__(self, **kwargs):
-        from ce.semantics import Label
+        from soap.semantics import Label
         super().__init__(**kwargs)
         if not isinstance(self.a1, Label) or not isinstance(self.a2, Label):
             raise ValueError('BExpr allows only binary expressions.')
 
 
 if __name__ == '__main__':
-    r = Expr('(a + 1) * (a + b + [2, 3])')
+    r = Expr("""(a + a + b) * (a + b + b) * (b + b + c) *
+                (b + c + c) * (c + c + a) * (c + a + a)""")
     n, e = r.crop(1)
     print('cropped', n, e)
     print('stitched', n.stitch(e))
     print(r)
     print(repr(r))
     v = {
-        'a': ['0.2', '0.3'],
-        'b': ['2.3', '2.4'],
+        'a': ['1', '2'],
+        'b': ['10', '20'],
+        'c': ['100', '200'],
     }
     print(v)
-    prec = gmpy2.ieee(32).precision
+    prec = gmpy2.ieee(32).precision - 1
     print(r.error(v, prec))
     for l, e in r.as_labels()[1].items():
         print(str(l), ':', str(e))
     print(r.area(v, prec))
+    print(r.real_area(v, prec))

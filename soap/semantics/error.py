@@ -1,9 +1,12 @@
-import itertools
+"""
+.. module:: soap.semantics.error
+    :synopsis: Intervals and error semantics.
+"""
 import gmpy2
-from gmpy2 import RoundUp, RoundDown, mpfr, mpq as _mpq
+from gmpy2 import mpfr, mpq as _mpq
 
-from ce.common import Comparable
-from ce.semantics import Lattice
+from soap.common import Comparable
+from soap.semantics import Lattice
 
 
 mpfr_type = type(mpfr('1.0'))
@@ -11,8 +14,12 @@ mpq_type = type(_mpq('1.0'))
 
 
 def mpq(v):
+    """Unifies how mpq behaves when shit (overflow and NaN) happens."""
     if not isinstance(v, mpfr_type):
-        return _mpq(v)
+        try:
+            return _mpq(v)
+        except ValueError:
+            raise ValueError('Invalid value %s' % str(v))
     try:
         m, e = v.as_mantissa_exp()
     except (OverflowError, ValueError):
@@ -21,6 +28,11 @@ def mpq(v):
 
 
 def ulp(v):
+    """Computes the unit of the last place for a value.
+
+    :param v: The value.
+    :type v: any gmpy2 values
+    """
     if type(v) is not mpfr_type:
         with gmpy2.local_context(round=gmpy2.RoundAwayZero):
             v = mpfr(v)
@@ -30,28 +42,14 @@ def ulp(v):
         return mpfr('Inf')
 
 
-def round_op(f):
-    def wrapped(v1, v2, mode):
-        with gmpy2.local_context(round=mode):
-            return f(v1, v2)
-    return wrapped
-
-
 def round_off_error(interval):
     error = ulp(max(abs(interval.min), abs(interval.max))) / 2
     return FractionInterval([-error, error])
 
 
 def round_off_error_from_exact(v):
-    def round(exact):
-        exact = mpq(exact)
-        rounded = mpq(mpfr(exact))
-        return rounded - exact
-    with gmpy2.local_context(round=gmpy2.RoundDown):
-        vr = round(v)
-    with gmpy2.local_context(round=gmpy2.RoundUp):
-        wr = round(v)
-    return FractionInterval([vr, wr])
+    e = mpq(v) - mpq(mpfr(v))
+    return FractionInterval([e, e])
 
 
 def cast_error_constant(v):
@@ -60,12 +58,11 @@ def cast_error_constant(v):
 
 def cast_error(v, w=None):
     w = w if w else v
-    return ErrorSemantics(
-        [v, w], round_off_error(FractionInterval([v, w])))
+    return ErrorSemantics([v, w], round_off_error(FractionInterval([v, w])))
 
 
 class Interval(Lattice):
-
+    """The interval base class."""
     def __init__(self, v):
         min_val, max_val = v
         self.min, self.max = min_val, max_val
@@ -73,24 +70,26 @@ class Interval(Lattice):
             raise ValueError('min_val cannot be greater than max_val')
 
     def join(self, other):
-        return Interval([min(self.min, other.min), max(self.max, other.max)])
+        return self.__class__(
+            [min(self.min, other.min), max(self.max, other.max)])
 
     def meet(self, other):
-        return Interval([max(self.min, other.min), min(self.max, other.max)])
+        return self.__class__(
+            [max(self.min, other.min), min(self.max, other.max)])
 
     def __iter__(self):
         return iter((self.min, self.max))
 
     def __add__(self, other):
-        return Interval([self.min + other.min, self.max + other.max])
+        return self.__class__([self.min + other.min, self.max + other.max])
 
     def __sub__(self, other):
-        return Interval([self.min - other.max, self.max - other.min])
+        return self.__class__([self.min - other.max, self.max - other.min])
 
     def __mul__(self, other):
         v = (self.min * other.min, self.min * other.max,
              self.max * other.min, self.max * other.max)
-        return Interval([min(v), max(v)])
+        return self.__class__([min(v), max(v)])
 
     def __str__(self):
         return '[%s, %s]' % (str(self.min), str(self.max))
@@ -105,36 +104,16 @@ class Interval(Lattice):
 
 
 class FloatInterval(Interval):
-
+    """The interval containing floating point values."""
     def __init__(self, v):
         min_val, max_val = v
         min_val = mpfr(min_val)
         max_val = mpfr(max_val)
         super().__init__((min_val, max_val))
 
-    def __add__(self, other):
-        f = round_op(lambda x, y: x + y)
-        return FloatInterval(
-            [f(self.min, other.min, RoundDown),
-             f(self.max, other.max, RoundUp)])
-
-    def __sub__(self, other):
-        f = round_op(lambda x, y: x - y)
-        return FloatInterval(
-            [f(self.min, other.max, RoundDown),
-             f(self.max, other.min, RoundUp)])
-
-    def __mul__(self, other):
-        f = round_op(lambda x, y: x * y)
-        l = itertools.product((self.min, self.max),
-                              (other.min, other.max),
-                              (RoundDown, RoundUp))
-        v = [f(x, y, m) for x, y, m in l]
-        return FloatInterval([min(v), max(v)])
-
 
 class FractionInterval(Interval):
-
+    """The interval containing real rational values."""
     def __init__(self, v):
         min_val, max_val = v
         super().__init__((mpq(min_val), mpq(max_val)))
@@ -144,7 +123,7 @@ class FractionInterval(Interval):
 
 
 class ErrorSemantics(Lattice, Comparable):
-
+    """The error semantics."""
     def __init__(self, v, e):
         self.v = FloatInterval(v)
         self.e = FractionInterval(e)
@@ -195,16 +174,23 @@ class ErrorSemantics(Lattice, Comparable):
 
 
 if __name__ == '__main__':
-    gmpy2.set_context(gmpy2.ieee(32))
+    from soap.semantics import precision_context
+    with precision_context(52):
+        x = cast_error('0.1', '0.2')
+        print(x)
+        print(x * x)
+    with precision_context(23):
+        a = cast_error('5', '10')
+        b = cast_error('0', '0.001')
+        print((a + b) * (a + b))
+    gmpy2.set_context(gmpy2.ieee(64))
     print(FloatInterval(['0.1', '0.2']) * FloatInterval(['5.3', '6.7']))
     print(float(ulp(mpfr('0.1'))))
     mult = lambda x, y: x * y
     args = [mpfr('0.3'), mpfr('2.6')]
-    print(round_op(mult)(*(args + [gmpy2.RoundDown])))
-    print(round_op(mult)(*(args + [gmpy2.RoundUp])))
     a = FloatInterval(['0.3', '0.3'])
     print(a, round_off_error(a))
     x = cast_error('0.9', '1.1')
-    for i in range(10):
+    for i in range(20):
         x *= x
         print(i, x)

@@ -1,3 +1,4 @@
+import os
 import sys
 from pprint import pformat
 from contextlib import contextmanager
@@ -13,8 +14,19 @@ for i, l in enumerate(labels):
     levels.__dict__[l] = i
 
 
+colours = {
+    levels.debug: '\033[94m',
+    levels.info: '\033[92m',
+    levels.warning: '\033[93m',
+    levels.error: '\033[91m',
+}
+colours_end = '\033[0m'
+
+
 context = {
     'level': levels.off,
+    'pause_level': levels.off,
+    'colour': True,
     'file': None,
     'persistent': {},
 }
@@ -28,6 +40,14 @@ def get_context():
     return context
 
 
+def colourise(s, l=levels.info):
+    if not 'color' in os.environ['TERM']:
+        return s
+    if not get_context()['colour']:
+        return s
+    return colours[l] + s + colours_end
+
+
 def format(*args):
     return ' '.join(pformat(a) if not isinstance(a, str) else a for a in args)
 
@@ -35,8 +55,17 @@ def format(*args):
 def log(*args, l=levels.info):
     if l < get_context()['level']:
         return
-    f = context['file'] or sys.stdout
-    print(format(*args), end='', file=f)
+    f = get_context()['file'] or sys.stdout
+    print(colourise(format(*args), l), end='', file=f)
+    while l >= get_context()['pause_level']:
+        r = input('Continue [Return], Stack trace [t], Abort [q]: ')
+        if not r:
+            break
+        if r == 't':
+            import traceback
+            traceback.print_stack()
+        if r == 'q':
+            sys.exit(-1)
 
 
 def line(*args, l=levels.info):
@@ -50,7 +79,11 @@ def rewrite(*args, l=levels.info):
 
 
 def persistent(name, *args, l=levels.info):
-    get_context()['persistent'][name] = args + (l, )
+    prev = get_context()['persistent'].get(name)
+    curr = args + (l, )
+    if prev == curr:
+        return
+    get_context()['persistent'][name] = curr
     s = []
     for k, v in get_context()['persistent'].items():
         *v, l = v
@@ -101,7 +134,8 @@ for i, l in enumerate(labels):
 
 
 if __name__ == '__main__':
+    set_context(level=levels.debug)
     info('Hello')
     debug('Hello')
-    import time
-    debug_enable(time.sleep)(100)
+    warning('Hello')
+    error('Hello')

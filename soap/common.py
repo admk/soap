@@ -5,7 +5,7 @@ import weakref
 import pickle
 from contextlib import contextmanager
 
-import ce.logger as logger
+import soap.logger as logger
 
 
 class DynamicMethods(object):
@@ -73,8 +73,8 @@ def profiled():
     import pycallgraph
     from pympler.classtracker import ClassTracker
     from pympler.asizeof import asizeof
-    from ce.common import Flyweight, _cache_map
-    from ce.expr import Expr
+    from soap.common import Flyweight, _cache_map
+    from soap.expr import Expr
     pycallgraph.start_trace()
     tracker = ClassTracker()
     tracker.track_object(Flyweight._cache)
@@ -87,20 +87,79 @@ def profiled():
     pycallgraph.make_dot_graph('profile.png')
 
 
-CACHE_CAPACITY = 1000000
-_cache_map = dict()
+_cached_funcs = []
+
+
+def _process_invalidate_cache():
+    for f in _cached_funcs:
+        f.cache_clear()
+    Flyweight._cache.clear()
+
+
+def invalidate_cache():
+    from soap.transformer.core import pool
+    _process_invalidate_cache()
+    pool().apply(_process_invalidate_cache)
 
 
 def cached(f):
+    CACHE_CAPACITY = 1000
+    cache = {}
+    full = False
+    hits = misses = currsize = 0
+    root = []
+    root[:] = [root, root, None, None]
+    PREV, NEXT, KEY, RESULT = range(4)
+
     def decorated(*args, **kwargs):
+        nonlocal root, hits, misses, currsize, full
         key = pickle.dumps((f.__name__, args, tuple(kwargs.items())))
-        v = _cache_map.get(key)
-        if v is None:
-            v = f(*args, **kwargs)
-        if len(_cache_map) < CACHE_CAPACITY:
-            _cache_map[key] = v
-        return v
-    return functools.wraps(f)(decorated)
+        link = cache.get(key)
+        if not link is None:
+            p, n, k, r = link
+            p[NEXT] = n
+            n[PREV] = p
+            last = root[PREV]
+            last[NEXT] = root[PREV] = link
+            link[PREV] = last
+            link[NEXT] = root
+            hits += 1
+            return r
+        r = f(*args, **kwargs)
+        if full:
+            root[KEY] = key
+            root[RESULT] = r
+            cache[key] = root
+            root = root[NEXT]
+            del cache[root[KEY]]
+            root[KEY] = root[RESULT] = None
+        else:
+            last = root[PREV]
+            link = [last, root, key, r]
+            cache[key] = last[NEXT] = root[PREV] = link
+            currsize += 1
+            full = (currsize == CACHE_CAPACITY)
+        misses += 1
+        return r
+
+    def cache_info():
+        return hits, misses, currsize
+
+    def cache_clear():
+        nonlocal hits, misses, currsize, full
+        cache.clear()
+        root[:] = [root, root, None, None]
+        hits = misses = currsize = 0
+        full = False
+
+    d = functools.wraps(f)(decorated)
+    d.cache_info = cache_info
+    d.cache_clear = cache_clear
+
+    global _cached_funcs
+    _cached_funcs.append(d)
+
+    return d
 
 
 class Flyweight(object):

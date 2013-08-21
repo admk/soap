@@ -1,6 +1,13 @@
+"""
+.. module:: soap.expr.common
+    :synopsis: Common definitions for expressions.
+"""
 ADD_OP = '+'
+SUBTRACT_OP = '-'
 MULTIPLY_OP = '*'
+DIVIDE_OP = '/'
 BARRIER_OP = '|'
+UNARY_SUBTRACT_OP = '-'
 
 OPERATORS = [ADD_OP, MULTIPLY_OP]
 
@@ -23,12 +30,16 @@ RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTION_OVER_OPERATORS = \
 
 
 def is_expr(e):
-    from ce.expr.biop import Expr
+    """Check if `e` is an expression."""
+    from soap.expr.biop import Expr
     return isinstance(e, Expr)
 
 
 def concat_multi_expr(*expr_args):
-    from ce.expr.biop import Expr
+    """Concatenates multiple expressions into a single expression by using the
+    barrier operator `|`.
+    """
+    from soap.expr.biop import Expr
     me = None
     for e in expr_args:
         e = Expr(e)
@@ -37,6 +48,7 @@ def concat_multi_expr(*expr_args):
 
 
 def split_multi_expr(e):
+    """Splits the single expression into multiple expressions."""
     if e.op != BARRIER_OP:
         return [e]
     return split_multi_expr(e.a1) + split_multi_expr(e.a2)

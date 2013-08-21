@@ -1,19 +1,36 @@
+"""
+.. module:: soap.transformer.biop
+    :synopsis: Transforms expression instances with binary operators.
+"""
 import re
 import random
 
-import ce.logger as logger
-from ce.expr.common import ADD_OP, MULTIPLY_OP, ASSOCIATIVITY_OPERATORS, \
-    LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS, \
-    RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS, \
+import soap.logger as logger
+from soap.expr.common import (
+    ADD_OP, MULTIPLY_OP, ASSOCIATIVITY_OPERATORS,
+    LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS,
+    RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS,
     is_expr
-from ce.expr import Expr
-from ce.transformer.core import item_to_list, none_to_list, \
-    TreeTransformer, ValidationError
-from ce.semantics import mpq_type
+)
+from soap.expr import Expr
+from soap.transformer.core import (
+    item_to_list, none_to_list, TreeTransformer, ValidationError
+)
+from soap.semantics import mpq_type
 
 
 @none_to_list
 def associativity(t):
+    """Associativity relation between expressions.
+
+    For example:
+        (a + b) + c == a + (b + c)
+
+    :param t: The expression tree.
+    :type t: :class:`soap.expr.Expr`
+    :returns: A list of expressions that are derived with assoicativity from
+        the input tree.
+    """
     def expr_from_args(args):
         for a in args:
             al = list(args)
@@ -30,6 +47,16 @@ def associativity(t):
 
 
 def distribute_for_distributivity(t):
+    """Distributivity relation between expressions by distributing.
+
+    For example:
+        (a + b) * c == (a * c) + (b * c)
+
+    :param t: The expression tree.
+    :type t: :class:`soap.expr.Expr`
+    :returns: A list of expressions that are derived with distributivity from
+        the input tree.
+    """
     s = []
     if t.op in LEFT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a2):
         if (t.op, t.a2.op) in LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
@@ -46,7 +73,16 @@ def distribute_for_distributivity(t):
 
 @none_to_list
 def collect_for_distributivity(t):
+    """Distributivity relation between expressions by collecting common terms.
 
+    For example:
+        (a * c) + (b * c) == (a + b) * c
+
+    :param t: The expression tree.
+    :type t: :class:`soap.expr.Expr`
+    :returns: A list of expressions that are derived with distributivity from
+        the input tree.
+    """
     def al(a):
         if not is_expr(a):
             return [a, 1]
@@ -88,16 +124,43 @@ def _identity_reduction(t, iop, i):
 
 @item_to_list
 def multiplicative_identity_reduction(t):
+    """Multiplicative identity relation from an expression.
+
+    For example:
+        a * 1 == a
+
+    :param t: The expression tree.
+    :type t: :class:`soap.expr.Expr`
+    :returns: A list containing an expression related by this reduction rule.
+    """
     return _identity_reduction(t, MULTIPLY_OP, 1)
 
 
 @item_to_list
 def additive_identity_reduction(t):
+    """Additive identity relation from an expression.
+
+    For example:
+        a + 0 == a
+
+    :param t: The expression tree.
+    :type t: :class:`soap.expr.Expr`
+    :returns: A list containing an expression related by this reduction rule.
+    """
     return _identity_reduction(t, ADD_OP, 0)
 
 
 @item_to_list
 def zero_reduction(t):
+    """The zero-property of expressions.
+
+    For example:
+        a * 0 == 0
+
+    :param t: The expression tree.
+    :type t: :class:`soap.expr.Expr`
+    :returns: A list containing an expression related by this reduction rule.
+    """
     if t.op != MULTIPLY_OP:
         return
     if t.a1 != 0 and t.a2 != 0:
@@ -107,6 +170,15 @@ def zero_reduction(t):
 
 @item_to_list
 def constant_reduction(t):
+    """Constant propagation.
+
+    For example:
+        1 + 2 == 3
+
+    :param t: The expression tree.
+    :type t: :class:`soap.expr.Expr`
+    :returns: A list containing an expression related by this reduction rule.
+    """
     def is_exact(v):
         return isinstance(v, (int, mpq_type))
     if not is_exact(t.a1) or not is_exact(t.a2):
@@ -118,7 +190,11 @@ def constant_reduction(t):
 
 
 class BiOpTreeTransformer(TreeTransformer):
+    """The class that provides transformation of binary operator expressions.
 
+    It has the same arguments as :class:`soap.transformer.TreeTransformer`,
+    which is the class it is derived from.
+    """
     transform_methods = [associativity,
                          distribute_for_distributivity,
                          collect_for_distributivity]
@@ -152,7 +228,7 @@ class BiOpTreeTransformer(TreeTransformer):
 
 
 if __name__ == '__main__':
-    from ce.common import profiled, timed
+    from soap.common import profiled, timed
     Expr.__repr__ = Expr.__str__
     logger.set_context(level=logger.levels.info)
     e = '(a + 1) * b | (b + 1) * a | a * b'
@@ -162,7 +238,7 @@ if __name__ == '__main__':
     with profiled(), timed():
         s = BiOpTreeTransformer(t).closure()
     logger.info('Transformed:', len(s))
-    from ce.analysis.utils import plot, analyse
+    from soap.analysis.utils import plot, analyse
     v = {'a': ['1', '2'], 'b': ['100', '200']}
     a = analyse(s, v)
     logger.info(a)
