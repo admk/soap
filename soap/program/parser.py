@@ -4,52 +4,44 @@
 """
 import ast
 
-from soap.expr.parser import raise_parser_error, ast_to_expr
+from soap.expr.parser import ast_to_expr, raise_parser_error
+from soap.expr import Expr
+
+from soap.program.flow import AssignFlow, IfFlow, WhileFlow, CompositionalFlow
 
 
-class Block(object):
-    """A control/data flow block of a program."""
-    def transition(state):
-        """The statement block takes as its input a state and makes a
-        transition into a new state. Each subclass should implement this member
-        function."""
-        raise NotImplementedError
+def ast_to_flow(prog_ast, prog_str):
+    """Converts abstract syntax trees into program flow :class:`Flow`
+    instances."""
+    def ast_to_arithexpr(expr):
+        return ast_to_expr(expr, Expr, prog_str)
 
+    def ast_to_boolexpr(expr):
+        return ast_to_expr(expr, Expr, prog_str)
 
-class AssignBlock(Block):
-    """Assign block."""
-    def __init__(self, var, expr, next_block):
-        self.var = var
-        self.expr = expr
-        self.next_block = next_block
-
-    def transition(state):
-        return state
-
-
-class ConditionalBlock(Block):
-    """Conditional block."""
-    def __init__(self, expr, true_block, false_block):
-        self.expr = expr
-        self.true_block = true_block
-        self.false_block = false_block
-
-    def transition(state):
-        return state
-
-
-def ast_to_block(prog_ast, prog_str):
+    flow = CompositionalFlow()
     for stmt in prog_ast:
         if isinstance(stmt, ast.Assign):
-            pass
+            flow += AssignFlow(
+                stmt.targets.pop().id,
+                ast_to_arithexpr(stmt.value))
         elif isinstance(stmt, ast.If):
-            pass
+            flow += IfFlow(
+                ast_to_boolexpr(stmt.test),
+                ast_to_flow(stmt.body, prog_str),
+                ast_to_flow(stmt.orelse, prog_str))
         elif isinstance(stmt, ast.While):
-            pass
+            flow += WhileFlow(
+                ast_to_boolexpr(stmt.test),
+                ast_to_flow(stmt.body, prog_str))
         else:
             raise_parser_error('Unknown statement', prog_str, stmt)
+    return flow
 
 
 def parse(prog_str):
-    ast_to_block(ast.parse(prog_str).body)
+    return ast_to_flow(ast.parse(prog_str).body, prog_str)
 
+
+if __name__ == '__main__':
+    print(parse("""while x > 1: x = 0.9 * x"""))

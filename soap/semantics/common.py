@@ -74,11 +74,29 @@ class Labels(object):
 
 class Lattice(object):
     """Common lattice structure."""
+    @classmethod
+    def bottom(cls):
+        return cls.bottom
+
+    @classmethod
+    def top(cls):
+        return cls.top
+
     def join(self, other):
         raise NotImplementedError
 
     def meet(self, other):
         raise NotImplementedError
+
+    def __le__(self, other):
+        raise NotImplementedError
+
+    def __ge__(self, other):
+        return other.__le__(self)
+
+    def __eq__(self, other):
+        """Defaults to antisymmetry."""
+        return self.__le__(other) and self.__ge__(other)
 
     def __or__(self, other):
         return self.join(other)
