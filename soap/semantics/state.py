@@ -24,8 +24,8 @@ class State(Lattice):
 
 class ClassicalState(State):
     """The classical definition of a program state."""
-    def __init__(self, mapping, **kwargs):
-        self.mapping = dict(mapping, **kwargs)
+    def __init__(self, mapping=None, **kwargs):
+        self.mapping = dict(mapping or {}, **kwargs)
 
     def assign(self, var, expr):
         copy = self.copy()
@@ -50,6 +50,10 @@ class ClassicalState(State):
         return copy
 
     def __le__(self, other):
+        if other == self.__class__.bottom():
+            return False
+        if other == self.__class__.top():
+            return True
         if set(self.mapping.items()) <= set(other.mapping.items()):
             return True
         return False

@@ -56,7 +56,7 @@ class WhileFlow(Flow):
     def flow(self, state):
         fixpoint_flow = IfFlow(
             self.conditional_expr, self.loop_flow, IdentityFlow())
-        prev_state = None
+        prev_state = state.bottom()
         state = state.copy()
         while state != prev_state:
             prev_state, state = state, fixpoint_flow.flow(state)
@@ -78,6 +78,7 @@ class CompositionalFlow(Flow):
     def flow(self, state):
         for flow in self.flows:
             state = flow.flow(state)
+        return state
 
     def __add__(self, other):
         try:
