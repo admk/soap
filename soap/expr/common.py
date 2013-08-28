@@ -7,10 +7,24 @@ SUBTRACT_OP = '-'
 UNARY_SUBTRACT_OP = '-'
 MULTIPLY_OP = '*'
 DIVIDE_OP = '/'
-BARRIER_OP = '|'
+
+EQUAL_OP = '=='
+GREATER_OP = '>'
+LESS_OP = '<'
+UNARY_NEGATION_OP = '!'
+AND_OP = '&'
+OR_OP = '|'
+
+BARRIER_OP = '#'
 
 OPERATORS = [ADD_OP, MULTIPLY_OP]
-UNARY_OPERATORS = [UNARY_SUBTRACT_OP]
+BOOLEAN_OPERATORS = [
+    EQUAL_OP, GREATER_OP, LESS_OP, UNARY_NEGATION_OP, AND_OP, OR_OP
+]
+ARITHMETIC_OPERATORS = [
+    ADD_OP, SUBTRACT_OP, UNARY_SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP
+]
+UNARY_OPERATORS = [UNARY_SUBTRACT_OP, UNARY_NEGATION_OP]
 
 ASSOCIATIVITY_OPERATORS = [ADD_OP, MULTIPLY_OP]
 
@@ -31,14 +45,26 @@ RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTION_OVER_OPERATORS = \
 
 
 def is_expr(e):
+    return is_arith_expr(e) or is_bool_expr(e)
+
+
+def is_arith_expr(e):
     """Check if `e` is an expression."""
+    if is_bool_expr(e):
+        return False
     from soap.expr.arith import Expr
     return isinstance(e, Expr)
 
 
+def is_bool_expr(e):
+    """Check if `e` is a boolean expression."""
+    from soap.expr.bool import BoolExpr
+    return isinstance(e, BoolExpr)
+
+
 def concat_multi_expr(*expr_args):
     """Concatenates multiple expressions into a single expression by using the
-    barrier operator `|`.
+    barrier operator.
     """
     from soap.expr.arith import Expr
     me = None
