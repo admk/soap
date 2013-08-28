@@ -44,4 +44,11 @@ def parse(prog_str):
 
 
 if __name__ == '__main__':
-    print(parse("""while x > 1: x = 0.9 * x"""))
+    from soap import logger
+    from soap.semantics.state import ClassicalState
+    logger.set_context(level=logger.levels.info)
+    flow = parse("""while x < 10: x = x + 1""")
+    logger.info(flow)
+    state = ClassicalState(x=0)
+    logger.info(state)
+    logger.info(flow.flow(state))

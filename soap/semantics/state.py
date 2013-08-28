@@ -53,3 +53,6 @@ class ClassicalState(State):
         if set(self.mapping.items()) <= set(other.mapping.items()):
             return True
         return False
+
+    def __str__(self):
+        return str(self.mapping)
