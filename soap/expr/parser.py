@@ -39,51 +39,67 @@ class ParserSyntaxError(SyntaxError):
     """Syntax Error Exception for :func:`parse`."""
 
 
+def raise_parser_error(desc, text, token):
+    exc = ParserSyntaxError(str(desc))
+    exc.text = text
+    exc.lineno = token.lineno
+    exc.offset = token.col_offset
+    raise exc
+
+
+def ast_to_expr(t, s):
+    from soap.expr.arith import Expr
+    from soap.expr.bool import BoolExpr
+    with ignored(AttributeError):
+        return t.n
+    with ignored(AttributeError):
+        return t.id
+    with ignored(AttributeError):
+        return t.s
+    with ignored(AttributeError):
+        return tuple(ast_to_expr(v, s) for v in t.elts)
+    with ignored(AttributeError):
+        op = OPERATOR_MAP[t.ops.pop().__class__]
+        a1 = ast_to_expr(t.left, s)
+        a2 = ast_to_expr(t.comparators.pop(), s)
+        return BoolExpr(op, a1, a2)
+    with ignored(AttributeError):
+        a1, a2 = [ast_to_expr(a, s) for a in t.values]
+        op = OPERATOR_MAP[t.op.__class__]
+        return BoolExpr(op, a1, a2)
+    try:
+        op = OPERATOR_MAP[t.op.__class__]
+        if op == UNARY_SUBTRACT_OP:
+            a1 = ast_to_expr(t.operand, s)
+            a2 = None
+        else:
+            a1 = ast_to_expr(t.left, s)
+            a2 = ast_to_expr(t.right, s)
+        if op == DIVIDE_OP:
+            try:
+                return gmpy2.mpq(a1, a2)
+            except TypeError:
+                pass
+        return Expr(op, a1, a2)
+    except KeyError:
+        raise_parser_error('Unrecognised operator %s' % str(t.op), s, t)
+    except AttributeError:
+        raise_parser_error('Unknown token %s' % str(t), s, t)
+
+
 def parse(s):
     """Parses a string into an instance of class `cls`.
 
     :param s: a string with valid syntax.
     :type s: str
     """
-    def _parse_r(t):
-        from soap.expr.arith import Expr
-        from soap.expr.bool import BoolExpr
-        with ignored(AttributeError):
-            return t.n
-        with ignored(AttributeError):
-            return t.id
-        with ignored(AttributeError):
-            return t.s
-        with ignored(AttributeError):
-            return tuple(_parse_r(v) for v in t.elts)
-        with ignored(AttributeError):
-            op = OPERATOR_MAP[t.ops.pop().__class__]
-            a1 = _parse_r(t.left)
-            a2 = _parse_r(t.comparators.pop())
-            return BoolExpr(op, a1, a2)
-        try:
-            op = OPERATOR_MAP[t.op.__class__]
-            if op == UNARY_SUBTRACT_OP:
-                a1 = _parse_r(t.operand)
-                a2 = None
-            else:
-                a1 = _parse_r(t.left)
-                a2 = _parse_r(t.right)
-            if op == DIVIDE_OP:
-                try:
-                    return gmpy2.mpq(a1, a2)
-                except TypeError:
-                    pass
-            return Expr(op, a1, a2)
-        except KeyError:
-            raise ParserSyntaxError('Unrecognised operator %s' % str(t.op))
-        except AttributeError:
-            raise ParserSyntaxError('Unknown token %s' % str(t))
+    s = s.replace('\n', '').strip()
     try:
-        body = ast.parse(s.replace('\n', '').strip(), mode='eval').body
+        body = ast.parse(s, mode='eval').body
+        return ast_to_expr(body, s)
     except (TypeError, AttributeError):
         raise TypeError('Parse argument must be a string')
-    try:
-        return _parse_r(body)
     except SyntaxError as e:
-        raise ParserSyntaxError(e)
+        if type(e) is not ParserSyntaxError:
+            raise ParserSyntaxError(e)
+        raise e
