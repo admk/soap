@@ -124,7 +124,7 @@ class TraceExpr(Expr):
     equivalence finding.
 
     Implements :member:`traces` that finds equivalnent expressions. Subclasses
-    needs to override :member:`closure`.
+    need to override :member:`closure`.
     """
     def traces(self, var_env=None, depth=None, prec=None, **kwargs):
         _, discovered = self._traces(var_env, depth, prec, **kwargs)
