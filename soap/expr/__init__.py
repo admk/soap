@@ -6,3 +6,4 @@ from soap.expr.common import (
     RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS
 )
 from soap.expr.arith import Expr, BExpr
+from soap.expr.bool import BoolExpr
