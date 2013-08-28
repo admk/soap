@@ -103,7 +103,3 @@ def parse(s):
         if type(e) is not ParserSyntaxError:
             raise ParserSyntaxError(e)
         raise e
-
-
-if __name__ == '__main__':
-    print(parse('a and b'))
