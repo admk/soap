@@ -2,11 +2,9 @@
 .. module:: soap.expr.arith
     :synopsis: The class of expressions.
 """
-import gmpy2
-
 from soap.common import Comparable, Flyweight, cached, ignored
 from soap.expr.common import (
-    ADD_OP, MULTIPLY_OP, BARRIER_OP, COMMUTATIVITY_OPERATORS
+    ADD_OP, MULTIPLY_OP, BARRIER_OP, COMMUTATIVITY_OPERATORS, UNARY_OPERATORS
 )
 from soap.expr.parser import parse
 
@@ -18,23 +16,33 @@ class Expr(Comparable, Flyweight):
 
     def __init__(self, *args, **kwargs):
         """Expr allows several ways of instantiation for the expression example
-        (a + b)::
+        ``(a + b)``::
 
-            1. ``Expr('+', a, b)``
-            2. ``Expr(op='+', a1=a, a2=b)``
-            3. ``Expr('+', al=(a, b))``
+            1. ``Expr('+', 'a', 'b')``
+            2. ``Expr(op='+', a1='a', a2='b')``
+            3. ``Expr('+', al=('a', 'b'))``
+
+        Expr also allows unary operations, for example for ``a``::
+
+            1. ``Expr('-', 'a')``
+            2. ``Expr('-', 'a', None)``
+            3. ``Expr(op='-', a='a')``
+            4. ``Expr(op='-', al=['a'])``
         """
         if kwargs:
             op = kwargs.setdefault('op')
             a1 = kwargs.setdefault('a1')
             a2 = kwargs.setdefault('a2')
-            al = a1, a2
-        if len(args) == 1:
+            if a1 is not None and a2 is not None:
+                al = a1, a2
+            else:
+                al = kwargs.setdefault('a')
+        elif len(args) == 1:
             expr = list(args).pop()
             try:
                 op, al = expr.op, expr.args
             except AttributeError:
-                expr = parse(expr, self.__class__)
+                expr = parse(expr)
             try:
                 op, al = expr.op, expr.args
             except AttributeError:
@@ -44,11 +52,22 @@ class Expr(Comparable, Flyweight):
         elif len(args) == 3:
             op, *al = args
         self.op = op
-        self.a1, self.a2 = al
+        if len(al) > 1:
+            self.a1, self.a2 = al
+        elif op in UNARY_OPERATORS:
+            self.a1, self.a2 = al.pop(), None
+        else:
+            raise ValueError('Number of arguments and operator type mismatch.')
         super().__init__()
 
     def __getnewargs__(self):
         return self.op, self.a1, self.a2
+
+    def is_unary(self):
+        return (self.op in UNARY_OPERATORS) and (self.a2 is None)
+
+    def is_binary(self):
+        return not self.is_unary()
 
     def tree(self):
         """Produces a tuple tree for the expression."""
@@ -61,7 +80,9 @@ class Expr(Comparable, Flyweight):
     @property
     def args(self):
         """Returns the arguments of the expression"""
-        return [self.a1, self.a2]
+        if self.a2 is not None:
+            return [self.a1, self.a2]
+        return [self.a1]
 
     @cached
     def error(self, var_env, prec):
@@ -216,7 +237,11 @@ class Expr(Comparable, Flyweight):
         return iter((self.op, self.a1, self.a2))
 
     def __str__(self):
-        a1, a2 = sorted([str(self.a1), str(self.a2)])
+        a1, a2 = [str(self.a1), str(self.a2)]
+        if self.op in COMMUTATIVITY_OPERATORS:
+            a1, a2 = sorted([a1, a2])
+        if self.is_unary():
+            return '%s%s' % (self.op, a1)
         return '(%s %s %s)' % (a1, self.op, a2)
 
     def __repr__(self):
@@ -276,25 +301,3 @@ class BExpr(Expr):
         super().__init__(**kwargs)
         if not isinstance(self.a1, Label) or not isinstance(self.a2, Label):
             raise ValueError('BExpr allows only binary expressions.')
-
-
-if __name__ == '__main__':
-    r = Expr("""(a + a + b) * (a + b + b) * (b + b + c) *
-                (b + c + c) * (c + c + a) * (c + a + a)""")
-    n, e = r.crop(1)
-    print('cropped', n, e)
-    print('stitched', n.stitch(e))
-    print(r)
-    print(repr(r))
-    v = {
-        'a': ['1', '2'],
-        'b': ['10', '20'],
-        'c': ['100', '200'],
-    }
-    print(v)
-    prec = gmpy2.ieee(32).precision - 1
-    print(r.error(v, prec))
-    for l, e in r.as_labels()[1].items():
-        print(str(l), ':', str(e))
-    print(r.area(v, prec))
-    print(r.real_area(v, prec))
