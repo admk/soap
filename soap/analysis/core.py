@@ -168,7 +168,7 @@ class VaryWidthAnalysis(AreaErrorAnalysis):
 
 
 if __name__ == '__main__':
-    from soap.transformer import BiOpTreeTransformer
+    from soap.transformer import ArithTreeTransformer
     from soap.analysis.utils import plot
     from soap.common import timed
     logger.set_context(level=logger.levels.info)
@@ -178,7 +178,7 @@ if __name__ == '__main__':
         'b': ['0', '0.001'],
     }
     with timed('Analysis'):
-        a = VaryWidthAnalysis(BiOpTreeTransformer(e).closure(), v)
+        a = VaryWidthAnalysis(ArithTreeTransformer(e).closure(), v)
         a, f = a.analyse(), a.frontier()
     logger.info('Results', len(a))
     logger.info('Frontier', len(f))

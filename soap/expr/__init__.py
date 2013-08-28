@@ -3,4 +3,4 @@ from soap.expr.common import (
     LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS,
     RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS
 )
-from soap.expr.biop import Expr, BExpr
+from soap.expr.arith import Expr, BExpr

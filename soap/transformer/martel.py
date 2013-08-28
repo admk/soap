@@ -3,10 +3,10 @@
     :synopsis: Some compatibility hacks to support martel's equivalence
         finding, so we can compare.
 """
-from soap.transformer.biop import BiOpTreeTransformer
+from soap.transformer.arith import ArithTreeTransformer
 
 
-class MartelBiOpTreeTransformer(BiOpTreeTransformer):
+class MartelTreeTransformer(ArithTreeTransformer):
 
     reduction_methods = []
 

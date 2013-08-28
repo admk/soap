@@ -31,7 +31,7 @@ RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTION_OVER_OPERATORS = \
 
 def is_expr(e):
     """Check if `e` is an expression."""
-    from soap.expr.biop import Expr
+    from soap.expr.arith import Expr
     return isinstance(e, Expr)
 
 
@@ -39,7 +39,7 @@ def concat_multi_expr(*expr_args):
     """Concatenates multiple expressions into a single expression by using the
     barrier operator `|`.
     """
-    from soap.expr.biop import Expr
+    from soap.expr.arith import Expr
     me = None
     for e in expr_args:
         e = Expr(e)

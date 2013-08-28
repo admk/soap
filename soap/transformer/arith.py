@@ -1,6 +1,6 @@
 """
-.. module:: soap.transformer.biop
-    :synopsis: Transforms expression instances with binary operators.
+.. module:: soap.transformer.arith
+    :synopsis: Transforms arithmetic expression instances.
 """
 import re
 import random
@@ -189,7 +189,7 @@ def constant_reduction(t):
         return t.a1 + t.a2
 
 
-class BiOpTreeTransformer(TreeTransformer):
+class ArithTreeTransformer(TreeTransformer):
     """The class that provides transformation of binary operator expressions.
 
     It has the same arguments as :class:`soap.transformer.TreeTransformer`,
@@ -211,7 +211,7 @@ class BiOpTreeTransformer(TreeTransformer):
     def validate(t, tn):
         # FIXME: broken after ErrorSemantics
         def vars(tree_str):
-            return set(BiOpTreeTransformer.VAR_RE.findall(tree_str))
+            return set(ArithTreeTransformer.VAR_RE.findall(tree_str))
         to, no = ts, ns = str(t), str(tn)
         tsv, nsv = vars(ts), vars(ns)
         if tsv != nsv:
@@ -236,7 +236,7 @@ if __name__ == '__main__':
     logger.info('Expr:', str(t))
     logger.info('Tree:', t.tree())
     with profiled(), timed():
-        s = BiOpTreeTransformer(t).closure()
+        s = ArithTreeTransformer(t).closure()
     logger.info('Transformed:', len(s))
     from soap.analysis.utils import plot, analyse
     v = {'a': ['1', '2'], 'b': ['100', '200']}

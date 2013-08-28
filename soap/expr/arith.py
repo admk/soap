@@ -1,5 +1,5 @@
 """
-.. module:: soap.expr.biop
+.. module:: soap.expr.arith
     :synopsis: The class of expressions.
 """
 import gmpy2
