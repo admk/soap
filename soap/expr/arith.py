@@ -117,6 +117,10 @@ class Expr(Comparable, Flyweight):
             if self.op == BARRIER_OP:
                 return e1 | e2
 
+    def eval(self, var_env=None, **kwargs):
+        """Simple expression evaluation hack."""
+        return eval(str(self), dict(var_env or {}, **kwargs))
+
     def exponent_width(self, var_env, prec):
         """Computes the exponent width required for its evaluation so that no
         overflow could occur.
