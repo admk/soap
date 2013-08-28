@@ -1,1 +1,1 @@
-from soap.transformer.biop import BiOpTreeTransformer
+from soap.transformer.arith import ArithTreeTransformer

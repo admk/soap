@@ -1,23 +1,23 @@
 """
 .. module:: soap.transformer.utils
     :synopsis: Useful utility functions to simplify calls to
-        BiOpTreeTransformer.
+        ArithTreeTransformer.
 """
 import itertools
 
 import soap.logger as logger
 from soap.expr import Expr
 from soap.transformer.core import TreeTransformer
-from soap.transformer.biop import (
-    associativity, distribute_for_distributivity, BiOpTreeTransformer
+from soap.transformer.arith import (
+    associativity, distribute_for_distributivity, ArithTreeTransformer
 )
-from soap.transformer.martel import MartelBiOpTreeTransformer
+from soap.transformer.martel import MartelTreeTransformer
 from soap.analysis import expr_frontier
 
 
 def closure(tree, **kwargs):
     """The full transitive closure."""
-    return BiOpTreeTransformer(tree, **kwargs).closure()
+    return ArithTreeTransformer(tree, **kwargs).closure()
 
 
 def full_closure(tree, **kwargs):
@@ -41,7 +41,7 @@ def greedy_frontier_closure(tree, var_env=None, prec=None, **kwargs):
         func = lambda s: expr_frontier(s, var_env, prec)
     else:
         func = None
-    closure = BiOpTreeTransformer(tree, step_plugin=func, **kwargs).closure()
+    closure = ArithTreeTransformer(tree, step_plugin=func, **kwargs).closure()
     return expr_frontier(closure, var_env, prec)
 
 
@@ -85,7 +85,7 @@ def reduce(tree):
     except TypeError:
         with logger.local_context(level=logger.levels.info):
             return {reduce(t) for t in tree}
-    t = transform(tree, BiOpTreeTransformer.reduction_methods,
+    t = transform(tree, ArithTreeTransformer.reduction_methods,
                   multiprocessing=False)
     s = set(t)
     if len(s) > 1:
@@ -114,7 +114,7 @@ def collecting_closure(tree, depth=None):
     :type depth: int
     :returns: A set of trees.
     """
-    t = BiOpTreeTransformer(tree, depth=depth)
+    t = ArithTreeTransformer(tree, depth=depth)
     t.transform_methods.remove(distribute_for_distributivity)
     return t.closure()
 
@@ -124,7 +124,7 @@ class TraceExpr(Expr):
     equivalence finding.
 
     Implements :member:`traces` that finds equivalnent expressions. Subclasses
-    needs to override :member:`closure`.
+    need to override :member:`closure`.
     """
     def traces(self, var_env=None, depth=None, prec=None, **kwargs):
         _, discovered = self._traces(var_env, depth, prec, **kwargs)
@@ -163,7 +163,7 @@ class TraceExpr(Expr):
 class MartelTraceExpr(TraceExpr):
     """A subclass of :class:`TraceExpr` to generate Martel's results."""
     def closure(self, trees, **kwargs):
-        return MartelBiOpTreeTransformer(
+        return MartelTreeTransformer(
             trees, depth=kwargs['depth']).closure()
 
 
