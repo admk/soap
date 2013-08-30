@@ -8,8 +8,9 @@ import gmpy2
 from soap.common import ignored
 from soap.semantics import mpq
 from soap.expr.common import (
-    ADD_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP,
-    EQUAL_OP, GREATER_OP, LESS_OP, UNARY_NEGATION_OP, AND_OP, OR_OP
+    ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP,
+    EQUAL_OP, GREATER_OP, LESS_OP, UNARY_NEGATION_OP, AND_OP, OR_OP,
+    UNARY_OPERATORS, BOOLEAN_OPERATORS
 )
 
 
@@ -22,6 +23,7 @@ def try_to_number(s):
 
 OPERATOR_MAP = {
     ast.Add: ADD_OP,
+    ast.Sub: SUBTRACT_OP,
     ast.Mult: MULTIPLY_OP,
     ast.Div: DIVIDE_OP,
     ast.BitOr: BARRIER_OP,
@@ -29,7 +31,7 @@ OPERATOR_MAP = {
     ast.Eq: EQUAL_OP,
     ast.Gt: GREATER_OP,
     ast.Lt: LESS_OP,
-    ast.Not: UNARY_NEGATION_OP,
+    ast.Invert: UNARY_NEGATION_OP,
     ast.And: AND_OP,
     ast.Or: OR_OP,
 }
@@ -69,10 +71,10 @@ def ast_to_expr(t, s):
         return BoolExpr(op, a1, a2)
     try:
         op = OPERATOR_MAP[t.op.__class__]
-        if op == UNARY_SUBTRACT_OP:
+        try:
             a1 = ast_to_expr(t.operand, s)
             a2 = None
-        else:
+        except AttributeError:
             a1 = ast_to_expr(t.left, s)
             a2 = ast_to_expr(t.right, s)
         if op == DIVIDE_OP:
@@ -80,7 +82,8 @@ def ast_to_expr(t, s):
                 return gmpy2.mpq(a1, a2)
             except TypeError:
                 pass
-        return Expr(op, a1, a2)
+        cls = BoolExpr if op in BOOLEAN_OPERATORS else Expr
+        return cls(op, a1, a2)
     except KeyError:
         raise_parser_error('Unrecognised operator %s' % str(t.op), s, t)
     except AttributeError:

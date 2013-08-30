@@ -11,7 +11,7 @@ DIVIDE_OP = '/'
 EQUAL_OP = '=='
 GREATER_OP = '>'
 LESS_OP = '<'
-UNARY_NEGATION_OP = '!'
+UNARY_NEGATION_OP = '~'
 AND_OP = '&'
 OR_OP = '|'
 

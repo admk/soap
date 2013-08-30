@@ -18,3 +18,12 @@ class BoolExpr(Expr):
         super().__init__(*args, **kwargs)
         if self.op not in BOOLEAN_OPERATORS:
             raise ValueError('Boolean expression must use a boolean operator.')
+
+    def __invert__(self):
+        return BoolExpr(UNARY_NEGATION_OP, self)
+
+    def __and__(self, other):
+        return BoolExpr(AND_OP, self, other)
+
+    def __or__(self, other):
+        return BoolExpr(OR_OP, self, other)

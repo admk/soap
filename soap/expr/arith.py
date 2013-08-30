@@ -4,7 +4,8 @@
 """
 from soap.common import Comparable, Flyweight, cached, ignored
 from soap.expr.common import (
-    ADD_OP, MULTIPLY_OP, BARRIER_OP, COMMUTATIVITY_OPERATORS, UNARY_OPERATORS
+    ADD_OP, MULTIPLY_OP, UNARY_SUBTRACT_OP,
+    BARRIER_OP, COMMUTATIVITY_OPERATORS, UNARY_OPERATORS
 )
 from soap.expr.parser import parse
 
@@ -20,7 +21,7 @@ class Expr(Comparable, Flyweight):
 
             1. ``Expr('+', 'a', 'b')``
             2. ``Expr(op='+', a1='a', a2='b')``
-            3. ``Expr('+', al=('a', 'b'))``
+            3. ``Expr(op='+', al=('a', 'b'))``
 
         Expr also allows unary operations, for example for ``a``::
 
@@ -36,7 +37,7 @@ class Expr(Comparable, Flyweight):
             if a1 is not None and a2 is not None:
                 al = a1, a2
             else:
-                al = kwargs.setdefault('a')
+                al = kwargs.setdefault('al') or [kwargs.setdefault('a')]
         elif len(args) == 1:
             expr = list(args).pop()
             try:
@@ -52,12 +53,9 @@ class Expr(Comparable, Flyweight):
         elif len(args) == 3:
             op, *al = args
         self.op = op
-        if len(al) > 1:
-            self.a1, self.a2 = al
-        elif op in UNARY_OPERATORS:
-            self.a1, self.a2 = al.pop(), None
-        else:
-            raise ValueError('Number of arguments and operator type mismatch.')
+        al = list(al)
+        self.a1 = al.pop(0)
+        self.a2 = al.pop(0) if al else None
         super().__init__()
 
     def __getnewargs__(self):
@@ -261,6 +259,9 @@ class Expr(Comparable, Flyweight):
 
     def __or__(self, other):
         return Expr(op=BARRIER_OP, a1=self, a2=other)
+
+    def __neg__(self):
+        return Expr(op=UNARY_SUBTRACT_OP, a=self)
 
     def _symmetric_id(self):
         if self.op in COMMUTATIVITY_OPERATORS:
