@@ -20,7 +20,7 @@ class State(Lattice):
 class ClassicalState(State):
     """The classical definition of a program state."""
 
-    top_magic = {'_', 'top'}
+    top_magic = {'_': 'top'}
     bottom_magic = {}
 
     def __init__(self, mapping=None, top=False, bottom=False, **kwargs):
