@@ -56,11 +56,10 @@ class WhileFlow(Flow):
     def flow(self, state):
         fixpoint_flow = IfFlow(
             self.conditional_expr, self.loop_flow, IdentityFlow())
-        prev_state = state.bottom()
-        state = state.copy()
+        prev_state = state.__class__(bottom=True)
         while state != prev_state:
             prev_state, state = state, fixpoint_flow.flow(state)
-        return state.copy().conditional(self.conditional_expr, False)
+        return state.conditional(self.conditional_expr, False)
 
     def __str__(self):
         return 'while ' + str(self.conditional_expr) + ' (' + \

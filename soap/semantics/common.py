@@ -74,14 +74,6 @@ class Labels(object):
 
 class Lattice(object):
     """Common lattice structure."""
-    @classmethod
-    def bottom(cls):
-        return cls.bottom
-
-    @classmethod
-    def top(cls):
-        return cls.top
-
     def join(self, other):
         raise NotImplementedError
 

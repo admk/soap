@@ -41,8 +41,13 @@ if __name__ == '__main__':
     from soap import logger
     from soap.semantics.state import ClassicalState
     logger.set_context(level=logger.levels.info)
-    flow = parse("""while x < 10: x = x + 1""")
-    logger.info(flow)
-    state = ClassicalState(x=0)
-    logger.info(state)
-    logger.info(flow.flow(state))
+    flow = parse(
+        """
+        while x < 10:
+            y = y * x
+            x = x + 1
+        """.strip())
+    logger.info(str(flow))
+    state = ClassicalState(x=1, y=1)
+    logger.info('Flow in:', str(state))
+    logger.info('Flow out:', str(flow.flow(state)))

@@ -2,17 +2,12 @@
 .. module:: soap.semantics.state
     :synopsis: Program states.
 """
-import copy
-
+from soap import logger
 from soap.semantics.common import Lattice
 
 
 class State(Lattice):
     """Program state."""
-    def copy(self):
-        """Makes a copy of itself."""
-        return copy.deepcopy(self)
-
     def assign(self, var, expr):
         """Makes an assignment and returns a new state object."""
         raise NotImplementedError
@@ -24,39 +19,78 @@ class State(Lattice):
 
 class ClassicalState(State):
     """The classical definition of a program state."""
-    def __init__(self, mapping=None, **kwargs):
-        self.mapping = dict(mapping or {}, **kwargs)
+
+    top_magic = {'_', 'top'}
+    bottom_magic = {}
+
+    def __init__(self, mapping=None, top=False, bottom=False, **kwargs):
+        if top:
+            self.mapping = self.top_magic
+        elif bottom:
+            self.mapping = self.bottom_magic
+        else:
+            self.mapping = dict(mapping or {}, **kwargs)
+
+    def top(self):
+        return self.mapping == self.top_magic
+
+    def bottom(self):
+        return self.mapping == self.bottom_magic
 
     def assign(self, var, expr):
-        copy = self.copy()
-        copy.mapping[var] = expr.eval(copy.mapping)
-        return copy
+        mapping = dict(self.mapping)
+        try:
+            mapping[var] = expr.eval(self.mapping)
+        except NameError:
+            pass
+        state = ClassicalState(mapping)
+        logger.debug(
+            '⟦' + str(var) + ' := ' + str(expr) + '⟧:',
+            str(self), '→', str(state))
+        return state
 
     def conditional(self, expr, cond):
         if expr.eval(self.mapping) == cond:
-            return self
-        return self.__class__.bottom()
+            state = self
+        else:
+            state = ClassicalState(bottom=True)
+        logger.debug(
+            '⟦' + str(expr if cond else ~expr) + '⟧:',
+            str(self), '→', str(state))
+        return state
 
     def join(self, other):
-        if other == self.__class__.bottom():
-            return self
-        if other == self.__class__.top():
+        if other.top():
             return other
-        copy = self.copy()
+        if other.bottom():
+            return self
+        mapping = dict(self.mapping)
         for k, v in other.mapping.items():
-            if k in copy.mapping and copy.mapping[k] != v:
-                return self.__class__.top()
-            copy[k] = v
-        return copy
+            if k in mapping and mapping[k] != v:
+                return ClassicalState(top=True)
+            mapping[k] = v
+        state = ClassicalState(mapping)
+        logger.debug(str(self) + ' ⊔ ' + str(other), '→', str(state))
+        return state
 
     def __le__(self, other):
-        if other == self.__class__.bottom():
-            return False
-        if other == self.__class__.top():
-            return True
-        if set(self.mapping.items()) <= set(other.mapping.items()):
-            return True
-        return False
+        if other.top():
+            b = True
+        elif other.bottom():
+            b = False
+        elif set(self.mapping.items()) <= set(other.mapping.items()):
+            b = True
+        else:
+            b = False
+        logger.debug(str(self), '⊑' if b else '⋢', str(other))
+        return b
 
     def __str__(self):
-        return str(self.mapping)
+        if self.mapping:
+            s = '[%s]' % ', '.join(
+                str(k) + '↦' + str(v) for k, v in self.mapping.items())
+        elif self.top():
+            s = '⊤'
+        elif self.bottom():
+            s = '⊥'
+        return s
