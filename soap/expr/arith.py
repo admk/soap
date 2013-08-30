@@ -4,7 +4,7 @@
 """
 from soap.common import Comparable, Flyweight, cached, ignored
 from soap.expr.common import (
-    ADD_OP, MULTIPLY_OP, UNARY_SUBTRACT_OP,
+    ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, UNARY_SUBTRACT_OP,
     BARRIER_OP, COMMUTATIVITY_OPERATORS, UNARY_OPERATORS
 )
 from soap.expr.parser import parse
@@ -50,6 +50,8 @@ class Expr(Comparable, Flyweight):
                 raise ValueError('String is not an expression')
         elif len(args) == 2:
             op, al = args
+            if op in UNARY_OPERATORS:
+                al = [al]
         elif len(args) == 3:
             op, *al = args
         self.op = op
@@ -254,10 +256,16 @@ class Expr(Comparable, Flyweight):
     def __add__(self, other):
         return Expr(op=ADD_OP, a1=self, a2=other)
 
+    def __sub__(self, other):
+        return Expr(op=SUBTRACT_OP, a1=self, a2=other)
+
     def __mul__(self, other):
         return Expr(op=MULTIPLY_OP, a1=self, a2=other)
 
-    def __or__(self, other):
+    def __div__(self, other):
+        return Expr(op=DIVIDE_OP, a1=self, a2=other)
+
+    def __floordiv__(self, other):
         return Expr(op=BARRIER_OP, a1=self, a2=other)
 
     def __neg__(self):

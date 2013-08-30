@@ -39,7 +39,6 @@ class TestExpr(unittest.TestCase):
         l = [
             Expr('-a'),
             Expr(UNARY_SUBTRACT_OP, 'a'),
-            Expr(UNARY_SUBTRACT_OP, ['a']),
             Expr(op=UNARY_SUBTRACT_OP, a='a'),
             Expr(op=UNARY_SUBTRACT_OP, al=['a']),
         ]
@@ -54,16 +53,17 @@ class TestExpr(unittest.TestCase):
 
     def test_unary_bool_expr_init(self):
         l = [
-            Expr('~a'),
-            Expr(UNARY_NEGATION_OP, 'a'),
-            Expr(UNARY_NEGATION_OP, ['a']),
-            Expr(op=UNARY_NEGATION_OP, a='a'),
-            Expr(op=UNARY_NEGATION_OP, al=['a']),
+            BoolExpr('~a'),
+            BoolExpr(UNARY_NEGATION_OP, 'a'),
+            BoolExpr(op=UNARY_NEGATION_OP, a='a'),
+            BoolExpr(op=UNARY_NEGATION_OP, al=['a']),
         ]
         for e in l:
             self.assertEqual(e.op, UNARY_NEGATION_OP)
             self.assertEqual(e.a1, 'a')
             self.assertIsNone(e.a2)
+        e = BoolExpr('a < b')
+        self.assertEqual(~e, BoolExpr(UNARY_NEGATION_OP, e))
 
     def test_binary_arith_expr_operator(self):
         e = Expr('a + b')

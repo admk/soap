@@ -20,10 +20,10 @@ class BoolExpr(Expr):
             raise ValueError('Boolean expression must use a boolean operator.')
 
     def __invert__(self):
-        return BoolExpr(UNARY_NEGATION_OP, self)
+        return BoolExpr(op=UNARY_NEGATION_OP, a=self)
 
     def __and__(self, other):
-        return BoolExpr(AND_OP, self, other)
+        return BoolExpr(op=AND_OP, a1=self, a2=other)
 
     def __or__(self, other):
-        return BoolExpr(OR_OP, self, other)
+        return BoolExpr(op=OR_OP, a1=self, a2=other)
