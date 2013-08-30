@@ -73,7 +73,14 @@ class Labels(object):
 
 
 class Lattice(object):
-    """Common lattice structure."""
+    """Common lattice structure.
+
+    Because the partial orders we are using are always complete lattices,
+    structures such as preorders, partial orders, dcpos are not implemented.
+
+    Subclasses of this class must implement the member functions:
+    :member:`join`, :member:`meet`, :member:`__le__`.
+    """
     def join(self, other):
         raise NotImplementedError
 

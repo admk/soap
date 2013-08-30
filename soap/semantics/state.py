@@ -7,7 +7,11 @@ from soap.semantics.common import Lattice
 
 
 class State(Lattice):
-    """Program state."""
+    """Program state.
+
+    This provides the base class of all denotational semantics-based state
+    objects.
+    """
     def assign(self, var, expr):
         """Makes an assignment and returns a new state object."""
         raise NotImplementedError
@@ -18,7 +22,12 @@ class State(Lattice):
 
 
 class ClassicalState(State):
-    """The classical definition of a program state."""
+    """The classical definition of a program state.
+
+    This is intended to layout the foundation of future state classes,
+    as well as to verify correctness of the program flows defined in
+    :module:`soap.program.flow`.
+    """
 
     top_magic = {'_': 'top'}
     bottom_magic = {}
