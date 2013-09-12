@@ -239,7 +239,21 @@ class FlatLattice(Lattice):
 
 
 class PowerLattice(Lattice):
-    """A lattice structure for powersets."""
+    """A lattice structure for powersets.
+
+    For example, the power lattice of the set {1, 2, 3} is the following::
+                ⊤ = {1, 2, 3}
+              / | \
+             /  |  \
+        {1,2} {1,3} {2,3}
+           | \ / \ / |
+           |  x   x  |
+           | / \ / \ |
+          {1}  {2}  {3}
+             \  |  /
+              \ | /
+                ⊥ = Ø
+    """
     def __init__(self, elements=None, top=False, bottom=False):
         super().__init__(top=top, bottom=bottom)
         if top or bottom:
