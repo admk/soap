@@ -1,7 +1,7 @@
 import unittest
 import itertools
 
-from soap.semantics.lattice import Lattice, bottom, top, flat
+from soap.semantics.lattice import Lattice, flat
 
 
 class TestLattice(unittest.TestCase):
@@ -12,14 +12,13 @@ class TestLattice(unittest.TestCase):
     def test_top_and_bottom(self):
         class AltLattice(Lattice):
             pass
-        self.assertNotEqual(bottom(AltLattice), bottom(Lattice))
-        self.assertEqual(bottom(Lattice), bottom(Lattice))
-        self.assertEqual(top(Lattice), top(Lattice))
-        self.assertNotEqual(bottom(Lattice), top(Lattice))
+        self.assertEqual(Lattice(bottom=True), Lattice(bottom=True))
+        self.assertEqual(Lattice(top=True), Lattice(top=True))
+        self.assertNotEqual(Lattice(bottom=True), Lattice(top=True))
 
     def test_flat_lattice_join(self):
-        IntLattice = flat(int)
-        b, t = bottom(IntLattice), top(IntLattice)
+        IntLattice = flat(int, 'IntLattice')
+        b, t = IntLattice(bottom=True), IntLattice(top=True)
         self.assertEqual(b | b, b)
         self.assertEqual(b | IntLattice(1), IntLattice(1))
         self.assertEqual(IntLattice(1) | b, IntLattice(1))
@@ -29,8 +28,8 @@ class TestLattice(unittest.TestCase):
         self.assertEqual(t | t, t)
 
     def test_flat_lattice_meet(self):
-        IntLattice = flat(int)
-        b, t = bottom(IntLattice), top(IntLattice)
+        IntLattice = flat(int, 'IntLattice')
+        b, t = IntLattice(bottom=True), IntLattice(top=True)
         self.assertEqual(b & b, b)
         self.assertEqual(b & IntLattice(1), b)
         self.assertEqual(IntLattice(1) & b, b)
@@ -40,8 +39,8 @@ class TestLattice(unittest.TestCase):
         self.assertEqual(t & t, t)
 
     def test_flat_lattice_from_set(self):
-        Flat = flat([1, 2, 3])
-        b, t = bottom(Flat), top(Flat)
+        Flat = flat([1, 2, 3], 'FiniteFlat')
+        b, t = Flat(bottom=True), Flat(top=True)
         self.assertEqual(Flat(1), Flat(1))
         self.assertNotEqual(Flat(1), Flat(2))
         self.assertNotEqual(Flat(1), b)
@@ -117,7 +116,7 @@ class TestLattice(unittest.TestCase):
             l1 = CombLattice(a1, n1)
             for a2, n2 in itertools.product(alphabets, numerals):
                 l2 = CombLattice(a2, n2)
-                test = (a2, n2) in rel_tests[a1, n1]
+                test = (a1, n1) in rel_tests[a2, n2]
                 same = (a1, n1) == (a2, n2)
-                self.assertEqual(l2 <= l1, test or same)
-        self.assertEqual(top(CombLattice), CombLattice('top', 'top'))
+                self.assertEqual(l1 <= l2, test or same)
+        self.assertEqual(CombLattice(top=True), CombLattice('top', 'top'))

@@ -1,35 +1,78 @@
+import copy
+
+
 class LatticeMeta(type):
     """The metaclass of lattices.
 
     It defines the behaviour of the systematic design of lattices."""
     def __mul__(self_class, other_class):
         class ComponentWiseLattice(Lattice):
-            def __init__(self, self_class_args, other_class_args):
-                if self_class_args == 'top':
-                    self.c1 = top(self_class)
-                elif self_class_args == 'bottom':
-                    self.c1 = bottom(self_class)
-                else:
-                    try:
-                        self.c1 = self_class(*self_class_args)
-                    except (TypeError, ValueError):
-                        self.c1 = self_class(self_class_args)
-                if other_class_args == 'top':
-                    self.c2 = top(other_class)
-                elif other_class_args == 'bottom':
-                    self.c2 = bottom(other_class)
-                else:
-                    try:
-                        self.c2 = other_class(*other_class_args)
-                    except (TypeError, ValueError):
-                        self.c2 = other_class(other_class_args)
+            def __init__(self, self_class_args=None, other_class_args=None,
+                         top=False, bottom=False):
+                super().__init__(top=top, bottom=bottom)
+                if top or bottom:
+                    return
+                self.components = []
+                class_args = [
+                    (self_class, self_class_args),
+                    (other_class, other_class_args),
+                ]
+                for cls, args in class_args:
+                    if args == 'top':
+                        c = cls(top=True)
+                    elif args == 'bottom':
+                        c = cls(bottom=True)
+                    else:
+                        try:
+                            c = cls(*args)
+                        except (TypeError, ValueError):
+                            c = cls(args)
+                    self.components.append(c)
+
+            def is_top(self):
+                if super().is_top():
+                    return True
+                return all(c.is_top() for c in self.components)
+
+            def is_bottom(self):
+                if super().is_bottom():
+                    return True
+                return all(c.is_bottom() for c in self.components)
+
+            def join(self, other):
+                e = super().join(other)
+                if not e:
+                    e = copy.copy(self)
+                    e.components = [self_comp | other_comp
+                                    for self_comp, other_comp in
+                                    zip(self.components, other.components)]
+                return e
+
+            def meet(self, other):
+                e = super().meet(other)
+                if not e:
+                    e = copy.copy(self)
+                    e.components = [self_comp & other_comp
+                                    for self_comp, other_comp in
+                                    zip(self.components, other.components)]
+                return e
 
             def __le__(self, other):
-                return (self.c1 <= other.c1) and (self.c2 <= other.c2)
+                le = super().__le__(other)
+                if le is not None:
+                    return le
+                return all(self_comp <= other_comp
+                           for self_comp, other_comp in
+                           zip(self.components, other.components))
 
             def __repr__(self):
-                return '%s(%s, %s)' % \
-                    (self.__class__.__name__, repr(self.c1), repr(self.c2))
+                r = super().__repr__()
+                if r is not None:
+                    return r
+                return '%s(%s)' % \
+                    (self.__class__.__name__,
+                     ', '.join(repr(c) for c in self.components))
+
         ComponentWiseLattice.__name__ = 'ComponentWiseLattice_%s_%s' % \
             (self_class.__name__, other_class.__name__)
         return ComponentWiseLattice
@@ -44,14 +87,47 @@ class Lattice(object, metaclass=LatticeMeta):
     Subclasses of this class must implement the member functions:
     :member:`join`, :member:`meet`, :member:`__le__`.
     """
+    def __init__(self, *args, top=False, bottom=False, **kwargs):
+        if top and bottom:
+            raise ValueError(
+                'Lattice element cannot be bottom and top simultaneously.')
+        self.top = top
+        self.bottom = bottom
+
+    def is_top(self):
+        if self.top:
+            return True
+
+    def is_bottom(self):
+        if self.bottom:
+            return True
+
+    def _is_consistent_type(self, other):
+        return self.__class__ == other.__class__
+
     def join(self, other):
-        raise NotImplementedError
+        if not self._is_consistent_type(other):
+            raise TypeError('Inconsistent lattice types')
+        if self.is_top() or other.is_bottom():
+            return self
+        if self.is_bottom() or other.is_top():
+            return other
 
     def meet(self, other):
-        raise NotImplementedError
+        if not self._is_consistent_type(other):
+            raise TypeError('Inconsistent lattice types')
+        if self.is_top() or other.is_bottom():
+            return other
+        if self.is_bottom() or other.is_top():
+            return self
 
     def __le__(self, other):
-        raise NotImplementedError
+        if not self._is_consistent_type(other):
+            raise TypeError('Inconsistent lattice types')
+        if other.is_top():
+            return True
+        if self.is_bottom():
+            return True
 
     def __ge__(self, other):
         return other.__le__(self)
@@ -66,23 +142,11 @@ class Lattice(object, metaclass=LatticeMeta):
     def __and__(self, other):
         return self.meet(other)
 
-
-class LatticeSpecialElement(Lattice):
-    """A special element in a lattice, which could be bottom or top."""
-    def __init__(self, *args, **kwargs):
-        pass
-
-    def _magic(self):
-        raise NotImplementedError
-
-    def __eq__(self, other):
-        try:
-            return self._magic() == other._magic()
-        except AttributeError:
-            return False
-
     def __repr__(self):
-        return self.__class__.__name__
+        if self.is_top():
+            return self.__class__.__name__ + '(Top)'
+        if self.is_bottom():
+            return self.__class__.__name__ + '(Bottom)'
 
 
 class FlatLattice(Lattice):
@@ -95,112 +159,83 @@ class FlatLattice(Lattice):
          ...  \ \ | / / ...
                   ⊥
     """
-    def _superclass(self):
-        try:
-            return self.superclass
-        except AttributeError:
-            mro = [c for c in self.__class__.mro()
-                   if c not in [Lattice, FlatLattice]]
-            self.superclass = mro.pop(1)
-            return self.superclass
+    def __init__(self, var=None, **kwargs):
+        super().__init__(**kwargs)
+        if self.is_top() or self.is_bottom():
+            return
+        if self._class():
+            self.v = self._class()(var)
+        else:
+            if not var in self._container():
+                raise ValueError('Non-existing element: %s' % repr(var))
+            self.v = var
+
+    def _class(self):
+        pass
+
+    def _container(self):
+        pass
 
     def join(self, other):
-        if other == top(self.__class__):
-            return other
-        if other == bottom(self.__class__):
-            return self
+        e = super().join(other)
+        if e:
+            return e
         if other != self:
-            return top(self.__class__)
+            return self.__class__(top=True)
         return self
 
     def meet(self, other):
-        if other == top(self.__class__):
-            return self
-        if other == bottom(self.__class__):
-            return other
+        e = super().meet(other)
+        if e:
+            return e
         if other != self:
-            return bottom(self.__class__)
+            return self.__class__(bottom=True)
         return self
 
     def __le__(self, other):
-        if self._superclass().__eq__(self, other):
+        le = super().__le__(other)
+        if le is not None:
+            return le
+        return self == other
+
+    def __eq__(self, other):
+        if self.is_top() and other.is_top():
             return True
-        if other == top(self.__class__):
+        if self.is_bottom() and other.is_bottom():
             return True
-        return False
+        try:
+            return self.v == other.v
+        except AttributeError:
+            return False
 
     def __repr__(self):
-        return self.__class__.__name__ + \
-            '(' + self._superclass().__repr__(self) + ')'
-
-
-def top(cls):
-    """Returns a top object of lattice class `cls`."""
-    class Top(LatticeSpecialElement, cls):
-
-        def _magic(self):
-            return (cls, 'top')
-
-        def join(self, other):
-            return self
-
-        def meet(self, other):
-            return other
-
-        def __le__(self, other):
-            return self == other
-
-    Top.__name__ = '_Top_' + cls.__name__
-    return Top()
-
-
-def bottom(cls):
-    """Returns a bottom object of lattice class `cls`."""
-    class Bottom(LatticeSpecialElement, cls):
-
-        def _magic(self):
-            return (cls, 'bottom')
-
-        def join(self, other):
-            return other
-
-        def meet(self, other):
-            return self
-
-        def __le__(self, other):
-            return True
-
-    Bottom.__name__ = '_Bottom_' + cls.__name__
-    return Bottom()
+        r = super().__repr__()
+        if r is not None:
+            return r
+        return repr(self.v)
 
 
 def flat(cls, name=None):
     """Returns a flat domain derived from a class `cls`, or a set of elements.
     """
     try:
-        class Flattened(FlatLattice, cls):
+        class _(cls):
             pass
+        is_class = True
     except TypeError:
-        pass
-    else:
-        Flattened.__name__ = '_FlatLattice_' + cls.__name__
-        return Flattened
+        is_class = False
 
-    class _FlattenMe(object):
-        def __init__(self, var):
-            if not var in cls:
-                raise ValueError('Non-existing element')
-            self.v = var
+    class Flattened(FlatLattice):
+        def _class(self):
+            if is_class:
+                return cls
 
-        def __eq__(self, other):
-            try:
-                return self.v == other.v
-            except AttributeError:
-                return False
-
-        def __repr__(self):
-            return repr(self.v)
+        def _container(self):
+            if not is_class:
+                return cls
 
     if name:
-        _FlattenMe.__name__ = name
-    return flat(_FlattenMe)
+        Flattened.__name__ = name
+    if is_class:
+        Flattened.__name__ = 'FlatLattice_' + cls.__name__
+    return Flattened
