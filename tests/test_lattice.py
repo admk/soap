@@ -1,7 +1,7 @@
 import unittest
 import itertools
 
-from soap.semantics.lattice import Lattice, flat
+from soap.semantics.lattice import Lattice, flat, power
 
 
 class TestLattice(unittest.TestCase):
@@ -63,6 +63,24 @@ class TestFlatLattice(unittest.TestCase):
         self.assertEqual(self.FLat(1) & self.FLat(2), self.fb)
         with self.assertRaises(ValueError):
             self.FLat(4)
+
+
+class TestPowerLattice(unittest.TestCase):
+    """Unittesting for :class:`soap.semantics.PowerLattice`."""
+    def setUp(self):
+        self.ILat = power(int)
+        self.ib, self.it = self.ILat(bottom=True), self.ILat(top=True)
+        self.FLat = power([1, 2, 3])
+        self.fb, self.ft = self.FLat(bottom=True), self.FLat(top=True)
+
+    def test_infinite_power_lattice(self):
+        self.assertEqual(self.ib | self.ib, self.ib)
+        self.assertEqual(self.ib | self.ILat([1]), self.ILat([1]))
+        self.assertEqual(self.ILat([1]) | self.ib, self.ILat([1]))
+        self.assertEqual(self.ILat([1]) | self.ILat([2]), self.ILat([1, 2]))
+        self.assertEqual(self.ILat([1]) | self.it, self.it)
+        self.assertEqual(self.it | self.ILat([1]), self.it)
+        self.assertEqual(self.it | self.it, self.it)
 
 
 class TestComponentWiseLattice(unittest.TestCase):
