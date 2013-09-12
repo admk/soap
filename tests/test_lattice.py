@@ -5,10 +5,7 @@ from soap.semantics.lattice import Lattice, flat
 
 
 class TestLattice(unittest.TestCase):
-    """Unittesting for :class:`soap.semantics.Lattice`."""
-    def setUp(self):
-        pass
-
+    """Unittesting for :class:`soap.semantics.lattice.Lattice`."""
     def test_top_and_bottom(self):
         class AltLattice(Lattice):
             pass
@@ -16,107 +13,164 @@ class TestLattice(unittest.TestCase):
         self.assertEqual(Lattice(top=True), Lattice(top=True))
         self.assertNotEqual(Lattice(bottom=True), Lattice(top=True))
 
+
+class TestFlatLattice(unittest.TestCase):
+    """Unittesting for :class:`soap.semantics.lattice.FlatLattice`."""
+    def setUp(self):
+        self.Lat = flat(int, 'IntLattice')
+        self.b, self.t = self.Lat(bottom=True), self.Lat(top=True)
+        self.FLat = flat([1, 2, 3], 'FiniteLattice')
+        self.fb, self.ft = self.FLat(bottom=True), self.FLat(top=True)
+
+    def test_top_and_bottom(self):
+        self.assertEqual(self.Lat(bottom=True), self.Lat(bottom=True))
+        self.assertEqual(self.Lat(top=True), self.Lat(top=True))
+        self.assertEqual(self.FLat(bottom=True), self.FLat(bottom=True))
+        self.assertEqual(self.FLat(top=True), self.FLat(top=True))
+
     def test_flat_lattice_join(self):
-        IntLattice = flat(int, 'IntLattice')
-        b, t = IntLattice(bottom=True), IntLattice(top=True)
-        self.assertEqual(b | b, b)
-        self.assertEqual(b | IntLattice(1), IntLattice(1))
-        self.assertEqual(IntLattice(1) | b, IntLattice(1))
-        self.assertEqual(IntLattice(1) | IntLattice(2), t)
-        self.assertEqual(IntLattice(1) | t, t)
-        self.assertEqual(t | IntLattice(1), t)
-        self.assertEqual(t | t, t)
+        self.assertEqual(self.b | self.b, self.b)
+        self.assertEqual(self.b | self.Lat(1), self.Lat(1))
+        self.assertEqual(self.Lat(1) | self.b, self.Lat(1))
+        self.assertEqual(self.Lat(1) | self.Lat(2), self.t)
+        self.assertEqual(self.Lat(1) | self.t, self.t)
+        self.assertEqual(self.t | self.Lat(1), self.t)
+        self.assertEqual(self.t | self.t, self.t)
 
     def test_flat_lattice_meet(self):
-        IntLattice = flat(int, 'IntLattice')
-        b, t = IntLattice(bottom=True), IntLattice(top=True)
-        self.assertEqual(b & b, b)
-        self.assertEqual(b & IntLattice(1), b)
-        self.assertEqual(IntLattice(1) & b, b)
-        self.assertEqual(IntLattice(1) & IntLattice(2), b)
-        self.assertEqual(IntLattice(1) & t, IntLattice(1))
-        self.assertEqual(t & IntLattice(1), IntLattice(1))
-        self.assertEqual(t & t, t)
+        self.assertEqual(self.b & self.b, self.b)
+        self.assertEqual(self.b & self.Lat(1), self.b)
+        self.assertEqual(self.Lat(1) & self.b, self.b)
+        self.assertEqual(self.Lat(1) & self.Lat(2), self.b)
+        self.assertEqual(self.Lat(1) & self.t, self.Lat(1))
+        self.assertEqual(self.t & self.Lat(1), self.Lat(1))
+        self.assertEqual(self.t & self.t, self.t)
 
     def test_flat_lattice_from_set(self):
-        Flat = flat([1, 2, 3], 'FiniteFlat')
-        b, t = Flat(bottom=True), Flat(top=True)
-        self.assertEqual(Flat(1), Flat(1))
-        self.assertNotEqual(Flat(1), Flat(2))
-        self.assertNotEqual(Flat(1), b)
-        self.assertNotEqual(Flat(1), t)
-        self.assertEqual(b | Flat(1), Flat(1))
-        self.assertEqual(t | Flat(1), t)
-        self.assertEqual(Flat(1) | b, Flat(1))
-        self.assertEqual(Flat(1) | t, t)
-        self.assertEqual(Flat(1) | Flat(2), t)
-        self.assertEqual(b & Flat(1), b)
-        self.assertEqual(t & Flat(1), Flat(1))
-        self.assertEqual(Flat(1) & b, b)
-        self.assertEqual(Flat(1) & t, Flat(1))
-        self.assertEqual(Flat(1) & Flat(2), b)
+        self.assertEqual(self.FLat(1), self.FLat(1))
+        self.assertNotEqual(self.FLat(1), self.FLat(2))
+        self.assertNotEqual(self.FLat(1), self.fb)
+        self.assertNotEqual(self.FLat(1), self.ft)
+        self.assertEqual(self.fb | self.FLat(1), self.FLat(1))
+        self.assertEqual(self.ft | self.FLat(1), self.ft)
+        self.assertEqual(self.FLat(1) | self.fb, self.FLat(1))
+        self.assertEqual(self.FLat(1) | self.ft, self.ft)
+        self.assertEqual(self.FLat(1) | self.FLat(2), self.ft)
+        self.assertEqual(self.fb & self.FLat(1), self.fb)
+        self.assertEqual(self.ft & self.FLat(1), self.FLat(1))
+        self.assertEqual(self.FLat(1) & self.fb, self.fb)
+        self.assertEqual(self.FLat(1) & self.ft, self.FLat(1))
+        self.assertEqual(self.FLat(1) & self.FLat(2), self.fb)
         with self.assertRaises(ValueError):
-            Flat(4)
+            self.FLat(4)
 
-    def test_component_wise_lattice(self):
-        alphabets = ['a']
-        numerals = [1]
-        FlatAlp = flat(alphabets, name='Alphabet')
-        FlatNum = flat(numerals, name='Numeral')
-        CombLattice = FlatAlp * FlatNum
-        alphabets += ['top', 'bottom']
-        numerals += ['top', 'bottom']
+
+class TestComponentWiseLattice(unittest.TestCase):
+    """Unittesting for :class:`soap.semantics.LatticeMeta`
+    ComponentWiseLattice."""
+    def setUp(self):
+        self.alphabets = ['a']
+        self.numerals = [1]
+        self.Alphabet = flat(self.alphabets, name='Alphabet')
+        self.Numeral = flat(self.numerals, name='Numeral')
+        self.AlphaNumeral = self.Alphabet * self.Numeral
+        self.alphabets += ['top', 'bottom']
+        self.numerals += ['top', 'bottom']
+
+    def test_top_and_bottom(self):
+        self.assertEqual(
+            self.AlphaNumeral('top', 'top'), self.AlphaNumeral(top=True))
+        self.assertEqual(
+            self.AlphaNumeral('bottom', 'bottom'),
+            self.AlphaNumeral(bottom=True))
+
+    def test_component_wise_lattice_order(self):
+        t, b, a = 'top', 'bottom', 'a'
         rel_tests = {
-            ('top', 'top'): [
-                ('top', 1),
-                ('top', 'bottom'),
-                ('a', 'top'),
-                ('a', 1),
-                ('a', 'bottom'),
-                ('bottom', 'top'),
-                ('bottom', 1),
-                ('bottom', 'bottom'),
-            ],
-            ('top', 1): [
-                ('top', 'bottom'),
-                ('a', 1),
-                ('a', 'bottom'),
-                ('bottom', 1),
-                ('bottom', 'bottom'),
-            ],
-            ('top', 'bottom'): [
-                ('a', 'bottom'),
-                ('bottom', 'bottom'),
-            ],
-            ('a', 'top'): [
-                ('a', 1),
-                ('a', 'bottom'),
-                ('bottom', 'top'),
-                ('bottom', 1),
-                ('bottom', 'bottom'),
-            ],
-            ('a', 1): [
-                ('a', 'bottom'),
-                ('bottom', 1),
-                ('bottom', 'bottom'),
-            ],
-            ('a', 'bottom'): [
-                ('bottom', 'bottom'),
-            ],
-            ('bottom', 'top'): [
-                ('bottom', 1),
-                ('bottom', 'bottom'),
-            ],
-            ('bottom', 1): [
-                ('bottom', 'bottom'),
-            ],
-            ('bottom', 'bottom'): [],
+            (t, t): [(t, 1), (t, b), (a, t), (a, 1), (a, b),
+                     (b, t), (b, 1), (b, b)],
+            (t, 1): [(t, b), (a, 1), (a, b), (b, 1), (b, b)],
+            (t, b): [(a, b), (b, b)],
+            (a, t): [(a, 1), (a, b), (b, t), (b, 1), (b, b)],
+            (a, 1): [(a, b), (b, 1), (b, b)],
+            (a, b): [(b, b)],
+            (b, t): [(b, 1), (b, b)],
+            (b, 1): [(b, b)],
+            (b, b): [],
         }
-        for a1, n1 in itertools.product(alphabets, numerals):
-            l1 = CombLattice(a1, n1)
-            for a2, n2 in itertools.product(alphabets, numerals):
-                l2 = CombLattice(a2, n2)
+        for a1, n1 in itertools.product(self.alphabets, self.numerals):
+            l1 = self.AlphaNumeral(a1, n1)
+            for a2, n2 in itertools.product(self.alphabets, self.numerals):
+                l2 = self.AlphaNumeral(a2, n2)
                 test = (a1, n1) in rel_tests[a2, n2]
                 same = (a1, n1) == (a2, n2)
                 self.assertEqual(l1 <= l2, test or same)
-        self.assertEqual(CombLattice(top=True), CombLattice('top', 'top'))
+        self.assertEqual(
+            self.AlphaNumeral(top=True), self.AlphaNumeral('top', 'top'))
+        self.assertEqual(
+            self.AlphaNumeral(self.Alphabet('a'), self.Numeral(1)),
+            self.AlphaNumeral('a', 1))
+
+    def test_component_wise_lattice_join_and_meet(self):
+        t, b, a = 'top', 'bottom', 'a'
+        join_tests = {
+            ((t, t), (t, t)): (t, t), ((t, t), (t, 1)): (t, t),
+            ((t, t), (t, b)): (t, t), ((t, t), (a, t)): (t, t),
+            ((t, t), (a, 1)): (t, t), ((t, t), (a, b)): (t, t),
+            ((t, t), (b, t)): (t, t), ((t, t), (b, 1)): (t, t),
+            ((t, t), (b, b)): (t, t), ((t, 1), (t, t)): (t, t),
+            ((t, 1), (t, 1)): (t, 1), ((t, 1), (t, b)): (t, 1),
+            ((t, 1), (a, t)): (t, t), ((t, 1), (a, 1)): (t, 1),
+            ((t, 1), (a, b)): (t, 1), ((t, 1), (b, t)): (t, t),
+            ((t, 1), (b, 1)): (t, 1), ((t, 1), (b, b)): (t, 1),
+            ((t, b), (t, t)): (t, t), ((t, b), (t, 1)): (t, 1),
+            ((t, b), (t, b)): (t, b), ((t, b), (a, t)): (t, t),
+            ((t, b), (a, 1)): (t, 1), ((t, b), (a, b)): (t, b),
+            ((t, b), (b, t)): (t, t), ((t, b), (b, 1)): (t, 1),
+            ((t, b), (b, b)): (t, b), ((a, t), (t, t)): (t, t),
+            ((a, t), (t, 1)): (t, t), ((a, t), (t, b)): (t, t),
+            ((a, t), (a, t)): (a, t), ((a, t), (a, 1)): (a, t),
+            ((a, t), (a, b)): (a, t), ((a, t), (b, t)): (a, t),
+            ((a, t), (b, 1)): (a, t), ((a, t), (b, b)): (a, t),
+            ((a, 1), (t, t)): (t, t), ((a, 1), (t, 1)): (t, 1),
+            ((a, 1), (t, b)): (t, 1), ((a, 1), (a, t)): (a, t),
+            ((a, 1), (a, 1)): (a, 1), ((a, 1), (a, b)): (a, 1),
+            ((a, 1), (b, t)): (a, t), ((a, 1), (b, 1)): (a, 1),
+            ((a, 1), (b, b)): (a, 1), ((a, b), (t, t)): (t, t),
+            ((a, b), (t, 1)): (t, 1), ((a, b), (t, b)): (t, b),
+            ((a, b), (a, t)): (a, t), ((a, b), (a, 1)): (a, 1),
+            ((a, b), (a, b)): (a, b), ((a, b), (b, t)): (a, t),
+            ((a, b), (b, 1)): (a, 1), ((a, b), (b, b)): (a, b),
+            ((b, t), (t, t)): (t, t), ((b, t), (t, 1)): (t, t),
+            ((b, t), (t, b)): (t, t), ((b, t), (a, t)): (a, t),
+            ((b, t), (a, 1)): (a, t), ((b, t), (a, b)): (a, t),
+            ((b, t), (b, t)): (b, t), ((b, t), (b, 1)): (b, t),
+            ((b, t), (b, b)): (b, t), ((b, 1), (t, t)): (t, t),
+            ((b, 1), (t, 1)): (t, 1), ((b, 1), (t, b)): (t, 1),
+            ((b, 1), (a, t)): (a, t), ((b, 1), (a, 1)): (a, 1),
+            ((b, 1), (a, b)): (a, 1), ((b, 1), (b, t)): (b, t),
+            ((b, 1), (b, 1)): (b, 1), ((b, 1), (b, b)): (b, 1),
+            ((b, b), (t, t)): (t, t), ((b, b), (t, 1)): (t, 1),
+            ((b, b), (t, b)): (t, b), ((b, b), (a, t)): (a, t),
+            ((b, b), (a, 1)): (a, 1), ((b, b), (a, b)): (a, b),
+            ((b, b), (b, t)): (b, t), ((b, b), (b, 1)): (b, 1),
+            ((b, b), (b, b)): (b, b),
+        }
+        for a1, n1 in itertools.product(self.alphabets, self.numerals):
+            l1 = self.AlphaNumeral(a1, n1)
+            for a2, n2 in itertools.product(self.alphabets, self.numerals):
+                l2 = self.AlphaNumeral(a2, n2)
+            self.assertEqual(l1 | l2, l2 | l1)
+            self.assertEqual(
+                l1 | l2, self.AlphaNumeral(*join_tests[(a1, n1), (a2, n2)]))
+        t, b = self.AlphaNumeral(top=True), self.AlphaNumeral(bottom=True)
+        for a, n in itertools.product(self.alphabets, self.numerals):
+            l = self.AlphaNumeral(a, n)
+            self.assertEqual(l | t, t)
+            self.assertEqual(t | l, t)
+            self.assertEqual(l | b, l)
+            self.assertEqual(b | l, l)
+            self.assertEqual(l & t, l)
+            self.assertEqual(t & l, l)
+            self.assertEqual(l & b, b)
+            self.assertEqual(b & l, b)
