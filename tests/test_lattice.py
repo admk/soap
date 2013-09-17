@@ -196,9 +196,10 @@ class TestComponentWiseLattice(unittest.TestCase):
 
 class TestMapLattice(unittest.TestCase):
     def setUp(self):
-        self.Lat = map(str, flat(int))
+        self.Lat = map(str, flat(int, 'Int'), 'State')
         self.bot = self.Lat(bottom=True)
         self.top = self.Lat(top=True)
+        self.bot_bot = self.Lat({'x': 'bottom', 'y': 'bottom'})
         self.bot_one = self.Lat({'x': 'bottom', 'y': 1})
         self.one_one = self.Lat({'x': 1, 'y': 1})
         self.one_two = self.Lat({'x': 1, 'y': 2})
@@ -208,7 +209,8 @@ class TestMapLattice(unittest.TestCase):
     def test_bottom_and_top(self):
         self.assertEqual(self.Lat({}), self.bot)
         self.assertEqual(self.bot, self.Lat({}))
-        self.assertEqual(self.Lat({'x': 'bottom'}), self.bot)
+        self.assertEqual(self.bot_bot, self.bot)
+        self.assertEqual(self.bot_one, self.Lat({'y': 1}))
         self.assertNotEqual(self.Lat({'x': 'top'}), self.top)
 
     def test_order(self):
@@ -216,12 +218,19 @@ class TestMapLattice(unittest.TestCase):
         self.assertFalse(self.one_one <= self.bot_one)
         self.assertFalse(self.one_one <= self.one_two)
         self.assertFalse(self.one_two <= self.one_one)
-        self.assertFalse(self.one_one <= self.one_two)
         self.assertTrue(self.one_bot <= self.one_one)
         self.assertFalse(self.one_one <= self.one_bot)
         self.assertFalse(self.one_bot <= self.bot_one)
         self.assertFalse(self.bot_one <= self.one_bot)
 
     def test_join(self):
+        self.assertEqual(self.bot_bot | self.bot, self.bot)
+        self.assertEqual(self.bot_bot | self.top, self.top)
         self.assertEqual(self.one_bot | self.bot_one, self.one_one)
         self.assertEqual(self.one_one | self.one_two, self.one_top)
+
+    def test_meet(self):
+        self.assertEqual(self.bot_bot & self.bot, self.bot)
+        self.assertEqual(self.bot_bot & self.top, self.bot)
+        self.assertEqual(self.one_bot & self.bot_one, self.bot)
+        self.assertEqual(self.one_one & self.one_two, self.one_bot)

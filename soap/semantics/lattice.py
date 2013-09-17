@@ -242,17 +242,17 @@ class PowerLattice(Lattice):
     """A lattice structure for powersets.
 
     For example, the power lattice of the set {1, 2, 3} is the following::
-                ⊤ = {1, 2, 3}
-              / | \
-             /  |  \
-        {1,2} {1,3} {2,3}
-           | \ / \ / |
-           |  x   x  |
-           | / \ / \ |
-          {1}  {2}  {3}
-             \  |  /
-              \ | /
-                ⊥ = Ø
+            ⊤ = {1, 2, 3}
+          / | \
+         /  |  \
+    {1,2} {1,3} {2,3}
+       | \ / \ / |
+       |  x   x  |
+       | / \ / \ |
+      {1}  {2}  {3}
+         \  |  /
+          \ | /
+            ⊥ = Ø
     """
     def __init__(self, elements=None, top=False, bottom=False):
         super().__init__(top=top, bottom=bottom)
@@ -355,18 +355,16 @@ class MapLattice(Lattice):
         return self.__class__(mapping=join_dict)
 
     def meet(self, other):
-        e = super().join(other)
+        e = super().meet(other)
         if e:
             return e
-        meet_dict = dict(self.mapping)
-        for k in other.mapping:
-            if k not in self:
+        meet_dict = {}
+        for k in list(self.mapping) + list(other.mapping):
+            if k not in self.mapping or k not in other.mapping:
                 continue
             v = self.mapping[k] & other.mapping[k]
             if not v.is_bottom():
                 meet_dict[k] = v
-            else:
-                del meet_dict[k]
         return self.__class__(mapping=meet_dict)
 
     def __le__(self, other):
