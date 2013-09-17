@@ -96,3 +96,57 @@ def flat(cls, name=None):
     if not name and _is_class(cls):
         name = 'FlatLattice_' + cls.__name__
     return _lattice_factory(cls, FlatLattice, name)
+
+
+def value(cls):
+    class V(flat(cls)):
+        def __str__(self):
+            return str(self.v)
+
+        def _op(self, op, other):
+            try:
+                if self.is_bottom() or other.is_bottom():
+                    return self.__class__(bottom=True)
+            except AttributeError:
+                pass
+            try:
+                v = op(self.v, other.v)
+            except AttributeError:
+                v = op(self.v, other)
+            if type(v) is bool:
+                return v
+            return self.__class__(v)
+
+        def __add__(self, other):
+            return self._op(lambda x, y: x + y, other)
+        __radd__ = __add__
+
+        def __sub__(self, other):
+            return self._op(lambda x, y: x - y, other)
+
+        def __rsub__(self, other):
+            return self._op(lambda x, y: y - x, other)
+
+        def __mul__(self, other):
+            return self._op(lambda x, y: x * y, other)
+
+        def __le__(self, other):
+            return self._op(lambda x, y: x <= y, other)
+
+        def __lt__(self, other):
+            return self._op(lambda x, y: x < y, other)
+
+        def __ge__(self, other):
+            return self._op(lambda x, y: x >= y, other)
+
+        def __gt__(self, other):
+            return self._op(lambda x, y: x > y, other)
+
+        def __ne__(self, other):
+            return self._op(lambda x, y: x != y, other)
+
+        def __eq__(self, other):
+            return self._op(lambda x, y: x == y, other)
+
+        __rmul__ = __mul__
+    return V

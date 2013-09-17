@@ -48,7 +48,6 @@ class MapLattice(Lattice):
                 join_dict[k] = self.mapping[k] | other.mapping[k]
             else:
                 join_dict[k] = other.mapping[k]
-        print(join_dict)
         return self.__class__(mapping=join_dict)
 
     def meet(self, other):

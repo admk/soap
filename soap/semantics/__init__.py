@@ -6,3 +6,4 @@ from soap.semantics.error import (
     cast_error, cast_error_constant
 )
 from soap.semantics.area import AreaSemantics
+from soap.semantics.state import ClassicalState

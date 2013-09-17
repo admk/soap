@@ -3,103 +3,99 @@
     :synopsis: Program states.
 """
 from soap import logger
-from soap.lattice import Lattice, flat, map
+from soap.semantics import mpfr
+from soap.lattice import value, map
 
 
-class State(Lattice):
+class State(object):
     """Program state.
 
     This provides the base class of all denotational semantics-based state
     objects.
     """
+    def __init__(self, *args, **kwargs):
+
+        def decorate_assign(func):
+            def assign(var, expr):
+                state = func(var, expr)
+                logger.debug(
+                    '⟦' + str(var) + ' := ' + str(expr) + '⟧:',
+                    str(self), '→', str(state))
+                return state
+            return assign
+
+        def decorate_conditional(func):
+            def conditional(expr, cond):
+                state = func(expr, cond)
+                logger.debug(
+                    '⟦' + str(expr if cond else ~expr) + '⟧:',
+                    str(self), '→', str(state))
+                return state
+            return conditional
+
+        def decorate_join(func):
+            def join(other):
+                state = func(other)
+                logger.debug(str(self) + ' ⊔ ' + str(other), '→', str(state))
+                return state
+            return join
+
+        def decorate_le(func):
+            def __le__(other):
+                b = func(other)
+                logger.debug(str(self), '⊑' if b else '⋢', str(other))
+                return b
+            return __le__
+
+        super().__init__(*args, **kwargs)
+        self.assign = decorate_assign(self.assign)
+        self.conditional = decorate_conditional(self.conditional)
+        self.join = decorate_join(self.join)
+        self.__le__ = decorate_le(self.__le__)
+
     def assign(self, var, expr):
         """Makes an assignment and returns a new state object."""
-        raise NotImplementedError
+        mapping = dict(self.mapping)
+        try:
+            mapping[var] = expr.eval(self.mapping)
+        except NameError:
+            pass
+        return self.__class__(mapping)
 
     def conditional(self, expr, cond):
         """Imposes a conditional on the state, returns a new state."""
         raise NotImplementedError
 
+    def __str__(self):
+        if self.mapping:
+            s = '[%s]' % ', '.join(
+                str(k) + '↦' + str(v) for k, v in self.mapping.items())
+        elif self.is_top():
+            s = '⊤'
+        elif self.is_bottom():
+            s = '⊥'
+        return s
+    __repr__ = __str__
 
-class ClassicalState(State):
+
+def value_state(cls, name=None):
+    class S(State, map(str, value(cls))):
+        pass
+    if name:
+        S.__name__ = name
+    else:
+        S.__name__ = 'State_' + cls.__name__
+    return S
+
+
+class ClassicalState(value_state(mpfr)):
     """The classical definition of a program state.
 
     This is intended to layout the foundation of future state classes,
     as well as to verify correctness of the program flows defined in
     :module:`soap.program.flow`.
     """
-
-    top_magic = {'_': 'top'}
-    bottom_magic = {}
-
-    def __init__(self, mapping=None, top=False, bottom=False, **kwargs):
-        if top:
-            self.mapping = self.top_magic
-        elif bottom:
-            self.mapping = self.bottom_magic
-        else:
-            self.mapping = dict(mapping or {}, **kwargs)
-
-    def top(self):
-        return self.mapping == self.top_magic
-
-    def bottom(self):
-        return self.mapping == self.bottom_magic
-
-    def assign(self, var, expr):
-        mapping = dict(self.mapping)
-        try:
-            mapping[var] = expr.eval(self.mapping)
-        except NameError:
-            pass
-        state = ClassicalState(mapping)
-        logger.debug(
-            '⟦' + str(var) + ' := ' + str(expr) + '⟧:',
-            str(self), '→', str(state))
-        return state
-
     def conditional(self, expr, cond):
         if expr.eval(self.mapping) == cond:
-            state = self
-        else:
-            state = ClassicalState(bottom=True)
-        logger.debug(
-            '⟦' + str(expr if cond else ~expr) + '⟧:',
-            str(self), '→', str(state))
-        return state
-
-    def join(self, other):
-        if other.top():
-            return other
-        if other.bottom():
             return self
-        mapping = dict(self.mapping)
-        for k, v in other.mapping.items():
-            if k in mapping and mapping[k] != v:
-                return ClassicalState(top=True)
-            mapping[k] = v
-        state = ClassicalState(mapping)
-        logger.debug(str(self) + ' ⊔ ' + str(other), '→', str(state))
-        return state
-
-    def __le__(self, other):
-        if other.top():
-            b = True
-        elif other.bottom():
-            b = False
-        elif set(self.mapping.items()) <= set(other.mapping.items()):
-            b = True
-        else:
-            b = False
-        logger.debug(str(self), '⊑' if b else '⋢', str(other))
-        return b
-
-    def __str__(self):
-        if self.mapping:
-            s = '[%s]' % ', '.join(
-                str(k) + '↦' + str(v) for k, v in self.mapping.items())
-        elif self.top():
-            s = '⊤'
-        elif self.bottom():
-            s = '⊥'
-        return s
+        return self.__class__(bottom=True)

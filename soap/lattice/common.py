@@ -5,12 +5,7 @@
 
 
 def _is_class(cls):
-    try:
-        class _(cls):
-            pass
-        return True
-    except TypeError:
-        return False
+    return callable(cls)
 
 
 def _lattice_factory(cls, lattice_cls, name):

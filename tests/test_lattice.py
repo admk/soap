@@ -1,11 +1,11 @@
 import unittest
 import itertools
 
-from soap.lattice import Lattice, flat, power, map
+from soap.lattice import Lattice, flat, value, power, map
 
 
 class TestLattice(unittest.TestCase):
-    """Unittesting for :class:`soap.semantics.lattice.Lattice`."""
+    """Unittesting for :class:`soap.lattice.Lattice`."""
     def test_top_and_bottom(self):
         class AltLattice(Lattice):
             pass
@@ -15,7 +15,7 @@ class TestLattice(unittest.TestCase):
 
 
 class TestFlatLattice(unittest.TestCase):
-    """Unittesting for :class:`soap.semantics.lattice.FlatLattice`."""
+    """Unittesting for :class:`soap.lattice.FlatLattice`."""
     def setUp(self):
         self.Lat = flat(int, 'IntLattice')
         self.b, self.t = self.Lat(bottom=True), self.Lat(top=True)
@@ -66,7 +66,7 @@ class TestFlatLattice(unittest.TestCase):
 
 
 class TestPowerLattice(unittest.TestCase):
-    """Unittesting for :class:`soap.semantics.PowerLattice`."""
+    """Unittesting for :class:`soap.lattice.PowerLattice`."""
     def setUp(self):
         self.ILat = power(int)
         self.ib, self.it = self.ILat(bottom=True), self.ILat(top=True)
@@ -84,7 +84,7 @@ class TestPowerLattice(unittest.TestCase):
 
 
 class TestComponentWiseLattice(unittest.TestCase):
-    """Unittesting for :class:`soap.semantics.LatticeMeta`
+    """Unittesting for :class:`soap.lattice.base.LatticeMeta`
     ComponentWiseLattice."""
     def setUp(self):
         self.alphabets = ['a']
@@ -195,6 +195,7 @@ class TestComponentWiseLattice(unittest.TestCase):
 
 
 class TestMapLattice(unittest.TestCase):
+    """Unittesting for :class:`soap.lattice.MapLattice`."""
     def setUp(self):
         self.Lat = map(str, flat(int, 'Int'), 'State')
         self.bot = self.Lat(bottom=True)
@@ -234,3 +235,31 @@ class TestMapLattice(unittest.TestCase):
         self.assertEqual(self.bot_bot & self.top, self.bot)
         self.assertEqual(self.one_bot & self.bot_one, self.bot)
         self.assertEqual(self.one_one & self.one_two, self.one_bot)
+
+
+class TestValue(unittest.TestCase):
+    """Unittesting for :class:`soap.lattice.value`."""
+    def setUp(self):
+        self.Val = value(int)
+        self.bot = self.Val(bottom=True)
+        self.v1 = self.Val(1)
+        self.v2 = self.Val(2)
+        self.v3 = self.Val(3)
+
+    def test_add(self):
+        self.assertEqual(self.v1 + self.v2, self.v3)
+        self.assertEqual(self.bot + self.v1, self.bot)
+        self.assertEqual(self.v1 + self.bot, self.bot)
+        self.assertEqual(1 + self.bot, self.bot)
+        self.assertEqual(self.bot + 1, self.bot)
+        self.assertEqual(1 + self.v2, self.v3)
+        self.assertEqual(self.v2 + 1, self.v3)
+
+    def test_sub(self):
+        self.assertEqual(self.v2 - self.v1, self.v1)
+        self.assertEqual(self.bot - self.v1, self.bot)
+        self.assertEqual(self.v1 - self.bot, self.bot)
+        self.assertEqual(1 - self.bot, self.bot)
+        self.assertEqual(self.bot - 1, self.bot)
+        self.assertEqual(2 - self.v1, self.v1)
+        self.assertEqual(self.v2 - 1, self.v1)
