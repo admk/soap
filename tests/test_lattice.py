@@ -1,7 +1,7 @@
 import unittest
 import itertools
 
-from soap.semantics.lattice import Lattice, flat, power
+from soap.semantics.lattice import Lattice, flat, power, map
 
 
 class TestLattice(unittest.TestCase):
@@ -28,7 +28,7 @@ class TestFlatLattice(unittest.TestCase):
         self.assertEqual(self.FLat(bottom=True), self.FLat(bottom=True))
         self.assertEqual(self.FLat(top=True), self.FLat(top=True))
 
-    def test_flat_lattice_join(self):
+    def test_join(self):
         self.assertEqual(self.b | self.b, self.b)
         self.assertEqual(self.b | self.Lat(1), self.Lat(1))
         self.assertEqual(self.Lat(1) | self.b, self.Lat(1))
@@ -37,7 +37,7 @@ class TestFlatLattice(unittest.TestCase):
         self.assertEqual(self.t | self.Lat(1), self.t)
         self.assertEqual(self.t | self.t, self.t)
 
-    def test_flat_lattice_meet(self):
+    def test_meet(self):
         self.assertEqual(self.b & self.b, self.b)
         self.assertEqual(self.b & self.Lat(1), self.b)
         self.assertEqual(self.Lat(1) & self.b, self.b)
@@ -46,7 +46,7 @@ class TestFlatLattice(unittest.TestCase):
         self.assertEqual(self.t & self.Lat(1), self.Lat(1))
         self.assertEqual(self.t & self.t, self.t)
 
-    def test_flat_lattice_from_set(self):
+    def test_from_set(self):
         self.assertEqual(self.FLat(1), self.FLat(1))
         self.assertNotEqual(self.FLat(1), self.FLat(2))
         self.assertNotEqual(self.FLat(1), self.fb)
@@ -73,7 +73,7 @@ class TestPowerLattice(unittest.TestCase):
         self.FLat = power([1, 2, 3])
         self.fb, self.ft = self.FLat(bottom=True), self.FLat(top=True)
 
-    def test_infinite_power_lattice(self):
+    def test_infinite(self):
         self.assertEqual(self.ib | self.ib, self.ib)
         self.assertEqual(self.ib | self.ILat([1]), self.ILat([1]))
         self.assertEqual(self.ILat([1]) | self.ib, self.ILat([1]))
@@ -102,7 +102,7 @@ class TestComponentWiseLattice(unittest.TestCase):
             self.AlphaNumeral('bottom', 'bottom'),
             self.AlphaNumeral(bottom=True))
 
-    def test_component_wise_lattice_order(self):
+    def test_order(self):
         t, b, a = 'top', 'bottom', 'a'
         rel_tests = {
             (t, t): [(t, 1), (t, b), (a, t), (a, 1), (a, b),
@@ -129,7 +129,7 @@ class TestComponentWiseLattice(unittest.TestCase):
             self.AlphaNumeral(self.Alphabet('a'), self.Numeral(1)),
             self.AlphaNumeral('a', 1))
 
-    def test_component_wise_lattice_join_and_meet(self):
+    def test_join_and_meet(self):
         t, b, a = 'top', 'bottom', 'a'
         join_tests = {
             ((t, t), (t, t)): (t, t), ((t, t), (t, 1)): (t, t),
@@ -192,3 +192,36 @@ class TestComponentWiseLattice(unittest.TestCase):
             self.assertEqual(t & l, l)
             self.assertEqual(l & b, b)
             self.assertEqual(b & l, b)
+
+
+class TestMapLattice(unittest.TestCase):
+    def setUp(self):
+        self.Lat = map(str, flat(int))
+        self.bot = self.Lat(bottom=True)
+        self.top = self.Lat(top=True)
+        self.bot_one = self.Lat({'x': 'bottom', 'y': 1})
+        self.one_one = self.Lat({'x': 1, 'y': 1})
+        self.one_two = self.Lat({'x': 1, 'y': 2})
+        self.one_bot = self.Lat({'x': 1})
+        self.one_top = self.Lat({'x': 1, 'y': 'top'})
+
+    def test_bottom_and_top(self):
+        self.assertEqual(self.Lat({}), self.bot)
+        self.assertEqual(self.bot, self.Lat({}))
+        self.assertEqual(self.Lat({'x': 'bottom'}), self.bot)
+        self.assertNotEqual(self.Lat({'x': 'top'}), self.top)
+
+    def test_order(self):
+        self.assertTrue(self.bot_one <= self.one_one)
+        self.assertFalse(self.one_one <= self.bot_one)
+        self.assertFalse(self.one_one <= self.one_two)
+        self.assertFalse(self.one_two <= self.one_one)
+        self.assertFalse(self.one_one <= self.one_two)
+        self.assertTrue(self.one_bot <= self.one_one)
+        self.assertFalse(self.one_one <= self.one_bot)
+        self.assertFalse(self.one_bot <= self.bot_one)
+        self.assertFalse(self.bot_one <= self.one_bot)
+
+    def test_join(self):
+        self.assertEqual(self.one_bot | self.bot_one, self.one_one)
+        self.assertEqual(self.one_one | self.one_two, self.one_top)
