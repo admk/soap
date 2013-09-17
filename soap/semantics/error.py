@@ -6,7 +6,7 @@ import gmpy2
 from gmpy2 import mpfr, mpq as _mpq
 
 from soap.common import Comparable
-from soap.semantics import Lattice
+from soap.lattice import Lattice
 
 
 mpfr_type = type(mpfr('1.0'))

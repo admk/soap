@@ -10,7 +10,8 @@ from matplotlib import rc, pyplot, pylab
 import soap.expr
 import soap.logger as logger
 from soap.common import Comparable
-from soap.semantics import Lattice, flopoco
+from soap.lattice import Lattice
+from soap.semantics import flopoco
 
 
 class AreaSemantics(Comparable, Lattice):

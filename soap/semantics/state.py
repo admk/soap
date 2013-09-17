@@ -3,7 +3,7 @@
     :synopsis: Program states.
 """
 from soap import logger
-from soap.semantics.common import Lattice
+from soap.lattice import Lattice, flat, map
 
 
 class State(Lattice):

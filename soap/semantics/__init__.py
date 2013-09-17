@@ -1,6 +1,5 @@
 from gmpy2 import mpfr
 from soap.semantics.common import Label, precision_context
-from soap.semantics.lattice import Lattice, flat
 from soap.semantics.error import (
     Interval, FloatInterval, FractionInterval,
     ErrorSemantics, mpq, mpq_type, mpfr_type, ulp, round_off_error,

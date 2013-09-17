@@ -1,7 +1,7 @@
 import unittest
 import itertools
 
-from soap.semantics.lattice import Lattice, flat, power, map
+from soap.lattice import Lattice, flat, power, map
 
 
 class TestLattice(unittest.TestCase):
