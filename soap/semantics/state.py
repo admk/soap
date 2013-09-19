@@ -3,7 +3,6 @@
     :synopsis: Program states.
 """
 from soap import logger
-from soap.semantics import mpfr
 
 from soap.lattice import denotational, map
 
@@ -42,17 +41,17 @@ class State(object):
             return join
 
         def decorate_le(func):
-            def __le__(other):
+            def le(other):
                 b = func(other)
                 logger.debug(str(self), '⊑' if b else '⋢', str(other))
                 return b
-            return __le__
+            return le
 
         super().__init__(*args, **kwargs)
         self.assign = decorate_assign(self.assign)
         self.conditional = decorate_conditional(self.conditional)
         self.join = decorate_join(self.join)
-        self.__le__ = decorate_le(self.__le__)
+        self.le = decorate_le(self.le)
 
     def assign(self, var, expr):
         """Makes an assignment and returns a new state object."""

@@ -64,8 +64,8 @@ class PowerLattice(Lattice):
             return e
         return self.__class__(self.elements & other.elements)
 
-    def __le__(self, other):
-        le = super().__le__(other)
+    def le(self, other):
+        le = super().le(other)
         if le is not None:
             return le
         return self.elements <= other.elements

@@ -2,6 +2,7 @@
 .. module:: soap.lattice.flat
     :synopsis: The flat lattice.
 """
+from soap.common import ignored
 from soap.lattice import Lattice
 from soap.lattice.common import _is_class, _lattice_factory
 
@@ -61,8 +62,8 @@ class FlatLattice(Lattice):
             return self.__class__(bottom=True)
         return self
 
-    def __le__(self, other):
-        le = super().__le__(other)
+    def le(self, other):
+        le = super().le(other)
         if le is not None:
             return le
         return self == other
@@ -90,6 +91,57 @@ class FlatLattice(Lattice):
         return '%s(%s)' % (self.__class__.__name__, repr(self.v))
 
 
+class Denotational(object):
+    def _op(self, op, other):
+        with ignored(AttributeError):
+            if self.is_top() or other.is_top():
+                # top denotes conflict
+                return self.__class__(top=True)
+        with ignored(AttributeError):
+            if self.is_bottom() or other.is_bottom():
+                # bottom denotes no information
+                return self.__class__(bottom=True)
+        try:
+            v = op(self.v, other.v)
+        except AttributeError:
+            v = op(self.v, other)
+        if type(v) is bool:
+            return v
+        return self.__class__(v)
+
+    def __add__(self, other):
+        return self._op(lambda x, y: x + y, other)
+    __radd__ = __add__
+
+    def __sub__(self, other):
+        return self._op(lambda x, y: x - y, other)
+
+    def __rsub__(self, other):
+        return self._op(lambda x, y: y - x, other)
+
+    def __mul__(self, other):
+        return self._op(lambda x, y: x * y, other)
+    __rmul__ = __mul__
+
+    def __le__(self, other):
+        return self._op(lambda x, y: x <= y, other)
+
+    def __lt__(self, other):
+        return self._op(lambda x, y: x < y, other)
+
+    def __ge__(self, other):
+        return self._op(lambda x, y: x >= y, other)
+
+    def __gt__(self, other):
+        return self._op(lambda x, y: x > y, other)
+
+    def __ne__(self, other):
+        return self._op(lambda x, y: x != y, other)
+
+    def __eq__(self, other):
+        return self._op(lambda x, y: x == y, other)
+
+
 def flat(cls=None, name=None):
     """Returns a flat lattice derived from a class `cls`, or a set of elements.
 
@@ -107,11 +159,11 @@ def flat(cls=None, name=None):
 def denotational(cls=None, name=None):
     """Defines a classical denotational approach to flat domains.
 
-    For example, for any mathematical operations, e.g., a + b, if either a or
-    b is undefined (⊥), then the evaluation result is undefined. Because this
-    behaviour is also given for comparisons including ``<=`` (less than or
-    equal to), the original partial ordering from the lattice cannot be used
-    anymore.
+    For example, for any mathematical operations, e.g., a + b, if either a
+    or b is undefined (⊥), then the evaluation result is undefined. Because
+    this behaviour is also given for comparisons including ``<=`` (less than
+    or equal to), the original partial ordering from the lattice can only be
+    accessed with the member function member:`le`.
 
     Example::
         >>> Int = denotational(int, 'Int')
@@ -121,73 +173,10 @@ def denotational(cls=None, name=None):
         >>> a + c
         Int(bottom=True)
     """
-    class Denotational(flat(cls)):
-        def __str__(self):
-            s = super().__str__()
-            if s is not None:
-                return s
-            return str(self.v)
-
-        def __repr__(self):
-            r = super().__repr__()
-            if r is not None:
-                return r
-            return self.__class__.__name__ + '(' + repr(self.v) + ')'
-
-        def _op(self, op, other):
-            try:
-                if self.is_top() or other.is_top():
-                    # top denotes conflict
-                    return self.__class__(top=True)
-            except AttributeError:
-                pass
-            try:
-                if self.is_bottom() or other.is_bottom():
-                    # bottom denotes no information
-                    return self.__class__(bottom=True)
-            except AttributeError:
-                pass
-            try:
-                v = op(self.v, other.v)
-            except AttributeError:
-                v = op(self.v, other)
-            if type(v) is bool:
-                return v
-            return self.__class__(v)
-
-        def __add__(self, other):
-            return self._op(lambda x, y: x + y, other)
-        __radd__ = __add__
-
-        def __sub__(self, other):
-            return self._op(lambda x, y: x - y, other)
-
-        def __rsub__(self, other):
-            return self._op(lambda x, y: y - x, other)
-
-        def __mul__(self, other):
-            return self._op(lambda x, y: x * y, other)
-        __rmul__ = __mul__
-
-        def __le__(self, other):
-            return self._op(lambda x, y: x <= y, other)
-
-        def __lt__(self, other):
-            return self._op(lambda x, y: x < y, other)
-
-        def __ge__(self, other):
-            return self._op(lambda x, y: x >= y, other)
-
-        def __gt__(self, other):
-            return self._op(lambda x, y: x > y, other)
-
-        def __ne__(self, other):
-            return self._op(lambda x, y: x != y, other)
-
-        def __eq__(self, other):
-            return self._op(lambda x, y: x == y, other)
+    class DenotationalFlatLattice(Denotational, flat(cls)):
+        pass
     if name:
-        Denotational.__name__ = name
+        DenotationalFlatLattice.__name__ = name
     elif _is_class(cls):
-        Denotational.__name__ += cls.__name__
-    return Denotational
+        DenotationalFlatLattice.__name__ += cls.__name__
+    return DenotationalFlatLattice

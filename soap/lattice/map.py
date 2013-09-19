@@ -63,8 +63,8 @@ class MapLattice(Lattice):
                 meet_dict[k] = v
         return self.__class__(mapping=meet_dict)
 
-    def __le__(self, other):
-        le = super().__le__(other)
+    def le(self, other):
+        le = super().le(other)
         if le is not None:
             return le
         for k, v in self.mapping.items():

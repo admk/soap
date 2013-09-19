@@ -62,8 +62,8 @@ class LatticeMeta(type):
                                     zip(self.components, other.components)]
                 return e
 
-            def __le__(self, other):
-                le = super().__le__(other)
+            def le(self, other):
+                le = super().le(other)
                 if le is not None:
                     return le
                 return all(self_comp <= other_comp
@@ -90,7 +90,7 @@ class Lattice(object, metaclass=LatticeMeta):
     structures such as preorders, partial orders, dcpos are not implemented.
 
     Subclasses of this class must implement the member functions:
-    :member:`join`, :member:`meet`, :member:`__le__`.
+    :member:`join`, :member:`meet`, :member:`le`.
     """
     def __init__(self, *args, top=False, bottom=False, **kwargs):
         if top and bottom:
@@ -114,7 +114,9 @@ class Lattice(object, metaclass=LatticeMeta):
     def _check_type_consistency(self, other):
         if self.__class__ == other.__class__:
             return
-        raise TypeError('Inconsistent lattice types: %s, %s' % (self, other))
+        raise TypeError(
+            'Inconsistent lattice types: %s, %s' %
+            (str(self.__class__), str(other.__class__)))
 
     def join(self, other):
         self._check_type_consistency(other)
@@ -130,7 +132,7 @@ class Lattice(object, metaclass=LatticeMeta):
         if self.is_bottom() or other.is_top():
             return self
 
-    def __le__(self, other):
+    def le(self, other):
         self._check_type_consistency(other)
         if self.is_bottom():
             return True
@@ -139,20 +141,17 @@ class Lattice(object, metaclass=LatticeMeta):
         if self.is_top() and not other.is_top():
             return False
 
-    def __ge__(self, other):
-        return other.__le__(self)
+    __or__ = lambda self, other: self.join(other)
+    __ror__ = lambda self, other: self.join(other)
+    __and__ = lambda self, other: self.meet(other)
+    __rand__ = lambda self, other: self.meet(other)
 
-    def __eq__(self, other):
-        """Defaults to antisymmetry."""
-        return self.__le__(other) and self.__ge__(other)
-
-    def __or__(self, other):
-        return self.join(other)
-    __ror__ = __or__
-
-    def __and__(self, other):
-        return self.meet(other)
-    __rand__ = __and__
+    __le__ = lambda self, other: self.le(other)
+    __eq__ = lambda self, other: self.le(other) and other.le(self)
+    __ne__ = lambda self, other: not self.le(other) or not other.le(self)
+    __ge__ = lambda self, other: other.le(self)
+    __lt__ = lambda self, other: not other.le(self)
+    __gt__ = lambda self, other: not self.le(other)
 
     def __str__(self):
         if self.is_top():
