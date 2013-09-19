@@ -5,7 +5,7 @@
 import gmpy2
 from gmpy2 import mpfr, mpq as _mpq
 
-from soap.common import Comparable
+from soap.common import ignored
 from soap.lattice import Lattice
 
 
@@ -61,43 +61,96 @@ def cast_error(v, w=None):
     return ErrorSemantics([v, w], round_off_error(FractionInterval([v, w])))
 
 
+def decorate_cast_other(func):
+    def wrapper(self, other):
+        with ignored(AttributeError):
+            if self.is_top() or other.is_top():
+                # top denotes no information or non-termination
+                return self.__class__(top=True)
+        with ignored(AttributeError):
+            if self.is_bottom() or other.is_bottom():
+                # bottom denotes conflict
+                return self.__class__(bottom=True)
+        try:
+            return func(self, other)
+        except AttributeError:
+            return func(self, self.__class__([other, other]))
+    return wrapper
+
+
 class Interval(Lattice):
     """The interval base class."""
-    def __init__(self, v):
-        min_val, max_val = v
-        self.min, self.max = min_val, max_val
-        if min_val > max_val:
+    def __init__(self, v=None, top=False, bottom=False):
+        super().__init__(top=top, bottom=bottom)
+        if top or bottom:
+            return
+        self.min, self.max = v
+        if self.min > self.max:
             raise ValueError('min_val cannot be greater than max_val')
 
+    def is_top(self):
+        t = super().is_top()
+        if t is not None:
+            return t
+        return self.min == float('-Inf') and self.max == float('Inf')
+
+    def is_bottom(self):
+        b = super().is_bottom()
+        return b if b is not None else False
+
     def join(self, other):
+        e = super().join(other)
+        if e:
+            return e
         return self.__class__(
             [min(self.min, other.min), max(self.max, other.max)])
 
     def meet(self, other):
+        e = super().meet(other)
+        if e:
+            return e
         return self.__class__(
             [max(self.min, other.min), min(self.max, other.max)])
+
+    def le(self, other):
+        le = super().le(other)
+        if le is not None:
+            return le
+        return self.min >= other.min and self.max <= other.max
 
     def __iter__(self):
         return iter((self.min, self.max))
 
+    @decorate_cast_other
     def __add__(self, other):
         return self.__class__([self.min + other.min, self.max + other.max])
+    __radd__ = __add__
 
+    @decorate_cast_other
     def __sub__(self, other):
         return self.__class__([self.min - other.max, self.max - other.min])
 
+    @decorate_cast_other
+    def __rsub__(self, other):
+        return self.__class__([other.min - self.max, other.max - self.min])
+
+    @decorate_cast_other
     def __mul__(self, other):
         v = (self.min * other.min, self.min * other.max,
              self.max * other.min, self.max * other.max)
         return self.__class__([min(v), max(v)])
+    __rmul__ = __mul__
+
+    def __neg__(self):
+        if self.is_top() or self.is_bottom():
+            return self
+        return self.__class__([-self.max, -self.min])
 
     def __str__(self):
+        s = super().__str__()
+        if s is not None:
+            return s
         return '[%s, %s]' % (str(self.min), str(self.max))
-
-    def __eq__(self, other):
-        if not isinstance(other, Interval):
-            return False
-        return self.min == other.min and self.max == other.max
 
     def __hash__(self):
         return hash(tuple(self))
@@ -122,11 +175,19 @@ class FractionInterval(Interval):
         return '[~%s, ~%s]' % (str(mpfr(self.min)), str(mpfr(self.max)))
 
 
-class ErrorSemantics(Lattice, Comparable):
+class ErrorSemantics(Lattice):
     """The error semantics."""
-    def __init__(self, v, e):
+    def __init__(self, v, e=None):
         self.v = FloatInterval(v)
+        if e is None:
+            raise NotImplementedError('Cannot initialise without error yet.')
         self.e = FractionInterval(e)
+
+    def is_top(self):
+        return self.v.is_top() or self.e.is_top()
+
+    def is_bottom(self):
+        return self.v.is_bottom() or self.e.is_bottom()
 
     def join(self, other):
         return ErrorSemantics(self.v | other.v, self.e | other.e)
@@ -134,16 +195,22 @@ class ErrorSemantics(Lattice, Comparable):
     def meet(self, other):
         return ErrorSemantics(self.v & other.v, self.e & other.e)
 
+    def le(self, other):
+        raise NotImplementedError
+
+    @decorate_cast_other
     def __add__(self, other):
         v = self.v + other.v
         e = self.e + other.e + round_off_error(v)
         return ErrorSemantics(v, e)
 
+    @decorate_cast_other
     def __sub__(self, other):
         v = self.v - other.v
         e = self.e - other.e + round_off_error(v)
         return ErrorSemantics(v, e)
 
+    @decorate_cast_other
     def __mul__(self, other):
         v = self.v * other.v
         e = self.e * other.e + round_off_error(v)
@@ -158,16 +225,6 @@ class ErrorSemantics(Lattice, Comparable):
         return 'ErrorSemantics([%s, %s], [%s, %s])' % \
             (repr(self.v.min), repr(self.v.max),
              repr(self.e.min), repr(self.e.max))
-
-    def __eq__(self, other):
-        if not isinstance(other, ErrorSemantics):
-            return False
-        return self.v == other.v and self.e == other.e
-
-    def __lt__(self, other):
-        def max_err(a):
-            return max(abs(a.e.min), abs(a.e.max))
-        return max_err(self) < max_err(other)
 
     def __hash__(self):
         return hash((self.v, self.e))
