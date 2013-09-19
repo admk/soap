@@ -153,8 +153,14 @@ class Lattice(object, metaclass=LatticeMeta):
     def __and__(self, other):
         return self.meet(other)
 
+    def __str__(self):
+        if self.is_top():
+            return '⊤'
+        if self.is_bottom():
+            return '⊥'
+
     def __repr__(self):
         if self.is_top():
-            return self.__class__.__name__ + '(Top)'
+            return self.__class__.__name__ + '(top=True)'
         if self.is_bottom():
-            return self.__class__.__name__ + '(Bottom)'
+            return self.__class__.__name__ + '(bottom=True)'

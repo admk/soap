@@ -1,7 +1,7 @@
 import unittest
 import itertools
 
-from soap.lattice import Lattice, flat, value, power, map
+from soap.lattice import Lattice, flat, denotational, power, map
 
 
 class TestLattice(unittest.TestCase):
@@ -238,9 +238,9 @@ class TestMapLattice(unittest.TestCase):
 
 
 class TestValue(unittest.TestCase):
-    """Unittesting for :class:`soap.lattice.value`."""
+    """Unittesting for :class:`soap.lattice.denotational`."""
     def setUp(self):
-        self.Val = value(int)
+        self.Val = denotational(int, 'IntDenotational')
         self.bot = self.Val(bottom=True)
         self.v1 = self.Val(1)
         self.v2 = self.Val(2)

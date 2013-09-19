@@ -77,6 +77,12 @@ class FlatLattice(Lattice):
         except AttributeError:
             return False
 
+    def __str__(self):
+        s = super().__str__()
+        if s is not None:
+            return s
+        return str(self.v)
+
     def __repr__(self):
         r = super().__repr__()
         if r is not None:
@@ -98,14 +104,46 @@ def flat(cls, name=None):
     return _lattice_factory(cls, FlatLattice, name)
 
 
-def value(cls):
-    class V(flat(cls)):
+def denotational(cls, name=None):
+    """Defines a classical denotational approach to flat domains.
+
+    For example, for any mathematical operations, e.g., a + b, if either a or
+    b is undefined (⊥), then the evaluation result is undefined. Because this
+    behaviour is also given for comparisons including ``<=`` (less than or
+    equal to), the original partial ordering from the lattice cannot be used
+    anymore.
+
+    Example::
+        >>> Int = denotational(int, 'Int')
+        >>> a, b, c = Int(1), Int(2), Int(bottom=True)
+        >>> a + b
+        Int(3)
+        >>> a + c
+        Int(bottom=True)
+    """
+    class Denotational(flat(cls)):
         def __str__(self):
+            s = super().__str__()
+            if s is not None:
+                return s
             return str(self.v)
+
+        def __repr__(self):
+            r = super().__repr__()
+            if r is not None:
+                return r
+            return self.__class__.__name__ + '(' + repr(self.v) + ')'
 
         def _op(self, op, other):
             try:
+                if self.is_top() or other.is_top():
+                    # top denotes conflict
+                    return self.__class__(top=True)
+            except AttributeError:
+                pass
+            try:
                 if self.is_bottom() or other.is_bottom():
+                    # bottom denotes no information
                     return self.__class__(bottom=True)
             except AttributeError:
                 pass
@@ -129,6 +167,7 @@ def value(cls):
 
         def __mul__(self, other):
             return self._op(lambda x, y: x * y, other)
+        __rmul__ = __mul__
 
         def __le__(self, other):
             return self._op(lambda x, y: x <= y, other)
@@ -147,6 +186,8 @@ def value(cls):
 
         def __eq__(self, other):
             return self._op(lambda x, y: x == y, other)
-
-        __rmul__ = __mul__
-    return V
+    if name:
+        Denotational.__name__ = name
+    elif _is_class(cls):
+        Denotational.__name__ = 'Denotational_' + cls.__name__
+    return Denotational

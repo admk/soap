@@ -74,6 +74,13 @@ class MapLattice(Lattice):
                 return False
         return True
 
+    def __str__(self):
+        s = super().__str__()
+        if s is not None:
+            return s
+        return '[%s]' % ', '.join(
+            str(k) + '↦' + str(v) for k, v in self.mapping.items())
+
     def __repr__(self):
         r = super().__repr__()
         if r is not None:

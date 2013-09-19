@@ -4,7 +4,8 @@
 """
 from soap import logger
 from soap.semantics import mpfr
-from soap.lattice import value, map
+
+from soap.lattice import denotational, map
 
 
 class State(object):
@@ -66,20 +67,9 @@ class State(object):
         """Imposes a conditional on the state, returns a new state."""
         raise NotImplementedError
 
-    def __str__(self):
-        if self.mapping:
-            s = '[%s]' % ', '.join(
-                str(k) + '↦' + str(v) for k, v in self.mapping.items())
-        elif self.is_top():
-            s = '⊤'
-        elif self.is_bottom():
-            s = '⊥'
-        return s
-    __repr__ = __str__
 
-
-def value_state(cls, name=None):
-    class S(State, map(str, value(cls))):
+def denotational_state(cls, name=None):
+    class S(State, map(str, denotational(cls))):
         pass
     if name:
         S.__name__ = name
@@ -88,7 +78,7 @@ def value_state(cls, name=None):
     return S
 
 
-class ClassicalState(value_state(mpfr)):
+class ClassicalState(denotational_state(mpfr)):
     """The classical definition of a program state.
 
     This is intended to layout the foundation of future state classes,
