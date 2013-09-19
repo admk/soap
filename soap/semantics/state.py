@@ -68,17 +68,17 @@ class State(object):
         raise NotImplementedError
 
 
-def denotational_state(cls, name=None):
-    class S(State, map(str, denotational(cls))):
+def denotational_state(cls=None, name=None):
+    class DenotationalState(State, map(str, denotational(cls))):
         pass
     if name:
-        S.__name__ = name
-    else:
-        S.__name__ = 'State_' + cls.__name__
-    return S
+        DenotationalState.__name__ = name
+    elif cls:
+        DenotationalState.__name__ += cls.__name__
+    return DenotationalState
 
 
-class ClassicalState(denotational_state(mpfr)):
+class ClassicalState(denotational_state()):
     """The classical definition of a program state.
 
     This is intended to layout the foundation of future state classes,

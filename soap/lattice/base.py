@@ -111,28 +111,27 @@ class Lattice(object, metaclass=LatticeMeta):
         if self.bottom:
             return True
 
-    def _is_consistent_type(self, other):
-        return self.__class__ == other.__class__
+    def _check_type_consistency(self, other):
+        if self.__class__ == other.__class__:
+            return
+        raise TypeError('Inconsistent lattice types: %s, %s' % (self, other))
 
     def join(self, other):
-        if not self._is_consistent_type(other):
-            raise TypeError('Inconsistent lattice types')
+        self._check_type_consistency(other)
         if self.is_top() or other.is_bottom():
             return self
         if self.is_bottom() or other.is_top():
             return other
 
     def meet(self, other):
-        if not self._is_consistent_type(other):
-            raise TypeError('Inconsistent lattice types')
+        self._check_type_consistency(other)
         if self.is_top() or other.is_bottom():
             return other
         if self.is_bottom() or other.is_top():
             return self
 
     def __le__(self, other):
-        if not self._is_consistent_type(other):
-            raise TypeError('Inconsistent lattice types')
+        self._check_type_consistency(other)
         if self.is_bottom():
             return True
         if other.is_top():
@@ -149,9 +148,11 @@ class Lattice(object, metaclass=LatticeMeta):
 
     def __or__(self, other):
         return self.join(other)
+    __ror__ = __or__
 
     def __and__(self, other):
         return self.meet(other)
+    __rand__ = __and__
 
     def __str__(self):
         if self.is_top():

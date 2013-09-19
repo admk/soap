@@ -20,10 +20,10 @@ class FlatLattice(Lattice):
         super().__init__(top=top, bottom=bottom)
         if top or bottom:
             return
-        if self._class():
+        if self._class() is not None:
             self.v = self._class()(var)
         else:
-            if not var in self._container():
+            if self._container() is not None and var not in self._container():
                 raise ValueError('Non-existing element: %s' % repr(var))
             self.v = var
 
@@ -90,7 +90,7 @@ class FlatLattice(Lattice):
         return '%s(%s)' % (self.__class__.__name__, repr(self.v))
 
 
-def flat(cls, name=None):
+def flat(cls=None, name=None):
     """Returns a flat lattice derived from a class `cls`, or a set of elements.
 
     :param cls: The class to be lifted with a bottom element and crowned with a
@@ -104,7 +104,7 @@ def flat(cls, name=None):
     return _lattice_factory(cls, FlatLattice, name)
 
 
-def denotational(cls, name=None):
+def denotational(cls=None, name=None):
     """Defines a classical denotational approach to flat domains.
 
     For example, for any mathematical operations, e.g., a + b, if either a or
@@ -189,5 +189,5 @@ def denotational(cls, name=None):
     if name:
         Denotational.__name__ = name
     elif _is_class(cls):
-        Denotational.__name__ = 'Denotational_' + cls.__name__
+        Denotational.__name__ += cls.__name__
     return Denotational
