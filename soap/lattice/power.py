@@ -41,39 +41,21 @@ class PowerLattice(Lattice):
         pass
 
     def is_top(self):
-        t = super().is_top()
-        if t is not None:
-            return t
         return self.elements == self._container()
 
     def is_bottom(self):
-        b = super().is_bottom()
-        if b is not None:
-            return b
         return len(self.elements) == 0
 
     def join(self, other):
-        e = super().join(other)
-        if e:
-            return e
         return self.__class__(self.elements | other.elements)
 
     def meet(self, other):
-        e = super().meet(other)
-        if e:
-            return e
         return self.__class__(self.elements & other.elements)
 
     def le(self, other):
-        le = super().le(other)
-        if le is not None:
-            return le
         return self.elements <= other.elements
 
     def __repr__(self):
-        r = super().__repr__()
-        if r is not None:
-            return r
         return '%s(%s)' % (self.__class__.__name__, repr(self.elements))
 
 

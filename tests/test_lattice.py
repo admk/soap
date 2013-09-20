@@ -6,12 +6,24 @@ from soap.lattice import Lattice, flat, denotational, power, map
 
 class TestLattice(unittest.TestCase):
     """Unittesting for :class:`soap.lattice.Lattice`."""
+    def setUp(self):
+        self.bottom = Lattice(bottom=True)
+        self.top = Lattice(top=True)
+
     def test_top_and_bottom(self):
-        class AltLattice(Lattice):
-            pass
-        self.assertEqual(Lattice(bottom=True), Lattice(bottom=True))
-        self.assertEqual(Lattice(top=True), Lattice(top=True))
+        self.assertEqual(self.bottom, Lattice(bottom=True))
+        self.assertEqual(self.top, Lattice(top=True))
         self.assertNotEqual(Lattice(bottom=True), Lattice(top=True))
+
+    def test_order(self):
+        self.assertIs(self.bottom <= self.bottom, True)
+        self.assertIs(self.bottom >= self.bottom, True)
+        self.assertIs(self.bottom <= self.top, True)
+        self.assertIs(self.bottom >= self.top, False)
+        self.assertIs(self.top <= self.bottom, False)
+        self.assertIs(self.top >= self.bottom, True)
+        self.assertIs(self.top <= self.top, True)
+        self.assertIs(self.top >= self.top, True)
 
 
 class TestFlatLattice(unittest.TestCase):
@@ -122,7 +134,10 @@ class TestComponentWiseLattice(unittest.TestCase):
                 l2 = self.AlphaNumeral(a2, n2)
                 test = (a1, n1) in rel_tests[a2, n2]
                 same = (a1, n1) == (a2, n2)
-                self.assertEqual(l1 <= l2, test or same)
+                if test or same:
+                    self.assertLessEqual(l1, l2)
+                else:
+                    self.assertFalse(l1 <= l2)
         self.assertEqual(
             self.AlphaNumeral(top=True), self.AlphaNumeral('top', 'top'))
         self.assertEqual(

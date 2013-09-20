@@ -26,22 +26,12 @@ class MapLattice(Lattice):
         pass
 
     def is_top(self):
-        t = super().is_top()
-        return False if t is None else t
+        return False
 
     def is_bottom(self):
-        b = super().is_bottom()
-        if b is not None:
-            return b
-        non_bottoms = [_ for _, v in self.mapping.items()
-                       if not v.is_bottom()]
-        if len(non_bottoms) == 0:
-            return True
+        return all(v.is_bottom() for _, v in self.mapping.items())
 
     def join(self, other):
-        e = super().join(other)
-        if e:
-            return e
         join_dict = dict(self.mapping)
         for k in other.mapping:
             if k in self.mapping:
@@ -51,9 +41,6 @@ class MapLattice(Lattice):
         return self.__class__(mapping=join_dict)
 
     def meet(self, other):
-        e = super().meet(other)
-        if e:
-            return e
         meet_dict = {}
         for k in list(self.mapping) + list(other.mapping):
             if k not in self.mapping or k not in other.mapping:
@@ -64,9 +51,6 @@ class MapLattice(Lattice):
         return self.__class__(mapping=meet_dict)
 
     def le(self, other):
-        le = super().le(other)
-        if le is not None:
-            return le
         for k, v in self.mapping.items():
             if k not in other.mapping:
                 return False
@@ -75,16 +59,10 @@ class MapLattice(Lattice):
         return True
 
     def __str__(self):
-        s = super().__str__()
-        if s is not None:
-            return s
         return '[%s]' % ', '.join(
             str(k) + '↦' + str(v) for k, v in self.mapping.items())
 
     def __repr__(self):
-        r = super().__repr__()
-        if r is not None:
-            return r
         return '%s(%s)' % (self.__class__.__name__, repr(self.mapping))
 
 

@@ -99,33 +99,23 @@ class Interval(Lattice):
             raise ValueError('min_val cannot be greater than max_val')
 
     def is_top(self):
-        t = super().is_top()
-        if t is not None:
-            return t
         return self.min == float('-Inf') and self.max == float('Inf')
 
     def is_bottom(self):
-        b = super().is_bottom()
-        return b if b is not None else False
+        return False
 
     def join(self, other):
-        e = super().join(other)
-        if e:
-            return e
         return self.__class__(
             [min(self.min, other.min), max(self.max, other.max)])
 
     def meet(self, other):
-        e = super().meet(other)
-        if e:
-            return e
-        return self.__class__(
-            [max(self.min, other.min), min(self.max, other.max)])
+        try:
+            return self.__class__(
+                [max(self.min, other.min), min(self.max, other.max)])
+        except ValueError:  # min >= max
+            return self.__class__(bottom=True)
 
     def le(self, other):
-        le = super().le(other)
-        if le is not None:
-            return le
         return self.min >= other.min and self.max <= other.max
 
     def __iter__(self):
@@ -157,9 +147,6 @@ class Interval(Lattice):
         return self.__class__([-self.max, -self.min])
 
     def __str__(self):
-        s = super().__str__()
-        if s is not None:
-            return s
         return '[%s, %s]' % (str(self.min), str(self.max))
 
     def __hash__(self):
@@ -182,9 +169,6 @@ class FractionInterval(Interval):
         self.max = mpq(self.max)
 
     def __str__(self):
-        s = super(Lattice, self).__str__()
-        if s is not None:
-            return s
         return '[~%s, ~%s]' % (str(mpfr(self.min)), str(mpfr(self.max)))
 
 
@@ -203,29 +187,18 @@ class ErrorSemantics(Lattice):
             self.e = round_off_error(self.v)
 
     def is_top(self):
-        t = super().is_top()
-        return t if t is not None else self.v.is_top() or self.e.is_top()
+        return self.v.is_top() or self.e.is_top()
 
     def is_bottom(self):
-        b = super().is_bottom()
-        return b if b is not None else self.v.is_bottom() or self.e.is_bottom()
+        return self.v.is_bottom() or self.e.is_bottom()
 
     def join(self, other):
-        e = super().join(other)
-        if e:
-            return e
         return self.__class__(self.v | other.v, self.e | other.e)
 
     def meet(self, other):
-        e = super().meet(other)
-        if e:
-            return e
         return self.__class__(self.v & other.v, self.e & other.e)
 
     def le(self, other):
-        le = super().le(other)
-        if le is not None:
-            return le
         return self.v.le(other.v) and self.e.le(other.e)
 
     @_decorate_cast_other
@@ -265,15 +238,9 @@ class ErrorSemantics(Lattice):
         return self.v + self.e
 
     def __str__(self):
-        s = super().__str__()
-        if s is not None:
-            return s
         return '%sx%s' % (self.v, self.e)
 
     def __repr__(self):
-        r = super().__repr__()
-        if r is not None:
-            return r
         return '%s([%r, %r], [%r, %r])' % \
             (self.__class__.__name__,
              self.v.min, self.v.max, self.e.min, self.e.max)

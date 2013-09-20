@@ -35,60 +35,29 @@ class FlatLattice(Lattice):
         pass
 
     def is_top(self):
-        t = super().is_top()
-        if t is not None:
-            return t
         return False
 
     def is_bottom(self):
-        b = super().is_bottom()
-        if b is not None:
-            return b
         return False
 
     def join(self, other):
-        e = super().join(other)
-        if e:
-            return e
         if other != self:
             return self.__class__(top=True)
         return self
 
     def meet(self, other):
-        e = super().meet(other)
-        if e:
-            return e
         if other != self:
             return self.__class__(bottom=True)
         return self
 
     def le(self, other):
-        le = super().le(other)
-        if le is not None:
-            return le
-        return self == other
-
-    def __eq__(self, other):
-        if self.is_top() and other.is_top():
-            return True
-        if self.is_bottom() and other.is_bottom():
-            return True
-        try:
-            return self.v == other.v
-        except AttributeError:
-            return False
+        return self.v == other.v
 
     def __str__(self):
-        s = super().__str__()
-        if s is not None:
-            return s
         return str(self.v)
 
     def __repr__(self):
-        r = super().__repr__()
-        if r is not None:
-            return r
-        return '%s(%s)' % (self.__class__.__name__, repr(self.v))
+        return '%s(%r)' % (self.__class__.__name__, self.v)
 
 
 class Denotational(object):

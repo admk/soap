@@ -1,4 +1,5 @@
 import copy
+from functools import wraps
 
 
 class LatticeMeta(type):
@@ -18,62 +19,46 @@ class LatticeMeta(type):
                     (other_class, other_class_args),
                 ]
                 for cls, args in class_args:
-                    if args == 'top':
-                        c = cls(top=True)
-                    elif args == 'bottom':
-                        c = cls(bottom=True)
-                    else:
-                        try:
-                            c = cls(*args)
-                        except (TypeError, ValueError):
+                    try:
+                        if args == 'top':
+                            c = cls(top=True)
+                        elif args == 'bottom':
+                            c = cls(bottom=True)
+                        else:
                             try:
-                                c = cls(args)
+                                c = cls(*args)
                             except (TypeError, ValueError):
-                                c = args
+                                c = cls(args)
+                    except TypeError:  # can't compare, because args is lattice
+                        c = args
                     self.components.append(c)
 
             def is_top(self):
-                t = super().is_top()
-                if t is not None:
-                    return t
                 return all(c.is_top() for c in self.components)
 
             def is_bottom(self):
-                b = super().is_bottom()
-                if b is not None:
-                    return b
                 return all(c.is_bottom() for c in self.components)
 
             def join(self, other):
-                e = super().join(other)
-                if e is None:
-                    e = copy.copy(self)
-                    e.components = [self_comp | other_comp
-                                    for self_comp, other_comp in
-                                    zip(self.components, other.components)]
+                e = copy.copy(self)
+                e.components = [self_comp | other_comp
+                                for self_comp, other_comp in
+                                zip(self.components, other.components)]
                 return e
 
             def meet(self, other):
-                e = super().meet(other)
-                if e is None:
-                    e = copy.copy(self)
-                    e.components = [self_comp & other_comp
-                                    for self_comp, other_comp in
-                                    zip(self.components, other.components)]
+                e = copy.copy(self)
+                e.components = [self_comp & other_comp
+                                for self_comp, other_comp in
+                                zip(self.components, other.components)]
                 return e
 
             def le(self, other):
-                le = super().le(other)
-                if le is not None:
-                    return le
                 return all(self_comp <= other_comp
                            for self_comp, other_comp in
                            zip(self.components, other.components))
 
             def __repr__(self):
-                r = super().__repr__()
-                if r is not None:
-                    return r
                 return '%s(%s)' % \
                     (self.__class__.__name__,
                      ', '.join(repr(c) for c in self.components))
@@ -93,11 +78,66 @@ class Lattice(object, metaclass=LatticeMeta):
     :member:`join`, :member:`meet`, :member:`le`.
     """
     def __init__(self, *args, top=False, bottom=False, **kwargs):
+        def check_return(func):
+            @wraps(func)
+            def checker(*args, **kwargs):
+                v = func(*args, **kwargs)
+                if v is not None:
+                    return v
+                raise RuntimeError(
+                    'Function %s of %r does not return a value' %
+                    (func.__name__, self))
+            return checker
+
+        def decorate_self(base_func, decd_func):
+            @check_return
+            @wraps(decd_func)
+            def wrapper():
+                t = base_func(self)
+                t = t if t is not None else decd_func()
+                return t
+            return wrapper
+
+        def decorate_class(base_func, decd_func):
+            @check_return
+            @wraps(decd_func)
+            def wrapper(self):
+                t = base_func(self)
+                t = t if t is not None else decd_func(self)
+                return t
+            return wrapper
+
+        def decorate_self_other(base_func, decd_func):
+            @check_return
+            @wraps(decd_func)
+            def wrapper(other):
+                if self.__class__ != other.__class__:
+                    raise TypeError(
+                        'Inconsistent lattices %r, %r for function %s' %
+                        (self, other, decd_func))
+                t = base_func(self, other)
+                t = t if t is not None else decd_func(other)
+                return t
+            return wrapper
+
+        super().__init__()
         if top and bottom:
             raise ValueError(
                 'Lattice element cannot be bottom and top simultaneously.')
         self.top = top
         self.bottom = bottom
+
+        if self.__class__ is Lattice:
+            return
+        self.is_top = decorate_self(Lattice.is_top, self.is_top)
+        self.is_bottom = decorate_self(Lattice.is_bottom, self.is_bottom)
+        self.join = decorate_self_other(Lattice.join, self.join)
+        self.meet = decorate_self_other(Lattice.meet, self.meet)
+        self.le = decorate_self_other(Lattice.le, self.le)
+        self.__class__.__str__ = decorate_class(
+            Lattice.__str__, self.__class__.__str__)
+        self.__class__.__repr__ = decorate_class(
+            Lattice.__repr__, self.__class__.__repr__)
 
     def is_top(self):
         if self.top:
@@ -111,34 +151,26 @@ class Lattice(object, metaclass=LatticeMeta):
         if self.bottom:
             return True
 
-    def _check_type_consistency(self, other):
-        if self.__class__ == other.__class__:
-            return
-        raise TypeError(
-            'Inconsistent lattice types: %s, %s' %
-            (str(self.__class__), str(other.__class__)))
-
     def join(self, other):
-        self._check_type_consistency(other)
         if self.is_top() or other.is_bottom():
             return self
         if self.is_bottom() or other.is_top():
             return other
 
     def meet(self, other):
-        self._check_type_consistency(other)
         if self.is_top() or other.is_bottom():
             return other
         if self.is_bottom() or other.is_top():
             return self
 
     def le(self, other):
-        self._check_type_consistency(other)
         if self.is_bottom():
             return True
         if other.is_top():
             return True
         if self.is_top() and not other.is_top():
+            return False
+        if not self.is_bottom() and other.is_bottom():
             return False
 
     __or__ = lambda self, other: self.join(other)
