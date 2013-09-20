@@ -117,7 +117,13 @@ class TestErrorSemantics(unittest.TestCase):
     def test_join(self):
         self.assertEqual(self.e12 | self.e24, self.e13 | self.e24)
 
+    def assertAlmostEqual(self, a, b):
+        super().assertAlmostEqual(a.v.min, b.v.min)
+        super().assertAlmostEqual(a.v.max, b.v.max)
+        super().assertAlmostEqual(a.e.min, b.e.min)
+        super().assertAlmostEqual(a.e.max, b.e.max)
+
     def test_meet(self):
-        self.assertEqual(self.e13 & self.e24, ErrorSemantics(['2', '3']))
-        self.assertEqual(self.e12 & self.e24, ErrorSemantics('2'))
+        self.assertAlmostEqual(self.e13 & self.e24, ErrorSemantics(['2', '3']))
+        self.assertAlmostEqual(self.e12 & self.e24, ErrorSemantics('2'))
         self.assertEqual(self.e12 & self.e34, ErrorSemantics(bottom=True))

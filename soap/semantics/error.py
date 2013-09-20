@@ -86,15 +86,19 @@ def _decorate_cast_other(func):
 class Interval(Lattice):
     """The interval base class."""
     def __init__(self, v=None, top=False, bottom=False):
+        if isinstance(v, Interval):
+            top = top or v.is_top()
+            bottom = bottom or v.is_bottom()
         super().__init__(top=top, bottom=bottom)
         if top or bottom:
             return
-        try:
-            if type(v) is str:
-                raise TypeError('_String')
-            self.min, self.max = v
-        except (ValueError, TypeError):
+        if type(v) is str:
             self.min = self.max = v
+        else:
+            try:
+                self.min, self.max = v
+            except (ValueError, TypeError):  # cannot unpack
+                self.min = self.max = v
         if self.min > self.max:
             raise ValueError('min_val cannot be greater than max_val')
 
@@ -157,16 +161,22 @@ class FloatInterval(Interval):
     """The interval containing floating point values."""
     def __init__(self, v=None, top=False, bottom=False):
         super().__init__(v, top=top, bottom=bottom)
-        self.min = mpfr(self.min)
-        self.max = mpfr(self.max)
+        try:
+            self.min = mpfr(self.min)
+            self.max = mpfr(self.max)
+        except AttributeError:
+            'The interval is a top or bottom.'
 
 
 class FractionInterval(Interval):
     """The interval containing real rational values."""
     def __init__(self, v=None, top=False, bottom=False):
         super().__init__(v, top=top, bottom=bottom)
-        self.min = mpq(self.min)
-        self.max = mpq(self.max)
+        try:
+            self.min = mpq(self.min)
+            self.max = mpq(self.max)
+        except AttributeError:
+            'The interval is a top or bottom.'
 
     def __str__(self):
         return '[~%s, ~%s]' % (str(mpfr(self.min)), str(mpfr(self.max)))
@@ -235,7 +245,7 @@ class ErrorSemantics(Lattice):
         return self.__class__(-self.v, -self.e)
 
     def __abs__(self):
-        return self.v + self.e
+        return FractionInterval(self.v) + self.e
 
     def __str__(self):
         return '%sx%s' % (self.v, self.e)
