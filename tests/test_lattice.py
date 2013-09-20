@@ -207,7 +207,7 @@ class TestMapLattice(unittest.TestCase):
         self.one_bot = self.Lat({'x': 1})
         self.one_top = self.Lat({'x': 1, 'y': 'top'})
 
-    def test_bottom_and_top(self):
+    def test_top_and_bottom(self):
         self.assertEqual(self.Lat({}), self.bot)
         self.assertEqual(self.bot, self.Lat({}))
         self.assertEqual(self.bot_bot, self.bot)
@@ -237,7 +237,7 @@ class TestMapLattice(unittest.TestCase):
         self.assertEqual(self.one_one & self.one_two, self.one_bot)
 
 
-class TestValue(unittest.TestCase):
+class TestDenotational(unittest.TestCase):
     """Unittesting for :class:`soap.lattice.denotational`."""
     def setUp(self):
         self.Val = denotational(int, 'IntDenotational')
@@ -246,7 +246,7 @@ class TestValue(unittest.TestCase):
         self.v2 = self.Val(2)
         self.v3 = self.Val(3)
 
-    def test_add(self):
+    def test_operators(self):
         self.assertEqual(self.v1 + self.v2, self.v3)
         self.assertEqual(self.bot + self.v1, self.bot)
         self.assertEqual(self.v1 + self.bot, self.bot)
@@ -254,8 +254,6 @@ class TestValue(unittest.TestCase):
         self.assertEqual(self.bot + 1, self.bot)
         self.assertEqual(1 + self.v2, self.v3)
         self.assertEqual(self.v2 + 1, self.v3)
-
-    def test_sub(self):
         self.assertEqual(self.v2 - self.v1, self.v1)
         self.assertEqual(self.bot - self.v1, self.bot)
         self.assertEqual(self.v1 - self.bot, self.bot)

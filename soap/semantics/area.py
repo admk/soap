@@ -10,11 +10,10 @@ from matplotlib import rc, pyplot, pylab
 import soap.expr
 import soap.logger as logger
 from soap.common import Comparable
-from soap.lattice import Lattice
 from soap.semantics import flopoco
 
 
-class AreaSemantics(Comparable, Lattice):
+class AreaSemantics(Comparable):
     """The semantics that captures the area of an expression."""
     def __init__(self, e, v, p):
         """Initialisation.
@@ -36,12 +35,6 @@ class AreaSemantics(Comparable, Lattice):
         self.l, self.s = e.as_labels()
         self.area = self._area()
         super().__init__()
-
-    def join(self, other):
-        pass
-
-    def meet(self, other):
-        pass
 
     def _op_counts(self):
         mult, add = 0, 0

@@ -158,20 +158,23 @@ class Interval(Lattice):
 
 class FloatInterval(Interval):
     """The interval containing floating point values."""
-    def __init__(self, v):
+    def __init__(self, v=None, top=False, bottom=False):
         min_val, max_val = v
         min_val = mpfr(min_val)
         max_val = mpfr(max_val)
-        super().__init__((min_val, max_val))
+        super().__init__((min_val, max_val), top=top, bottom=bottom)
 
 
 class FractionInterval(Interval):
     """The interval containing real rational values."""
-    def __init__(self, v):
+    def __init__(self, v=None, top=False, bottom=False):
         min_val, max_val = v
         super().__init__((mpq(min_val), mpq(max_val)))
 
     def __str__(self):
+        s = super(Lattice, self).__str__()
+        if s is not None:
+            return s
         return '[~%s, ~%s]' % (str(mpfr(self.min)), str(mpfr(self.max)))
 
 
