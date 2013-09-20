@@ -257,26 +257,3 @@ class ErrorSemantics(Lattice):
 
     def __hash__(self):
         return hash((self.v, self.e))
-
-
-if __name__ == '__main__':
-    from soap.semantics import precision_context
-    with precision_context(52):
-        x = cast_error('0.1', '0.2')
-        print(x)
-        print(x * x)
-    with precision_context(23):
-        a = cast_error('5', '10')
-        b = cast_error('0', '0.001')
-        print((a + b) * (a + b))
-    gmpy2.set_context(gmpy2.ieee(64))
-    print(FloatInterval(['0.1', '0.2']) * FloatInterval(['5.3', '6.7']))
-    print(float(ulp(mpfr('0.1'))))
-    mult = lambda x, y: x * y
-    args = [mpfr('0.3'), mpfr('2.6')]
-    a = FloatInterval(['0.3', '0.3'])
-    print(a, round_off_error(a))
-    x = cast_error('0.9', '1.1')
-    for i in range(20):
-        x *= x
-        print(i, x)
