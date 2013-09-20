@@ -14,12 +14,15 @@ mpq_type = type(_mpq('1.0'))
 
 
 def mpq(v):
-    """Unifies how mpq behaves when shit (overflow and NaN) happens."""
+    """Unifies how mpq behaves when shit (overflow and NaN) happens.
+
+    Also the conversion from mantissa exponent is necessary because the
+    original mpq is not exact."""
     if not isinstance(v, mpfr_type):
         try:
             return _mpq(v)
         except ValueError:
-            raise ValueError('Invalid value %s' % str(v))
+            raise ValueError('Invalid value %s' % v)
     try:
         m, e = v.as_mantissa_exp()
     except (OverflowError, ValueError):
@@ -58,10 +61,12 @@ def cast_error_constant(v):
 
 def cast_error(v, w=None):
     w = w if w else v
+    if v == w:
+        return cast_error_constant(v)
     return ErrorSemantics([v, w], round_off_error(FractionInterval([v, w])))
 
 
-def decorate_cast_other(func):
+def _decorate_cast_other(func):
     def wrapper(self, other):
         with ignored(AttributeError):
             if self.is_top() or other.is_top():
@@ -74,7 +79,7 @@ def decorate_cast_other(func):
         try:
             return func(self, other)
         except AttributeError:
-            return func(self, self.__class__([other, other]))
+            return func(self, self.__class__(other))
     return wrapper
 
 
@@ -84,7 +89,12 @@ class Interval(Lattice):
         super().__init__(top=top, bottom=bottom)
         if top or bottom:
             return
-        self.min, self.max = v
+        try:
+            if type(v) is str:
+                raise TypeError('_String')
+            self.min, self.max = v
+        except (ValueError, TypeError):
+            self.min = self.max = v
         if self.min > self.max:
             raise ValueError('min_val cannot be greater than max_val')
 
@@ -121,20 +131,20 @@ class Interval(Lattice):
     def __iter__(self):
         return iter((self.min, self.max))
 
-    @decorate_cast_other
+    @_decorate_cast_other
     def __add__(self, other):
         return self.__class__([self.min + other.min, self.max + other.max])
     __radd__ = __add__
 
-    @decorate_cast_other
+    @_decorate_cast_other
     def __sub__(self, other):
         return self.__class__([self.min - other.max, self.max - other.min])
 
-    @decorate_cast_other
+    @_decorate_cast_other
     def __rsub__(self, other):
         return self.__class__([other.min - self.max, other.max - self.min])
 
-    @decorate_cast_other
+    @_decorate_cast_other
     def __mul__(self, other):
         v = (self.min * other.min, self.min * other.max,
              self.max * other.min, self.max * other.max)
@@ -159,17 +169,17 @@ class Interval(Lattice):
 class FloatInterval(Interval):
     """The interval containing floating point values."""
     def __init__(self, v=None, top=False, bottom=False):
-        min_val, max_val = v
-        min_val = mpfr(min_val)
-        max_val = mpfr(max_val)
-        super().__init__((min_val, max_val), top=top, bottom=bottom)
+        super().__init__(v, top=top, bottom=bottom)
+        self.min = mpfr(self.min)
+        self.max = mpfr(self.max)
 
 
 class FractionInterval(Interval):
     """The interval containing real rational values."""
     def __init__(self, v=None, top=False, bottom=False):
-        min_val, max_val = v
-        super().__init__((mpq(min_val), mpq(max_val)))
+        super().__init__(v, top=top, bottom=bottom)
+        self.min = mpq(self.min)
+        self.max = mpq(self.max)
 
     def __str__(self):
         s = super(Lattice, self).__str__()
@@ -180,54 +190,93 @@ class FractionInterval(Interval):
 
 class ErrorSemantics(Lattice):
     """The error semantics."""
-    def __init__(self, v, e=None):
+    def __init__(self, v=None, e=None, top=False, bottom=False):
+        super().__init__(top=top, bottom=bottom)
+        if top or bottom:
+            return
         self.v = FloatInterval(v)
-        if e is None:
-            raise NotImplementedError('Cannot initialise without error yet.')
-        self.e = FractionInterval(e)
+        if e is not None:
+            self.e = FractionInterval(e)
+        elif self.v.min == self.v.max:
+            self.e = round_off_error_from_exact(self.v.min)
+        else:
+            self.e = round_off_error(self.v)
 
     def is_top(self):
-        return self.v.is_top() or self.e.is_top()
+        t = super().is_top()
+        return t if t is not None else self.v.is_top() or self.e.is_top()
 
     def is_bottom(self):
-        return self.v.is_bottom() or self.e.is_bottom()
+        b = super().is_bottom()
+        return b if b is not None else self.v.is_bottom() or self.e.is_bottom()
 
     def join(self, other):
-        return ErrorSemantics(self.v | other.v, self.e | other.e)
+        e = super().join(other)
+        if e:
+            return e
+        return self.__class__(self.v | other.v, self.e | other.e)
 
     def meet(self, other):
-        return ErrorSemantics(self.v & other.v, self.e & other.e)
+        e = super().meet(other)
+        if e:
+            return e
+        return self.__class__(self.v & other.v, self.e & other.e)
 
     def le(self, other):
-        raise NotImplementedError
+        le = super().le(other)
+        if le is not None:
+            return le
+        return self.v.le(other.v) and self.e.le(other.e)
 
-    @decorate_cast_other
+    @_decorate_cast_other
     def __add__(self, other):
         v = self.v + other.v
         e = self.e + other.e + round_off_error(v)
-        return ErrorSemantics(v, e)
+        return self.__class__(v, e)
+    __radd__ = __add__
 
-    @decorate_cast_other
+    @_decorate_cast_other
     def __sub__(self, other):
         v = self.v - other.v
         e = self.e - other.e + round_off_error(v)
-        return ErrorSemantics(v, e)
+        return self.__class__(v, e)
 
-    @decorate_cast_other
+    @_decorate_cast_other
+    def __rsub__(self, other):
+        v = other.v - self.v
+        e = other.e - self.e + round_off_error(v)
+        return self.__class__(v, e)
+
+    @_decorate_cast_other
     def __mul__(self, other):
         v = self.v * other.v
         e = self.e * other.e + round_off_error(v)
         e += FractionInterval(self.v) * other.e
         e += FractionInterval(other.v) * self.e
-        return ErrorSemantics(v, e)
+        return self.__class__(v, e)
+    __rmul__ = __mul__
+
+    def __neg__(self):
+        if self.is_top() or self.is_bottom():
+            return self
+        return self.__class__(-self.v, -self.e)
+
+    def __abs__(self):
+        return self.v + self.e
 
     def __str__(self):
+        s = super().__str__()
+        if s is not None:
+            return s
         return '%sx%s' % (self.v, self.e)
 
     def __repr__(self):
-        return 'ErrorSemantics([%s, %s], [%s, %s])' % \
-            (repr(self.v.min), repr(self.v.max),
-             repr(self.e.min), repr(self.e.max))
+        r = super().__repr__()
+        if r is not None:
+            return r
+        return '%s([%r, %r], [%r, %r])' % \
+            (self.__class__.__name__,
+             self.v.min, self.v.max, self.e.min, self.e.max)
 
     def __hash__(self):
         return hash((self.v, self.e))
