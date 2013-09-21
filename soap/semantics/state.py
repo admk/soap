@@ -2,11 +2,61 @@
 .. module:: soap.semantics.state
     :synopsis: Program states.
 """
+from functools import wraps
+
 from soap import logger
 
 from soap.expr import LESS_OP, GREATER_OP, LESS_EQUAL_OP, GREATER_EQUAL_OP
 from soap.lattice import denotational, map
 from soap.semantics import Interval, inf
+
+
+def _decorate(cls):
+    def decorate_assign(func):
+        @wraps(func)
+        def assign(self, var, expr):
+            state = func(self, var, expr)
+            logger.debug(
+                '⟦' + str(var) + ' := ' + str(expr) + '⟧:',
+                str(self), '→', str(state))
+            return state
+        return assign
+
+    def decorate_conditional(func):
+        @wraps(func)
+        def conditional(self, expr, cond):
+            state = func(self, expr, cond)
+            logger.debug(
+                '⟦' + str(expr if cond else ~expr) + '⟧:',
+                str(self), '→', str(state))
+            return state
+        return conditional
+
+    def decorate_join(func):
+        @wraps(func)
+        def join(self, other):
+            state = func(self, other)
+            logger.debug(str(self) + ' ⊔ ' + str(other), '→', str(state))
+            return state
+        return join
+
+    def decorate_le(func):
+        @wraps(func)
+        def le(self, other):
+            b = func(self, other)
+            logger.debug(str(self), '⊑' if b else '⋢', str(other))
+            return b
+        return le
+
+    try:
+        if cls == State or cls._decorated:
+            return
+    except AttributeError:
+        cls._decorated = True
+    cls.assign = decorate_assign(cls.assign)
+    cls.conditional = decorate_conditional(cls.conditional)
+    cls.join = decorate_join(cls.join)
+    cls.le = decorate_le(cls.le)
 
 
 class State(object):
@@ -16,44 +66,8 @@ class State(object):
     objects.
     """
     def __init__(self, *args, **kwargs):
-
-        def decorate_assign(func):
-            def assign(var, expr):
-                state = func(var, expr)
-                logger.debug(
-                    '⟦' + str(var) + ' := ' + str(expr) + '⟧:',
-                    str(self), '→', str(state))
-                return state
-            return assign
-
-        def decorate_conditional(func):
-            def conditional(expr, cond):
-                state = func(expr, cond)
-                logger.debug(
-                    '⟦' + str(expr if cond else ~expr) + '⟧:',
-                    str(self), '→', str(state))
-                return state
-            return conditional
-
-        def decorate_join(func):
-            def join(other):
-                state = func(other)
-                logger.debug(str(self) + ' ⊔ ' + str(other), '→', str(state))
-                return state
-            return join
-
-        def decorate_le(func):
-            def le(other):
-                b = func(other)
-                logger.debug(str(self), '⊑' if b else '⋢', str(other))
-                return b
-            return le
-
         super().__init__(*args, **kwargs)
-        self.assign = decorate_assign(self.assign)
-        self.conditional = decorate_conditional(self.conditional)
-        self.join = decorate_join(self.join)
-        self.le = decorate_le(self.le)
+        _decorate(self.__class__)
 
     def assign(self, var, expr):
         """Makes an assignment and returns a new state object."""

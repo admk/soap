@@ -68,6 +68,51 @@ class LatticeMeta(type):
         return ComponentWiseLattice
 
 
+def _decorate(cls):
+    def _check_return(func):
+        @wraps(func)
+        def checker(*args, **kwargs):
+            v = func(*args, **kwargs)
+            if v is not None:
+                return v
+            raise RuntimeError(
+                'Function %s of %r does not return a value' %
+                (func.__name__, self))
+        return checker
+
+    def decorate_self(base_func, decd_func):
+        @_check_return
+        @wraps(decd_func)
+        def wrapper(self):
+            t = base_func(self)
+            return t if t is not None else decd_func(self)
+        return wrapper
+
+    def decorate_self_other(base_func, decd_func):
+        @_check_return
+        @wraps(decd_func)
+        def wrapper(self, other):
+            if self.__class__ != other.__class__:
+                raise TypeError(
+                    'Inconsistent lattices %r, %r for function %s' %
+                    (self, other, decd_func))
+            t = base_func(self, other)
+            return t if t is not None else decd_func(self, other)
+        return wrapper
+    try:
+        if cls == Lattice or cls._decorated:
+            return
+    except AttributeError:
+        cls._decorated = True
+    cls.__str__ = decorate_self(Lattice.__str__, cls.__str__)
+    cls.__repr__ = decorate_self(Lattice.__repr__, cls.__repr__)
+    cls.is_top = decorate_self(Lattice.is_top, cls.is_top)
+    cls.is_bottom = decorate_self(Lattice.is_bottom, cls.is_bottom)
+    cls.join = decorate_self_other(Lattice.join, cls.join)
+    cls.meet = decorate_self_other(Lattice.meet, cls.meet)
+    cls.le = decorate_self_other(Lattice.le, cls.le)
+
+
 class Lattice(object, metaclass=LatticeMeta):
     """Common lattice structure.
 
@@ -78,48 +123,6 @@ class Lattice(object, metaclass=LatticeMeta):
     :member:`join`, :member:`meet`, :member:`le`.
     """
     def __init__(self, *args, top=False, bottom=False, **kwargs):
-        def check_return(func):
-            @wraps(func)
-            def checker(*args, **kwargs):
-                v = func(*args, **kwargs)
-                if v is not None:
-                    return v
-                raise RuntimeError(
-                    'Function %s of %r does not return a value' %
-                    (func.__name__, self))
-            return checker
-
-        def decorate_self(base_func, decd_func):
-            @check_return
-            @wraps(decd_func)
-            def wrapper():
-                t = base_func(self)
-                t = t if t is not None else decd_func()
-                return t
-            return wrapper
-
-        def decorate_class(base_func, decd_func):
-            @check_return
-            @wraps(decd_func)
-            def wrapper(self):
-                t = base_func(self)
-                t = t if t is not None else decd_func(self)
-                return t
-            return wrapper
-
-        def decorate_self_other(base_func, decd_func):
-            @check_return
-            @wraps(decd_func)
-            def wrapper(other):
-                if self.__class__ != other.__class__:
-                    raise TypeError(
-                        'Inconsistent lattices %r, %r for function %s' %
-                        (self, other, decd_func))
-                t = base_func(self, other)
-                t = t if t is not None else decd_func(other)
-                return t
-            return wrapper
-
         super().__init__()
         if top and bottom:
             raise ValueError(
@@ -127,17 +130,7 @@ class Lattice(object, metaclass=LatticeMeta):
         self.top = top
         self.bottom = bottom
 
-        if self.__class__ is Lattice:
-            return
-        self.is_top = decorate_self(Lattice.is_top, self.is_top)
-        self.is_bottom = decorate_self(Lattice.is_bottom, self.is_bottom)
-        self.join = decorate_self_other(Lattice.join, self.join)
-        self.meet = decorate_self_other(Lattice.meet, self.meet)
-        self.le = decorate_self_other(Lattice.le, self.le)
-        self.__class__.__str__ = decorate_class(
-            Lattice.__str__, self.__class__.__str__)
-        self.__class__.__repr__ = decorate_class(
-            Lattice.__repr__, self.__class__.__repr__)
+        _decorate(self.__class__)
 
     def is_top(self):
         if self.top:
