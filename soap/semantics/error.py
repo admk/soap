@@ -12,6 +12,8 @@ from soap.lattice import Lattice
 mpfr_type = type(mpfr('1.0'))
 mpq_type = type(_mpq('1.0'))
 
+inf = mpfr('Inf')
+
 
 def mpq(v):
     """Unifies how mpq behaves when shit (overflow and NaN) happens.
@@ -151,7 +153,10 @@ class Interval(Lattice):
         return self.__class__([-self.max, -self.min])
 
     def __str__(self):
-        return '[%s, %s]' % (str(self.min), str(self.max))
+        return '[%s, %s]' % (self.min, self.max)
+
+    def __repr__(self):
+        return '%s([%r, %r])' % (self.__class__.__name__, self.min, self.max)
 
     def __hash__(self):
         return hash(tuple(self))

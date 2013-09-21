@@ -4,7 +4,9 @@
 """
 from soap import logger
 
+from soap.expr import LESS_OP, GREATER_OP, LESS_EQUAL_OP, GREATER_EQUAL_OP
 from soap.lattice import denotational, map
+from soap.semantics import Interval, inf
 
 
 class State(object):
@@ -88,3 +90,31 @@ class ClassicalState(denotational_state()):
         if expr.eval(self.mapping) == cond:
             return self
         return self.__class__(bottom=True)
+
+
+class IntervalState(State, map(str, Interval)):
+    """The traditional program analysis state object based on intervals.
+
+    Supports only simple boolean expressions::
+        <variable> <operator> <arithmetic expression>
+    For example::
+        x <= 3 * y.
+    """
+    def conditional(self, expr, cond):
+        try:
+            bound = expr.a2.eval(self.mapping)
+        except AttributeError:  # expr.a2 is a constant
+            bound = Interval(expr.a2)
+        mapping = dict(self.mapping)
+        if expr.op in GREATER_EQUAL_OP:
+            if cond:
+                cstr = Interval([bound.min, inf])
+            else:
+                cstr = Interval([-inf, bound.max])
+        elif expr.op in LESS_EQUAL_OP:
+            if cond:
+                cstr = Interval([-inf, bound.max])
+            else:
+                cstr = Interval([bound.min, inf])
+        mapping[expr.a1] &= cstr
+        return self.__class__(mapping)

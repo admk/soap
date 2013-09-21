@@ -63,7 +63,7 @@ class MapLattice(Lattice):
             str(k) + '↦' + str(v) for k, v in self.mapping.items())
 
     def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, repr(self.mapping))
+        return '%s(%r)' % (self.__class__.__name__, self.mapping)
 
 
 def map(from_cls, to_lattice, name=None):
