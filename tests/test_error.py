@@ -1,7 +1,9 @@
 import unittest
 from gmpy2 import mpfr
 
-from soap.semantics import Interval, ErrorSemantics
+from soap.semantics import (
+    Interval, FloatInterval, IntegerInterval, ErrorSemantics
+)
 
 
 inf = mpfr('Inf')
@@ -56,7 +58,17 @@ class TestInterval(unittest.TestCase):
         self.assertEqual(self.int14 & self.int29, Interval([2, 4]))
 
 
-class TestErrorSemantics(unittest.TestCase):
+class ErrorAssertionTestCase(unittest.TestCase):
+    def assertIntervalAlmostEqual(self, a, b):
+        self.assertAlmostEqual(a.min, b.min)
+        self.assertAlmostEqual(a.max, b.max)
+
+    def assertErrorAlmostEqual(self, a, b):
+        self.assertIntervalAlmostEqual(a.v, b.v)
+        self.assertIntervalAlmostEqual(a.e, b.e)
+
+
+class TestErrorSemantics(ErrorAssertionTestCase):
     """Unittesting for :class:`soap.semantics.ErrorSemantics`."""
     def setUp(self):
         self.e1 = ErrorSemantics(['1.2', '2.3'], ['0', '0.1'])
@@ -117,13 +129,25 @@ class TestErrorSemantics(unittest.TestCase):
     def test_join(self):
         self.assertEqual(self.e12 | self.e24, self.e13 | self.e24)
 
-    def assertAlmostEqual(self, a, b):
-        super().assertAlmostEqual(a.v.min, b.v.min)
-        super().assertAlmostEqual(a.v.max, b.v.max)
-        super().assertAlmostEqual(a.e.min, b.e.min)
-        super().assertAlmostEqual(a.e.max, b.e.max)
-
     def test_meet(self):
-        self.assertAlmostEqual(self.e13 & self.e24, ErrorSemantics(['2', '3']))
-        self.assertAlmostEqual(self.e12 & self.e24, ErrorSemantics('2'))
+        self.assertErrorAlmostEqual(
+            self.e13 & self.e24, ErrorSemantics(['2', '3']))
+        self.assertErrorAlmostEqual(
+            self.e12 & self.e24, ErrorSemantics('2'))
         self.assertEqual(self.e12 & self.e34, ErrorSemantics(bottom=True))
+
+
+class TestCoercion(ErrorAssertionTestCase):
+    def test_coercion(self):
+        interval = [2, 3]
+        integer_interval = IntegerInterval(interval)
+        float_interval = FloatInterval(interval)
+        error = ErrorSemantics(interval)
+        self.assertEqual(
+            type(integer_interval + float_interval), FloatInterval)
+        self.assertEqual(
+            type(float_interval + integer_interval), FloatInterval)
+        self.assertEqual(type(integer_interval + error), ErrorSemantics)
+        self.assertEqual(type(error + integer_interval), ErrorSemantics)
+        self.assertEqual(type(float_interval + error), ErrorSemantics)
+        self.assertEqual(type(error + float_interval), ErrorSemantics)

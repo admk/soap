@@ -68,8 +68,30 @@ def cast_error(v, w=None):
     return ErrorSemantics([v, w], round_off_error(FractionInterval([v, w])))
 
 
-def _decorate_cast_other(func):
+class CoercionError(NotImplementedError):
+    """Cannot perform coercion, must do a reverse operation."""
+
+
+def _coerce(self, other):
+    if type(self) is type(other):
+        return other
+    precedence = [
+        ErrorSemantics, FloatInterval, FractionInterval, IntegerInterval
+    ]
+    try:
+        if precedence.index(type(self)) > precedence.index(type(other)):
+            raise CoercionError
+    except ValueError:  # not in precedence
+        pass
+    return self.__class__(other)
+
+
+def _decorate_coerce(func):
     def wrapper(self, other):
+        try:
+            other = _coerce(self, other)
+        except CoercionError:
+            return NotImplemented
         with ignored(AttributeError):
             if self.is_top() or other.is_top():
                 # top denotes no information or non-termination
@@ -78,10 +100,7 @@ def _decorate_cast_other(func):
             if self.is_bottom() or other.is_bottom():
                 # bottom denotes conflict
                 return self.__class__(bottom=True)
-        try:
-            return func(self, other)
-        except AttributeError:
-            return func(self, self.__class__(other))
+        return func(self, other)
     return wrapper
 
 
@@ -127,20 +146,20 @@ class Interval(Lattice):
     def __iter__(self):
         return iter((self.min, self.max))
 
-    @_decorate_cast_other
+    @_decorate_coerce
     def __add__(self, other):
         return self.__class__([self.min + other.min, self.max + other.max])
     __radd__ = __add__
 
-    @_decorate_cast_other
+    @_decorate_coerce
     def __sub__(self, other):
         return self.__class__([self.min - other.max, self.max - other.min])
 
-    @_decorate_cast_other
+    @_decorate_coerce
     def __rsub__(self, other):
         return self.__class__([other.min - self.max, other.max - self.min])
 
-    @_decorate_cast_other
+    @_decorate_coerce
     def __mul__(self, other):
         v = (self.min * other.min, self.min * other.max,
              self.max * other.min, self.max * other.max)
@@ -160,6 +179,17 @@ class Interval(Lattice):
 
     def __hash__(self):
         return hash(tuple(self))
+
+
+class IntegerInterval(Interval):
+    """The interval containing integer values."""
+    def __init__(self, v=None, top=False, bottom=False):
+        super().__init__(v, top=top, bottom=bottom)
+        try:
+            self.min = int(self.min)
+            self.max = int(self.max)
+        except AttributeError:
+            'The interval is a top or bottom.'
 
 
 class FloatInterval(Interval):
@@ -216,26 +246,26 @@ class ErrorSemantics(Lattice):
     def le(self, other):
         return self.v.le(other.v) and self.e.le(other.e)
 
-    @_decorate_cast_other
+    @_decorate_coerce
     def __add__(self, other):
         v = self.v + other.v
         e = self.e + other.e + round_off_error(v)
         return self.__class__(v, e)
     __radd__ = __add__
 
-    @_decorate_cast_other
+    @_decorate_coerce
     def __sub__(self, other):
         v = self.v - other.v
         e = self.e - other.e + round_off_error(v)
         return self.__class__(v, e)
 
-    @_decorate_cast_other
+    @_decorate_coerce
     def __rsub__(self, other):
         v = other.v - self.v
         e = other.e - self.e + round_off_error(v)
         return self.__class__(v, e)
 
-    @_decorate_cast_other
+    @_decorate_coerce
     def __mul__(self, other):
         v = self.v * other.v
         e = self.e * other.e + round_off_error(v)
