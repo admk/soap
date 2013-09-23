@@ -5,21 +5,26 @@
 import gmpy2
 from gmpy2 import mpfr, mpq as _mpq
 
-from soap.common import Comparable
-from soap.semantics import Lattice
+from soap.common import ignored
+from soap.lattice import Lattice
 
 
 mpfr_type = type(mpfr('1.0'))
 mpq_type = type(_mpq('1.0'))
 
+inf = mpfr('Inf')
+
 
 def mpq(v):
-    """Unifies how mpq behaves when shit (overflow and NaN) happens."""
+    """Unifies how mpq behaves when shit (overflow and NaN) happens.
+
+    Also the conversion from mantissa exponent is necessary because the
+    original mpq is not exact."""
     if not isinstance(v, mpfr_type):
         try:
             return _mpq(v)
         except ValueError:
-            raise ValueError('Invalid value %s' % str(v))
+            raise ValueError('Invalid value %s' % v)
     try:
         m, e = v.as_mantissa_exp()
     except (OverflowError, ValueError):
@@ -58,139 +63,232 @@ def cast_error_constant(v):
 
 def cast_error(v, w=None):
     w = w if w else v
+    if v == w:
+        return cast_error_constant(v)
     return ErrorSemantics([v, w], round_off_error(FractionInterval([v, w])))
+
+
+class CoercionError(NotImplementedError):
+    """Cannot perform coercion, must do a reverse operation."""
+
+
+def _coerce(self, other):
+    if type(self) is type(other):
+        return other
+    precedence = [
+        ErrorSemantics, FloatInterval, FractionInterval, IntegerInterval
+    ]
+    try:
+        if precedence.index(type(self)) > precedence.index(type(other)):
+            raise CoercionError
+    except ValueError:  # not in precedence
+        pass
+    return self.__class__(other)
+
+
+def _decorate_coerce(func):
+    def wrapper(self, other):
+        try:
+            other = _coerce(self, other)
+        except CoercionError:
+            return NotImplemented
+        with ignored(AttributeError):
+            if self.is_top() or other.is_top():
+                # top denotes no information or non-termination
+                return self.__class__(top=True)
+        with ignored(AttributeError):
+            if self.is_bottom() or other.is_bottom():
+                # bottom denotes conflict
+                return self.__class__(bottom=True)
+        return func(self, other)
+    return wrapper
 
 
 class Interval(Lattice):
     """The interval base class."""
-    def __init__(self, v):
-        min_val, max_val = v
-        self.min, self.max = min_val, max_val
-        if min_val > max_val:
+    def __init__(self, v=None, top=False, bottom=False):
+        if isinstance(v, Interval):
+            top = top or v.is_top()
+            bottom = bottom or v.is_bottom()
+        super().__init__(top=top, bottom=bottom)
+        if top or bottom:
+            return
+        if type(v) is str:
+            self.min = self.max = v
+        else:
+            try:
+                self.min, self.max = v
+            except (ValueError, TypeError):  # cannot unpack
+                self.min = self.max = v
+        if self.min > self.max:
             raise ValueError('min_val cannot be greater than max_val')
+
+    def is_top(self):
+        return self.min == float('-Inf') and self.max == float('Inf')
+
+    def is_bottom(self):
+        return False
 
     def join(self, other):
         return self.__class__(
             [min(self.min, other.min), max(self.max, other.max)])
 
     def meet(self, other):
-        return self.__class__(
-            [max(self.min, other.min), min(self.max, other.max)])
+        try:
+            return self.__class__(
+                [max(self.min, other.min), min(self.max, other.max)])
+        except ValueError:  # min >= max
+            return self.__class__(bottom=True)
+
+    def le(self, other):
+        return self.min >= other.min and self.max <= other.max
 
     def __iter__(self):
         return iter((self.min, self.max))
 
+    @_decorate_coerce
     def __add__(self, other):
         return self.__class__([self.min + other.min, self.max + other.max])
+    __radd__ = __add__
 
+    @_decorate_coerce
     def __sub__(self, other):
         return self.__class__([self.min - other.max, self.max - other.min])
 
+    @_decorate_coerce
+    def __rsub__(self, other):
+        return self.__class__([other.min - self.max, other.max - self.min])
+
+    @_decorate_coerce
     def __mul__(self, other):
         v = (self.min * other.min, self.min * other.max,
              self.max * other.min, self.max * other.max)
         return self.__class__([min(v), max(v)])
+    __rmul__ = __mul__
+
+    def __neg__(self):
+        if self.is_top() or self.is_bottom():
+            return self
+        return self.__class__([-self.max, -self.min])
 
     def __str__(self):
-        return '[%s, %s]' % (str(self.min), str(self.max))
+        return '[%s, %s]' % (self.min, self.max)
 
-    def __eq__(self, other):
-        if not isinstance(other, Interval):
-            return False
-        return self.min == other.min and self.max == other.max
+    def __repr__(self):
+        return '%s([%r, %r])' % (self.__class__.__name__, self.min, self.max)
 
     def __hash__(self):
         return hash(tuple(self))
 
 
+class IntegerInterval(Interval):
+    """The interval containing integer values."""
+    def __init__(self, v=None, top=False, bottom=False):
+        super().__init__(v, top=top, bottom=bottom)
+        try:
+            self.min = int(self.min)
+            self.max = int(self.max)
+        except AttributeError:
+            'The interval is a top or bottom.'
+
+
 class FloatInterval(Interval):
     """The interval containing floating point values."""
-    def __init__(self, v):
-        min_val, max_val = v
-        min_val = mpfr(min_val)
-        max_val = mpfr(max_val)
-        super().__init__((min_val, max_val))
+    def __init__(self, v=None, top=False, bottom=False):
+        super().__init__(v, top=top, bottom=bottom)
+        try:
+            self.min = mpfr(self.min)
+            self.max = mpfr(self.max)
+        except AttributeError:
+            'The interval is a top or bottom.'
 
 
 class FractionInterval(Interval):
     """The interval containing real rational values."""
-    def __init__(self, v):
-        min_val, max_val = v
-        super().__init__((mpq(min_val), mpq(max_val)))
+    def __init__(self, v=None, top=False, bottom=False):
+        super().__init__(v, top=top, bottom=bottom)
+        try:
+            self.min = mpq(self.min)
+            self.max = mpq(self.max)
+        except AttributeError:
+            'The interval is a top or bottom.'
 
     def __str__(self):
         return '[~%s, ~%s]' % (str(mpfr(self.min)), str(mpfr(self.max)))
 
 
-class ErrorSemantics(Lattice, Comparable):
+class ErrorSemantics(Lattice):
     """The error semantics."""
-    def __init__(self, v, e):
+    def __init__(self, v=None, e=None, top=False, bottom=False):
+        super().__init__(top=top, bottom=bottom)
+        if top or bottom:
+            return
         self.v = FloatInterval(v)
-        self.e = FractionInterval(e)
+        if e is not None:
+            self.e = FractionInterval(e)
+        elif self.v.min == self.v.max:
+            self.e = round_off_error_from_exact(self.v.min)
+        else:
+            self.e = round_off_error(self.v)
+
+    def is_top(self):
+        return self.v.is_top() or self.e.is_top()
+
+    def is_bottom(self):
+        return self.v.is_bottom() or self.e.is_bottom()
 
     def join(self, other):
-        return ErrorSemantics(self.v | other.v, self.e | other.e)
+        return self.__class__(self.v | other.v, self.e | other.e)
 
     def meet(self, other):
-        return ErrorSemantics(self.v & other.v, self.e & other.e)
+        return self.__class__(self.v & other.v, self.e & other.e)
 
+    def le(self, other):
+        return self.v.le(other.v) and self.e.le(other.e)
+
+    @_decorate_coerce
     def __add__(self, other):
         v = self.v + other.v
         e = self.e + other.e + round_off_error(v)
-        return ErrorSemantics(v, e)
+        return self.__class__(v, e)
+    __radd__ = __add__
 
+    @_decorate_coerce
     def __sub__(self, other):
         v = self.v - other.v
         e = self.e - other.e + round_off_error(v)
-        return ErrorSemantics(v, e)
+        return self.__class__(v, e)
 
+    @_decorate_coerce
+    def __rsub__(self, other):
+        v = other.v - self.v
+        e = other.e - self.e + round_off_error(v)
+        return self.__class__(v, e)
+
+    @_decorate_coerce
     def __mul__(self, other):
         v = self.v * other.v
         e = self.e * other.e + round_off_error(v)
         e += FractionInterval(self.v) * other.e
         e += FractionInterval(other.v) * self.e
-        return ErrorSemantics(v, e)
+        return self.__class__(v, e)
+    __rmul__ = __mul__
+
+    def __neg__(self):
+        if self.is_top() or self.is_bottom():
+            return self
+        return self.__class__(-self.v, -self.e)
+
+    def __abs__(self):
+        return FractionInterval(self.v) + self.e
 
     def __str__(self):
         return '%sx%s' % (self.v, self.e)
 
     def __repr__(self):
-        return 'ErrorSemantics([%s, %s], [%s, %s])' % \
-            (repr(self.v.min), repr(self.v.max),
-             repr(self.e.min), repr(self.e.max))
-
-    def __eq__(self, other):
-        if not isinstance(other, ErrorSemantics):
-            return False
-        return self.v == other.v and self.e == other.e
-
-    def __lt__(self, other):
-        def max_err(a):
-            return max(abs(a.e.min), abs(a.e.max))
-        return max_err(self) < max_err(other)
+        return '%s([%r, %r], [%r, %r])' % \
+            (self.__class__.__name__,
+             self.v.min, self.v.max, self.e.min, self.e.max)
 
     def __hash__(self):
         return hash((self.v, self.e))
-
-
-if __name__ == '__main__':
-    from soap.semantics import precision_context
-    with precision_context(52):
-        x = cast_error('0.1', '0.2')
-        print(x)
-        print(x * x)
-    with precision_context(23):
-        a = cast_error('5', '10')
-        b = cast_error('0', '0.001')
-        print((a + b) * (a + b))
-    gmpy2.set_context(gmpy2.ieee(64))
-    print(FloatInterval(['0.1', '0.2']) * FloatInterval(['5.3', '6.7']))
-    print(float(ulp(mpfr('0.1'))))
-    mult = lambda x, y: x * y
-    args = [mpfr('0.3'), mpfr('2.6')]
-    a = FloatInterval(['0.3', '0.3'])
-    print(a, round_off_error(a))
-    x = cast_error('0.9', '1.1')
-    for i in range(20):
-        x *= x
-        print(i, x)

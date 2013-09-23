@@ -9,8 +9,8 @@ from soap.common import ignored
 from soap.semantics import mpq
 from soap.expr.common import (
     ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP,
-    EQUAL_OP, GREATER_OP, LESS_OP, UNARY_NEGATION_OP, AND_OP, OR_OP,
-    UNARY_OPERATORS, BOOLEAN_OPERATORS
+    EQUAL_OP, GREATER_OP, LESS_OP, GREATER_EQUAL_OP, LESS_EQUAL_OP,
+    UNARY_NEGATION_OP, AND_OP, OR_OP, UNARY_OPERATORS, BOOLEAN_OPERATORS
 )
 
 
@@ -30,7 +30,9 @@ OPERATOR_MAP = {
     ast.USub: UNARY_SUBTRACT_OP,
     ast.Eq: EQUAL_OP,
     ast.Gt: GREATER_OP,
+    ast.GtE: GREATER_EQUAL_OP,
     ast.Lt: LESS_OP,
+    ast.LtE: LESS_EQUAL_OP,
     ast.Invert: UNARY_NEGATION_OP,
     ast.And: AND_OP,
     ast.Or: OR_OP,

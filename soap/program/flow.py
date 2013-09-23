@@ -21,6 +21,9 @@ class IdentityFlow(Flow):
     def flow(self, state):
         return state
 
+    def __str__(self):
+        return 'skip'
+
 
 class AssignFlow(Flow):
     """Assignment flow.

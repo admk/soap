@@ -5,9 +5,24 @@
 from soap.common import Comparable, Flyweight, cached, ignored
 from soap.expr.common import (
     ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, UNARY_SUBTRACT_OP,
+    LESS_OP, LESS_EQUAL_OP, EQUAL_OP, GREATER_EQUAL_OP, GREATER_OP,
     BARRIER_OP, COMMUTATIVITY_OPERATORS, UNARY_OPERATORS
 )
 from soap.expr.parser import parse
+
+
+_op_func_dict = {
+    ADD_OP: lambda x, y: x + y,
+    SUBTRACT_OP: lambda x, y: x - y,
+    MULTIPLY_OP: lambda x, y: x * y,
+    DIVIDE_OP: lambda x, y: x / y,
+    UNARY_SUBTRACT_OP: lambda x, _: -x,
+    LESS_OP: lambda x, y: x < y,
+    LESS_EQUAL_OP: lambda x, y: x <= y,
+    EQUAL_OP: lambda x, y: x == y,
+    GREATER_EQUAL_OP: lambda x, y: x >= y,
+    GREATER_OP: lambda x, y: x > y,
+}
 
 
 class Expr(Comparable, Flyweight):
@@ -119,7 +134,18 @@ class Expr(Comparable, Flyweight):
 
     def eval(self, var_env=None, **kwargs):
         """Simple expression evaluation hack."""
-        return eval(str(self), dict(var_env or {}, **kwargs))
+        from soap.semantics import (mpfr_type, mpq_type, Interval)
+
+        var_env = var_env.__class__(var_env, **kwargs)
+
+        def eval_arg(a):
+            with ignored(AttributeError):
+                return a.eval(var_env)
+            if isinstance(a, (int, float, mpfr_type, mpq_type, Interval)):
+                return a
+            return var_env[a]
+
+        return _op_func_dict[self.op](*(eval_arg(a) for a in self.args))
 
     def exponent_width(self, var_env, prec):
         """Computes the exponent width required for its evaluation so that no

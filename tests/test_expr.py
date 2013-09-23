@@ -1,10 +1,14 @@
 import unittest
+import os
 import gmpy2
 
 from soap.expr import Expr, BoolExpr
 from soap.expr import (
     ADD_OP, UNARY_SUBTRACT_OP, LESS_OP, EQUAL_OP, UNARY_NEGATION_OP
 )
+
+
+skip = 'NOSE_SKIP' in os.environ
 
 
 class TestExpr(unittest.TestCase):
@@ -93,12 +97,14 @@ class TestExpr(unittest.TestCase):
             self.e.area(self.v, self.p).area, self.f.area(self.v, self.p).area)
 
     def test_real_area(self):
+        from nose.plugins.skip import SkipTest
+        if skip:
+            raise SkipTest
         try:
             e = Expr('a + b')
             self.assertAlmostEqual(
                 e.area(self.v, self.p).area, e.real_area(self.v, self.p))
         except ImportError:
-            from nose.plugins.skip import SkipTest
             raise SkipTest
 
     def test_equal(self):

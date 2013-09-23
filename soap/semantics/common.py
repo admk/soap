@@ -72,38 +72,6 @@ class Labels(object):
         self.s[Label()] = e
 
 
-class Lattice(object):
-    """Common lattice structure.
-
-    Because the partial orders we are using are always complete lattices,
-    structures such as preorders, partial orders, dcpos are not implemented.
-
-    Subclasses of this class must implement the member functions:
-    :member:`join`, :member:`meet`, :member:`__le__`.
-    """
-    def join(self, other):
-        raise NotImplementedError
-
-    def meet(self, other):
-        raise NotImplementedError
-
-    def __le__(self, other):
-        raise NotImplementedError
-
-    def __ge__(self, other):
-        return other.__le__(self)
-
-    def __eq__(self, other):
-        """Defaults to antisymmetry."""
-        return self.__le__(other) and self.__ge__(other)
-
-    def __or__(self, other):
-        return self.join(other)
-
-    def __and__(self, other):
-        return self.meet(other)
-
-
 def precision_context(prec):
     """Withable context for changing precisions. Unifies how precisions can be
     changed.
