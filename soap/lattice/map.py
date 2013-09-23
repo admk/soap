@@ -6,21 +6,21 @@ from soap.lattice import Lattice
 from soap.lattice.common import _lattice_factory
 
 
-class MapLattice(Lattice):
+class MapLattice(Lattice, dict):
     """Defines a lattice for mappings/functions."""
     def __init__(self, mapping=None, top=False, bottom=False, **kwargs):
         super().__init__(top=top, bottom=bottom)
-        self.mapping = dict(mapping or {}, **kwargs)
-        for k, v in list(self.mapping.items()):
+        self.update(mapping or {}, **kwargs)
+        for k, v in list(self.items()):
             if type(v) is str:
                 if v == 'bottom':
-                    del self.mapping[k]
+                    del self[k]
                     continue
                 elif v == 'top':
                     v = self._class()(top=True)
             elif type(v) is not self._class():
                 v = self._class()(v)
-            self.mapping[k] = v
+            self[k] = v
 
     def _class(self):
         pass
@@ -29,41 +29,50 @@ class MapLattice(Lattice):
         return False
 
     def is_bottom(self):
-        return all(v.is_bottom() for _, v in self.mapping.items())
+        return all(v.is_bottom() for _, v in self.items())
 
     def join(self, other):
-        join_dict = dict(self.mapping)
-        for k in other.mapping:
-            if k in self.mapping:
-                join_dict[k] = self.mapping[k] | other.mapping[k]
+        join_dict = dict(self)
+        for k in other:
+            if k in self:
+                join_dict[k] = self[k] | other[k]
             else:
-                join_dict[k] = other.mapping[k]
+                join_dict[k] = other[k]
         return self.__class__(mapping=join_dict)
 
     def meet(self, other):
         meet_dict = {}
-        for k in list(self.mapping) + list(other.mapping):
-            if k not in self.mapping or k not in other.mapping:
+        for k in list(self) + list(other):
+            if k not in self or k not in other:
                 continue
-            v = self.mapping[k] & other.mapping[k]
+            v = self[k] & other[k]
             if not v.is_bottom():
                 meet_dict[k] = v
         return self.__class__(mapping=meet_dict)
 
     def le(self, other):
-        for k, v in self.mapping.items():
-            if k not in other.mapping:
+        for k, v in self.items():
+            if k not in other:
                 return False
-            if not v <= other.mapping[k]:
+            if not v <= other[k]:
                 return False
         return True
 
+    def __getitem__(self, key):
+        if self.is_top():
+            return self._class()(top=True)
+        if self.is_bottom():
+            return self._class()(bottom=True)
+        if key in self:
+            return super().__getitem__(key)
+        return self._class()(bottom=True)
+
     def __str__(self):
         return '[%s]' % ', '.join(
-            str(k) + '↦' + str(v) for k, v in self.mapping.items())
+            str(k) + '↦' + str(v) for k, v in self.items())
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.mapping)
+        return '%s(%r)' % (self.__class__.__name__, dict(self))
 
 
 def map(from_cls, to_lattice, name=None):

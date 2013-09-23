@@ -8,7 +8,7 @@ from soap import logger
 
 from soap.expr import LESS_OP, GREATER_OP, LESS_EQUAL_OP, GREATER_EQUAL_OP
 from soap.lattice import denotational, map
-from soap.semantics import Interval, inf
+from soap.semantics import Interval, IntegerInterval, FloatInterval, inf
 
 
 def _decorate(cls):
@@ -49,10 +49,10 @@ def _decorate(cls):
         return le
 
     try:
-        if cls == State or cls._decorated:
+        if cls == State or cls._state_decorated:
             return
     except AttributeError:
-        cls._decorated = True
+        cls._state_decorated = True
     cls.assign = decorate_assign(cls.assign)
     cls.conditional = decorate_conditional(cls.conditional)
     cls.join = decorate_join(cls.join)
@@ -71,9 +71,9 @@ class State(object):
 
     def assign(self, var, expr):
         """Makes an assignment and returns a new state object."""
-        mapping = dict(self.mapping)
+        mapping = dict(self)
         try:
-            mapping[var] = expr.eval(self.mapping)
+            mapping[var] = expr.eval(self)
         except NameError:
             pass
         return self.__class__(mapping)
@@ -101,9 +101,17 @@ class ClassicalState(denotational_state()):
     :module:`soap.program.flow`.
     """
     def conditional(self, expr, cond):
-        if expr.eval(self.mapping) == cond:
+        if expr.eval(self) == cond:
             return self
         return self.__class__(bottom=True)
+
+
+_negate_dict = {
+    LESS_OP: GREATER_EQUAL_OP,
+    LESS_EQUAL_OP: GREATER_OP,
+    GREATER_OP: LESS_EQUAL_OP,
+    GREATER_EQUAL_OP: LESS_OP,
+}
 
 
 class IntervalState(State, map(str, Interval)):
@@ -116,19 +124,25 @@ class IntervalState(State, map(str, Interval)):
     """
     def conditional(self, expr, cond):
         try:
-            bound = expr.a2.eval(self.mapping)
+            bound = expr.a2.eval(self)
         except AttributeError:  # expr.a2 is a constant
-            bound = Interval(expr.a2)
-        mapping = dict(self.mapping)
-        if expr.op in GREATER_EQUAL_OP:
-            if cond:
-                cstr = Interval([bound.min, inf])
+            if isinstance(expr.a2, int):
+                bound = IntegerInterval(expr.a2)
             else:
-                cstr = Interval([-inf, bound.max])
-        elif expr.op in LESS_EQUAL_OP:
-            if cond:
-                cstr = Interval([-inf, bound.max])
-            else:
-                cstr = Interval([bound.min, inf])
+                bound = FloatInterval(expr.a2)
+        mapping = dict(self)
+        op = expr.op
+        if not cond:
+            op = _negate_dict[op]
+        if op in [LESS_OP, LESS_EQUAL_OP]:
+            if op == LESS_OP and isinstance(bound, IntegerInterval):
+                bound.max -= 1
+            cstr = Interval([-inf, bound.max])
+        elif op in [GREATER_OP, GREATER_EQUAL_OP]:
+            if op == GREATER_OP and isinstance(bound, IntegerInterval):
+                bound.min += 1
+            cstr = Interval([bound.min, inf])
+        else:
+            raise ValueError('Unknown operator %s' % op)
         mapping[expr.a1] &= cstr
         return self.__class__(mapping)

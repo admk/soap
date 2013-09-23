@@ -40,20 +40,20 @@ class TestIntervalState(unittest.TestCase):
 
     def test_conditional(self):
         self.assertEqual(
-            self.one_three.conditional(BoolExpr('x < 0'), True),
-            self.bot)
-        self.assertEqual(
-            self.one_three.conditional(BoolExpr('x < 0'), False),
-            self.one_three)
-        self.assertEqual(
             self.one_three.conditional(BoolExpr('x < 1'), True),
-            IntervalState({'x': 1}))
+            self.bot)
         self.assertEqual(
             self.one_three.conditional(BoolExpr('x < 1'), False),
             self.one_three)
         self.assertEqual(
             self.one_three.conditional(BoolExpr('x < 2'), True),
-            IntervalState({'x': [1, 2]}))
+            IntervalState({'x': 1}))
         self.assertEqual(
             self.one_three.conditional(BoolExpr('x < 2'), False),
             IntervalState({'x': [2, 3]}))
+        self.assertEqual(
+            self.one_three.conditional(BoolExpr('x < 3'), True),
+            IntervalState({'x': [1, 2]}))
+        self.assertEqual(
+            self.one_three.conditional(BoolExpr('x < 3'), False),
+            IntervalState({'x': 3}))
