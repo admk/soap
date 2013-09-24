@@ -144,5 +144,10 @@ class IntervalState(State, map(str, Interval)):
             cstr = Interval([bound.min, inf])
         else:
             raise ValueError('Unknown operator %s' % op)
-        mapping[expr.a1] &= cstr
-        return self.__class__(mapping)
+        cstr &= mapping[expr.a1]
+        if cstr.is_bottom():
+            """Branch evaluates to false, because no possible values of the
+            variable satisfies the constraint condition, it is safe to return
+            *bottom* to denote an unreachable state."""
+            return self.__class__(bottom=True)
+        return self.__class__(mapping, **{expr.a1: cstr})
