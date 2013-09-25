@@ -2,6 +2,8 @@
 .. module:: soap.semantics.error
     :synopsis: Intervals and error semantics.
 """
+import functools
+
 import gmpy2
 from gmpy2 import mpfr, mpq as _mpq
 
@@ -68,30 +70,42 @@ def cast_error(v, w=None):
     return ErrorSemantics([v, w], round_off_error(FractionInterval([v, w])))
 
 
-class CoercionError(NotImplementedError):
-    """Cannot perform coercion, must do a reverse operation."""
-
-
-def _coerce(self, other):
+def _coerce(self, other, use_self_func=False):
     if type(self) is type(other):
-        return other
-    precedence = [
-        ErrorSemantics, FloatInterval, FractionInterval, IntegerInterval
-    ]
-    try:
-        if precedence.index(type(self)) > precedence.index(type(other)):
-            raise CoercionError
-    except ValueError:  # not in precedence
-        pass
-    return self.__class__(other)
+        return self, other
+
+    def precedence(v):
+        precedence_list = [
+            ErrorSemantics, FloatInterval, FractionInterval, IntegerInterval
+        ]
+        try:
+            return precedence_list.index(type(v))
+        except ValueError:
+            return len(precedence_list) + 1
+
+    self_prec = precedence(self)
+    other_prec = precedence(other)
+    if self_prec > other_prec:
+        if use_self_func:
+            raise NotImplementedError
+        return other.__class__(self), other
+    return self, self.__class__(other)
 
 
 def _decorate_coerce(func):
+    @functools.wraps(func)
     def wrapper(self, other):
         try:
-            other = _coerce(self, other)
-        except CoercionError:
+            self, other = _coerce(self, other, True)
+        except NotImplementedError:
             return NotImplemented
+        return func(self, other)
+    return wrapper
+
+
+def _decorate_default(func):
+    @functools.wraps(func)
+    def wrapper(self, other):
         with ignored(AttributeError):
             if self.is_top() or other.is_top():
                 # top denotes no information or non-termination
@@ -102,6 +116,9 @@ def _decorate_coerce(func):
                 return self.__class__(bottom=True)
         return func(self, other)
     return wrapper
+
+
+_decorate_operator = lambda func: _decorate_coerce(_decorate_default(func))
 
 
 class Interval(Lattice):
@@ -129,10 +146,12 @@ class Interval(Lattice):
     def is_bottom(self):
         return False
 
+    @_decorate_coerce
     def join(self, other):
         return self.__class__(
             [min(self.min, other.min), max(self.max, other.max)])
 
+    @_decorate_coerce
     def meet(self, other):
         try:
             return self.__class__(
@@ -141,25 +160,28 @@ class Interval(Lattice):
             return self.__class__(bottom=True)
 
     def le(self, other):
+        if type(self) is not type(other):
+            self, other = _coerce(self, other)
+            return self.le(other)
         return self.min >= other.min and self.max <= other.max
 
     def __iter__(self):
         return iter((self.min, self.max))
 
-    @_decorate_coerce
+    @_decorate_operator
     def __add__(self, other):
         return self.__class__([self.min + other.min, self.max + other.max])
     __radd__ = __add__
 
-    @_decorate_coerce
+    @_decorate_operator
     def __sub__(self, other):
         return self.__class__([self.min - other.max, self.max - other.min])
 
-    @_decorate_coerce
+    @_decorate_operator
     def __rsub__(self, other):
         return self.__class__([other.min - self.max, other.max - self.min])
 
-    @_decorate_coerce
+    @_decorate_operator
     def __mul__(self, other):
         v = (self.min * other.min, self.min * other.max,
              self.max * other.min, self.max * other.max)
@@ -224,12 +246,19 @@ class ErrorSemantics(Lattice):
         if top or bottom:
             return
         self.v = FloatInterval(v)
-        if e is not None:
-            self.e = FractionInterval(e)
-        elif self.v.min == self.v.max:
-            self.e = round_off_error_from_exact(self.v.min)
-        else:
-            self.e = round_off_error(self.v)
+
+        def error(v):
+            if e is not None:
+                return FractionInterval(e)
+            v_min, v_max = Interval(v)
+            if isinstance(v_min, int) and isinstance(v_max, int):
+                # FIXME some integers cannot be expressed exactly in fp values
+                return FractionInterval(0)
+            if v_min == v_max:
+                return round_off_error_from_exact(v_min)
+            return round_off_error(FloatInterval(v))
+
+        self.e = error(v)
 
     def is_top(self):
         return self.v.is_top() or self.e.is_top()
@@ -237,35 +266,40 @@ class ErrorSemantics(Lattice):
     def is_bottom(self):
         return self.v.is_bottom() or self.e.is_bottom()
 
+    @_decorate_coerce
     def join(self, other):
         return self.__class__(self.v | other.v, self.e | other.e)
 
+    @_decorate_coerce
     def meet(self, other):
         return self.__class__(self.v & other.v, self.e & other.e)
 
     def le(self, other):
+        if type(self) is not type(other):
+            self, other = _coerce(self, other)
+            return self.le(other)
         return self.v.le(other.v) and self.e.le(other.e)
 
-    @_decorate_coerce
+    @_decorate_operator
     def __add__(self, other):
         v = self.v + other.v
         e = self.e + other.e + round_off_error(v)
         return self.__class__(v, e)
     __radd__ = __add__
 
-    @_decorate_coerce
+    @_decorate_operator
     def __sub__(self, other):
         v = self.v - other.v
         e = self.e - other.e + round_off_error(v)
         return self.__class__(v, e)
 
-    @_decorate_coerce
+    @_decorate_operator
     def __rsub__(self, other):
         v = other.v - self.v
         e = other.e - self.e + round_off_error(v)
         return self.__class__(v, e)
 
-    @_decorate_coerce
+    @_decorate_operator
     def __mul__(self, other):
         v = self.v * other.v
         e = self.e * other.e + round_off_error(v)

@@ -48,3 +48,6 @@ class TestFlow(unittest.TestCase):
         flow_env = flow(self.factorial).flow(IntervalState(abs_env))
         # analysis is less precise than combined executions
         self.assertLessEqual(exec_env, flow_env)
+
+    def test_error_flow(self):
+        pass

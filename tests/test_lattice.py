@@ -101,9 +101,26 @@ class TestComponentWiseLattice(unittest.TestCase):
     def setUp(self):
         self.alphabets = ['a']
         self.numerals = [1]
-        self.Alphabet = flat(self.alphabets, name='Alphabet')
-        self.Numeral = flat(self.numerals, name='Numeral')
-        self.AlphaNumeral = self.Alphabet * self.Numeral
+        Alphabet = flat(self.alphabets, name='Alphabet')
+        Numeral = flat(self.numerals, name='Numeral')
+
+        class AlphaNumeral(Alphabet * Numeral):
+            def __init__(self, alpha=None, numer=None,
+                         top=False, bottom=False):
+                if top or bottom:
+                    super().__init__(top=top, bottom=bottom)
+                    return
+
+                def cast(cls, v):
+                    if v == 'top':
+                        return cls(top=True)
+                    if v == 'bottom':
+                        return cls(bottom=True)
+                    return cls(v)
+
+                super().__init__(cast(Alphabet, alpha), cast(Numeral, numer))
+
+        self.AlphaNumeral = AlphaNumeral
         self.alphabets += ['top', 'bottom']
         self.numerals += ['top', 'bottom']
 
@@ -140,9 +157,6 @@ class TestComponentWiseLattice(unittest.TestCase):
                     self.assertFalse(l1 <= l2)
         self.assertEqual(
             self.AlphaNumeral(top=True), self.AlphaNumeral('top', 'top'))
-        self.assertEqual(
-            self.AlphaNumeral(self.Alphabet('a'), self.Numeral(1)),
-            self.AlphaNumeral('a', 1))
 
     def test_join_and_meet(self):
         t, b, a = 'top', 'bottom', 'a'

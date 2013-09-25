@@ -59,9 +59,15 @@ class TestInterval(unittest.TestCase):
 
 
 class ErrorAssertionTestCase(unittest.TestCase):
+    def assertAlmostEqual(self, a, b):
+        try:
+            self.assertErrorAlmostEqual(a, b)
+        except AttributeError:
+            self.assertIntervalAlmostEqual(a, b)
+
     def assertIntervalAlmostEqual(self, a, b):
-        self.assertAlmostEqual(a.min, b.min)
-        self.assertAlmostEqual(a.max, b.max)
+        super().assertAlmostEqual(a.min, b.min)
+        super().assertAlmostEqual(a.max, b.max)
 
     def assertErrorAlmostEqual(self, a, b):
         self.assertIntervalAlmostEqual(a.v, b.v)
@@ -130,24 +136,51 @@ class TestErrorSemantics(ErrorAssertionTestCase):
         self.assertEqual(self.e12 | self.e24, self.e13 | self.e24)
 
     def test_meet(self):
-        self.assertErrorAlmostEqual(
-            self.e13 & self.e24, ErrorSemantics(['2', '3']))
-        self.assertErrorAlmostEqual(
-            self.e12 & self.e24, ErrorSemantics('2'))
+        self.assertAlmostEqual(self.e13 & self.e24, ErrorSemantics(['2', '3']))
+        self.assertAlmostEqual(self.e12 & self.e24, ErrorSemantics('2'))
         self.assertEqual(self.e12 & self.e34, ErrorSemantics(bottom=True))
 
 
 class TestCoercion(ErrorAssertionTestCase):
-    def test_coercion(self):
-        interval = [2, 3]
-        integer_interval = IntegerInterval(interval)
-        float_interval = FloatInterval(interval)
-        error = ErrorSemantics(interval)
-        self.assertEqual(
-            type(integer_interval + float_interval), FloatInterval)
-        self.assertEqual(
-            type(float_interval + integer_interval), FloatInterval)
-        self.assertEqual(type(integer_interval + error), ErrorSemantics)
-        self.assertEqual(type(error + integer_interval), ErrorSemantics)
-        self.assertEqual(type(float_interval + error), ErrorSemantics)
-        self.assertEqual(type(error + float_interval), ErrorSemantics)
+    def setUp(self):
+        self.interval = [2, 3]
+        self.integer_interval = IntegerInterval(self.interval)
+        self.float_interval = FloatInterval(self.interval)
+        self.error = ErrorSemantics(self.interval)
+
+    def trials(self, funcs):
+        tests = [
+            (self.integer_interval, self.float_interval, FloatInterval),
+            (self.float_interval, self.integer_interval, FloatInterval),
+            (self.integer_interval, self.error, ErrorSemantics),
+            (self.error, self.integer_interval, ErrorSemantics),
+            (self.float_interval, self.error, ErrorSemantics),
+            (self.error, self.float_interval, ErrorSemantics),
+        ]
+        for i, j, t in tests:
+            for f in funcs:
+                u = f(i, j)
+                v = t(self.interval)
+                v = f(v, v)
+                if not isinstance(u, bool):
+                    self.assertEqual(type(u), t)
+                    self.assertAlmostEqual(u, v)
+
+    def test_operators(self):
+        self.trials([
+            lambda x, y: x + y,
+            lambda x, y: x - y,
+            lambda x, y: x * y,
+        ])
+
+    def test_lattice(self):
+        self.trials([
+            lambda x, y: x | y,
+            lambda x, y: x & y,
+            lambda x, y: x <= y,
+            lambda x, y: x < y,
+            lambda x, y: x == y,
+            lambda x, y: x >= y,
+            lambda x, y: x > y,
+            lambda x, y: x != y,
+        ])

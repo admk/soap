@@ -8,29 +8,32 @@ class LatticeMeta(type):
     It defines the behaviour of the systematic design of lattices."""
     def __mul__(self_class, other_class):
         class ComponentWiseLattice(Lattice):
-            def __init__(self, self_class_args=None, other_class_args=None,
+            def __init__(self,
+                         self_class_args=None, self_class_kwargs=None,
+                         other_class_args=None, other_class_kwargs=None,
                          top=False, bottom=False):
                 super().__init__(top=top, bottom=bottom)
                 if top or bottom:
                     return
+                if not other_class_args:
+                    if self_class_kwargs and not other_class_kwargs:
+                        other_class_args = self_class_kwargs
+                        self_class_kwargs = None
+                self_class_kwargs = self_class_kwargs or {}
+                other_class_kwargs = other_class_kwargs or {}
                 self.components = []
                 class_args = [
-                    (self_class, self_class_args),
-                    (other_class, other_class_args),
+                    (self_class, self_class_args, self_class_kwargs),
+                    (other_class, other_class_args, other_class_kwargs),
                 ]
-                for cls, args in class_args:
-                    try:
-                        if args == 'top':
-                            c = cls(top=True)
-                        elif args == 'bottom':
-                            c = cls(bottom=True)
-                        else:
-                            try:
-                                c = cls(*args)
-                            except (TypeError, ValueError):
-                                c = cls(args)
-                    except TypeError:  # can't compare, because args is lattice
+                for cls, args, kwargs in class_args:
+                    if isinstance(args, Lattice) and not kwargs:
                         c = args
+                    else:
+                        try:
+                            c = cls(*args, **kwargs)
+                        except (TypeError, ValueError):
+                            c = cls(args, **kwargs)
                     self.components.append(c)
 
             def is_top(self):
@@ -92,10 +95,12 @@ def _decorate(cls):
         @_check_return
         @wraps(decd_func)
         def wrapper(self, other):
+            """
             if self.__class__ != other.__class__:
                 raise TypeError(
                     'Inconsistent lattices %r, %r for function %s' %
                     (self, other, decd_func))
+            """
             t = base_func(self, other)
             return t if t is not None else decd_func(self, other)
         return wrapper
