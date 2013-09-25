@@ -168,6 +168,9 @@ class Interval(Lattice):
     def __iter__(self):
         return iter((self.min, self.max))
 
+    def __contains__(self, v):
+        return self.min <= v <= self.max
+
     @_decorate_operator
     def __add__(self, other):
         return self.__class__([self.min + other.min, self.max + other.max])
@@ -194,7 +197,9 @@ class Interval(Lattice):
         return self.__class__([-self.max, -self.min])
 
     def __str__(self):
-        return '[%s, %s]' % (self.min, self.max)
+        min_val = '-∞' if self.min == -inf else self.min
+        max_val = '∞' if self.max == -inf else self.max
+        return '[%s, %s]' % (min_val, max_val)
 
     def __repr__(self):
         return '%s([%r, %r])' % (self.__class__.__name__, self.min, self.max)
@@ -208,8 +213,10 @@ class IntegerInterval(Interval):
     def __init__(self, v=None, top=False, bottom=False):
         super().__init__(v, top=top, bottom=bottom)
         try:
-            self.min = int(self.min)
-            self.max = int(self.max)
+            if self.min not in (-inf, inf):
+                self.min = int(self.min)
+            if self.max not in (-inf, inf):
+                self.max = int(self.max)
         except AttributeError:
             'The interval is a top or bottom.'
 
@@ -224,6 +231,11 @@ class FloatInterval(Interval):
         except AttributeError:
             'The interval is a top or bottom.'
 
+    def __str__(self):
+        min_val = '-∞' if self.min == -inf else '%1.5g' % self.min
+        max_val = '∞' if self.max == -inf else '%1.5g' % self.min
+        return '~[%s, %s]' % (min_val, max_val)
+
 
 class FractionInterval(Interval):
     """The interval containing real rational values."""
@@ -236,7 +248,9 @@ class FractionInterval(Interval):
             'The interval is a top or bottom.'
 
     def __str__(self):
-        return '[~%s, ~%s]' % (str(mpfr(self.min)), str(mpfr(self.max)))
+        min_val = '-∞' if self.min == -inf else '%1.5g' % self.min
+        max_val = '∞' if self.max == -inf else '%1.5g' % self.min
+        return '~[%s, %s]' % (min_val, max_val)
 
 
 class ErrorSemantics(Lattice):
@@ -280,6 +294,9 @@ class ErrorSemantics(Lattice):
             return self.le(other)
         return self.v.le(other.v) and self.e.le(other.e)
 
+    def __contains__(self, v):
+        return self.v.min <= v <= self.v.max
+
     @_decorate_operator
     def __add__(self, other):
         v = self.v + other.v
@@ -317,7 +334,7 @@ class ErrorSemantics(Lattice):
         return FractionInterval(self.v) + self.e
 
     def __str__(self):
-        return '%sx%s' % (self.v, self.e)
+        return '(%s, %s)' % (self.v, self.e)
 
     def __repr__(self):
         return '%s([%r, %r], [%r, %r])' % \

@@ -4,7 +4,7 @@
 """
 from soap.common import ignored
 from soap.lattice import Lattice
-from soap.lattice.common import _is_class, _lattice_factory
+from soap.lattice.common import _lattice_factory
 
 
 class FlatLattice(Lattice):
@@ -21,18 +21,10 @@ class FlatLattice(Lattice):
         super().__init__(top=top, bottom=bottom)
         if top or bottom:
             return
-        if self._class() is not None:
-            self.v = self._class()(var)
-        else:
-            if self._container() is not None and var not in self._container():
-                raise ValueError('Non-existing element: %s' % repr(var))
-            self.v = var
+        self.v = self._cast_value(var)
 
-    def _class(self):
-        pass
-
-    def _container(self):
-        pass
+    def _cast_value(self):
+        raise NotImplementedError
 
     def is_top(self):
         return False
@@ -61,19 +53,22 @@ class FlatLattice(Lattice):
 
 
 class Denotational(object):
-    def _op(self, op, other):
+    def _op(self, op, other=None):
         with ignored(AttributeError):
-            if self.is_top() or other.is_top():
+            if self.is_top() or (other is not None and other.is_top()):
                 # top denotes conflict
                 return self.__class__(top=True)
         with ignored(AttributeError):
-            if self.is_bottom() or other.is_bottom():
+            if self.is_bottom() or (other is not None and other.is_bottom()):
                 # bottom denotes no information
                 return self.__class__(bottom=True)
-        try:
-            v = op(self.v, other.v)
-        except AttributeError:
-            v = op(self.v, other)
+        if other is None:
+            v = op(self.v)
+        else:
+            try:
+                v = op(self.v, other.v)
+            except AttributeError:
+                v = op(self.v, other)
         if type(v) is bool:
             return v
         return self.__class__(v)
@@ -91,6 +86,21 @@ class Denotational(object):
     def __mul__(self, other):
         return self._op(lambda x, y: x * y, other)
     __rmul__ = __mul__
+
+    def __pos__(self):
+        return self
+
+    def __neg__(self):
+        return self._op(lambda v: -v)
+
+    def __abs__(self):
+        return self._op(lambda v: abs(v))
+
+    def __int__(self):
+        return int(self.v)
+
+    def __float__(self):
+        return float(self.v)
 
     def __le__(self, other):
         return self._op(lambda x, y: x <= y, other)
@@ -120,7 +130,7 @@ def flat(cls=None, name=None):
     :param name: The name of the generated class.
     :type name: str
     """
-    if not name and _is_class(cls):
+    if not name and callable(cls):
         name = 'FlatLattice_' + cls.__name__
     return _lattice_factory(cls, FlatLattice, name)
 
@@ -146,6 +156,6 @@ def denotational(cls=None, name=None):
         pass
     if name:
         DenotationalFlatLattice.__name__ = name
-    elif _is_class(cls):
+    elif callable(cls):
         DenotationalFlatLattice.__name__ += cls.__name__
     return DenotationalFlatLattice

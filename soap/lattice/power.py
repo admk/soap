@@ -3,7 +3,7 @@
     :synopsis: The power lattice.
 """
 from soap.lattice import Lattice
-from soap.lattice.common import _is_class, _lattice_factory
+from soap.lattice.common import _lattice_factory
 
 
 class PowerLattice(Lattice):
@@ -26,22 +26,13 @@ class PowerLattice(Lattice):
         super().__init__(top=top, bottom=bottom)
         if top or bottom:
             return
-        if self._class():
-            self.elements = set(self._class()(v) for v in elements)
-        else:
-            elements = set(elements)
-            if elements <= self._container():
-                raise ValueError('Set is not a subset of Top.')
-            self.elements = elements
+        self.elements = set(self._cast_value(v) for v in elements)
 
-    def _class(self):
-        pass
-
-    def _container(self):
-        pass
+    def _cast_value(self):
+        raise NotImplementedError
 
     def is_top(self):
-        return self.elements == self._container()
+        return self.elements == self._class()
 
     def is_bottom(self):
         return len(self.elements) == 0
@@ -68,6 +59,6 @@ def power(cls, name=None):
     :param name: The name of the generated class.
     :type name: str
     """
-    if not name and _is_class(cls):
+    if not name and callable(cls):
         name = 'PowerLattice_' + cls.__name__
     return _lattice_factory(cls, PowerLattice, name)

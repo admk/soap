@@ -17,13 +17,13 @@ class MapLattice(Lattice, dict):
                     del self[k]
                     continue
                 elif v == 'top':
-                    v = self._class()(top=True)
-            elif type(v) is not self._class():
-                v = self._class()(v)
+                    v = self._cast_value(top=True)
+            else:
+                v = self._cast_value(v)
             self[k] = v
 
-    def _class(self):
-        pass
+    def _cast_value(self):
+        raise NotImplementedError
 
     def is_top(self):
         return False
@@ -60,12 +60,12 @@ class MapLattice(Lattice, dict):
 
     def __getitem__(self, key):
         if self.is_top():
-            return self._class()(top=True)
+            return self._cast_value(top=True)
         if self.is_bottom():
-            return self._class()(bottom=True)
+            return self._cast_value(bottom=True)
         if key in self:
             return super().__getitem__(key)
-        return self._class()(bottom=True)
+        return self._cast_value(bottom=True)
 
     def __str__(self):
         return '[%s]' % ', '.join(
@@ -85,5 +85,9 @@ def map(from_cls, to_lattice, name=None):
     :type name: :class:`soap.lattice.Lattice`
     """
     if not name:
-        name = 'MapLattice_%s_to_%s' % (from_cls.__name__, to_lattice.__name__)
+        try:
+            to_lattice_name = to_lattice.__name__
+        except AttributeError:
+            to_lattice_name = type(to_lattice).__name__
+        name = 'MapLattice_%s_to_%s' % (from_cls.__name__, to_lattice_name)
     return _lattice_factory(to_lattice, MapLattice, name)

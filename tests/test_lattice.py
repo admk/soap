@@ -223,6 +223,11 @@ class TestComponentWiseLattice(unittest.TestCase):
             self.assertEqual(b & l, b)
 
 
+class TestSummationLattice(unittest.TestCase):
+    def setUp(self):
+        raise unittest.SkipTest
+
+
 class TestMapLattice(unittest.TestCase):
     """Unittesting for :class:`soap.lattice.MapLattice`."""
     def setUp(self):

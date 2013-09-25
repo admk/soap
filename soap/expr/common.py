@@ -9,6 +9,7 @@ MULTIPLY_OP = '*'
 DIVIDE_OP = '/'
 
 EQUAL_OP = '=='
+NOT_EQUAL_OP = '!='
 GREATER_OP = '>'
 GREATER_EQUAL_OP = '>='
 LESS_OP = '<'

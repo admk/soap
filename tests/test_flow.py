@@ -3,7 +3,9 @@ import itertools
 import functools
 
 from soap.program import flow
-from soap.semantics import Interval, ClassicalState, IntervalState
+from soap.semantics import (
+    Interval, ErrorSemantics, ClassicalState, IntervalState
+)
 
 
 class TestFlow(unittest.TestCase):
@@ -50,4 +52,9 @@ class TestFlow(unittest.TestCase):
         self.assertLessEqual(exec_env, flow_env)
 
     def test_error_flow(self):
-        pass
+        exec_env = {'x': 1, 'y': float('1.2')}
+        flow_env = {'x': 1, 'y': ErrorSemantics('1.2')}
+        exec_env = self.exec(self.factorial, IntervalState, exec_env)
+        flow_env = flow(self.factorial).flow(IntervalState(flow_env))
+        self.assertLessEqual(exec_env, flow_env)
+        print(exec_env, flow_env)

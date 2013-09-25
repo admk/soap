@@ -6,9 +6,15 @@ from functools import wraps
 
 from soap import logger
 
-from soap.expr import LESS_OP, GREATER_OP, LESS_EQUAL_OP, GREATER_EQUAL_OP
+from soap.expr import (
+    LESS_OP, GREATER_OP, LESS_EQUAL_OP, GREATER_EQUAL_OP,
+    EQUAL_OP, NOT_EQUAL_OP
+)
 from soap.lattice import denotational, map
-from soap.semantics import Interval, IntegerInterval, FloatInterval, inf
+from soap.semantics import (
+    inf, mpfr_type, mpq_type,
+    Interval, IntegerInterval, FloatInterval, ErrorSemantics
+)
 
 
 def _decorate(cls):
@@ -111,10 +117,12 @@ _negate_dict = {
     LESS_EQUAL_OP: GREATER_OP,
     GREATER_OP: LESS_EQUAL_OP,
     GREATER_EQUAL_OP: LESS_OP,
+    EQUAL_OP: NOT_EQUAL_OP,
+    NOT_EQUAL_OP: EQUAL_OP,
 }
 
 
-class IntervalState(State, map(str, Interval)):
+class IntervalState(State, map(str, (Interval, ErrorSemantics))):
     """The traditional program analysis state object based on intervals.
 
     Supports only simple boolean expressions::
@@ -122,6 +130,20 @@ class IntervalState(State, map(str, Interval)):
     For example::
         x <= 3 * y.
     """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for k, v in list(self.items()):
+            try:
+                if type(v.min) is not type(v.max):
+                    continue
+                if isinstance(v.min, int):
+                    v = IntegerInterval(v)
+                elif isinstance(v.min, (float, mpfr_type, mpq_type)):
+                    v = FloatInterval(v)
+                self[k] = (v)
+            except AttributeError:  # ErrorSemantics
+                pass
+
     def conditional(self, expr, cond):
         try:
             bound = expr.a2.eval(self)
@@ -130,11 +152,19 @@ class IntervalState(State, map(str, Interval)):
                 bound = IntegerInterval(expr.a2)
             else:
                 bound = FloatInterval(expr.a2)
+        if isinstance(bound, ErrorSemantics):
+            # It cannot handle incorrect branching due to error in
+            # evaluation of the expression.
+            bound = bound.v
         mapping = dict(self)
         op = expr.op
         if not cond:
             op = _negate_dict[op]
-        if op in [LESS_OP, LESS_EQUAL_OP]:
+        if op == EQUAL_OP:
+            cstr = bound
+        elif op == NOT_EQUAL_OP:
+            pass
+        elif op in [LESS_OP, LESS_EQUAL_OP]:
             if op == LESS_OP and isinstance(bound, IntegerInterval):
                 bound.max -= 1
             cstr = Interval([-inf, bound.max])
@@ -143,7 +173,7 @@ class IntervalState(State, map(str, Interval)):
                 bound.min += 1
             cstr = Interval([bound.min, inf])
         else:
-            raise ValueError('Unknown operator %s' % op)
+            raise ValueError('Unknown boolean operator %s' % op)
         cstr &= mapping[expr.a1]
         if cstr.is_bottom():
             """Branch evaluates to false, because no possible values of the
