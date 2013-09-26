@@ -75,13 +75,20 @@ class State(object):
         super().__init__(*args, **kwargs)
         _decorate(self.__class__)
 
+    def eval(self, expr):
+        """Evaluates an expression with state's mapping."""
+        try:
+            return expr.eval(self)
+        except AttributeError:  # expr is a string with a constant or variable
+            pass
+        if expr in self:
+            return self[expr]
+        return expr
+
     def assign(self, var, expr):
         """Makes an assignment and returns a new state object."""
         mapping = dict(self)
-        try:
-            mapping[var] = expr.eval(self)
-        except NameError:
-            pass
+        mapping[var] = self.eval(expr)
         return self.__class__(mapping)
 
     def conditional(self, expr, cond):
@@ -145,17 +152,15 @@ class IntervalState(State, map(str, (Interval, ErrorSemantics))):
                 pass
 
     def conditional(self, expr, cond):
-        try:
-            bound = expr.a2.eval(self)
-        except AttributeError:  # expr.a2 is a constant
-            if isinstance(expr.a2, int):
-                bound = IntegerInterval(expr.a2)
-            else:
-                bound = FloatInterval(expr.a2)
-        if isinstance(bound, ErrorSemantics):
+        bound = self.eval(expr.a2)
+        if isinstance(bound, int):
+            bound = IntegerInterval(bound)
+        elif isinstance(bound, ErrorSemantics):
             # It cannot handle incorrect branching due to error in
             # evaluation of the expression.
             bound = bound.v
+        else:
+            bound = FloatInterval(bound)
         mapping = dict(self)
         op = expr.op
         if not cond:

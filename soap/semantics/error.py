@@ -334,7 +334,7 @@ class ErrorSemantics(Lattice):
         return FractionInterval(self.v) + self.e
 
     def __str__(self):
-        return '(%s, %s)' % (self.v, self.e)
+        return '%s%s' % (self.v, self.e)
 
     def __repr__(self):
         return '%s([%r, %r], [%r, %r])' % \
