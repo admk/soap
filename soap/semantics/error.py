@@ -17,6 +17,9 @@ mpq_type = type(_mpq('1.0'))
 inf = mpfr('Inf')
 
 
+gmpy2.set_context(gmpy2.ieee(64))
+
+
 def mpq(v):
     """Unifies how mpq behaves when shit (overflow and NaN) happens.
 
@@ -37,14 +40,31 @@ def mpq(v):
 def ulp(v):
     """Computes the unit of the last place for a value.
 
+    FIXME big question: what is ulp(0)?
+    Definition: distance from 0 to its nearest floating-point value.
+
+    Solutions::
+      1. gradual underflow -> 2 ** (1 - offset - p)
+          don't need to change definition, possibly, don't know how mpfr
+          handles underflow stuff.
+      2. abrupt underflow -> 2 ** (1 - offset)
+          add 2 ** (1 - offset) overestimation to ulp.
+
+    Forget gradual underflow, I found out that ``mpfr`` does not support
+    gradual underflow in arithmetic operations. See version 3.1.2 source
+    ``src/mul.c:144``.
+
     :param v: The value.
     :type v: any gmpy2 values
     """
+    underflow_error = mpq(2) ** gmpy2.get_context().emin
+    if v == 0:  # corner case, exponent is 1
+        return underflow_error
     if type(v) is not mpfr_type:
         with gmpy2.local_context(round=gmpy2.RoundAwayZero):
             v = mpfr(v)
     try:
-        return mpq(2) ** v.as_mantissa_exp()[1]
+        return mpq(2) ** v.as_mantissa_exp()[1] + underflow_error
     except OverflowError:
         return mpfr('Inf')
 
