@@ -123,7 +123,7 @@ def _decorate_coerce(func):
     return wrapper
 
 
-def _decorate_default(func):
+def _decorate_operator(func):
     @functools.wraps(func)
     def wrapper(self, other):
         with ignored(AttributeError):
@@ -135,10 +135,7 @@ def _decorate_default(func):
                 # bottom denotes conflict
                 return self.__class__(bottom=True)
         return func(self, other)
-    return wrapper
-
-
-_decorate_operator = lambda func: _decorate_coerce(_decorate_default(func))
+    return _decorate_coerce(wrapper)
 
 
 class Interval(Lattice):
@@ -254,7 +251,7 @@ class FloatInterval(Interval):
     def __str__(self):
         min_val = '-∞' if self.min == -inf else '%1.5g' % self.min
         max_val = '∞' if self.max == -inf else '%1.5g' % self.min
-        return '~[%s, %s]' % (min_val, max_val)
+        return '[%s, %s]' % (min_val, max_val)
 
 
 class FractionInterval(Interval):
@@ -270,7 +267,7 @@ class FractionInterval(Interval):
     def __str__(self):
         min_val = '-∞' if self.min == -inf else '%1.5g' % self.min
         max_val = '∞' if self.max == -inf else '%1.5g' % self.min
-        return '~[%s, %s]' % (min_val, max_val)
+        return '[%s, %s]' % (min_val, max_val)
 
 
 class ErrorSemantics(Lattice):
@@ -363,3 +360,25 @@ class ErrorSemantics(Lattice):
 
     def __hash__(self):
         return hash((self.v, self.e))
+
+
+def cast(v):
+    if isinstance(v, str):
+        if v.isdigit():
+            return IntegerInterval(v)
+        return ErrorSemantics(v)
+    try:
+        v_min, v_max = v
+    except (ValueError, TypeError):
+        pass
+    else:
+        istype = lambda t: isinstance(v_min, t) and isinstance(v_max, t)
+        if istype(str):
+            if v_min.isdigit() and v_max.isdigit():
+                return IntegerInterval(v)
+            return ErrorSemantics(v)
+    if isinstance(v, int):
+        return IntegerInterval(v)
+    if isinstance(v, (float, mpfr)):
+        return ErrorSemantics(v)
+    return v
