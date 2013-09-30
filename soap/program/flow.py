@@ -82,17 +82,7 @@ class WhileFlow(Flow):
         return state.conditional(self.conditional_expr, False)
 
     def __alt_flow(self, state):
-        """An alternative approach to :member:`flow`.
-
-        The problem is whether we want the *reachable* values of variables,
-        or the values of variables after execution of statements. The former
-        provides the correct range of values in which the expressions should be
-        optimised, while the latter provides a more precise analysis necessary
-        for the loopy parts of the program to provide a more precise correct
-        range of values in loop kernels. Currently it is not clear to me
-        which flow function is more suitable for both cases, I keep this
-        implementation here for later considerations.
-        """
+        """An alternative approach to :member:`flow`."""
         branch = lambda state, cond: \
             state.conditional(self.conditional_expr, cond)
         prev_state = false_state = state.__class__(bottom=True)
