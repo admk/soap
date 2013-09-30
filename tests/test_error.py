@@ -31,6 +31,7 @@ class TestInterval(unittest.TestCase):
         self.assertEqual(self.int14 + self.int29, Interval([3, 13]))
         self.assertEqual(self.int14 - self.int29, Interval([-8, 2]))
         self.assertEqual(self.int14 * self.int29, Interval([2, 36]))
+        self.assertEqual(self.int14 / self.int29, Interval([1 / 9, 2]))
         self.assertEqual(-self.int14, Interval([-4, -1]))
 
     def test_coercion(self):
@@ -40,6 +41,8 @@ class TestInterval(unittest.TestCase):
         self.assertEqual(self.int29 - 1, Interval([1, 8]))
         self.assertEqual(2 * self.int29, Interval([4, 18]))
         self.assertEqual(self.int29 * 2, Interval([4, 18]))
+        self.assertEqual(2 / self.int29, Interval([2 / 9, 1]))
+        self.assertEqual(self.int29 / 2, Interval([1, 9 / 2]))
 
     def test_order(self):
         self.assertTrue(self.bottom <= self.int14)
@@ -112,15 +115,20 @@ class TestErrorSemantics(ErrorAssertionTestCase):
         self.assertEqual(self.e1 + self.e2, self.e2 + self.e1)
         self.assertEqual(self.e1 - self.e2, -(self.e2 - self.e1))
         self.assertEqual(self.e1 * self.e2, self.e2 * self.e1)
+        self.assertAlmostEqual(
+            (self.e1 + self.e2) / self.e2,
+            self.e1 / self.e2 + ErrorSemantics('1'))
         self.assertEqual(-self.e2, ErrorSemantics('-3.4'))
 
     def test_coercion(self):
-        self.assertEqual(self.e1 + 1, self.e1 + self.c1)
-        self.assertEqual(1 + self.e1, self.e1 + self.c1)
-        self.assertEqual(self.e1 - 1, self.e1 - self.c1)
-        self.assertEqual(1 - self.e1, -(self.e1 - self.c1))
+        self.assertEqual(self.e1 + 2, self.e1 + self.c2)
+        self.assertEqual(2 + self.e1, self.c2 + self.e1)
+        self.assertEqual(self.e1 - 2, self.e1 - self.c2)
+        self.assertEqual(2 - self.e1, self.c2 - self.e1)
         self.assertEqual(self.e1 * 2, self.e1 * self.c2)
-        self.assertEqual(2 * self.e1, self.e1 * self.c2)
+        self.assertEqual(2 * self.e1, self.c2 * self.e1)
+        self.assertEqual(self.e1 / 2, self.e1 / self.c2)
+        self.assertEqual(2 / self.e1, self.c2 / self.e1)
 
     def test_order(self):
         self.assertTrue(self.bottom <= self.e1)

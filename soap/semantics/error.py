@@ -182,7 +182,7 @@ class Interval(Lattice):
 
     @_decorate_operator
     def __rsub__(self, other):
-        return self.__class__([other.min - self.max, other.max - self.min])
+        return other - self
 
     @_decorate_operator
     def __mul__(self, other):
@@ -190,6 +190,25 @@ class Interval(Lattice):
              self.max * other.min, self.max * other.max)
         return self.__class__([min(v), max(v)])
     __rmul__ = __mul__
+
+    @_decorate_operator
+    def __truediv__(self, other):
+        if 0 not in other:
+            v = (self.min / other.min, self.min / other.max,
+                 self.max / other.min, self.max / other.max)
+        elif other <= self.__class__([-inf, 0]):
+            v = (self.min * -inf, self.min / other.min,
+                 self.max * -inf, self.max / other.min)
+        elif other <= self.__class__([0, inf]):
+            v = (self.min / other.max, self.min * inf,
+                 self.max / other.max, self.max * inf)
+        else:
+            v = (-inf, inf)
+        return self.__class__([min(v), max(v)])
+
+    @_decorate_operator
+    def __rtruediv__(self, other):
+        return other / self
 
     def __neg__(self):
         if self.is_top() or self.is_bottom():
@@ -312,9 +331,7 @@ class ErrorSemantics(Lattice):
 
     @_decorate_operator
     def __rsub__(self, other):
-        v = other.v - self.v
-        e = other.e - self.e + round_off_error(v)
-        return self.__class__(v, e)
+        return other - self
 
     @_decorate_operator
     def __mul__(self, other):
@@ -324,6 +341,17 @@ class ErrorSemantics(Lattice):
         e += FractionInterval(other.v) * self.e
         return self.__class__(v, e)
     __rmul__ = __mul__
+
+    @_decorate_operator
+    def __truediv__(self, other):
+        v = self.v / other.v
+        e = self.e - FractionInterval(v) * other.e
+        e /= FractionInterval(other.v) + other.e
+        return self.__class__(v, e)
+
+    @_decorate_operator
+    def __rtruediv__(self, other):
+        return other / self
 
     def __neg__(self):
         if self.is_top() or self.is_bottom():
