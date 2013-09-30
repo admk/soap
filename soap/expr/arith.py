@@ -11,17 +11,20 @@ from soap.expr.common import (
 from soap.expr.parser import parse
 
 
-_op_func_dict = {
+_binary_op_func_dict = {
     ADD_OP: lambda x, y: x + y,
     SUBTRACT_OP: lambda x, y: x - y,
     MULTIPLY_OP: lambda x, y: x * y,
     DIVIDE_OP: lambda x, y: x / y,
-    UNARY_SUBTRACT_OP: lambda x, _: -x,
     LESS_OP: lambda x, y: x < y,
     LESS_EQUAL_OP: lambda x, y: x <= y,
     EQUAL_OP: lambda x, y: x == y,
     GREATER_EQUAL_OP: lambda x, y: x >= y,
     GREATER_OP: lambda x, y: x > y,
+}
+
+_unary_op_func_dict = {
+    UNARY_SUBTRACT_OP: lambda x, _: -x,
 }
 
 
@@ -77,6 +80,12 @@ class Expr(Comparable, Flyweight):
 
     def __getnewargs__(self):
         return self.op, self.a1, self.a2
+
+    @property
+    def a(self):
+        if self.is_unary():
+            return self.a1
+        raise AttributeError('A binary expression has no attribute "a"')
 
     def is_unary(self):
         return (self.op in UNARY_OPERATORS) and (self.a2 is None)
@@ -145,7 +154,9 @@ class Expr(Comparable, Flyweight):
                 return a
             return var_env[a]
 
-        return _op_func_dict[self.op](*(eval_arg(a) for a in self.args))
+        if self.is_unary():
+            return _unary_op_func_dict[self.op](eval_arg(self.a1))
+        return _binary_op_func_dict[self.op](*(eval_arg(a) for a in self.args))
 
     def exponent_width(self, var_env, prec):
         """Computes the exponent width required for its evaluation so that no

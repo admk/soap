@@ -17,6 +17,9 @@ mpq_type = type(_mpq('1.0'))
 inf = mpfr('Inf')
 
 
+gmpy2.set_context(gmpy2.ieee(64))
+
+
 def mpq(v):
     """Unifies how mpq behaves when shit (overflow and NaN) happens.
 
@@ -37,14 +40,31 @@ def mpq(v):
 def ulp(v):
     """Computes the unit of the last place for a value.
 
+    FIXME big question: what is ulp(0)?
+    Definition: distance from 0 to its nearest floating-point value.
+
+    Solutions::
+      1. gradual underflow -> 2 ** (1 - offset - p)
+          don't need to change definition, possibly, don't know how mpfr
+          handles underflow stuff.
+      2. abrupt underflow -> 2 ** (1 - offset)
+          add 2 ** (1 - offset) overestimation to ulp.
+
+    Forget gradual underflow, I found out that ``mpfr`` does not support
+    gradual underflow in arithmetic operations. See version 3.1.2 source
+    ``src/mul.c:144``.
+
     :param v: The value.
     :type v: any gmpy2 values
     """
+    underflow_error = mpq(2) ** gmpy2.get_context().emin
+    if v == 0:  # corner case, exponent is 1
+        return underflow_error
     if type(v) is not mpfr_type:
         with gmpy2.local_context(round=gmpy2.RoundAwayZero):
             v = mpfr(v)
     try:
-        return mpq(2) ** v.as_mantissa_exp()[1]
+        return mpq(2) ** v.as_mantissa_exp()[1] + underflow_error
     except OverflowError:
         return mpfr('Inf')
 
@@ -103,7 +123,7 @@ def _decorate_coerce(func):
     return wrapper
 
 
-def _decorate_default(func):
+def _decorate_operator(func):
     @functools.wraps(func)
     def wrapper(self, other):
         with ignored(AttributeError):
@@ -115,10 +135,7 @@ def _decorate_default(func):
                 # bottom denotes conflict
                 return self.__class__(bottom=True)
         return func(self, other)
-    return wrapper
-
-
-_decorate_operator = lambda func: _decorate_coerce(_decorate_default(func))
+    return _decorate_coerce(wrapper)
 
 
 class Interval(Lattice):
@@ -253,7 +270,7 @@ class FloatInterval(Interval):
     def __str__(self):
         min_val = '-∞' if self.min == -inf else '%1.5g' % self.min
         max_val = '∞' if self.max == -inf else '%1.5g' % self.min
-        return '~[%s, %s]' % (min_val, max_val)
+        return '[%s, %s]' % (min_val, max_val)
 
 
 class FractionInterval(Interval):
@@ -269,7 +286,7 @@ class FractionInterval(Interval):
     def __str__(self):
         min_val = '-∞' if self.min == -inf else '%1.5g' % self.min
         max_val = '∞' if self.max == -inf else '%1.5g' % self.min
-        return '~[%s, %s]' % (min_val, max_val)
+        return '[%s, %s]' % (min_val, max_val)
 
 
 class ErrorSemantics(Lattice):
@@ -362,7 +379,7 @@ class ErrorSemantics(Lattice):
         return FractionInterval(self.v) + self.e
 
     def __str__(self):
-        return '(%s, %s)' % (self.v, self.e)
+        return '%s%s' % (self.v, self.e)
 
     def __repr__(self):
         return '%s([%r, %r], [%r, %r])' % \
@@ -371,3 +388,25 @@ class ErrorSemantics(Lattice):
 
     def __hash__(self):
         return hash((self.v, self.e))
+
+
+def cast(v):
+    if isinstance(v, str):
+        if v.isdigit():
+            return IntegerInterval(v)
+        return ErrorSemantics(v)
+    try:
+        v_min, v_max = v
+    except (ValueError, TypeError):
+        pass
+    else:
+        istype = lambda t: isinstance(v_min, t) and isinstance(v_max, t)
+        if istype(str):
+            if v_min.isdigit() and v_max.isdigit():
+                return IntegerInterval(v)
+            return ErrorSemantics(v)
+    if isinstance(v, int):
+        return IntegerInterval(v)
+    if isinstance(v, (float, mpfr)):
+        return ErrorSemantics(v)
+    return v
