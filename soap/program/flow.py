@@ -4,6 +4,10 @@
 """
 
 
+def _indent(code):
+    return '\n'.join('    ' + c for c in code.split('\n')).rstrip() + '\n'
+
+
 class Flow(object):
     """Program flow.
 
@@ -15,14 +19,23 @@ class Flow(object):
     def flow(self, state):
         raise NotImplementedError
 
+    def format(self):
+        raise NotImplementedError
+
+    def __str__(self):
+        return self.format().replace('    ', '').replace('\n', '')
+
 
 class IdentityFlow(Flow):
     """Identity flow, does nothing."""
     def flow(self, state):
         return state
 
-    def __str__(self):
-        return 'skip'
+    def format(self):
+        return 'skip;'
+
+    def __bool__(self):
+        return False
 
 
 class AssignFlow(Flow):
@@ -38,8 +51,8 @@ class AssignFlow(Flow):
     def flow(self, state):
         return state.assign(self.var, self.expr)
 
-    def __str__(self):
-        return str(self.var) + ' := ' + str(self.expr)
+    def format(self):
+        return str(self.var) + ' ≔ ' + str(self.expr) + ';'
 
 
 class IfFlow(Flow):
@@ -59,9 +72,12 @@ class IfFlow(Flow):
                                (self.false_flow, False)]]
         return true_state.join(false_state)
 
-    def __str__(self):
-        return 'if ' + str(self.conditional_expr) + ' (' + \
-            str(self.true_flow) + ') (' + str(self.false_flow) + ')'
+    def format(self):
+        s = 'if ' + str(self.conditional_expr) + ' (\n' + \
+            _indent(self.true_flow.format()) + ')'
+        if self.false_flow:
+            s += ' (' + _indent(self.false_flow.format()) + ')\n'
+        return s + ';'
 
 
 class WhileFlow(Flow):
@@ -93,9 +109,9 @@ class WhileFlow(Flow):
             state = self.loop_flow.flow(true_state)
         return false_state
 
-    def __str__(self):
-        return 'while ' + str(self.conditional_expr) + ' (' + \
-            str(self.loop_flow) + ')'
+    def format(self):
+        return 'while ' + str(self.conditional_expr) + ' (\n' + \
+            _indent(self.loop_flow.format()) + ');'
 
 
 class CompositionalFlow(Flow):
@@ -120,5 +136,8 @@ class CompositionalFlow(Flow):
         except AttributeError:
             return CompositionalFlow(self.flows + [other])
 
-    def __str__(self):
-        return '; '.join(str(flow) for flow in self.flows)
+    def __bool__(self):
+        return any(bool(flow) for flow in self.flows)
+
+    def format(self):
+        return '\n'.join(flow.format() for flow in self.flows)
