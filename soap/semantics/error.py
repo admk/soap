@@ -5,19 +5,25 @@
 import functools
 
 import gmpy2
-from gmpy2 import mpfr, mpq as _mpq
+from gmpy2 import mpfr as _mpfr, mpq as _mpq
 
 from soap.common import ignored
 from soap.lattice import Lattice
 
 
-mpfr_type = type(mpfr('1.0'))
+mpfr_type = type(_mpfr('1.0'))
 mpq_type = type(_mpq('1.0'))
 
-inf = mpfr('Inf')
+inf = _mpfr('Inf')
 
 
 gmpy2.set_context(gmpy2.ieee(64))
+
+
+def mpfr(v):
+    """Guards `gmpy2.mpfr` for a malformed string conversion segfault bug."""
+    float(v)  # let it throw
+    return _mpfr(v)
 
 
 def mpq(v):
@@ -269,7 +275,7 @@ class FloatInterval(Interval):
 
     def __str__(self):
         min_val = '-∞' if self.min == -inf else '%1.5g' % self.min
-        max_val = '∞' if self.max == -inf else '%1.5g' % self.min
+        max_val = '∞' if self.max == -inf else '%1.5g' % self.max
         return '[%s, %s]' % (min_val, max_val)
 
 
@@ -285,7 +291,7 @@ class FractionInterval(Interval):
 
     def __str__(self):
         min_val = '-∞' if self.min == -inf else '%1.5g' % self.min
-        max_val = '∞' if self.max == -inf else '%1.5g' % self.min
+        max_val = '∞' if self.max == -inf else '%1.5g' % self.max
         return '[%s, %s]' % (min_val, max_val)
 
 
@@ -311,10 +317,10 @@ class ErrorSemantics(Lattice):
         self.e = error(v)
 
     def is_top(self):
-        return self.v.is_top() or self.e.is_top()
+        return self.v.is_top() and self.e.is_top()
 
     def is_bottom(self):
-        return self.v.is_bottom() or self.e.is_bottom()
+        return self.v.is_bottom() and self.e.is_bottom()
 
     @_decorate_coerce
     def join(self, other):
@@ -382,9 +388,7 @@ class ErrorSemantics(Lattice):
         return '%s%s' % (self.v, self.e)
 
     def __repr__(self):
-        return '%s([%r, %r], [%r, %r])' % \
-            (self.__class__.__name__,
-             self.v.min, self.v.max, self.e.min, self.e.max)
+        return '%s(%r, %r)' % (self.__class__.__name__, self.v, self.e)
 
     def __hash__(self):
         return hash((self.v, self.e))

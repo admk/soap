@@ -24,7 +24,7 @@ colours_end = '\033[0m'
 
 
 context = {
-    'level': levels.off,
+    'level': levels.warning,
     'pause_level': levels.off,
     'colour': True,
     'file': None,

@@ -67,3 +67,7 @@ class TestIntervalState(unittest.TestCase):
         self.assertEqual(
             self.one_three.conditional(BoolExpr('x < 3'), False),
             IntervalState({'x': 3}))
+        self.assertEqual(
+            self.bot.conditional(BoolExpr('x < 3'), True), self.bot)
+        self.assertEqual(
+            self.bot.conditional(BoolExpr('x < 3'), False), self.bot)

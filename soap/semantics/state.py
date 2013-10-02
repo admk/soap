@@ -12,7 +12,7 @@ from soap.expr import (
 )
 from soap.lattice import denotational, map
 from soap.semantics import (
-    inf, cast, Interval, IntegerInterval, FloatInterval, ErrorSemantics
+    inf, cast, IntegerInterval, FloatInterval, ErrorSemantics
 )
 
 
@@ -80,9 +80,11 @@ class State(object):
             return expr.eval(self)
         except AttributeError:  # expr is a string with a constant or variable
             pass
-        if expr in self:
+        try:
+            float(expr)
+            return expr
+        except (ValueError, TypeError):  # not a constant, must be a variable
             return self[expr]
-        return expr
 
     def assign(self, var, expr):
         """Makes an assignment and returns a new state object."""
@@ -169,7 +171,7 @@ class IntervalState(State, map(str, (IntegerInterval, ErrorSemantics))):
             cstr = bound.__class__([bound.min, inf])
         else:
             raise ValueError('Unknown boolean operator %s' % op)
-        cstr &= mapping[expr.a1]
+        cstr &= self[expr.a1]
         if cstr.is_bottom():
             """Branch evaluates to false, because no possible values of the
             variable satisfies the constraint condition, it is safe to return

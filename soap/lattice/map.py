@@ -61,9 +61,7 @@ class MapLattice(Lattice, dict):
     def __getitem__(self, key):
         if self.is_top():
             return self._cast_value(top=True)
-        if self.is_bottom():
-            return self._cast_value(bottom=True)
-        if key in self:
+        if not self.is_bottom() and key in self:
             return super().__getitem__(key)
         return self._cast_value(bottom=True)
 
