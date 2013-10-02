@@ -395,18 +395,24 @@ def cast(v):
         if v.isdigit():
             return IntegerInterval(v)
         return ErrorSemantics(v)
+    if isinstance(v, (IntegerInterval, ErrorSemantics)):
+        return v
     try:
         v_min, v_max = v
     except (ValueError, TypeError):
-        pass
+        if isinstance(v, int):
+            return IntegerInterval(v)
+        if isinstance(v, (float, mpfr_type)):
+            return ErrorSemantics(v)
     else:
         istype = lambda t: isinstance(v_min, t) and isinstance(v_max, t)
         if istype(str):
             if v_min.isdigit() and v_max.isdigit():
                 return IntegerInterval(v)
             return ErrorSemantics(v)
-    if isinstance(v, int):
-        return IntegerInterval(v)
-    if isinstance(v, (float, mpfr)):
-        return ErrorSemantics(v)
-    return v
+        if istype(int):
+            return IntegerInterval(v)
+        isfloat = lambda val: isinstance(val, (float, mpfr_type))
+        if isfloat(v_min) or isfloat(v_max):
+            return ErrorSemantics(v)
+    raise TypeError('Do not know how to cast value %r' % v)

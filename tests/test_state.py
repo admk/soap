@@ -20,9 +20,19 @@ class TestClassicalState(unittest.TestCase):
         self.assertEqual(
             self.one.conditional(BoolExpr('x < 1'), True), self.bot)
         self.assertEqual(
+            self.one.conditional(BoolExpr('x < 1'), False), self.one)
+        self.assertEqual(
             self.one.conditional(BoolExpr('x > 1'), True), self.bot)
         self.assertEqual(
+            self.one.conditional(BoolExpr('x > 1'), False), self.one)
+        self.assertEqual(
             self.one.conditional(BoolExpr('x < 2'), True), self.one)
+        self.assertEqual(
+            self.one.conditional(BoolExpr('x < 2'), False), self.bot)
+        self.assertEqual(
+            self.bot.conditional(BoolExpr('x < 1'), True), self.bot)
+        self.assertEqual(
+            self.bot.conditional(BoolExpr('x < 1'), False), self.bot)
 
 
 class TestIntervalState(unittest.TestCase):

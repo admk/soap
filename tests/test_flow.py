@@ -3,7 +3,7 @@ import itertools
 import functools
 
 from soap.program import flow
-from soap.semantics import ClassicalState, IntervalState, cast
+from soap.semantics import ClassicalState, IntervalState
 from akpytemp.utils import code_gobble
 
 
@@ -34,8 +34,7 @@ class TestFlow(unittest.TestCase):
 
     def analyze_error_flow(self, prog, env):
         exec_env = self.exec(prog, IntervalState, env)
-        flow_env = {k: cast(v) for k, v in env.items()}
-        flow_env = flow(prog).flow(IntervalState(flow_env))
+        flow_env = flow(prog).flow(IntervalState(env))
         self.assertLessEqual(exec_env, flow_env)
 
     def test_classical_state_flow(self):
@@ -51,7 +50,7 @@ class TestFlow(unittest.TestCase):
         for vals in itertools.product(*(env[k] for k in keys)):
             env_list.append({k: v for k, v in zip(keys, vals)})
         _, exec_env_list = zip(
-            *[self.analyze(self.factorial, ClassicalState, e)
+            *[self.analyze(self.factorial, IntervalState, e)
               for e in env_list])
         # combine individual states of executions
         exec_env = functools.reduce(

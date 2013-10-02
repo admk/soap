@@ -12,8 +12,7 @@ from soap.expr import (
 )
 from soap.lattice import denotational, map
 from soap.semantics import (
-    inf, mpfr_type, mpq_type,
-    Interval, IntegerInterval, FloatInterval, ErrorSemantics
+    inf, cast, Interval, IntegerInterval, FloatInterval, ErrorSemantics
 )
 
 
@@ -129,7 +128,7 @@ _negate_dict = {
 }
 
 
-class IntervalState(State, map(str, (Interval, ErrorSemantics))):
+class IntervalState(State, map(str, (IntegerInterval, ErrorSemantics))):
     """The traditional program analysis state object based on intervals.
 
     Supports only simple boolean expressions::
@@ -137,19 +136,10 @@ class IntervalState(State, map(str, (Interval, ErrorSemantics))):
     For example::
         x <= 3 * y.
     """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for k, v in list(self.items()):
-            try:
-                if type(v.min) is not type(v.max):
-                    continue
-                if isinstance(v.min, int):
-                    v = IntegerInterval(v)
-                elif isinstance(v.min, (float, mpfr_type, mpq_type)):
-                    v = FloatInterval(v)
-                self[k] = (v)
-            except AttributeError:  # ErrorSemantics
-                pass
+    def _cast_value(self, v=None, top=False, bottom=False):
+        if top or bottom:
+            return IntegerInterval(top=top, bottom=bottom)
+        return cast(v)
 
     def conditional(self, expr, cond):
         bound = self.eval(expr.a2)
@@ -172,11 +162,11 @@ class IntervalState(State, map(str, (Interval, ErrorSemantics))):
         elif op in [LESS_OP, LESS_EQUAL_OP]:
             if op == LESS_OP and isinstance(bound, IntegerInterval):
                 bound.max -= 1
-            cstr = Interval([-inf, bound.max])
+            cstr = bound.__class__([-inf, bound.max])
         elif op in [GREATER_OP, GREATER_EQUAL_OP]:
             if op == GREATER_OP and isinstance(bound, IntegerInterval):
                 bound.min += 1
-            cstr = Interval([bound.min, inf])
+            cstr = bound.__class__([bound.min, inf])
         else:
             raise ValueError('Unknown boolean operator %s' % op)
         cstr &= mapping[expr.a1]

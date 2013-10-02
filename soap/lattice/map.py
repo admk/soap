@@ -22,7 +22,7 @@ class MapLattice(Lattice, dict):
                 v = self._cast_value(v)
             self[k] = v
 
-    def _cast_value(self):
+    def _cast_value(self, v=None, top=False, bottom=False):
         raise NotImplementedError
 
     def is_top(self):
