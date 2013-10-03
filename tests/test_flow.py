@@ -17,7 +17,7 @@ class TestFlow(unittest.TestCase):
             """)
         self.newton = code_gobble("""
             x0 = x
-            while x <= x0:
+            if x <= x0:
                 x0 = x
                 x = x - (x * x - 2) / (2 * x)
             """)
@@ -43,23 +43,10 @@ class TestFlow(unittest.TestCase):
         self.assertEqual(flow_env, exec_env)
 
     def test_interval_flow(self):
-        env = {'x': range(6), 'y': range(2)}
-        # individual executions in classical states
-        keys = sorted(env)
-        env_list = []
-        for vals in itertools.product(*(env[k] for k in keys)):
-            env_list.append({k: v for k, v in zip(keys, vals)})
-        _, exec_env_list = zip(
-            *[self.analyze(self.factorial, IntervalState, e)
-              for e in env_list])
-        # combine individual states of executions
-        exec_env = functools.reduce(
-            lambda x, y: IntervalState(x) | IntervalState(y), exec_env_list)
-        # full analysis flow
-        abs_env = {k: [min(v), max(v)] for k, v in env.items()}
-        flow_env = flow(self.factorial).flow(IntervalState(abs_env))
-        # analysis is less precise than combined executions
-        self.assertLessEqual(exec_env, flow_env)
+        env = IntervalState(x=[0, 5], y=[0, 2])
+        flow_env = flow(self.factorial).flow(env)
+        less_env = IntervalState(x=[4, 5], y=[0, 12])
+        self.assertLessEqual(less_env, flow_env)
 
     def test_factorial_error_flow(self):
         env = {'x': 1, 'y': float('1.2')}
