@@ -104,8 +104,8 @@ class TestErrorSemantics(ErrorAssertionTestCase):
             self.assertEqual(e.e.max, 0)
 
     def test_top_and_bottom(self):
-        self.assertEqual(self.top, ErrorSemantics([2, 3], [-inf, inf]))
-        self.assertEqual(self.top, ErrorSemantics([-inf, inf], [2, 3]))
+        self.assertEqual(self.top, ErrorSemantics([-inf, inf]))
+        self.assertEqual(self.top, ErrorSemantics([-inf, inf], [-inf, inf]))
         self.assertEqual(self.bottom + self.e1, self.bottom)
         self.assertEqual(self.e1 + self.bottom, self.bottom)
         self.assertEqual(self.top + self.e1, self.top)
@@ -146,7 +146,8 @@ class TestErrorSemantics(ErrorAssertionTestCase):
     def test_meet(self):
         self.assertAlmostEqual(self.e13 & self.e24, ErrorSemantics(['2', '3']))
         self.assertAlmostEqual(self.e12 & self.e24, ErrorSemantics('2'))
-        self.assertEqual(self.e12 & self.e34, ErrorSemantics(bottom=True))
+        self.assertGreaterEqual(
+            self.e12 & self.e34, ErrorSemantics(bottom=True))
 
 
 class TestCoercion(ErrorAssertionTestCase):
