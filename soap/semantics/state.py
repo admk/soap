@@ -12,7 +12,7 @@ from soap.expr import (
 )
 from soap.lattice import denotational, map
 from soap.semantics import (
-    inf, cast, IntegerInterval, FloatInterval, ErrorSemantics
+    inf, ulp, cast, IntegerInterval, FloatInterval, ErrorSemantics
 )
 
 
@@ -131,7 +131,8 @@ _negate_dict = {
 
 
 class IntervalState(State, map(str, (IntegerInterval, ErrorSemantics))):
-    """The traditional program analysis state object based on intervals.
+    """The program analysis domain object based on intervals and error
+    semantics.
 
     Supports only simple boolean expressions::
         <variable> <operator> <arithmetic expression>
@@ -144,37 +145,46 @@ class IntervalState(State, map(str, (IntegerInterval, ErrorSemantics))):
         return cast(v)
 
     def conditional(self, expr, cond):
-        bound = self.eval(expr.a2)
-        if isinstance(bound, int):
-            bound = IntegerInterval(bound)
-        elif isinstance(bound, ErrorSemantics):
-            # It cannot handle incorrect branching due to error in
-            # evaluation of the expression.
-            bound = bound.v
-        else:
-            bound = FloatInterval(bound)
-        mapping = dict(self)
-        op = expr.op
-        if not cond:
-            op = _negate_dict[op]
-        if op == EQUAL_OP:
-            cstr = bound
-        elif op == NOT_EQUAL_OP:
-            pass
-        elif op in [LESS_OP, LESS_EQUAL_OP]:
-            if op == LESS_OP and isinstance(bound, IntegerInterval):
-                bound.max -= 1
-            cstr = bound.__class__([-inf, bound.max])
-        elif op in [GREATER_OP, GREATER_EQUAL_OP]:
-            if op == GREATER_OP and isinstance(bound, IntegerInterval):
-                bound.min += 1
-            cstr = bound.__class__([bound.min, inf])
-        else:
+        def eval(expr):
+            bound = self.eval(expr)
+            if isinstance(bound, int):
+                return IntegerInterval(bound)
+            if isinstance(bound, ErrorSemantics):
+                # It cannot handle incorrect branching due to error in
+                # evaluation of the expression.
+                return bound.v
+            raise TypeError(
+                'Evaluation returns an object of unknown type %s' % bound)
+
+        def contract(op, bound):
+            if op not in [LESS_OP, GREATER_OP]:
+                return bound.min, bound.max
+            if isinstance(bound, IntegerInterval):
+                return bound.min + 1, bound.max - 1
+            if isinstance(bound, FloatInterval):
+                bmin = bound.min + ulp(bound.min)
+                bmax = bound.max - ulp(bound.max)
+                return bmin, bmax
+            raise TypeError
+
+        def constraint(op, bound):
+            op = _negate_dict[op] if not cond else op
+            bound_min, bound_max = contract(op, bound)
+            if op == EQUAL_OP:
+                return bound
+            if op == NOT_EQUAL_OP:
+                raise NotImplementedError
+            if op in [LESS_OP, LESS_EQUAL_OP]:
+                return bound.__class__([-inf, bound_max])
+            if op in [GREATER_OP, GREATER_EQUAL_OP]:
+                return bound.__class__([bound_min, inf])
             raise ValueError('Unknown boolean operator %s' % op)
-        cstr &= self[expr.a1]
+
+        bound = eval(expr.a2)
+        cstr = constraint(expr.op, bound) & self[expr.a1]
         if cstr.is_bottom():
             """Branch evaluates to false, because no possible values of the
             variable satisfies the constraint condition, it is safe to return
             *bottom* to denote an unreachable state."""
             return self.__class__(bottom=True)
-        return self.__class__(mapping, **{expr.a1: cstr})
+        return self.__class__(self, **{expr.a1: cstr})
