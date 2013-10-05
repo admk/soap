@@ -43,7 +43,7 @@ def mpq(v):
     return _mpq(m, mpq(2) ** (-e))
 
 
-def ulp(v):
+def ulp(v, underflow=True):
     """Computes the unit of the last place for a value.
 
     FIXME big question: what is ulp(0)?
@@ -63,7 +63,10 @@ def ulp(v):
     :param v: The value.
     :type v: any gmpy2 values
     """
-    underflow_error = mpq(2) ** gmpy2.get_context().emin
+    if underflow:
+        underflow_error = mpq(2) ** gmpy2.get_context().emin
+    else:
+        underflow_error = 0
     if v == 0:  # corner case, exponent is 1
         return underflow_error
     if type(v) is not mpfr_type:

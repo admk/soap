@@ -2,11 +2,30 @@ import unittest
 from gmpy2 import mpfr
 
 from soap.semantics import (
+    inf, mpq, mpfr, ulp,
     Interval, FloatInterval, IntegerInterval, ErrorSemantics
 )
 
 
-inf = mpfr('Inf')
+class TestFoundation(unittest.TestCase):
+    """Unittesting for the foundations of roundoff errors."""
+    def test_mpfr(self):
+        self.assertRaises(ValueError, mpfr, 'foo')
+        self.assertEqual(mpfr('1'), mpfr(1))
+        self.assertEqual(mpfr('Inf'), float('inf'))
+
+    def test_mpq(self):
+        self.assertRaises(ValueError, mpq, 'foo')
+        self.assertNotEqual(mpq('1/3'), mpq(mpfr(1) / 3))
+
+    def test_ulp(self):
+        one = mpfr(1)
+        eps = mpfr(ulp(one, underflow=False))
+        mid = (one + (one + eps)) / 2
+        self.assertEqual(one, mid)
+        self.assertEqual(one, one + eps / 2)
+        self.assertLess(one, one + eps)
+        self.assertGreater(one, one - eps)
 
 
 class TestInterval(unittest.TestCase):
