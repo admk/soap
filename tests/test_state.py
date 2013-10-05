@@ -1,6 +1,6 @@
 import unittest
 
-from soap.semantics import ClassicalState, IntervalState
+from soap.semantics import ClassicalState, BoxState
 from soap.expr import Expr, BoolExpr
 
 
@@ -35,13 +35,13 @@ class TestClassicalState(unittest.TestCase):
             self.bot.conditional(BoolExpr('x < 1'), False), self.bot)
 
 
-class TestIntervalState(unittest.TestCase):
-    """Unittesting for :class:`soap.semantics.IntervalState`."""
+class TestBoxState(unittest.TestCase):
+    """Unittesting for :class:`soap.semantics.BoxState`."""
     def setUp(self):
-        self.bot = IntervalState(bottom=True)
-        self.top = IntervalState(top=True)
-        self.one_three = IntervalState({'x': [1, 3]})
-        self.two_four = IntervalState({'x': [2, 4]})
+        self.bot = BoxState(bottom=True)
+        self.top = BoxState(top=True)
+        self.one_three = BoxState({'x': [1, 3]})
+        self.two_four = BoxState({'x': [2, 4]})
 
     def test_assign(self):
         self.assertEqual(self.bot.assign('x', Expr('x + 1')), self.bot)
@@ -57,16 +57,16 @@ class TestIntervalState(unittest.TestCase):
             self.one_three)
         self.assertEqual(
             self.one_three.conditional(BoolExpr('x < 2'), True),
-            IntervalState({'x': 1}))
+            BoxState({'x': 1}))
         self.assertEqual(
             self.one_three.conditional(BoolExpr('x < 2'), False),
-            IntervalState({'x': [2, 3]}))
+            BoxState({'x': [2, 3]}))
         self.assertEqual(
             self.one_three.conditional(BoolExpr('x < 3'), True),
-            IntervalState({'x': [1, 2]}))
+            BoxState({'x': [1, 2]}))
         self.assertEqual(
             self.one_three.conditional(BoolExpr('x < 3'), False),
-            IntervalState({'x': 3}))
+            BoxState({'x': 3}))
         self.assertEqual(
             self.bot.conditional(BoolExpr('x < 3'), True), self.bot)
         self.assertEqual(

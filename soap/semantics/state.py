@@ -130,7 +130,7 @@ _negate_dict = {
 }
 
 
-class IntervalState(State, map(str, (IntegerInterval, ErrorSemantics))):
+class BoxState(State, map(str, (IntegerInterval, ErrorSemantics))):
     """The program analysis domain object based on intervals and error
     semantics.
 
