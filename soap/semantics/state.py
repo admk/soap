@@ -149,12 +149,14 @@ class BoxState(State, map(str, (IntegerInterval, ErrorSemantics))):
             bound = self.eval(expr)
             if isinstance(bound, int):
                 return IntegerInterval(bound)
+            if isinstance(bound, IntegerInterval):
+                return bound
             if isinstance(bound, ErrorSemantics):
                 # It cannot handle incorrect branching due to error in
                 # evaluation of the expression.
                 return bound.v
             raise TypeError(
-                'Evaluation returns an object of unknown type %s' % bound)
+                'Evaluation returns an object of unknown type %r' % bound)
 
         def contract(op, bound):
             if op not in [LESS_OP, GREATER_OP]:
