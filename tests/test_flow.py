@@ -10,16 +10,18 @@ from akpytemp.utils import code_gobble
 class TestFlow(unittest.TestCase):
     """Unittesting for :class:`soap.program.flow`."""
     def setUp(self):
-        self.factorial = code_gobble("""
+        self.factorial = code_gobble(
+            """
             while x <= 3:
                 y = y * x
                 x = x + 1
             """)
-        self.newton = code_gobble("""
-            x0 = x
-            if x <= x0:
+        self.newton = code_gobble(
+            """
+            x0 = 2
+            while x < x0:
                 x0 = x
-                x = x - (x * x - 2) / (2 * x)
+                x = x / 2 + 1 / x
             """)
 
     def exec(self, prog, cls, env):
@@ -33,11 +35,11 @@ class TestFlow(unittest.TestCase):
         return flow_env, exec_env
 
     def analyze_error_flow(self, prog, env):
-        exec_env = self.exec(prog, BoxState, env)
-        flow_env = flow(prog).flow(BoxState(env))
         print()
         print(BoxState(env))
         print(flow(prog).debug(BoxState(env)))
+        exec_env = self.exec(prog, BoxState, env)
+        flow_env = flow(prog).flow(BoxState(env))
         self.assertLessEqual(exec_env, flow_env)
 
     def test_classical_state_flow(self):
@@ -56,5 +58,5 @@ class TestFlow(unittest.TestCase):
         self.analyze_error_flow(self.factorial, env)
 
     def test_fixpoint_error_flow(self):
-        env = {'x': float('1.1')}
+        env = {'x': ['1.5', '1.5']}
         self.analyze_error_flow(self.newton, env)
