@@ -71,27 +71,27 @@ class IfFlow(SplitFlow):
 
     Splits and joins the flow of the separate `True` and `False` branches.
     """
-    def __init__(self, conditional_expr, truetransition, falsetransition):
+    def __init__(self, conditional_expr, true_flow, false_flow):
         self.conditional_expr = conditional_expr
-        self.truetransition = truetransition
-        self.falsetransition = falsetransition
+        self.true_flow = true_flow
+        self.false_flow = false_flow
 
     def transition(self, state=None):
         true_state, false_state = self._split(state)
-        true_str, curr_true_state = self.truetransition.transition(true_state)
-        false_str, curr_false_state = self.falsetransition.transition(false_state)
+        true_str, curr_true_state = self.true_flow.transition(true_state)
+        false_str, curr_false_state = self.false_flow.transition(false_state)
         s = 'if %s (\n%s)' % \
             (self.conditional_expr, _indent(str(true_state) + '\n' + true_str))
-        if self.falsetransition:
+        if self.false_flow:
             s += ' (\n%s)' % _indent(str(false_state) + '\n' + false_str)
         state = curr_true_state | curr_false_state
         return '%s;\n%s' % (s, state), state
 
     def format(self):
         s = 'if ' + str(self.conditional_expr) + ' (\n' + \
-            _indent(self.truetransition.format()) + ')'
-        if self.falsetransition:
-            s += ' (' + _indent(self.falsetransition.format()) + ')'
+            _indent(self.true_flow.format()) + ')'
+        if self.false_flow:
+            s += ' (' + _indent(self.false_flow.format()) + ')'
         return s + ';'
 
 
@@ -100,9 +100,9 @@ class WhileFlow(SplitFlow):
 
     Makes use of :class:`IfFlow` to define conditional branching. Computes the
     fixpoint of the state object iteratively."""
-    def __init__(self, conditional_expr, looptransition):
+    def __init__(self, conditional_expr, loop_flow):
         self.conditional_expr = conditional_expr
-        self.looptransition = looptransition
+        self.loop_flow = loop_flow
 
     def transition(self, state):
         prev_state = true_state = false_state = state.__class__(bottom=True)
@@ -111,14 +111,14 @@ class WhileFlow(SplitFlow):
             true_split, false_split = self._split(state)
             true_state |= true_split
             false_state |= false_split
-            state = self.looptransition.flow(true_split)
-        true_string, _ = self.looptransition.transition(true_state)
+            state = self.loop_flow.flow(true_split)
+        true_string, _ = self.loop_flow.transition(true_state)
         true_string = _indent('%s\n%s' % (true_state, true_string))
         s = 'while %s (\n%s);\n%s' % \
             (self.conditional_expr, true_string, false_state)
         return s, false_state
 
-    def __alttransition(self, state):
+    def __alt_transition(self, state):
         """An alternative approach to :member:`flow`."""
         branch = lambda state, cond: \
             state.conditional(self.conditional_expr, cond)
@@ -127,12 +127,12 @@ class WhileFlow(SplitFlow):
             prev_state = state
             true_state = branch(state, True)
             false_state |= branch(state, False)
-            state = self.looptransition.flow(true_state)
+            state = self.loop_flow.flow(true_state)
         return false_state
 
     def format(self):
         return 'while ' + str(self.conditional_expr) + ' (\n' + \
-            _indent(self.looptransition.format()) + ');'
+            _indent(self.loop_flow.format()) + ');'
 
 
 class CompositionalFlow(Flow):
