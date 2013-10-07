@@ -3,7 +3,6 @@
     :synopsis: Parser for class:`soap.expr.Expr`.
 """
 import ast
-import gmpy2
 
 from soap.common import ignored
 from soap.semantics import mpq
@@ -12,13 +11,6 @@ from soap.expr.common import (
     EQUAL_OP, GREATER_OP, LESS_OP, GREATER_EQUAL_OP, LESS_EQUAL_OP,
     UNARY_NEGATION_OP, AND_OP, OR_OP, UNARY_OPERATORS, BOOLEAN_OPERATORS
 )
-
-
-def try_to_number(s):
-    try:
-        return mpq(s)
-    except (ValueError, TypeError):
-        return s
 
 
 OPERATOR_MAP = {
@@ -81,7 +73,7 @@ def ast_to_expr(t, s):
             a2 = ast_to_expr(t.right, s)
         if op == DIVIDE_OP:
             try:
-                return gmpy2.mpq(a1, a2)
+                return mpq(a1, a2)
             except TypeError:
                 pass
         cls = BoolExpr if op in BOOLEAN_OPERATORS else Expr
