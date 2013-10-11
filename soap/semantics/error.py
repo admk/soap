@@ -172,6 +172,40 @@ class Interval(Lattice):
     def is_bottom(self):
         return False
 
+    @property
+    def min(self):
+        try:
+            return self._min
+        except AttributeError:
+            pass
+        if self.is_top():
+            return -inf
+        if self.is_bottom():
+            raise AttributeError('%r has no attribute "min"' % self)
+        raise AttributeError(
+            '%r is not top or bottom but has no attribute "min"' % self)
+
+    @min.setter
+    def min(self, v):
+        self._min = v
+
+    @property
+    def max(self):
+        try:
+            return self._max
+        except AttributeError:
+            pass
+        if self.is_top():
+            return -inf
+        if self.is_bottom():
+            raise AttributeError('Bottom %r has no attribute "max"' % self)
+        raise AttributeError(
+            '%r is not top or bottom but has no attribute "max"' % self)
+
+    @max.setter
+    def max(self, v):
+        self._max = v
+
     @_decorate_coerce
     def join(self, other):
         return self.__class__(
