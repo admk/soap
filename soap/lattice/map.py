@@ -16,11 +16,10 @@ class MapLattice(Lattice, dict):
                 if v == 'bottom':
                     del self[k]
                     continue
-                elif v == 'top':
-                    v = self._cast_value(top=True)
-            else:
-                v = self._cast_value(v)
-            self[k] = v
+                if v == 'top':
+                    self[k] = self._cast_value(top=True)
+                    continue
+            self[k] = self._cast_value(v)
 
     def _cast_value(self, v=None, top=False, bottom=False):
         raise NotImplementedError
