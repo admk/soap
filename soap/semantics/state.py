@@ -171,6 +171,8 @@ class BoxState(State, map(str, (IntegerInterval, ErrorSemantics))):
 
         def constraint(op, bound):
             op = _negate_dict[op] if not cond else op
+            if bound.is_bottom():
+                return bound
             bound_min, bound_max = contract(op, bound)
             if op == EQUAL_OP:
                 return bound
@@ -184,7 +186,9 @@ class BoxState(State, map(str, (IntegerInterval, ErrorSemantics))):
 
         bound = eval(expr.a2)
         cstr = constraint(expr.op, bound) & self[expr.a1]
-        if cstr.is_bottom():
+        bot = cstr.is_bottom()
+        bot = bot or (isinstance(cstr, ErrorSemantics) and cstr.v.is_bottom())
+        if bot:
             """Branch evaluates to false, because no possible values of the
             variable satisfies the constraint condition, it is safe to return
             *bottom* to denote an unreachable state."""
