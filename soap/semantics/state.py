@@ -185,6 +185,9 @@ class BoxState(State, map(str, (IntegerInterval, ErrorSemantics))):
             raise ValueError('Unknown boolean operator %s' % op)
 
         bound = eval(expr.a2)
+        if isinstance(self[expr.a1], (FloatInterval, ErrorSemantics)):
+            # Comparing floats
+            bound = FloatInterval(bound)
         cstr = constraint(expr.op, bound) & self[expr.a1]
         bot = cstr.is_bottom()
         bot = bot or (isinstance(cstr, ErrorSemantics) and cstr.v.is_bottom())
