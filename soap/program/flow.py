@@ -2,6 +2,8 @@
 .. module:: soap.program.flow
     :synopsis: Program flow graphs.
 """
+
+
 def _indent(code):
     return '\n'.join('    ' + c for c in code.split('\n')).rstrip() + '\n'
 
@@ -33,13 +35,16 @@ class Flow(object):
 class IdentityFlow(Flow):
     """Identity flow, does nothing."""
     def format(self):
-        return 'skip;'
+        return 'skip; '
 
     def transition(self, state):
         return '%s\n%s' % (self.format(), state), state
 
     def __bool__(self):
         return False
+
+    def __repr__(self):
+        return '%s()' % self.__class__.__name__
 
 
 class AssignFlow(Flow):
@@ -57,7 +62,10 @@ class AssignFlow(Flow):
         return '%s\n%s' % (self.format(), state), state
 
     def format(self):
-        return str(self.var) + ' ≔ ' + str(self.expr) + ';'
+        return str(self.var) + ' ≔ ' + str(self.expr) + '; '
+
+    def __repr__(self):
+        return '%s(%r, %r)' % (self.__class__.__name__, self.var, self.expr)
 
 
 class SplitFlow(Flow):
@@ -92,7 +100,12 @@ class IfFlow(SplitFlow):
             _indent(self.true_flow.format()) + ')'
         if self.false_flow:
             s += ' (' + _indent(self.false_flow.format()) + ')'
-        return s + ';'
+        return s + '; '
+
+    def __repr__(self):
+        return '%s(%r, %r, %r)' % (
+            self.__class__.__name__, self.conditional_expr,
+            self.true_flow, self.false_flow)
 
 
 class WhileFlow(SplitFlow):
@@ -132,7 +145,11 @@ class WhileFlow(SplitFlow):
 
     def format(self):
         return 'while ' + str(self.conditional_expr) + ' (\n' + \
-            _indent(self.loop_flow.format()) + ');'
+            _indent(self.loop_flow.format()) + '); '
+
+    def __repr__(self):
+        return '%s(%r, %r)' % (
+            self.__class__.__name__, self.conditional_expr, self.loop_flow)
 
 
 class CompositionalFlow(Flow):
@@ -164,3 +181,6 @@ class CompositionalFlow(Flow):
 
     def format(self):
         return '\n'.join(flow.format() for flow in self.flows)
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.flows)

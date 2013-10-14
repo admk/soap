@@ -125,7 +125,7 @@ class Expr(Comparable, Flyweight):
 
     def eval(self, var_env=None, **kwargs):
         """Simple expression evaluation hack."""
-        from soap.semantics import (mpz_type, mpfr_type, mpq_type, Interval)
+        from soap.semantics import mpz_type, mpfr_type, mpq_type, Interval
 
         var_env = var_env.__class__(var_env, **kwargs)
 
@@ -268,7 +268,6 @@ class Expr(Comparable, Flyweight):
         return '(%s %s %s)' % (a1, self.op, a2)
 
     def __repr__(self):
-        return self.__str__()
         return "Expr(op='%s', a1=%s, a2=%s)" % \
             (self.op, repr(self.a1), repr(self.a2))
 

@@ -13,7 +13,7 @@ from soap.expr import (
 from soap.lattice import denotational, map
 from soap.semantics import (
     inf, ulp, cast, mpz_type, mpfr_type,
-    IntegerInterval, FloatInterval, ErrorSemantics
+    IntegerInterval, FloatInterval, FractionInterval, ErrorSemantics
 )
 
 
@@ -193,10 +193,10 @@ class BoxState(State, map(str, (IntegerInterval, ErrorSemantics))):
         if isinstance(self[expr.a1], (FloatInterval, ErrorSemantics)):
             # Comparing floats
             bound = FloatInterval(bound)
-        cstr = constraint(expr.op, bound) & self[expr.a1]
-        bot = cstr.is_bottom()
-        bot = bot or (isinstance(cstr, ErrorSemantics) and cstr.v.is_bottom())
-        if bot:
+        cstr = ErrorSemantics(
+            constraint(expr.op, bound), FractionInterval(top=True))
+        cstr &= self[expr.a1]
+        if cstr.v.is_bottom():
             """Branch evaluates to false, because no possible values of the
             variable satisfies the constraint condition, it is safe to return
             *bottom* to denote an unreachable state."""

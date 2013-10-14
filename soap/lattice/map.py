@@ -65,7 +65,7 @@ class MapLattice(Lattice, dict):
         return self._cast_value(bottom=True)
 
     def __str__(self):
-        return '[%s]' % ', '.join(
+        return '{%s}' % ', '.join(
             str(k) + '↦' + str(v) for k, v in self.items())
 
     def __repr__(self):
