@@ -5,14 +5,14 @@
 import functools
 
 import gmpy2
-from gmpy2 import mpfr as _mpfr
-from gmpy2 import mpq as _mpq
+from gmpy2 import mpfr as _mpfr, mpq as _mpq, mpz
 
 from soap import logger
 from soap.common import ignored
 from soap.lattice import Lattice
 
 
+mpz_type = type(mpz('1'))
 mpfr_type = type(_mpfr('1.0'))
 mpq_type = type(_mpq('1.0'))
 inf = _mpfr('Inf')
@@ -128,9 +128,15 @@ def _coerce(self, other):
         (int, IntegerInterval): IntegerInterval,
         (int, FloatInterval): FloatInterval,
         (int, ErrorSemantics): ErrorSemantics,
+        (mpz_type, IntegerInterval): IntegerInterval,
+        (mpz_type, FloatInterval): FloatInterval,
+        (mpz_type, ErrorSemantics): ErrorSemantics,
         (float, IntegerInterval): FloatInterval,
         (float, FloatInterval): FloatInterval,
         (float, ErrorSemantics): ErrorSemantics,
+        (mpfr_type, IntegerInterval): FloatInterval,
+        (mpfr_type, FloatInterval): FloatInterval,
+        (mpfr_type, ErrorSemantics): ErrorSemantics,
         (IntegerInterval, FloatInterval): FloatInterval,
         (IntegerInterval, ErrorSemantics): ErrorSemantics,
         (FloatInterval, ErrorSemantics): ErrorSemantics,
@@ -326,9 +332,9 @@ class IntegerInterval(Interval):
         super().__init__(v, top=top, bottom=bottom)
         try:
             if self.min not in (-inf, inf):
-                self.min = int(self.min)
+                self.min = mpz(self.min)
             if self.max not in (-inf, inf):
-                self.max = int(self.max)
+                self.max = mpz(self.max)
         except AttributeError:
             'The interval is a top or bottom.'
 
@@ -384,7 +390,7 @@ class ErrorSemantics(Lattice):
             if e is not None:
                 return overapproximate_error(e)
             v_min, v_max = Interval(v)
-            if isinstance(v_min, int) and isinstance(v_max, int):
+            if isinstance(v_min, mpz_type) and isinstance(v_max, mpz_type):
                 # FIXME some integers cannot be expressed exactly in fp values
                 return FloatInterval(0)
             if v_min == v_max:
@@ -500,7 +506,7 @@ def cast(v):
     try:
         v_min, v_max = v
     except (ValueError, TypeError):
-        if isinstance(v, int):
+        if isinstance(v, (int, mpz_type)):
             return IntegerInterval(v)
         if isinstance(v, (float, mpfr_type)):
             return ErrorSemantics(v)
@@ -510,7 +516,7 @@ def cast(v):
             if v_min.isdigit() and v_max.isdigit():
                 return IntegerInterval(v)
             return ErrorSemantics(v)
-        if istype(int):
+        if istype(int) or istype(mpz_type):
             return IntegerInterval(v)
         isfloat = lambda val: isinstance(val, (float, mpfr_type))
         if isfloat(v_min) or isfloat(v_max):

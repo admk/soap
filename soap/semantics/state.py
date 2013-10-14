@@ -12,7 +12,8 @@ from soap.expr import (
 )
 from soap.lattice import denotational, map
 from soap.semantics import (
-    inf, ulp, cast, mpfr_type, IntegerInterval, FloatInterval, ErrorSemantics
+    inf, ulp, cast, mpz_type, mpfr_type,
+    IntegerInterval, FloatInterval, ErrorSemantics
 )
 
 
@@ -147,9 +148,9 @@ class BoxState(State, map(str, (IntegerInterval, ErrorSemantics))):
     def conditional(self, expr, cond):
         def eval(expr):
             bound = self.eval(expr)
-            if isinstance(bound, int):
+            if isinstance(bound, (int, mpz_type)):
                 return IntegerInterval(bound)
-            if isinstance(bound, mpfr_type):
+            if isinstance(bound, (float, mpfr_type)):
                 return FloatInterval(bound)
             if isinstance(bound, IntegerInterval):
                 return bound

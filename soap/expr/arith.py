@@ -125,14 +125,14 @@ class Expr(Comparable, Flyweight):
 
     def eval(self, var_env=None, **kwargs):
         """Simple expression evaluation hack."""
-        from soap.semantics import (mpfr_type, mpq_type, Interval)
+        from soap.semantics import (mpz_type, mpfr_type, mpq_type, Interval)
 
         var_env = var_env.__class__(var_env, **kwargs)
 
         def eval_arg(a):
             with ignored(AttributeError):
                 return a.eval(var_env)
-            if isinstance(a, (int, float, mpfr_type, mpq_type, Interval)):
+            if isinstance(a, (mpz_type, mpfr_type, mpq_type, Interval)):
                 return a
             return var_env[a]
 
