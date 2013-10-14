@@ -14,19 +14,19 @@ for i, l in enumerate(labels):
     levels.__dict__[l] = i
 
 
-colours = {
+colors = {
     levels.debug: '\033[94m',
     levels.info: '\033[92m',
     levels.warning: '\033[93m',
     levels.error: '\033[91m',
 }
-colours_end = '\033[0m'
+colors_end = '\033[0m'
 
 
 context = {
     'level': levels.warning,
     'pause_level': levels.off,
-    'colour': True,
+    'color': True,
     'file': None,
     'persistent': {},
 }
@@ -40,12 +40,12 @@ def get_context():
     return context
 
 
-def colourise(s, l=levels.info):
+def color(s, l=levels.info):
     if not 'color' in os.environ['TERM']:
         return s
-    if not get_context()['colour']:
+    if not get_context()['color']:
         return s
-    return colours[l] + s + colours_end
+    return colors[l] + s + colors_end
 
 
 def format(*args):
@@ -56,7 +56,7 @@ def log(*args, l=levels.info):
     if l < get_context()['level']:
         return
     f = get_context()['file'] or sys.stdout
-    print(colourise(format(*args), l), end='', file=f)
+    print(color(format(*args), l), end='', file=f)
     while l >= get_context()['pause_level']:
         r = input('Continue [Return], Stack trace [t], Abort [q]: ')
         if not r:

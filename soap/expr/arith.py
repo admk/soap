@@ -119,27 +119,9 @@ class Expr(Comparable, Flyweight):
             single precision.
         :type prec: int
         """
-        from soap.semantics import (
-            cast_error, cast_error_constant, precision_context
-        )
+        from soap.semantics import precision_context, BoxState
         with precision_context(prec):
-            def eval(a):
-                with ignored(AttributeError):
-                    return a.error(var_env, prec)
-                with ignored(TypeError, KeyError):
-                    return eval(var_env[a])
-                with ignored(TypeError):
-                    return cast_error(*a)
-                with ignored(TypeError):
-                    return cast_error_constant(a)
-                return a
-            e1, e2 = eval(self.a1), eval(self.a2)
-            if self.op == ADD_OP:
-                return e1 + e2
-            if self.op == MULTIPLY_OP:
-                return e1 * e2
-            if self.op == BARRIER_OP:
-                return e1 | e2
+            return self.eval(BoxState(var_env))
 
     def eval(self, var_env=None, **kwargs):
         """Simple expression evaluation hack."""
