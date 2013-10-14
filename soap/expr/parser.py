@@ -5,11 +5,11 @@
 import ast
 
 from soap.common import ignored
-from soap.semantics import mpq
+from soap.semantics import mpz, mpfr, mpq
 from soap.expr.common import (
     ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP,
-    EQUAL_OP, GREATER_OP, LESS_OP, GREATER_EQUAL_OP, LESS_EQUAL_OP,
-    UNARY_NEGATION_OP, AND_OP, OR_OP, UNARY_OPERATORS, BOOLEAN_OPERATORS
+    EQUAL_OP, NOT_EQUAL_OP, GREATER_OP, LESS_OP, GREATER_EQUAL_OP,
+    LESS_EQUAL_OP, UNARY_NEGATION_OP, AND_OP, OR_OP, BOOLEAN_OPERATORS
 )
 
 
@@ -21,6 +21,7 @@ OPERATOR_MAP = {
     ast.BitOr: BARRIER_OP,
     ast.USub: UNARY_SUBTRACT_OP,
     ast.Eq: EQUAL_OP,
+    ast.NotEq: NOT_EQUAL_OP,
     ast.Gt: GREATER_OP,
     ast.GtE: GREATER_EQUAL_OP,
     ast.Lt: LESS_OP,
@@ -47,7 +48,11 @@ def ast_to_expr(t, s):
     from soap.expr.arith import Expr
     from soap.expr.bool import BoolExpr
     with ignored(AttributeError):
-        return t.n
+        v = t.n
+        if isinstance(v, int):
+            return mpz(v)
+        if isinstance(v, float):
+            return mpfr(v)
     with ignored(AttributeError):
         return t.id
     with ignored(AttributeError):
@@ -79,9 +84,9 @@ def ast_to_expr(t, s):
         cls = BoolExpr if op in BOOLEAN_OPERATORS else Expr
         return cls(op, a1, a2)
     except KeyError:
-        raise_parser_error('Unrecognised operator %s' % str(t.op), s, t)
+        raise_parser_error('Unrecognised operator %s' % t.op, s, t)
     except AttributeError:
-        raise_parser_error('Unknown token %s' % str(t), s, t)
+        raise_parser_error('Unknown token %s' % t, s, t)
 
 
 def parse(s):

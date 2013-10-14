@@ -17,9 +17,9 @@ class TestExpr(unittest.TestCase):
         self.e = Expr('(a + a + b) * (a + b + b) * (b + b + c)')
         self.f = Expr('(b + b + c) * (a + a + b) * (a + b + b)')
         self.v = {
-            'a': ['1', '2'],
-            'b': ['10', '20'],
-            'c': ['100', '200'],
+            'a': ['1.0', '2.0'],
+            'b': ['10', '20.0'],
+            'c': ['100.0', '200'],
         }
         self.p = gmpy2.ieee(32).precision - 1
 

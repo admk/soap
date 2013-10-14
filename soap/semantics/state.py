@@ -12,7 +12,8 @@ from soap.expr import (
 )
 from soap.lattice import denotational, map
 from soap.semantics import (
-    inf, ulp, cast, IntegerInterval, FloatInterval, ErrorSemantics
+    inf, ulp, cast, mpz_type, mpfr_type,
+    IntegerInterval, FloatInterval, ErrorSemantics
 )
 
 
@@ -147,8 +148,10 @@ class BoxState(State, map(str, (IntegerInterval, ErrorSemantics))):
     def conditional(self, expr, cond):
         def eval(expr):
             bound = self.eval(expr)
-            if isinstance(bound, int):
+            if isinstance(bound, (int, mpz_type)):
                 return IntegerInterval(bound)
+            if isinstance(bound, (float, mpfr_type)):
+                return FloatInterval(bound)
             if isinstance(bound, IntegerInterval):
                 return bound
             if isinstance(bound, ErrorSemantics):
@@ -162,12 +165,14 @@ class BoxState(State, map(str, (IntegerInterval, ErrorSemantics))):
             if op not in [LESS_OP, GREATER_OP]:
                 return bound.min, bound.max
             if isinstance(bound, IntegerInterval):
-                return bound.min + 1, bound.max - 1
-            if isinstance(bound, FloatInterval):
+                bmin = bound.min + 1
+                bmax = bound.max - 1
+            elif isinstance(bound, FloatInterval):
                 bmin = bound.min + ulp(bound.min)
                 bmax = bound.max - ulp(bound.max)
-                return bmin, bmax
-            raise TypeError
+            else:
+                raise TypeError
+            return bmin, bmax
 
         def constraint(op, bound):
             op = _negate_dict[op] if not cond else op

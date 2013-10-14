@@ -3,7 +3,7 @@ import itertools
 import functools
 
 from soap.program import flow
-from soap.semantics import ClassicalState, BoxState
+from soap.semantics import mpfr, ClassicalState, BoxState
 from akpytemp.utils import code_gobble
 
 
@@ -16,11 +16,17 @@ class TestFlow(unittest.TestCase):
                 y = y * x
                 x = x + 1
             """)
+        self.fixpoint = code_gobble(
+            """
+            while x > 1:
+                x = 0.9 * x
+            """)
         self.newton = code_gobble(
             """
-            x0 = 2
-            while x < x0:
+            x0 = 0
+            while x >= x0:
                 x0 = x
+                x = (x * x + 2) / (2 * x)
                 x = x / 2 + 1 / x
             """)
 
@@ -34,14 +40,6 @@ class TestFlow(unittest.TestCase):
         flow_env = flow(prog).flow(cls(env))
         return flow_env, exec_env
 
-    def analyze_error_flow(self, prog, env):
-        print()
-        print(BoxState(env))
-        print(flow(prog).debug(BoxState(env)))
-        exec_env = self.exec(prog, BoxState, env)
-        flow_env = flow(prog).flow(BoxState(env))
-        self.assertLessEqual(exec_env, flow_env)
-
     def test_classical_state_flow(self):
         flow_env, exec_env = self.analyze(
             self.factorial, ClassicalState, {'x': 1, 'y': 1})
@@ -54,9 +52,11 @@ class TestFlow(unittest.TestCase):
         self.assertLessEqual(less_env, flow_env)
 
     def test_factorial_error_flow(self):
-        env = {'x': 1, 'y': float('1.2')}
-        self.analyze_error_flow(self.factorial, env)
+        print(flow(self.factorial).debug(BoxState(x=1, y='1.2')))
 
     def test_fixpoint_error_flow(self):
-        env = {'x': ['1.5', '1.5']}
-        self.analyze_error_flow(self.newton, env)
+        print(BoxState(x=[0.0, 9.0]))
+        print(flow(self.fixpoint).debug(BoxState(x=[0.0, 9.0])))
+
+    def test_newton_error_flow(self):
+        print(flow(self.newton).debug(BoxState(x=[1, 5.0])))

@@ -2,8 +2,7 @@ import unittest
 from gmpy2 import mpfr
 
 from soap.semantics import (
-    inf, mpq, mpfr, ulp,
-    Interval, FloatInterval, IntegerInterval, ErrorSemantics
+    inf, mpq, mpfr, ulp, FloatInterval, IntegerInterval, ErrorSemantics
 )
 
 
@@ -29,39 +28,39 @@ class TestFoundation(unittest.TestCase):
 
 
 class TestInterval(unittest.TestCase):
-    """Unittesting for :class:`soap.semantics.Interval`."""
+    """Unittesting for :class:`soap.semantics.FloatInterval`."""
     def setUp(self):
-        self.bottom = Interval(bottom=True)
-        self.top = Interval(top=True)
-        self.int14 = Interval([1, 4])
-        self.int34 = Interval([3, 4])
-        self.int29 = Interval([2, 9])
+        self.bottom = FloatInterval(bottom=True)
+        self.top = FloatInterval(top=True)
+        self.int14 = FloatInterval([1, 4])
+        self.int34 = FloatInterval([3, 4])
+        self.int29 = FloatInterval([2, 9])
 
     def test_top_and_bottom(self):
-        self.assertEqual(self.top, Interval([-inf, inf]))
-        self.assertNotEqual(self.top, Interval([2, inf]))
-        self.assertNotEqual(self.top, Interval([-inf, 2]))
+        self.assertEqual(self.top, FloatInterval([-inf, inf]))
+        self.assertNotEqual(self.top, FloatInterval([2, inf]))
+        self.assertNotEqual(self.top, FloatInterval([-inf, 2]))
         self.assertEqual(self.bottom + self.int14, self.bottom)
         self.assertEqual(self.int14 + self.bottom, self.bottom)
         self.assertEqual(self.top + self.int14, self.top)
         self.assertEqual(self.int14 + self.top, self.top)
 
     def test_operators(self):
-        self.assertEqual(self.int14 + self.int29, Interval([3, 13]))
-        self.assertEqual(self.int14 - self.int29, Interval([-8, 2]))
-        self.assertEqual(self.int14 * self.int29, Interval([2, 36]))
-        self.assertEqual(self.int14 / self.int29, Interval([1 / 9, 2]))
-        self.assertEqual(-self.int14, Interval([-4, -1]))
+        self.assertEqual(self.int14 + self.int29, FloatInterval([3, 13]))
+        self.assertEqual(self.int14 - self.int29, FloatInterval([-8, 2]))
+        self.assertEqual(self.int14 * self.int29, FloatInterval([2, 36]))
+        self.assertEqual(self.int14 / self.int29, FloatInterval([1 / 9, 2]))
+        self.assertEqual(-self.int14, FloatInterval([-4, -1]))
 
     def test_coercion(self):
-        self.assertEqual(1 + self.int29, Interval([3, 10]))
-        self.assertEqual(self.int29 + 1, Interval([3, 10]))
-        self.assertEqual(1 - self.int29, Interval([-8, -1]))
-        self.assertEqual(self.int29 - 1, Interval([1, 8]))
-        self.assertEqual(2 * self.int29, Interval([4, 18]))
-        self.assertEqual(self.int29 * 2, Interval([4, 18]))
-        self.assertEqual(2 / self.int29, Interval([2 / 9, 1]))
-        self.assertEqual(self.int29 / 2, Interval([1, 9 / 2]))
+        self.assertEqual(1 + self.int29, FloatInterval([3, 10]))
+        self.assertEqual(self.int29 + 1, FloatInterval([3, 10]))
+        self.assertEqual(1 - self.int29, FloatInterval([-8, -1]))
+        self.assertEqual(self.int29 - 1, FloatInterval([1, 8]))
+        self.assertEqual(2 * self.int29, FloatInterval([4, 18]))
+        self.assertEqual(self.int29 * 2, FloatInterval([4, 18]))
+        self.assertEqual(2 / self.int29, FloatInterval([2 / 9, 1]))
+        self.assertEqual(self.int29 / 2, FloatInterval([1, 9 / 2]))
 
     def test_order(self):
         self.assertTrue(self.bottom <= self.int14)
@@ -73,11 +72,11 @@ class TestInterval(unittest.TestCase):
 
     def test_join(self):
         self.assertEqual(self.int14 | self.int34, self.int14)
-        self.assertEqual(self.int14 | self.int29, Interval([1, 9]))
+        self.assertEqual(self.int14 | self.int29, FloatInterval([1, 9]))
 
     def test_meet(self):
         self.assertEqual(self.int14 & self.int34, self.int34)
-        self.assertEqual(self.int14 & self.int29, Interval([2, 4]))
+        self.assertEqual(self.int14 & self.int29, FloatInterval([2, 4]))
 
 
 class ErrorAssertionTestCase(unittest.TestCase):
@@ -172,12 +171,13 @@ class TestErrorSemantics(ErrorAssertionTestCase):
 class TestCoercion(ErrorAssertionTestCase):
     def setUp(self):
         self.interval = [2, 3]
+        self.const = 4
+        self.integer = self.const
+        self.float = float(self.const)
         self.integer_interval = IntegerInterval(self.interval)
         self.float_interval = FloatInterval(self.interval)
         self.error = ErrorSemantics(self.interval)
-
-    def trials(self, funcs):
-        tests = [
+        self.interval_tests = [
             (self.integer_interval, self.float_interval, FloatInterval),
             (self.float_interval, self.integer_interval, FloatInterval),
             (self.integer_interval, self.error, ErrorSemantics),
@@ -185,21 +185,37 @@ class TestCoercion(ErrorAssertionTestCase):
             (self.float_interval, self.error, ErrorSemantics),
             (self.error, self.float_interval, ErrorSemantics),
         ]
+        self.const_tests = [
+            (self.integer_interval, self.integer, IntegerInterval),
+            (self.integer, self.integer_interval, IntegerInterval),
+            (self.integer_interval, self.float, FloatInterval),
+            (self.float, self.integer_interval, FloatInterval),
+            (self.float_interval, self.integer, FloatInterval),
+            (self.integer, self.float_interval, FloatInterval),
+            (self.float_interval, self.float, FloatInterval),
+            (self.float, self.float_interval, FloatInterval),
+            (self.error, self.integer, ErrorSemantics),
+            (self.integer, self.error, ErrorSemantics),
+            (self.error, self.float, ErrorSemantics),
+            (self.float, self.error, ErrorSemantics),
+        ]
+
+    def trials(self, funcs, tests):
         for i, j, t in tests:
             for f in funcs:
                 u = f(i, j)
-                v = t(self.interval)
-                v = f(v, v)
-                if not isinstance(u, bool):
-                    self.assertEqual(type(u), t)
-                    self.assertAlmostEqual(u, v)
+                v = f(t(i), t(j))
+                if isinstance(u, bool):
+                    continue
+                self.assertEqual(type(u), t)
+                self.assertAlmostEqual(u, v)
 
     def test_operators(self):
         self.trials([
             lambda x, y: x + y,
             lambda x, y: x - y,
             lambda x, y: x * y,
-        ])
+        ], self.interval_tests + self.const_tests)
 
     def test_lattice(self):
         self.trials([
@@ -211,4 +227,4 @@ class TestCoercion(ErrorAssertionTestCase):
             lambda x, y: x >= y,
             lambda x, y: x > y,
             lambda x, y: x != y,
-        ])
+        ], self.interval_tests)
