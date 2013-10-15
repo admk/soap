@@ -1,7 +1,7 @@
 import unittest
 
 from soap.semantics import ClassicalState, BoxState
-from soap.expr import Expr, BoolExpr
+from soap.expression import Expr, BoolExpr
 
 
 class TestClassicalState(unittest.TestCase):

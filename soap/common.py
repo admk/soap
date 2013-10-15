@@ -74,7 +74,7 @@ def profiled():
     from pympler.classtracker import ClassTracker
     from pympler.asizeof import asizeof
     from soap.common import Flyweight, _cache_map
-    from soap.expr import Expr
+    from soap.expression import Expr
     pycallgraph.start_trace()
     tracker = ClassTracker()
     tracker.track_object(Flyweight._cache)

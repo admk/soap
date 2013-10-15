@@ -32,7 +32,7 @@ class Label(object):
         return 's_%d' % self.l
 
     def port_name(self):
-        from soap.expr.common import OPERATORS
+        from soap.expression.common import OPERATORS
         forbidden = OPERATORS + [',', '(', ')', '[', ']']
         if any(k in str(self.e) for k in forbidden):
             s = self.l

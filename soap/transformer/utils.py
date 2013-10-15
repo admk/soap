@@ -6,7 +6,7 @@
 import itertools
 
 import soap.logger as logger
-from soap.expr import Expr
+from soap.expression import Expr
 from soap.transformer.core import TreeTransformer
 from soap.transformer.arith import (
     associativity, distribute_for_distributivity, ArithTreeTransformer
@@ -29,7 +29,7 @@ def greedy_frontier_closure(tree, var_env=None, prec=None, **kwargs):
     """Our greedy transitive closure.
 
     :param tree: The expression(s) under transform.
-    :type tree: :class:`soap.expr.Expr`, set, or str
+    :type tree: :class:`soap.expression.Expr`, set, or str
     :param var_env: The ranges of input variables.
     :type var_env: dictionary containing mappings from variables to
         :class:`soap.semantics.error.Interval`
@@ -62,7 +62,7 @@ def expand(tree):
     """Fully expands the expression tree by distributivity.
 
     :param tree: The expression tree.
-    :type tree: :class:`soap.expr.Expr` or str
+    :type tree: :class:`soap.expression.Expr` or str
     :returns: A fully expanded tree.
     """
     def pop(s):
@@ -77,7 +77,7 @@ def reduce(tree):
     """Transforms tree by reduction rules only.
 
     :param tree: The expression tree.
-    :type tree: :class:`soap.expr.Expr` or str
+    :type tree: :class:`soap.expression.Expr` or str
     :returns: A new expression tree.
     """
     try:
@@ -99,7 +99,7 @@ def parsings(tree):
     """Generates all possible parsings of the same tree by associativity.
 
     :param tree: The expression tree.
-    :type tree: :class:`soap.expr.Expr` or str
+    :type tree: :class:`soap.expression.Expr` or str
     :returns: A set of trees.
     """
     return transform(tree, None, [associativity])
@@ -109,7 +109,7 @@ def collecting_closure(tree, depth=None):
     """Fully closure, sans distributing terms.
 
     :param tree: The expression tree.
-    :type tree: :class:`soap.expr.Expr` or str
+    :type tree: :class:`soap.expression.Expr` or str
     :param depth: The depth limit.
     :type depth: int
     :returns: A set of trees.
@@ -120,7 +120,7 @@ def collecting_closure(tree, depth=None):
 
 
 class TraceExpr(Expr):
-    """A subclass of :class:`soap.expr.Expr` for bottom-up hierarchical
+    """A subclass of :class:`soap.expression.Expr` for bottom-up hierarchical
     equivalence finding.
 
     Implements :member:`traces` that finds equivalnent expressions. Subclasses
@@ -186,7 +186,7 @@ def martel_trace(tree, var_env=None, depth=2, prec=None, **kwargs):
     """Finds Martel's equivalent expressions.
 
     :param tree: The original expression.
-    :type tree: :class:`soap.expr.Expr` or str
+    :type tree: :class:`soap.expression.Expr` or str
     :param var_env: The ranges of input variables.
     :type var_env: dictionary containing mappings from variables to
         :class:`soap.semantics.error.Interval`
@@ -203,7 +203,7 @@ def greedy_trace(tree, var_env=None, depth=2, prec=None, **kwargs):
     """Finds our equivalent expressions using :class:`GreedyTraceExpr`.
 
     :param tree: The original expression.
-    :type tree: :class:`soap.expr.Expr` or str
+    :type tree: :class:`soap.expression.Expr` or str
     :param var_env: The ranges of input variables.
     :type var_env: dictionary containing mappings from variables to
         :class:`soap.semantics.error.Interval`
@@ -220,7 +220,7 @@ def frontier_trace(tree, var_env=None, depth=2, prec=None, **kwargs):
     """Finds our equivalent expressions using :class:`FrontierTraceExpr`.
 
     :param tree: The original expression.
-    :type tree: :class:`soap.expr.Expr` or str
+    :type tree: :class:`soap.expression.Expr` or str
     :param var_env: The ranges of input variables.
     :type var_env: dictionary containing mappings from variables to
         :class:`soap.semantics.error.Interval`

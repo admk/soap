@@ -51,7 +51,7 @@ def get_luts(file_name):
 
 def flopoco(op, we, wf, f=None, dir=None):
     import sh
-    from soap.expr import ADD_OP, MULTIPLY_OP
+    from soap.expression import ADD_OP, MULTIPLY_OP
     flopoco_cmd = []
     flopoco_cmd += ['-target=' + device_name]
     dir = dir or tempfile.mktemp(suffix='/')
@@ -196,7 +196,7 @@ def keys():
 class CodeGenerator(object):
 
     def __init__(self, expr, var_env, prec, file_name=None, dir=None):
-        from soap.expr import Expr
+        from soap.expression import Expr
         self.expr = Expr(expr)
         self.var_env = var_env
         self.wf = prec
@@ -286,7 +286,7 @@ def eval_expr(expr, var_env, prec):
 
 if __name__ == '__main__':
     import sys
-    from soap.expr import Expr
+    from soap.expression import Expr
     logger.set_context(level=logger.levels.info)
     if 'synth' in sys.argv:
         save(default_file, batch_synth(we_range, wf_range))

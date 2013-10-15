@@ -2,8 +2,8 @@ import unittest
 import os
 import gmpy2
 
-from soap.expr import Expr, BoolExpr
-from soap.expr import (
+from soap.expression import Expr, BoolExpr
+from soap.expression import (
     ADD_OP, UNARY_SUBTRACT_OP, LESS_OP, EQUAL_OP, UNARY_NEGATION_OP
 )
 
@@ -12,7 +12,7 @@ skip = 'NOSE_SKIP' in os.environ
 
 
 class TestExpr(unittest.TestCase):
-    """Unittesting for :class:`soap.expr.Expr`."""
+    """Unittesting for :class:`soap.expression.Expr`."""
     def setUp(self):
         self.e = Expr('(a + a + b) * (a + b + b) * (b + b + c)')
         self.f = Expr('(b + b + c) * (a + a + b) * (a + b + b)')

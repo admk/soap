@@ -6,7 +6,7 @@ import gmpy2
 
 import soap.logger as logger
 from soap.common import DynamicMethods, Flyweight
-from soap.expr import Expr
+from soap.expression import Expr
 from soap.semantics import mpfr
 import soap.semantics.flopoco as flopoco
 
@@ -22,7 +22,7 @@ class Analysis(DynamicMethods, Flyweight):
         """Analysis class initialisation.
 
         :param expr_set: A set of expressions or a single expression.
-        :type expr_set: `set` or :class:`soap.expr.Expr`
+        :type expr_set: `set` or :class:`soap.expression.Expr`
         :param var_env: The ranges of input variables.
         :type var_env: dictionary containing mappings from variables to
             :class:`soap.semantics.error.Interval`

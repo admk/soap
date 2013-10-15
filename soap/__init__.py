@@ -8,7 +8,7 @@ else:
 
 
 from soap.analysis import analyse, frontier, Plot, plot, analyse_and_plot
-from soap.expr import Expr, BoolExpr
+from soap.expression import Expr, BoolExpr
 from soap.program import flow
 from soap.semantics import (
     IntegerInterval, FloatInterval, FractionInterval, ErrorSemantics,

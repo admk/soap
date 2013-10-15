@@ -1,14 +1,14 @@
 """
-.. module:: soap.expr.arith
+.. module:: soap.expression.arithmetic
     :synopsis: The class of expressions.
 """
 from soap.common import Comparable, Flyweight, cached, ignored
-from soap.expr.common import (
+from soap.expression.common import (
     ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, UNARY_SUBTRACT_OP,
     LESS_OP, LESS_EQUAL_OP, EQUAL_OP, GREATER_EQUAL_OP, GREATER_OP,
     BARRIER_OP, COMMUTATIVITY_OPERATORS, UNARY_OPERATORS
 )
-from soap.expr.parser import parse
+from soap.expression.parser import parse
 
 
 _binary_op_func_dict = {

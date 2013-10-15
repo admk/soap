@@ -7,7 +7,7 @@ import itertools
 
 from matplotlib import rc, pyplot, pylab
 
-import soap.expr
+import soap.expression
 import soap.logger as logger
 from soap.common import Comparable
 from soap.semantics import flopoco
@@ -19,7 +19,7 @@ class AreaSemantics(Comparable):
         """Initialisation.
 
         :param e: The expression.
-        :type e: class:`soap.expr.Expr`
+        :type e: class:`soap.expression.Expr`
         :param v: The ranges of input variables.
         :type v: dictionary containing mappings from variables to
             :class:`soap.semantics.error.Interval`
@@ -40,9 +40,9 @@ class AreaSemantics(Comparable):
         mult, add = 0, 0
         for _, e in self.s.items():
             try:
-                if e.op == soap.expr.MULTIPLY_OP:
+                if e.op == soap.expression.MULTIPLY_OP:
                     mult += 1
-                if e.op == soap.expr.ADD_OP:
+                if e.op == soap.expression.ADD_OP:
                     add += 1
             except AttributeError:
                 pass

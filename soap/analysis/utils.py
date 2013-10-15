@@ -181,7 +181,7 @@ class Plot(object):
         plot.
         
         :param expr: original expression to be transformed.
-        :type expr: :class:`soap.expr.Expr`
+        :type expr: :class:`soap.expression.Expr`
         :param func: the function used to transform `expr`.
         :type func: callable with arguments::
             `(tree, var_env, depth, prec)`, where `tree` is an expression,
@@ -243,7 +243,7 @@ class Plot(object):
         """Add analysed results.
 
         :param expr: Optional, the original expression.
-        :type expr: :class:`soap.expr.Expr`
+        :type expr: :class:`soap.expression.Expr`
         :param legend: The legend name for the results.
         :type legend: str
         :param frontier: If set, plots the frontier.

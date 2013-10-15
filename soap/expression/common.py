@@ -1,5 +1,5 @@
 """
-.. module:: soap.expr.common
+.. module:: soap.expression.common
     :synopsis: Common definitions for expressions.
 """
 ADD_OP = '+'
@@ -56,13 +56,13 @@ def is_arith_expr(e):
     """Check if `e` is an expression."""
     if is_bool_expr(e):
         return False
-    from soap.expr.arith import Expr
+    from soap.expression.arithmetic import Expr
     return isinstance(e, Expr)
 
 
 def is_bool_expr(e):
     """Check if `e` is a boolean expression."""
-    from soap.expr.bool import BoolExpr
+    from soap.expression.boolean import BoolExpr
     return isinstance(e, BoolExpr)
 
 
@@ -70,7 +70,7 @@ def concat_multi_expr(*expr_args):
     """Concatenates multiple expressions into a single expression by using the
     barrier operator.
     """
-    from soap.expr.arith import Expr
+    from soap.expression.arithmetic import Expr
     me = None
     for e in expr_args:
         e = Expr(e)

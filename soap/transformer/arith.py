@@ -6,13 +6,13 @@ import re
 import random
 
 import soap.logger as logger
-from soap.expr.common import (
+from soap.expression.common import (
     ADD_OP, MULTIPLY_OP, ASSOCIATIVITY_OPERATORS,
     LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS,
     RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS,
     is_expr
 )
-from soap.expr import Expr
+from soap.expression import Expr
 from soap.transformer.core import (
     item_to_list, none_to_list, TreeTransformer, ValidationError
 )
@@ -27,7 +27,7 @@ def associativity(t):
         (a + b) + c == a + (b + c)
 
     :param t: The expression tree.
-    :type t: :class:`soap.expr.Expr`
+    :type t: :class:`soap.expression.Expr`
     :returns: A list of expressions that are derived with assoicativity from
         the input tree.
     """
@@ -53,7 +53,7 @@ def distribute_for_distributivity(t):
         (a + b) * c == (a * c) + (b * c)
 
     :param t: The expression tree.
-    :type t: :class:`soap.expr.Expr`
+    :type t: :class:`soap.expression.Expr`
     :returns: A list of expressions that are derived with distributivity from
         the input tree.
     """
@@ -79,7 +79,7 @@ def collect_for_distributivity(t):
         (a * c) + (b * c) == (a + b) * c
 
     :param t: The expression tree.
-    :type t: :class:`soap.expr.Expr`
+    :type t: :class:`soap.expression.Expr`
     :returns: A list of expressions that are derived with distributivity from
         the input tree.
     """
@@ -130,7 +130,7 @@ def multiplicative_identity_reduction(t):
         a * 1 == a
 
     :param t: The expression tree.
-    :type t: :class:`soap.expr.Expr`
+    :type t: :class:`soap.expression.Expr`
     :returns: A list containing an expression related by this reduction rule.
     """
     return _identity_reduction(t, MULTIPLY_OP, 1)
@@ -144,7 +144,7 @@ def additive_identity_reduction(t):
         a + 0 == a
 
     :param t: The expression tree.
-    :type t: :class:`soap.expr.Expr`
+    :type t: :class:`soap.expression.Expr`
     :returns: A list containing an expression related by this reduction rule.
     """
     return _identity_reduction(t, ADD_OP, 0)
@@ -158,7 +158,7 @@ def zero_reduction(t):
         a * 0 == 0
 
     :param t: The expression tree.
-    :type t: :class:`soap.expr.Expr`
+    :type t: :class:`soap.expression.Expr`
     :returns: A list containing an expression related by this reduction rule.
     """
     if t.op != MULTIPLY_OP:
@@ -176,7 +176,7 @@ def constant_reduction(t):
         1 + 2 == 3
 
     :param t: The expression tree.
-    :type t: :class:`soap.expr.Expr`
+    :type t: :class:`soap.expression.Expr`
     :returns: A list containing an expression related by this reduction rule.
     """
     def is_exact(v):

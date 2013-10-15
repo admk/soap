@@ -4,7 +4,7 @@
 """
 import ast
 
-from soap.expr.parser import ast_to_expr, raise_parser_error
+from soap.expression.parser import ast_to_expr, raise_parser_error
 from soap.program.flow import (
     IdentityFlow, AssignFlow, CompositionalFlow, IfFlow, WhileFlow
 )

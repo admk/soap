@@ -1,12 +1,12 @@
 """
-.. module:: soap.expr.parser
-    :synopsis: Parser for class:`soap.expr.Expr`.
+.. module:: soap.expression.parser
+    :synopsis: Parser for class:`soap.expression.Expr`.
 """
 import ast
 
 from soap.common import ignored
 from soap.semantics import mpz, mpfr, mpq
-from soap.expr.common import (
+from soap.expression.common import (
     ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP,
     EQUAL_OP, NOT_EQUAL_OP, GREATER_OP, LESS_OP, GREATER_EQUAL_OP,
     LESS_EQUAL_OP, UNARY_NEGATION_OP, AND_OP, OR_OP, BOOLEAN_OPERATORS
@@ -45,8 +45,8 @@ def raise_parser_error(desc, text, token):
 
 
 def ast_to_expr(t, s):
-    from soap.expr.arith import Expr
-    from soap.expr.bool import BoolExpr
+    from soap.expression.arithmetic import Expr
+    from soap.expression.boolean import BoolExpr
     with ignored(AttributeError):
         v = t.n
         if isinstance(v, int):

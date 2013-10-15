@@ -1,4 +1,4 @@
-from soap.expr.common import (
+from soap.expression.common import (
     ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, UNARY_SUBTRACT_OP,
     BARRIER_OP, EQUAL_OP, NOT_EQUAL_OP, GREATER_OP, LESS_OP, GREATER_EQUAL_OP,
     LESS_EQUAL_OP, UNARY_NEGATION_OP, AND_OP, OR_OP, OPERATORS,
@@ -6,6 +6,6 @@ from soap.expr.common import (
     LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS,
     RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS
 )
-from soap.expr.arith import Expr, BExpr
-from soap.expr.bool import BoolExpr
-from soap.expr.parser import parse as expr
+from soap.expression.arithmetic import Expr, BExpr
+from soap.expression.boolean import BoolExpr
+from soap.expression.parser import parse as expr

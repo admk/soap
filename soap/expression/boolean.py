@@ -1,12 +1,12 @@
 """
-.. module:: soap.expr.bool
+.. module:: soap.expression.boolean
     :synopsis: The class of boolean expressions.
 """
-from soap.expr.common import (
+from soap.expression.common import (
     EQUAL_OP, GREATER_OP, LESS_OP, UNARY_NEGATION_OP, AND_OP, OR_OP,
     BOOLEAN_OPERATORS
 )
-from soap.expr.arith import Expr
+from soap.expression.arithmetic import Expr
 
 
 class BoolExpr(Expr):

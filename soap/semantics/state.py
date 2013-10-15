@@ -6,7 +6,7 @@ from functools import wraps
 
 from soap import logger
 
-from soap.expr import (
+from soap.expression import (
     LESS_OP, GREATER_OP, LESS_EQUAL_OP, GREATER_EQUAL_OP,
     EQUAL_OP, NOT_EQUAL_OP
 )
