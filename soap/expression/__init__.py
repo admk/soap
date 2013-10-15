@@ -6,6 +6,6 @@ from soap.expression.common import (
     LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS,
     RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS
 )
-from soap.expression.arithmetic import Expr, BExpr
+from soap.expression.arithmetic import Expr
 from soap.expression.boolean import BoolExpr
 from soap.expression.parser import parse as expr

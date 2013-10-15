@@ -208,7 +208,7 @@ class Expr(Comparable, Flyweight):
 
         l1, s1 = to_label(self.a1)
         l2, s2 = to_label(self.a2)
-        e = BExpr(op=self.op, a1=l1, a2=l2)
+        e = Expr(op=self.op, a1=l1, a2=l2)
         l = Label(e)
         s = {l: e}
         s.update(s1)
@@ -317,18 +317,3 @@ class Expr(Comparable, Flyweight):
             pass
         self._hash = hash(self._symmetric_id())
         return self._hash
-
-
-class BExpr(Expr):
-    """An expression class that only allows non-expression arguments.
-
-    This is a subclass of :class:`Expr`.
-    """
-
-    __slots__ = Expr.__slots__
-
-    def __init__(self, **kwargs):
-        from soap.semantics import Label
-        super().__init__(**kwargs)
-        if not isinstance(self.a1, Label) or not isinstance(self.a2, Label):
-            raise ValueError('BExpr allows only binary expressions.')

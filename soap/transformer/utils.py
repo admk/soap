@@ -8,7 +8,7 @@ import itertools
 import soap.logger as logger
 from soap.expression import Expr
 from soap.transformer.core import TreeTransformer
-from soap.transformer.arith import (
+from soap.transformer.arithmetic import (
     associativity, distribute_for_distributivity, ArithTreeTransformer
 )
 from soap.transformer.martel import MartelTreeTransformer

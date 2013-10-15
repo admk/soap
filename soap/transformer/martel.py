@@ -3,7 +3,7 @@
     :synopsis: Some compatibility hacks to support martel's equivalence
         finding, so we can compare.
 """
-from soap.transformer.arith import ArithTreeTransformer
+from soap.transformer.arithmetic import ArithTreeTransformer
 
 
 class MartelTreeTransformer(ArithTreeTransformer):

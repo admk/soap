@@ -1,5 +1,5 @@
 """
-.. module:: soap.transformer.arith
+.. module:: soap.transformer.arithmetic
     :synopsis: Transforms arithmetic expression instances.
 """
 import re
