@@ -125,10 +125,11 @@ class WhileFlow(SplitFlow):
             true_state |= true_split
             false_state |= false_split
             state = self.loop_flow.flow(true_split)
-        true_string, _ = self.loop_flow.transition(true_state)
-        true_string = _indent('%s\n%s' % (true_state, true_string))
+        # FIXME this overestimates error terms
+        loop_str, _ = self.loop_flow.transition(true_state)
+        loop_str = _indent('%s\n%s' % (true_state, loop_str))
         s = 'while %s (\n%s);\n%s' % \
-            (self.conditional_expr, true_string, false_state)
+            (self.conditional_expr, loop_str, false_state)
         return s, false_state
 
     def __alt_transition(self, state):

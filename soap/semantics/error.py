@@ -31,6 +31,10 @@ def _unpack(v):
         return v, v
 
 
+def _are_instance(v, t):
+    return all(isinstance(e, t) for e in _unpack(v))
+
+
 def mpfr(v):
     """Guards `gmpy2.mpfr` for a malformed string conversion segfault bug."""
     float(v)  # let it throw
@@ -378,26 +382,25 @@ class ErrorSemantics(Lattice):
         if top or bottom:
             return
 
-        if isinstance(v, ErrorSemantics):
-            self.v, self.e = v
-            return
-
-        self.v = FloatInterval(v)
-
-        def error(v):
+        def error(v, e):
             if isinstance(e, FloatInterval):
                 return e
             if e is not None:
                 return overapproximate_error(e)
-            v_min, v_max = Interval(v)
-            if isinstance(v_min, mpz_type) and isinstance(v_max, mpz_type):
-                # FIXME some integers cannot be expressed exactly in fp values
-                return FloatInterval(0)
+            v_min, v_max = _unpack(v)
+            if _are_instance(v, (int, mpz_type)):
+                abs_val = max(abs(v_min), abs(v_max))
+                if mpfr(abs_val) == abs_val:
+                    # some integers cannot be expressed exactly in fp values
+                    return FloatInterval(0)
             if v_min == v_max:
                 return round_off_error_from_exact(v_min)
             return round_off_error(FloatInterval(v))
 
-        self.e = error(v)
+        if isinstance(v, ErrorSemantics):
+            self.v, self.e = v
+        else:
+            self.v, self.e = FloatInterval(v), error(v, e)
 
     def is_top(self):
         return self.v.is_top() and self.e.is_top()
@@ -511,12 +514,11 @@ def cast(v):
         if isinstance(v, (float, mpfr_type)):
             return ErrorSemantics(v)
     else:
-        istype = lambda t: isinstance(v_min, t) and isinstance(v_max, t)
-        if istype(str):
+        if _are_instance((v_min, v_max), str):
             if v_min.isdigit() and v_max.isdigit():
                 return IntegerInterval(v)
             return ErrorSemantics(v)
-        if istype(int) or istype(mpz_type):
+        if _are_instance((v_min, v_max), (int, mpz_type)):
             return IntegerInterval(v)
         isfloat = lambda val: isinstance(val, (float, mpfr_type))
         if isfloat(v_min) or isfloat(v_max):

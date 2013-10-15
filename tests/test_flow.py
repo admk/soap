@@ -1,9 +1,7 @@
 import unittest
-import itertools
-import functools
 
 from soap.program import flow
-from soap.semantics import mpfr, ClassicalState, BoxState
+from soap.semantics import ClassicalState, BoxState
 from akpytemp.utils import code_gobble
 
 
