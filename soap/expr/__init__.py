@@ -8,3 +8,4 @@ from soap.expr.common import (
 )
 from soap.expr.arith import Expr, BExpr
 from soap.expr.bool import BoolExpr
+from soap.expr.parser import parse as expr

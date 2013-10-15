@@ -268,8 +268,8 @@ class Expr(Comparable, Flyweight):
         return '(%s %s %s)' % (a1, self.op, a2)
 
     def __repr__(self):
-        return "Expr(op='%s', a1=%s, a2=%s)" % \
-            (self.op, repr(self.a1), repr(self.a2))
+        return "%s(op='%s', a1=%s, a2=%s)" % \
+            (self.__class__.__name__, self.op, repr(self.a1), repr(self.a2))
 
     def __add__(self, other):
         return Expr(op=ADD_OP, a1=self, a2=other)
