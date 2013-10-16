@@ -1,4 +1,4 @@
-from soap.semantics.common import Label, precision_context
+from soap.semantics.common import precision_context
 from soap.semantics.error import (
     Interval, FloatInterval, FractionInterval, IntegerInterval,
     ErrorSemantics, mpz, mpq, mpfr, mpz_type, mpq_type, mpfr_type,

@@ -220,7 +220,7 @@ class Interval(Lattice):
         except AttributeError:
             pass
         if self.is_top():
-            return -inf
+            return inf
         if self.is_bottom():
             raise AttributeError('Bottom %r has no attribute "max"' % self)
         raise AttributeError(

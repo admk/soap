@@ -197,7 +197,7 @@ class Expr(Comparable, Flyweight):
 
         :returns: dictionary containing the labelling scheme.
         """
-        from soap.semantics import Label
+        from soap.common import Label
 
         def to_label(e):
             try:
@@ -233,7 +233,7 @@ class Expr(Comparable, Flyweight):
             l2, s2 = subcrop(self.a2)
             s1.update(s2)
             return self.__class__(self.op, l1, l2), s1
-        from soap.semantics import Label
+        from soap.common import Label
         l = Label(self)
         return l, {l: self}
 

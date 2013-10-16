@@ -195,11 +195,11 @@ class BoxState(State, map(str, (IntegerInterval, ErrorSemantics))):
             bound = FloatInterval(bound)
         cstr = constraint(expr.op, bound)
         if isinstance(cstr, FloatInterval):
-            cstr = ErrorSemantics(cstr, FractionInterval(top=True))
+            cstr = ErrorSemantics(cstr, FloatInterval(top=True))
         cstr &= self[expr.a1]
-        if isinstance(cstr, ErrorSemantics):
-            cstr = cstr.v
-        if cstr.is_bottom():
+        bot = isinstance(cstr, ErrorSemantics) and cstr.v.is_bottom()
+        bot = bot or cstr.is_bottom()
+        if bot:
             """Branch evaluates to false, because no possible values of the
             variable satisfies the constraint condition, it is safe to return
             *bottom* to denote an unreachable state."""
