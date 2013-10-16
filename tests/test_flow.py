@@ -87,7 +87,6 @@ class TestExampleFlow(unittest.TestCase):
             x0 = 0
             while x >= x0:
                 x0 = x
-                x = (x * x + 2) / (2 * x)
                 x = x / 2 + 1 / x
             """)
 
@@ -119,4 +118,4 @@ class TestExampleFlow(unittest.TestCase):
         print(flow(self.fixpoint).debug(BoxState(x=[0.0, 9.0])))
 
     def test_newton_error_flow(self):
-        print(flow(self.newton).debug(BoxState(x=[1, 5.0])))
+        print(flow(self.newton).debug(BoxState(x=[1.3, 1.4])))

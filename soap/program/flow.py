@@ -37,7 +37,7 @@ class Flow(object):
         try:
             self.transition(state, env)
         except KeyboardInterrupt:
-            pass
+            logger.warning('KeyboardInterrupt')
         return color('{}\n'.format(state)) + self.format(env)
 
     def format(self, env=None):
@@ -163,11 +163,9 @@ class IfFlow(SplitFlow):
         false_format = _indent(false_template.render(render_kwargs))
         template = Template(code_gobble("""
             if {# flow.conditional_expr #} (
-            {# true_format #}
-            ){% if flow.false_flow %} (
-            {# false_format #}
-            );{% end %}{% if env %}{# color(flow._env_get(env)[None]) #}
-            {% end %}
+            {# true_format #}){% if flow.false_flow %} (
+            {# false_format #});{% end %}{% if env %}
+            {# color(flow._env_get(env)[None]) #}{% end %}
             """))
         return template.render(
             render_kwargs, true_format=true_format, false_format=false_format)
@@ -210,7 +208,7 @@ class WhileFlow(SplitFlow):
             """)).render(render_kwargs))
         rendered = Template(code_gobble("""
             while {# flow.conditional_expr #} (
-            {# loop_format #}){% if env %}
+            {# loop_format #});{% if env %}
             {# color(flow._env_get(env)[False]) #}{% end %}
             """)).render(render_kwargs, loop_format=loop_format)
         return rendered

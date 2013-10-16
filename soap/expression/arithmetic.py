@@ -260,12 +260,13 @@ class Expr(Comparable, Flyweight):
         return iter((self.op, self.a1, self.a2))
 
     def __str__(self):
-        a1, a2 = [str(self.a1), str(self.a2)]
+        a1, a2 = [('({})' if isinstance(a, Expr) else '{}').format(a)
+                  for a in (self.a1, self.a2)]
         if self.op in COMMUTATIVITY_OPERATORS:
-            a1, a2 = sorted([a1, a2])
+            a1, a2 = sorted((a1, a2))
         if self.is_unary():
-            return '%s%s' % (self.op, a1)
-        return '(%s %s %s)' % (a1, self.op, a2)
+            return '{op}{a}'.format(op=self.op, a=a1)
+        return '{a1} {op} {a2}'.format(op=self.op, a1=a1, a2=a2)
 
     def __repr__(self):
         return "%s(op='%s', a1=%s, a2=%s)" % \
