@@ -1,11 +1,74 @@
 import unittest
 
-from soap.program import flow
-from soap.semantics import ClassicalState, BoxState
 from akpytemp.utils import code_gobble
 
+from soap.program import (
+    flow, IdentityFlow, AssignFlow, IfFlow, WhileFlow, CompositionalFlow
+)
+from soap.expression import Expr, BoolExpr
+from soap.semantics import ClassicalState, BoxState
 
-class TestFlow(unittest.TestCase):
+
+class TestIdentityFlow(unittest.TestCase):
+    """Unittesting for :class:`soap.program.IdentityFlow`."""
+    def setUp(self):
+        self.flow = IdentityFlow()
+        self.state = BoxState(x=[1, 2])
+
+    def test_flow(self):
+        self.assertEqual(self.flow.flow(self.state), self.state)
+
+
+class TestAssignFlow(unittest.TestCase):
+    """Unittesting for :class:`soap.program.AssignFlow`."""
+    def setUp(self):
+        self.flow = AssignFlow('y', 'x')
+        self.expr_flow = AssignFlow('x', Expr('x + 1'))
+        self.state = BoxState(x=[1, 2])
+
+    def test_flow(self):
+        self.assertEqual(
+            self.flow.flow(self.state), BoxState(x=[1, 2], y=[1, 2]))
+        self.assertEqual(self.expr_flow.flow(self.state), BoxState(x=[2, 3]))
+
+
+class TestIfFlow(unittest.TestCase):
+    """Unittesting for :class:`soap.program.IfFlow`."""
+    def setUp(self):
+        self.flow = IfFlow(
+            BoolExpr('x < 2'),
+            AssignFlow('x', Expr('x + 1')),
+            AssignFlow('x', Expr('x - 1')))
+        self.state = BoxState(x=[1, 3])
+
+    def test_flow(self):
+        self.assertEqual(self.flow.flow(self.state), BoxState(x=[1, 2]))
+
+
+class TestWhileFlow(unittest.TestCase):
+    """Unittesting for :class:`soap.program.WhileFlow`."""
+    def setUp(self):
+        self.flow = WhileFlow(
+            BoolExpr('x < 3'), AssignFlow('x', Expr('x + 1')))
+        self.state = BoxState(x=[1, 4])
+
+    def test_flow(self):
+        self.assertEqual(self.flow.flow(self.state), BoxState(x=[3, 4]))
+
+
+class TestCompositionalFlow(unittest.TestCase):
+    """Unittesting for :class:`soap.program.CompositionalFlow`."""
+    def setUp(self):
+        self.flow = CompositionalFlow()
+        self.flow += AssignFlow('x', Expr('x + 1'))
+        self.flow += AssignFlow('x', Expr('x - 1'))
+        self.state = BoxState(x=[1, 4])
+
+    def test_flow(self):
+        self.assertEqual(self.flow.flow(self.state), self.state)
+
+
+class TestExampleFlow(unittest.TestCase):
     """Unittesting for :class:`soap.program.flow`."""
     def setUp(self):
         self.factorial = code_gobble(
@@ -53,7 +116,6 @@ class TestFlow(unittest.TestCase):
         print(flow(self.factorial).debug(BoxState(x=1, y='1.2')))
 
     def test_fixpoint_error_flow(self):
-        print(BoxState(x=[0.0, 9.0]))
         print(flow(self.fixpoint).debug(BoxState(x=[0.0, 9.0])))
 
     def test_newton_error_flow(self):
