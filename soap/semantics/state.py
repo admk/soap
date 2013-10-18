@@ -13,7 +13,7 @@ from soap.expression import (
 from soap.lattice import denotational, map
 from soap.semantics import (
     inf, ulp, cast, mpz_type, mpfr_type,
-    IntegerInterval, FloatInterval, FractionInterval, ErrorSemantics
+    IntegerInterval, FloatInterval, ErrorSemantics
 )
 
 
@@ -96,6 +96,35 @@ class State(object):
     def conditional(self, expr, cond):
         """Imposes a conditional on the state, returns a new state."""
         raise NotImplementedError
+
+    def is_fixpoint(self, other):
+        """Checks if `self` is equal to `other` in the value ranges.
+
+        For potential non-terminating loops, states are not the bottom element
+        in the evaluation of loop statements even if a fixpoint is reached.
+        This computation would result in a fixpoint of value ranges but
+        the resulting error terms are strictly greater. Consequently for
+        non-terminating loops the fixpoint for the error terms are always
+        [-inf, inf] = ⊤. To gain any useful information about the program we
+        wish to disregard the error terms and warn about non-termination.
+        """
+        if self.is_top() and other.is_top():
+            return True
+        if self.is_bottom() and other.is_bottom():
+            return True
+        non_bottom_keys = lambda d: set([k for k, v in d.items()
+                                         if not v.is_bottom()])
+        if non_bottom_keys(self) != non_bottom_keys(other):
+            return False
+        for k, v in self.items():
+            u = other[k]
+            if type(v) is not type(u):
+                return False
+            if isinstance(v, ErrorSemantics):
+                u, v = u.v, v.v
+            if u != v:
+                return False
+        return True
 
 
 def denotational_state(cls=None, name=None):

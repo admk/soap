@@ -37,7 +37,7 @@ class Flow(object):
         try:
             self.transition(state, env)
         except KeyboardInterrupt:
-            logger.warning('KeyboardInterrupt')
+            pass
         return color('{}\n'.format(state)) + self.format(env)
 
     def format(self, env=None):
@@ -192,12 +192,21 @@ class WhileFlow(SplitFlow):
 
     def transition(self, state, env):
         prev_state = false_state = state.__class__(bottom=True)
-        while state != prev_state:
-            prev_state = state
-            true_split, false_split = self._split(state)
-            false_state |= false_split
-            state = self.loop_flow.transition(true_split, env)
-            self._env_update(env, state, true_split, false_split)
+        try:
+            while not state.is_fixpoint(prev_state):
+                prev_state = state
+                true_split, false_split = self._split(state)
+                false_state |= false_split
+                state = self.loop_flow.transition(true_split, env)
+                self._env_update(env, state, true_split, false_split)
+        except KeyboardInterrupt:
+            logger.info('KeyboardInterrupt'.format(self))
+            raise
+        finally:
+            if not true_split.is_bottom():
+                logger.warning(
+                    'While loop "{}" may never terminate, '
+                    'analysis assumes it terminates'.format(self))
         return false_state
 
     def format(self, env=None):
