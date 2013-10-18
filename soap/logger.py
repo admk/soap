@@ -9,18 +9,8 @@ class levels():
 levels = levels()
 
 
-labels = ['debug', 'info', 'warning', 'error', 'off']
-for i, l in enumerate(labels):
+for i, l in enumerate(['debug', 'info', 'warning', 'error', 'off']):
     levels.__dict__[l] = i
-
-
-colors = {
-    levels.debug: '\033[94m',
-    levels.info: '\033[92m',
-    levels.warning: '\033[93m',
-    levels.error: '\033[91m',
-}
-colors_end = '\033[0m'
 
 
 context = {
@@ -41,6 +31,13 @@ def get_context():
 
 
 def color(s, l=levels.info):
+    colors = {
+        levels.debug: '\033[94m',
+        levels.info: '\033[92m',
+        levels.warning: '\033[93m',
+        levels.error: '\033[91m',
+    }
+    colors_end = '\033[0m'
     if not 'color' in os.environ['TERM']:
         return s
     if not get_context()['color']:
@@ -101,6 +98,14 @@ def unpersistent(*args):
         del p[n]
 
 
+@contextmanager
+def local_context(**kwargs):
+    ctx = dict(get_context())
+    set_context(**kwargs)
+    yield
+    set_context(**ctx)
+
+
 def log_level(l):
     def wrapper(f):
         def wrapped(*args, l=l):
@@ -119,23 +124,26 @@ def log_enable(l):
     return wrapper
 
 
-@contextmanager
-def local_context(**kwargs):
-    ctx = dict(get_context())
-    set_context(**kwargs)
-    yield
-    set_context(**ctx)
+def log_context(l):
+    def wrapper():
+        return local_context(level=l)
+    return wrapper
+
+
+def _init_level():
+    l = levels.warning
+    if '-v' in sys.argv:
+        l = levels.info
+    elif '-vv' in sys.argv:
+        l = levels.debug
+    set_context(level=l)
 
 
 labels = ['debug', 'info', 'warning', 'error', 'off']
 for i, l in enumerate(labels):
-    globals()[l] = log_level(i)(line)
-    globals()[l + '_enable'] = log_enable(i)
+    locals()[l] = log_level(i)(line)
+    locals()[l + '_enable'] = log_enable(i)
+    locals()[l + '_context'] = log_context(i)
 
 
-if __name__ == '__main__':
-    set_context(level=levels.debug)
-    info('Hello')
-    debug('Hello')
-    warning('Hello')
-    error('Hello')
+_init_level()

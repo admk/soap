@@ -1,17 +1,30 @@
 #!/usr/bin/env python3
+import sys
+
 import IPython
 
 import soap
 from soap import *
 
 
-p = pr = print
+def ps(*args):
+    args = [str(a) for a in args]
+    pr(*args)
 
-Int = IntegerInterval
-Float = FloatInterval
-Error = ErrorSemantics
-State = ClassicalState
-Box = BoxState
 
-shell = IPython.terminal.embed.InteractiveShellEmbed()
-shell()
+def pr(*args):
+    with soap.logger.info_context():
+        soap.logger.info(*args)
+
+
+I = Int = soap.semantics.IntegerInterval
+F = Float = soap.semantics.FloatInterval
+E = Error = soap.semantics.ErrorSemantics
+State = soap.semantics.ClassicalState
+S = Box = soap.semantics.BoxState
+
+
+if __name__ == '__main__':
+    cfg = IPython.config.loader.Config()
+    shell = IPython.terminal.embed.InteractiveShellEmbed(config=cfg)
+    shell()
