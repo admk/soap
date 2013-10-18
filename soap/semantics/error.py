@@ -318,6 +318,14 @@ class Interval(Lattice):
             return self
         return self.__class__([-self.max, -self.min])
 
+    @_decorate_operator
+    def widen(self, other, cls):
+        if cls is not None:
+            return cls(self).widen(cls(other))
+        min_val = -inf if other.min < self.min else self.min
+        max_val = inf if other.max > self.max else self.max
+        return self.__class__([min_val, max_val])
+
     def __str__(self):
         min_val = '-∞' if self.min == -inf else self.min
         max_val = '∞' if self.max == inf else self.max
@@ -485,6 +493,12 @@ class ErrorSemantics(Lattice):
         if self.is_top() or self.is_bottom():
             return self
         return self.__class__(-self.v, -self.e)
+
+    @_decorate_operator
+    def widen(self, other, cls):
+        if cls is not None:
+            return cls(self).widen(cls(other))
+        return self.__class__(self.v.widen(other.v), self.e | other.e)
 
     def __abs__(self):
         return self.v + self.e

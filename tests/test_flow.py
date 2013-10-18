@@ -85,7 +85,9 @@ class TestExampleFlow(unittest.TestCase):
         self.newton = code_gobble(
             """
             x0 = 0
-            while x >= x0:
+            i = 0
+            while x > x0:
+                i = i + 1
                 x0 = x
                 x = x / 2 + 1 / x
             """)

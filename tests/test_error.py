@@ -78,6 +78,12 @@ class TestInterval(unittest.TestCase):
         self.assertEqual(self.int14 & self.int34, self.int34)
         self.assertEqual(self.int14 & self.int29, FloatInterval([2, 4]))
 
+    def test_widen(self):
+        self.assertEqual(
+            self.int34.widen(self.int14), FloatInterval([-inf, 4]))
+        self.assertEqual(self.int14.widen(self.int34), self.int14)
+        self.assertEqual(self.int34.widen(self.int29), self.top)
+
 
 class ErrorAssertionTestCase(unittest.TestCase):
     def assertAlmostEqual(self, a, b):

@@ -7,7 +7,7 @@ from akpytemp.utils import code_gobble as _code_gobble
 
 from soap import logger
 from soap.common import Label
-from soap.semantics import Interval
+from soap.semantics import Interval, ClassicalState
 
 
 code_gobble = lambda s: _code_gobble(s).strip()
@@ -35,9 +35,9 @@ class Flow(object):
     def debug(self, state):
         env = {}
         try:
-            self.transition(state, env)
+            curr_state = self.transition(state, env)
         except KeyboardInterrupt:
-            pass
+            logger.info('KeyboardInterrupt: state={}'.format(curr_state))
         return color('{}\n'.format(state)) + self.format(env)
 
     def format(self, env=None):
@@ -185,28 +185,54 @@ class WhileFlow(SplitFlow):
 
     Makes use of :class:`IfFlow` to define conditional branching. Computes the
     fixpoint of the state object iteratively."""
-    def __init__(self, conditional_expr, loop_flow, label=None):
+    def __init__(self, conditional_expr, loop_flow,
+                 unroll_factor=50, widen_factor=100, label=None):
         super().__init__(label=label)
+        self.unroll_factor = unroll_factor
+        self.widen_factor = widen_factor
         self.conditional_expr = conditional_expr
         self.loop_flow = loop_flow
 
     def transition(self, state, env):
-        prev_state = false_state = state.__class__(bottom=True)
+        joinable = not isinstance(state, ClassicalState)
+        check_itr = lambda itr, target_itr: (
+            target_itr and itr % target_itr == 0)
+        join_itr = lambda itr: joinable and check_itr(itr, self.unroll_factor)
+        wide_itr = lambda itr: check_itr(itr, self.widen_factor)
+        iter_count = 0
+        prev_state = false_state = prev_join_state = \
+            state.__class__(bottom=True)
         try:
-            while not state.is_fixpoint(prev_state):
+            while True:
+                iter_count += 1
+                curr_join_state = state | prev_join_state
+                if join_itr(iter_count):
+                    # join all states in previous iterations
+                    logger.warning(
+                        'No loop unrolling at iteration {}'.format(iter_count))
+                    fixpoint = curr_join_state.is_fixpoint(prev_join_state)
+                else:
+                    fixpoint = state.is_fixpoint(prev_state)
                 prev_state = state
+                prev_join_state = curr_join_state
+                if fixpoint:
+                    break
                 true_split, false_split = self._split(state)
                 false_state |= false_split
                 state = self.loop_flow.transition(true_split, env)
                 self._env_update(env, state, true_split, false_split)
+                if wide_itr(iter_count):
+                    logger.warning(
+                        'Widening at iteration {}'.format(iter_count))
+                    state = prev_state.widen(state)
         except KeyboardInterrupt:
-            logger.info('KeyboardInterrupt'.format(self))
-            raise
+            pass
         finally:
             if not true_split.is_bottom():
                 logger.warning(
-                    'While loop "{}" may never terminate, '
-                    'analysis assumes it terminates'.format(self))
+                    'While loop "{flow}" may never terminate with state '
+                    '{state}, analysis assumes it always terminates'.format(
+                    flow=self, state=true_split))
         return false_state
 
     def format(self, env=None):

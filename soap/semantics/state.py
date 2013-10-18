@@ -126,6 +126,22 @@ class State(object):
                 return False
         return True
 
+    def widen(self, other):
+        """Simple widening operator, jumps to infinity if interval widens.
+
+        self.widen(other) => self ∇ other
+        """
+        if self.is_top() or other.is_bottom():
+            return self
+        if self.is_bottom() or other.is_top():
+            return other
+        mapping = dict(self)
+        for k, v in other.items():
+            if k not in mapping:
+                mapping[k] = v
+            else:
+                mapping[k] = mapping[k].widen(v)
+        return self.__class__(mapping)
 
 def denotational_state(cls=None, name=None):
     class DenotationalState(State, map(str, denotational(cls))):
