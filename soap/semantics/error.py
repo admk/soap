@@ -71,10 +71,6 @@ def ulp(v, underflow=True):
       2. abrupt underflow -> 2 ** (1 - offset)
           add 2 ** (1 - offset) overestimation to ulp.
 
-    Forget gradual underflow, I found out that ``mpfr`` does not support
-    gradual underflow in arithmetic operations. See version 3.1.2 source
-    ``src/mul.c:144``.
-
     :param v: The value.
     :type v: any gmpy2 values
     """
@@ -258,6 +254,14 @@ class Interval(Lattice):
 
     def __contains__(self, v):
         return self.min <= v <= self.max
+
+    def __getitem__(self, key):
+        try:
+            k_min, k_max = key
+        except (TypeError, ValueError):
+            raise KeyError('Do not know how to produce the error interval '
+                           'from {}'.format(key))
+        return ErrorSemantics(self, [k_min, k_max])
 
     @_decorate_operator
     def __add__(self, other, cls):
@@ -502,6 +506,14 @@ class ErrorSemantics(Lattice):
 
     def __abs__(self):
         return self.v + self.e
+
+    def __getitem__(self, key):
+        try:
+            k_min, k_max = key
+        except (TypeError, ValueError):
+            raise KeyError('Do not know how to produce the error interval '
+                           'from {}'.format(key))
+        return ErrorSemantics(self.v, [k_min, k_max])
 
     def __str__(self):
         return '%s%s' % (self.v, self.e)

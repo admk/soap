@@ -12,7 +12,7 @@ from soap.expression import Expr, BoolExpr
 from soap.program import flow
 from soap.semantics import (
     IntegerInterval, FloatInterval, FractionInterval, ErrorSemantics,
-    mpz, mpq, mpfr, mpz_type, mpq_type, mpfr_type, inf, ulp,
+    mpz, mpq, mpfr, mpz_type, mpq_type, mpfr_type, inf, ulp, cast,
     ClassicalState, BoxState,
 )
 from soap.transformer import (

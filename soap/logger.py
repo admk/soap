@@ -32,7 +32,7 @@ def get_context():
 
 def color(s, l=levels.info):
     colors = {
-        levels.debug: '\033[94m',
+        levels.debug: '\033[90m',
         levels.info: '\033[92m',
         levels.warning: '\033[93m',
         levels.error: '\033[91m',
