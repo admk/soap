@@ -23,4 +23,6 @@ S = Box = soap.semantics.BoxState
 
 if __name__ == '__main__':
     from soap.shell import Shell, trace
-    Shell()()
+    from soap import logger
+    with logger.info_context():
+        Shell()()

@@ -32,9 +32,16 @@ def _local_variables():
 def __flow(flow, vars):
     flow, vars = pickle.loads(flow), pickle.loads(vars)
     locs = _local_variables()
-    new_vars = flow.flow(vars)
+    new_vars, debug_str = flow.flow_debug(vars)
     for k in vars:
         locs[k] = new_vars[k]
+    for k in new_vars:
+        if k not in vars:
+            locs[k] = new_vars[k]
+    logger.info('--------------------------------------'
+                '-------------------------------------')
+    with logger.local_context(color=False):
+        logger.info(debug_str)
 builtins.__flow = __flow
 
 
@@ -95,10 +102,10 @@ class TraceTransformer(IPythonNodeTransformer):
                         for b in node.body]
         except AttributeError:
             pass
-        node = ast.With(
+        with_node = ast.With(
             body=[self.generic_visit(b) for b in node.body],
             items=[self.generic_visit(i) for i in node.items])
-        return ast.copy_location(node)
+        return ast.copy_location(with_node, node)
 
 
 class CastTransformer(IPythonNodeTransformer):
@@ -110,38 +117,59 @@ class CastTransformer(IPythonNodeTransformer):
 
 class FlowTransformer(IPythonNodeTransformer):
     class VariableVisitor(ast.NodeVisitor):
-        def __init__(self):
+        def __init__(self, magics_only=True):
+            self.magics_only = magics_only
             self.vars = {}
             self.locals = _local_variables()
 
         def visit_Name(self, node):
             v = self.locals.get(node.id, None)
-            if not isinstance(v, (Interval, ErrorSemantics)):
-                return
-            self.vars[node.id] = v
+            if self.magics_only:
+                if not isinstance(v, (Interval, ErrorSemantics)):
+                    return
+            if v is None:
+                v = Interval(bottom=True)
+            self.locals[node.id] = v
 
         def visit(self, node):
             super().visit(node)
             return self.vars
 
+    def _transform_node_to_flow(self, node):
+        vars = {}
+        for n in node:
+            vars.update(self.VariableVisitor(magics_only=False).visit(n))
+        return ast.parse('__flow({!r}, {!r})'.format(
+            pickle.dumps(ast_to_flow(node, self.shell.raw_cell)),
+            pickle.dumps(BoxState(vars)))).body[0]
+
     def visit_control_structure(self, node):
         # collect variables in conditions
-        cond_vars = self.VariableVisitor().visit(node.test)
+        cond_vars = self.VariableVisitor(magics_only=True).visit(node.test)
         # no magics in condition, usual python execution
         if not cond_vars:
             return node
-        # magical stuff, execute with soap.program.flow
-        vars = self.VariableVisitor().visit(node)
-        flow_node = ast.parse('__flow({!r}, {!r})'.format(
-            pickle.dumps(ast_to_flow([node], self.shell.raw_cell)),
-            pickle.dumps(BoxState(vars)))).body[0]
-        return ast.copy_location(flow_node, node)
+        # magical stuff in condition, execute with soap.program.flow
+        return ast.copy_location(self._transform_node_to_flow([node]), node)
 
     def visit_If(self, node):
         return self.visit_control_structure(node)
 
     def visit_While(self, node):
         return self.visit_control_structure(node)
+
+    def visit_With(self, node):
+        try:
+            name = node.items[0].context_expr.id
+        except AttributeError:
+            name = None
+        if name == 'flow':
+            flow_node = self._transform_node_to_flow(node.body)
+            return ast.copy_location(flow_node, node)
+        with_node = ast.With(
+            body=[self.generic_visit(b) for b in node.body],
+            items=[self.generic_visit(i) for i in node.items])
+        return ast.copy_location(with_node, node)
 
 
 builtins.__flow_dict = {}

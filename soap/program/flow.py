@@ -7,7 +7,7 @@ from akpytemp.utils import code_gobble as _code_gobble
 
 from soap import logger
 from soap.common import Label
-from soap.semantics import Interval, ClassicalState
+from soap.semantics import Interval, ClassicalState, BoxState
 
 
 code_gobble = lambda s: _code_gobble(s).strip()
@@ -29,16 +29,16 @@ class Flow(object):
     def __init__(self, label=None):
         self.label = label or Label()
 
-    def flow(self, state):
+    def flow(self, state=BoxState()):
         return self.transition(state, None)
 
-    def debug(self, state):
+    def flow_debug(self, state):
         env = {}
-        try:
-            curr_state = self.transition(state, env)
-        except KeyboardInterrupt:
-            logger.info('KeyboardInterrupt: state={}'.format(curr_state))
-        return color('{}\n'.format(state)) + self.format(env)
+        curr_state = self.transition(state, env)
+        return curr_state, color('{}\n'.format(state)) + self.format(env)
+
+    def debug(self, state=BoxState()):
+        return self.flow_debug(state)[1]
 
     def format(self, env=None):
         raise NotImplementedError
@@ -232,7 +232,7 @@ class WhileFlow(SplitFlow):
                 logger.warning(
                     'While loop "{flow}" may never terminate with state '
                     '{state}, analysis assumes it always terminates'.format(
-                    flow=self, state=true_split))
+                        flow=self, state=true_split))
         return false_state
 
     def format(self, env=None):

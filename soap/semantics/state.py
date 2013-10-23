@@ -81,6 +81,8 @@ class State(object):
             return expr.eval(self)
         except AttributeError:  # expr is a string with a constant or variable
             pass
+        if isinstance(expr, (IntegerInterval, FloatInterval, ErrorSemantics)):
+            return expr
         try:
             float(expr)
             return expr

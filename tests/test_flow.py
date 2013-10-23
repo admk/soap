@@ -79,11 +79,13 @@ class TestExampleFlow(unittest.TestCase):
             """)
         self.fixpoint = code_gobble(
             """
+            x = [0.0, 9.0]
             while x > 1:
                 x = 0.9 * x
             """)
         self.newton = code_gobble(
             """
+            x = [1.3, 1.4]
             x0 = 0
             i = 0
             while x > x0:
@@ -117,7 +119,7 @@ class TestExampleFlow(unittest.TestCase):
         print(flow(self.factorial).debug(BoxState(x=1, y='1.2')))
 
     def test_fixpoint_error_flow(self):
-        print(flow(self.fixpoint).debug(BoxState(x=[0.0, 9.0])))
+        print(flow(self.fixpoint).debug())
 
     def test_newton_error_flow(self):
-        print(flow(self.newton).debug(BoxState(x=[1.3, 1.4])))
+        print(flow(self.newton).debug())

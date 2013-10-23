@@ -47,6 +47,7 @@ def raise_parser_error(desc, text, token):
 def ast_to_expr(t, s):
     from soap.expression.arithmetic import Expr
     from soap.expression.boolean import BoolExpr
+    from soap.semantics.error import cast
     with ignored(AttributeError):
         v = t.n
         if isinstance(v, int):
@@ -58,7 +59,10 @@ def ast_to_expr(t, s):
     with ignored(AttributeError):
         return t.s
     with ignored(AttributeError):
-        return tuple(ast_to_expr(v, s) for v in t.elts)
+        t = tuple(ast_to_expr(v, s) for v in t.elts)
+        if len(t) == 2:
+            t = cast(t)
+        return t
     with ignored(AttributeError):
         op = OPERATOR_MAP[t.ops.pop().__class__]
         a1 = ast_to_expr(t.left, s)
