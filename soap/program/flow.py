@@ -228,11 +228,14 @@ class WhileFlow(SplitFlow):
         except KeyboardInterrupt:
             pass
         finally:
-            if not true_split.is_bottom():
-                logger.warning(
-                    'While loop "{flow}" may never terminate with state '
-                    '{state}, analysis assumes it always terminates'.format(
-                        flow=self, state=true_split))
+            try:
+                if not true_split.is_bottom():
+                    logger.warning(
+                        'While loop "{flow}" may never terminate with state'
+                        '{state}, analysis assumes it always terminates'
+                        ''.format(flow=self, state=true_split))
+            except AttributeError:
+                pass
         return false_state
 
     def format(self, env=None):
