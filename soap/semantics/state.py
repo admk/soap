@@ -107,29 +107,6 @@ class State(object):
         return self | other
 
 
-def denotational_state(cls=None, name=None):
-    class DenotationalState(State, map(str, denotational(cls))):
-        pass
-    if name:
-        DenotationalState.__name__ = name
-    elif cls:
-        DenotationalState.__name__ += cls.__name__
-    return DenotationalState
-
-
-class ClassicalState(denotational_state()):
-    """The classical definition of a program state.
-
-    This is intended to layout the foundation of future state classes,
-    as well as to verify correctness of the program flows defined in
-    :module:`soap.program.flow`.
-    """
-    def conditional(self, expr, cond):
-        if expr.eval(self) == cond:
-            return self
-        return self.__class__(bottom=True)
-
-
 _negate_dict = {
     LESS_OP: GREATER_EQUAL_OP,
     LESS_EQUAL_OP: GREATER_OP,

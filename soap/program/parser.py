@@ -31,7 +31,8 @@ def ast_to_flow(prog_ast, prog_str):
         elif isinstance(stmt, ast.Pass):
             flow += IdentityFlow()
         else:
-            raise_parser_error('Unknown statement', prog_str, stmt)
+            raise_parser_error(
+                'Unknown statement {}'.format(stmt), prog_str, stmt)
     return flow
 
 

@@ -7,7 +7,7 @@ from akpytemp.utils import code_gobble as _code_gobble
 
 from soap import logger
 from soap.common import Label
-from soap.semantics import Interval, ClassicalState, BoxState
+from soap.semantics import Interval, BoxState
 
 
 code_gobble = lambda s: _code_gobble(s).strip()
@@ -194,11 +194,8 @@ class WhileFlow(SplitFlow):
         self.loop_flow = loop_flow
 
     def transition(self, state, env):
-        joinable = not isinstance(state, ClassicalState)
         check_itr = lambda itr, target_itr: (
             target_itr and itr % target_itr == 0)
-        join_itr = lambda itr: joinable and check_itr(itr, self.unroll_factor)
-        wide_itr = lambda itr: check_itr(itr, self.widen_factor)
         iter_count = 0
         prev_state = true_split = false_state = prev_join_state = \
             state.__class__(bottom=True)
@@ -208,7 +205,7 @@ class WhileFlow(SplitFlow):
                 logger.persistent('Iteration', iter_count)
                 # Fixpoint test
                 curr_join_state = state | prev_join_state
-                if join_itr(iter_count):
+                if check_itr(iter_count, self.unroll_factor):
                     # join all states in previous iterations
                     logger.persistent(
                         'No unroll', iter_count, l=logger.levels.info)
@@ -226,7 +223,7 @@ class WhileFlow(SplitFlow):
                 # Comes before widening to ensure preciseness?
                 self._env_update(env, state, true_split, false_split)
                 # Widening
-                if wide_itr(iter_count):
+                if check_itr(iter_count, self.widen_factor):
                     logger.persistent(
                         'Widening', iter_count, l=logger.levels.info)
                     state = prev_state.widen(state)

@@ -6,7 +6,7 @@ from soap.program import (
     flow, IdentityFlow, AssignFlow, IfFlow, WhileFlow, CompositionalFlow
 )
 from soap.expression import Expr, BoolExpr
-from soap.semantics import ClassicalState, BoxState
+from soap.semantics import BoxState
 
 
 class TestIdentityFlow(unittest.TestCase):
@@ -93,21 +93,6 @@ class TestExampleFlow(unittest.TestCase):
                 x0 = x
                 x = x / 2 + 1 / x
             """)
-
-    def exec(self, prog, cls, env):
-        exec_env = dict(env)
-        exec(prog, exec_env)
-        return cls({k: v for k, v in exec_env.items() if k in env})
-
-    def analyze(self, prog, cls, env):
-        exec_env = self.exec(prog, cls, env)
-        flow_env = flow(prog).flow(cls(env))
-        return flow_env, exec_env
-
-    def test_classical_state_flow(self):
-        flow_env, exec_env = self.analyze(
-            self.factorial, ClassicalState, {'x': 1, 'y': 1})
-        self.assertEqual(flow_env, exec_env)
 
     def test_interval_flow(self):
         env = BoxState(x=[0, 5], y=[0, 2])

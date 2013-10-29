@@ -5,4 +5,4 @@ from soap.semantics.error import (
     inf, ulp, round_off_error, cast, cast_error, cast_error_constant
 )
 from soap.semantics.area import AreaSemantics
-from soap.semantics.state import ClassicalState, BoxState
+from soap.semantics.state import BoxState

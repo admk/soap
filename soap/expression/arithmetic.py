@@ -57,13 +57,13 @@ class Expr(Comparable, Flyweight):
             else:
                 al = kwargs.setdefault('al') or [kwargs.setdefault('a')]
         elif len(args) == 1:
-            expr = list(args).pop()
+            e = list(args).pop()
             try:
-                op, al = expr.op, expr.args
+                op, al = e.op, e.args
             except AttributeError:
-                expr = parse(expr)
+                e = parse(e)
             try:
-                op, al = expr.op, expr.args
+                op, al = e.op, e.args
             except AttributeError:
                 raise ValueError('String is not an expression')
         elif len(args) == 2:
