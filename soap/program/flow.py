@@ -200,16 +200,18 @@ class WhileFlow(SplitFlow):
         join_itr = lambda itr: joinable and check_itr(itr, self.unroll_factor)
         wide_itr = lambda itr: check_itr(itr, self.widen_factor)
         iter_count = 0
-        prev_state = false_state = prev_join_state = \
+        prev_state = true_split = false_state = prev_join_state = \
             state.__class__(bottom=True)
-        try:
-            while True:
+        while True:
+            try:
                 iter_count += 1
+                logger.persistent('Iteration', iter_count)
+                # Fixpoint test
                 curr_join_state = state | prev_join_state
                 if join_itr(iter_count):
                     # join all states in previous iterations
-                    logger.warning(
-                        'No loop unrolling at iteration {}'.format(iter_count))
+                    logger.persistent(
+                        'No unroll', iter_count, l=logger.levels.info)
                     fixpoint = curr_join_state.is_fixpoint(prev_join_state)
                 else:
                     fixpoint = state.is_fixpoint(prev_state)
@@ -217,25 +219,25 @@ class WhileFlow(SplitFlow):
                 prev_join_state = curr_join_state
                 if fixpoint:
                     break
+                # Control and data flow
                 true_split, false_split = self._split(state)
                 false_state |= false_split
                 state = self.loop_flow.transition(true_split, env)
+                # Comes before widening to ensure preciseness?
                 self._env_update(env, state, true_split, false_split)
+                # Widening
                 if wide_itr(iter_count):
-                    logger.warning(
-                        'Widening at iteration {}'.format(iter_count))
+                    logger.persistent(
+                        'Widening', iter_count, l=logger.levels.info)
                     state = prev_state.widen(state)
-        except KeyboardInterrupt:
-            pass
-        finally:
-            try:
-                if not true_split.is_bottom():
-                    logger.warning(
-                        'While loop "{flow}" may never terminate with state'
-                        '{state}, analysis assumes it always terminates'
-                        ''.format(flow=self, state=true_split))
-            except AttributeError:
-                pass
+            except KeyboardInterrupt:
+                break
+        logger.unpersistent('Interation', 'No unroll', 'Widening')
+        if not true_split.is_bottom():
+            logger.warning(
+                'While loop "{flow}" may never terminate with state '
+                '{state}, analysis assumes it always terminates'
+                ''.format(flow=self, state=true_split))
         return false_state
 
     def format(self, env=None):

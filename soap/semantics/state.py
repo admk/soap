@@ -68,8 +68,7 @@ def _decorate(cls):
 class State(object):
     """Program state.
 
-    This provides the base class of all denotational semantics-based state
-    objects.
+    This provides the base class of all semantics-based state objects.
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -100,50 +99,13 @@ class State(object):
         raise NotImplementedError
 
     def is_fixpoint(self, other):
-        """Checks if `self` is equal to `other` in the value ranges.
-
-        For potential non-terminating loops, states are not the bottom element
-        in the evaluation of loop statements even if a fixpoint is reached.
-        This computation would result in a fixpoint of value ranges but
-        the resulting error terms are strictly greater. Consequently for
-        non-terminating loops the fixpoint for the error terms are always
-        [-inf, inf] = ⊤. To gain any useful information about the program we
-        wish to disregard the error terms and warn about non-termination.
-        """
-        if self.is_top() and other.is_top():
-            return True
-        if self.is_bottom() and other.is_bottom():
-            return True
-        non_bottom_keys = lambda d: set([k for k, v in d.items()
-                                         if not v.is_bottom()])
-        if non_bottom_keys(self) != non_bottom_keys(other):
-            return False
-        for k, v in self.items():
-            u = other[k]
-            if type(v) is not type(u):
-                return False
-            if isinstance(v, ErrorSemantics):
-                u, v = u.v, v.v
-            if u != v:
-                return False
-        return True
+        """Fixpoint test, defaults to equality."""
+        return self == other
 
     def widen(self, other):
-        """Simple widening operator, jumps to infinity if interval widens.
+        """Widening, defaults to least upper bound (i.e. join)."""
+        return self | other
 
-        self.widen(other) => self ∇ other
-        """
-        if self.is_top() or other.is_bottom():
-            return self
-        if self.is_bottom() or other.is_top():
-            return other
-        mapping = dict(self)
-        for k, v in other.items():
-            if k not in mapping:
-                mapping[k] = v
-            else:
-                mapping[k] = mapping[k].widen(v)
-        return self.__class__(mapping)
 
 def denotational_state(cls=None, name=None):
     class DenotationalState(State, map(str, denotational(cls))):
@@ -252,3 +214,49 @@ class BoxState(State, map(str, (IntegerInterval, ErrorSemantics))):
             *bottom* to denote an unreachable state."""
             return self.__class__(bottom=True)
         return self.__class__(self, **{expr.a1: cstr})
+
+    def is_fixpoint(self, other):
+        """Checks if `self` is equal to `other` in the value ranges.
+
+        For potential non-terminating loops, states are not the bottom element
+        in the evaluation of loop statements even if a fixpoint is reached.
+        This computation would result in a fixpoint of value ranges but
+        the resulting error terms are strictly greater. Consequently for
+        non-terminating loops the fixpoint for the error terms are always
+        [-inf, inf] = ⊤. To gain any useful information about the program we
+        wish to disregard the error terms and warn about non-termination.
+        """
+        if self.is_top() and other.is_top():
+            return True
+        if self.is_bottom() and other.is_bottom():
+            return True
+        non_bottom_keys = lambda d: set([k for k, v in d.items()
+                                         if not v.is_bottom()])
+        if non_bottom_keys(self) != non_bottom_keys(other):
+            return False
+        for k, v in self.items():
+            u = other[k]
+            if type(v) is not type(u):
+                return False
+            if isinstance(v, ErrorSemantics):
+                u, v = u.v, v.v
+            if u != v:
+                return False
+        return True
+
+    def widen(self, other):
+        """Simple widening operator, jumps to infinity if interval widens.
+
+        self.widen(other) => self ∇ other
+        """
+        if self.is_top() or other.is_bottom():
+            return self
+        if self.is_bottom() or other.is_top():
+            return other
+        mapping = dict(self)
+        for k, v in other.items():
+            if k not in mapping:
+                mapping[k] = v
+            else:
+                mapping[k] = mapping[k].widen(v)
+        return self.__class__(mapping)

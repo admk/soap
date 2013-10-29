@@ -5,7 +5,7 @@
 import ast
 
 from soap.common import ignored
-from soap.semantics import mpz, mpfr, mpq
+from soap.semantics import mpz, mpfr
 from soap.expression.common import (
     ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP,
     EQUAL_OP, NOT_EQUAL_OP, GREATER_OP, LESS_OP, GREATER_EQUAL_OP,
@@ -48,22 +48,22 @@ def ast_to_expr(t, s):
     from soap.expression.arithmetic import Expr
     from soap.expression.boolean import BoolExpr
     from soap.semantics.error import cast
-    with ignored(AttributeError):
+    with ignored(AttributeError):  # constant
         v = t.n
         if isinstance(v, int):
             return mpz(v)
         if isinstance(v, float):
             return mpfr(v)
-    with ignored(AttributeError):
+    with ignored(AttributeError):  # variable
         return t.id
-    with ignored(AttributeError):
+    with ignored(AttributeError):  # string
         return t.s
-    with ignored(AttributeError):
+    with ignored(AttributeError):  # list
         t = tuple(ast_to_expr(v, s) for v in t.elts)
         if len(t) == 2:
             t = cast(t)
         return t
-    with ignored(AttributeError):
+    with ignored(AttributeError):  # comparisons
         op = OPERATOR_MAP[t.ops.pop().__class__]
         a1 = ast_to_expr(t.left, s)
         a2 = ast_to_expr(t.comparators.pop(), s)
@@ -74,17 +74,12 @@ def ast_to_expr(t, s):
         return BoolExpr(op, a1, a2)
     try:
         op = OPERATOR_MAP[t.op.__class__]
-        try:
+        try:  # unary
             a1 = ast_to_expr(t.operand, s)
             a2 = None
-        except AttributeError:
+        except AttributeError:  # binary
             a1 = ast_to_expr(t.left, s)
             a2 = ast_to_expr(t.right, s)
-        if op == DIVIDE_OP:
-            try:
-                return mpq(a1, a2)
-            except TypeError:
-                pass
         cls = BoolExpr if op in BOOLEAN_OPERATORS else Expr
         return cls(op, a1, a2)
     except KeyError:
