@@ -18,6 +18,11 @@ def _lattice_factory(cls, lattice_cls, name):
         def _cast_value(self, v=None, top=False, bottom=False):
             if cls is None:
                 return v
+            if isinstance(v, str):
+                if v == 'top':
+                    top = True
+                elif v == 'bottom':
+                    bottom = True
             if top or bottom:
                 if is_class:
                     return cls(top=top, bottom=bottom)

@@ -5,7 +5,6 @@
 import ast
 
 from soap.common import ignored
-from soap.semantics import mpz, mpfr
 from soap.expression.common import (
     ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP,
     EQUAL_OP, NOT_EQUAL_OP, GREATER_OP, LESS_OP, GREATER_EQUAL_OP,
@@ -45,9 +44,10 @@ def raise_parser_error(desc, text, token):
 
 
 def ast_to_expr(t, s):
+    from soap.expression.variable import Var
     from soap.expression.arithmetic import Expr
     from soap.expression.boolean import BoolExpr
-    from soap.semantics.error import cast
+    from soap.semantics.error import cast, mpz, mpfr
     with ignored(AttributeError):  # constant
         v = t.n
         if isinstance(v, int):
@@ -55,7 +55,7 @@ def ast_to_expr(t, s):
         if isinstance(v, float):
             return mpfr(v)
     with ignored(AttributeError):  # variable
-        return t.id
+        return Var(t.id)
     with ignored(AttributeError):  # string
         return t.s
     with ignored(AttributeError):  # list

@@ -5,7 +5,7 @@ from akpytemp.utils import code_gobble
 from soap.program import (
     flow, IdentityFlow, AssignFlow, IfFlow, WhileFlow, CompositionalFlow
 )
-from soap.expression import Expr, BoolExpr
+from soap.expression import expr
 from soap.semantics import BoxState
 
 
@@ -22,8 +22,8 @@ class TestIdentityFlow(unittest.TestCase):
 class TestAssignFlow(unittest.TestCase):
     """Unittesting for :class:`soap.program.AssignFlow`."""
     def setUp(self):
-        self.flow = AssignFlow('y', 'x')
-        self.expr_flow = AssignFlow('x', Expr('x + 1'))
+        self.flow = AssignFlow(expr('y'), expr('x'))
+        self.expr_flow = AssignFlow(expr('x'), expr('x + 1'))
         self.state = BoxState(x=[1, 2])
 
     def test_flow(self):
@@ -36,9 +36,9 @@ class TestIfFlow(unittest.TestCase):
     """Unittesting for :class:`soap.program.IfFlow`."""
     def setUp(self):
         self.flow = IfFlow(
-            BoolExpr('x < 2'),
-            AssignFlow('x', Expr('x + 1')),
-            AssignFlow('x', Expr('x - 1')))
+            expr('x < 2'),
+            AssignFlow('x', expr('x + 1')),
+            AssignFlow('x', expr('x - 1')))
         self.state = BoxState(x=[1, 3])
 
     def test_flow(self):
@@ -49,7 +49,7 @@ class TestWhileFlow(unittest.TestCase):
     """Unittesting for :class:`soap.program.WhileFlow`."""
     def setUp(self):
         self.flow = WhileFlow(
-            BoolExpr('x < 3'), AssignFlow('x', Expr('x + 1')))
+            expr('x < 3'), AssignFlow('x', expr('x + 1')))
         self.state = BoxState(x=[1, 4])
 
     def test_flow(self):
@@ -60,8 +60,8 @@ class TestCompositionalFlow(unittest.TestCase):
     """Unittesting for :class:`soap.program.CompositionalFlow`."""
     def setUp(self):
         self.flow = CompositionalFlow()
-        self.flow += AssignFlow('x', Expr('x + 1'))
-        self.flow += AssignFlow('x', Expr('x - 1'))
+        self.flow += AssignFlow('x', expr('x + 1'))
+        self.flow += AssignFlow('x', expr('x - 1'))
         self.state = BoxState(x=[1, 4])
 
     def test_flow(self):

@@ -4,17 +4,16 @@
 """
 from functools import wraps
 
-from soap import logger
-
 from soap.expression import (
     LESS_OP, GREATER_OP, LESS_EQUAL_OP, GREATER_EQUAL_OP,
-    EQUAL_OP, NOT_EQUAL_OP
+    EQUAL_OP, NOT_EQUAL_OP, Expr, Var
 )
-from soap.lattice import denotational, map
+from soap.lattice import map
 from soap.semantics import (
     inf, ulp, cast, mpz_type, mpfr_type,
     IntegerInterval, FloatInterval, ErrorSemantics
 )
+from soap import logger
 
 
 def _decorate(cls):
@@ -76,17 +75,15 @@ class State(object):
 
     def eval(self, expr):
         """Evaluates an expression with state's mapping."""
-        try:
+        if isinstance(expr, Var):
+            return self[expr]
+        if isinstance(expr, Expr):
             return expr.eval(self)
-        except AttributeError:  # expr is a string with a constant or variable
-            pass
         if isinstance(expr, (IntegerInterval, FloatInterval, ErrorSemantics)):
             return expr
-        try:
-            float(expr)
+        if isinstance(expr, (mpz_type, mpfr_type)):
             return expr
-        except (ValueError, TypeError):  # not a constant, must be a variable
-            return self[expr]
+        raise TypeError('Do not know how to evaluate {!r}'.format(expr))
 
     def assign(self, var, expr):
         """Makes an assignment and returns a new state object."""
@@ -117,7 +114,7 @@ _negate_dict = {
 }
 
 
-class BoxState(State, map(str, (IntegerInterval, ErrorSemantics))):
+class BoxState(State, map(Var, (IntegerInterval, ErrorSemantics))):
     """The program analysis domain object based on intervals and error
     semantics.
 
@@ -190,7 +187,9 @@ class BoxState(State, map(str, (IntegerInterval, ErrorSemantics))):
             variable satisfies the constraint condition, it is safe to return
             *bottom* to denote an unreachable state."""
             return self.__class__(bottom=True)
-        return self.__class__(self, **{expr.a1: cstr})
+        cstr_env = self.__class__(self)
+        cstr_env[expr.a1] = cstr
+        return cstr_env
 
     def is_fixpoint(self, other):
         """Checks if `self` is equal to `other` in the value ranges.
