@@ -2,7 +2,7 @@
 .. module:: soap.expression.arithmetic
     :synopsis: The class of expressions.
 """
-from soap.common import Comparable, Flyweight, cached, ignored
+from soap.common import Comparable, Flyweight, cached
 from soap.expression.common import (
     ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, UNARY_SUBTRACT_OP,
     LESS_OP, LESS_EQUAL_OP, EQUAL_OP, GREATER_EQUAL_OP, GREATER_OP,
@@ -119,6 +119,7 @@ class Expr(Comparable, Flyweight):
             single precision.
         :type prec: int
         """
+        # FIXME regression: integer intervals won't produce errors.
         from soap.semantics import precision_context, BoxState
         with precision_context(prec):
             return self.eval(BoxState(var_env))
@@ -137,8 +138,12 @@ class Expr(Comparable, Flyweight):
             return var_env[a]
 
         if self.is_unary():
-            return _unary_op_func_dict[self.op](eval_arg(self.a1))
-        return _binary_op_func_dict[self.op](*(eval_arg(a) for a in self.args))
+            op_func = _unary_op_func_dict[self.op]
+            args = [eval_arg(self.a1)]
+        else:
+            op_func = _binary_op_func_dict[self.op]
+            args = list(eval_arg(a) for a in self.args)
+        return op_func(*args)
 
     def exponent_width(self, var_env, prec):
         """Computes the exponent width required for its evaluation so that no

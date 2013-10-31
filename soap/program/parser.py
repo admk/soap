@@ -17,7 +17,7 @@ def ast_to_flow(prog_ast, prog_str):
     for stmt in prog_ast:
         if isinstance(stmt, ast.Assign):
             flow += AssignFlow(
-                stmt.targets.pop().id,
+                ast_to_expr(stmt.targets.pop(), prog_str),
                 ast_to_expr(stmt.value, prog_str))
         elif isinstance(stmt, ast.If):
             flow += IfFlow(
