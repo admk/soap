@@ -126,7 +126,13 @@ class Expr(Comparable, Flyweight):
             return self.eval(BoxState(var_env))
 
     def eval(self, var_env=None, **kwargs):
-        """Simple expression evaluation hack."""
+        """Recursively evaluates expression using var_env.
+
+        :param var_env: Mapping from variables to values
+        :type var_env: Mapping from variables to arbitrary value instances
+        :param kwargs: Things to extend our mapping
+        :returns: Evaluation result
+        """
         from soap.semantics import mpz_type, mpfr_type, mpq_type, Interval
 
         var_env = var_env.__class__(var_env, **kwargs)
