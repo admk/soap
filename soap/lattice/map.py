@@ -10,16 +10,15 @@ class MapLattice(Lattice, dict):
     """Defines a lattice for mappings/functions."""
     def __init__(self, mapping=None, top=False, bottom=False, **kwargs):
         super().__init__(top=top, bottom=bottom)
-        self.update(mapping or {}, **kwargs)
-        for k, v in list(self.items()):
-            if type(v) is str:
-                if v == 'bottom':
-                    del self[k]
-                    continue
-                if v == 'top':
-                    self[k] = self._cast_value(top=True)
-                    continue
-            self[k] = self._cast_value(v)
+        d = dict(mapping or {}, **kwargs)
+        for k, v in d.items():
+            k = self._cast_key(k)
+            v = self._cast_value(v)
+            if not v.is_bottom():
+                self[k] = v
+
+    def _cast_key(self, k):
+        raise NotImplementedError
 
     def _cast_value(self, v=None, top=False, bottom=False):
         raise NotImplementedError
@@ -64,6 +63,11 @@ class MapLattice(Lattice, dict):
             return super().__getitem__(key)
         return self._cast_value(bottom=True)
 
+    def __setitem__(self, key, value):
+        key = self._cast_key(key)
+        value = self._cast_value(value)
+        super().__setitem__(key, value)
+
     def __str__(self):
         return '{%s}' % ', '.join(
             str(k) + '↦' + str(v) for k, v in self.items())
@@ -81,10 +85,16 @@ def map(from_cls, to_lattice, name=None):
     :param to_lattice: The range of the function, must be a lattice.
     :type name: :class:`soap.lattice.Lattice`
     """
+    def cast_key(self, key):
+        if isinstance(key, from_cls):
+            return key
+        return from_cls(key)
     if not name:
         try:
             to_lattice_name = to_lattice.__name__
         except AttributeError:
             to_lattice_name = type(to_lattice).__name__
         name = 'MapLattice_%s_to_%s' % (from_cls.__name__, to_lattice_name)
-    return _lattice_factory(to_lattice, MapLattice, name)
+    cls = _lattice_factory(to_lattice, MapLattice, name)
+    cls._cast_key = cast_key
+    return cls

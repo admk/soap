@@ -8,4 +8,5 @@ from soap.expression.common import (
 )
 from soap.expression.arithmetic import Expr
 from soap.expression.boolean import BoolExpr
+from soap.expression.variable import Var
 from soap.expression.parser import parse as expr

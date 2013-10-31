@@ -8,6 +8,7 @@ from soap.expression.common import (
     LESS_OP, LESS_EQUAL_OP, EQUAL_OP, GREATER_EQUAL_OP, GREATER_OP,
     BARRIER_OP, COMMUTATIVITY_OPERATORS, UNARY_OPERATORS
 )
+from soap.expression.variable import Var
 from soap.expression.parser import parse
 
 
@@ -130,11 +131,13 @@ class Expr(Comparable, Flyweight):
         var_env = var_env.__class__(var_env, **kwargs)
 
         def eval_arg(a):
-            with ignored(AttributeError):
+            if isinstance(a, Var):
+                return var_env[a]
+            if isinstance(a, Expr):
                 return a.eval(var_env)
             if isinstance(a, (mpz_type, mpfr_type, mpq_type, Interval)):
                 return a
-            return var_env[a]
+            raise TypeError('Do not know how to evaluate {}'.format(a))
 
         if self.is_unary():
             return _unary_op_func_dict[self.op](eval_arg(self.a1))
