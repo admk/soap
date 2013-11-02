@@ -48,16 +48,33 @@ RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTION_OVER_OPERATORS = \
     list(zip(*RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS))
 
 
+op_func_dict_by_ary_list = [
+    {
+        UNARY_SUBTRACT_OP: lambda x, _: -x,
+    },
+    {
+        ADD_OP: lambda x, y: x + y,
+        SUBTRACT_OP: lambda x, y: x - y,
+        MULTIPLY_OP: lambda x, y: x * y,
+        DIVIDE_OP: lambda x, y: x / y,
+        LESS_OP: lambda x, y: x < y,
+        LESS_EQUAL_OP: lambda x, y: x <= y,
+        EQUAL_OP: lambda x, y: x == y,
+        GREATER_EQUAL_OP: lambda x, y: x >= y,
+        GREATER_OP: lambda x, y: x > y,
+    }
+]
+
+
 def is_expr(e):
-    return is_arith_expr(e) or is_bool_expr(e)
+    from soap.expression.base import Expression
+    return isinstance(e, Expression)
 
 
 def is_arith_expr(e):
     """Check if `e` is an expression."""
-    if is_bool_expr(e):
-        return False
-    from soap.expression.arithmetic import Expr
-    return isinstance(e, Expr)
+    from soap.expression.arithmetic import ArithExpr
+    return isinstance(e, ArithExpr)
 
 
 def is_bool_expr(e):
@@ -70,10 +87,8 @@ def concat_multi_expr(*expr_args):
     """Concatenates multiple expressions into a single expression by using the
     barrier operator.
     """
-    from soap.expression.arithmetic import Expr
     me = None
     for e in expr_args:
-        e = Expr(e)
         me = me | e if me else e
     return me
 
@@ -83,3 +98,26 @@ def split_multi_expr(e):
     if e.op != BARRIER_OP:
         return [e]
     return split_multi_expr(e.a1) + split_multi_expr(e.a2)
+
+
+def expression_factory(op, *args):
+    from soap.expression.base import Variable
+    from soap.expression.arithmetic import (
+        UnaryArithExpr, BinaryArithExpr, TernaryArithExpr
+    )
+    from soap.expression.boolean import (
+        UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr
+    )
+    if not args:
+        return Variable(op)
+    if op in ARITHMETIC_OPERATORS:
+        class_list = [UnaryArithExpr, BinaryArithExpr, TernaryArithExpr]
+    elif op in BOOLEAN_OPERATORS:
+        class_list = [UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr]
+    else:
+        raise ValueError('Unknown operator {}.'.format(op))
+    try:
+        cls = class_list[len(args) - 1]
+    except IndexError:
+        raise ValueError('Too many arguments.')
+    return cls(op, *args)

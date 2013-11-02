@@ -8,7 +8,7 @@ from soap.common import ignored
 from soap.expression.common import (
     ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP,
     EQUAL_OP, NOT_EQUAL_OP, GREATER_OP, LESS_OP, GREATER_EQUAL_OP,
-    LESS_EQUAL_OP, UNARY_NEGATION_OP, AND_OP, OR_OP, BOOLEAN_OPERATORS
+    LESS_EQUAL_OP, UNARY_NEGATION_OP, AND_OP, OR_OP
 )
 
 
@@ -44,9 +44,7 @@ def raise_parser_error(desc, text, token):
 
 
 def ast_to_expr(t, s):
-    from soap.expression.variable import Var
-    from soap.expression.arithmetic import Expr
-    from soap.expression.boolean import BoolExpr
+    from soap.expression.common import expression_factory
     from soap.semantics.error import cast, mpz, mpfr
     with ignored(AttributeError):  # constant
         v = t.n
@@ -54,38 +52,36 @@ def ast_to_expr(t, s):
             return mpz(v)
         if isinstance(v, float):
             return mpfr(v)
-    with ignored(AttributeError):  # variable
-        return Var(t.id)
-    with ignored(AttributeError):  # string
+    if isinstance(t, ast.Name):
+        return expression_factory(t.id)
+    if isinstance(t, ast.Str):
         return t.s
-    with ignored(AttributeError):  # list
+    if isinstance(t, ast.List):
         t = tuple(ast_to_expr(v, s) for v in t.elts)
         if len(t) == 2:
             t = cast(t)
         return t
-    with ignored(AttributeError):  # comparisons
+    if isinstance(t, ast.Compare):
         op = OPERATOR_MAP[t.ops.pop().__class__]
         a1 = ast_to_expr(t.left, s)
         a2 = ast_to_expr(t.comparators.pop(), s)
-        return BoolExpr(op, a1, a2)
+        return expression_factory(op, a1, a2)
     with ignored(AttributeError):
-        a1, a2 = [ast_to_expr(a, s) for a in t.values]
+        args = [ast_to_expr(a, s) for a in t.values]
         op = OPERATOR_MAP[t.op.__class__]
-        return BoolExpr(op, a1, a2)
+        return expression_factory(op, *args)
     try:
         op = OPERATOR_MAP[t.op.__class__]
-        try:  # unary
-            a1 = ast_to_expr(t.operand, s)
-            a2 = None
-        except AttributeError:  # binary
-            a1 = ast_to_expr(t.left, s)
-            a2 = ast_to_expr(t.right, s)
-        cls = BoolExpr if op in BOOLEAN_OPERATORS else Expr
-        return cls(op, a1, a2)
     except KeyError:
         raise_parser_error('Unrecognised operator %s' % t.op, s, t)
-    except AttributeError:
-        raise_parser_error('Unknown token %s' % t, s, t)
+    if isinstance(t, ast.UnaryOp):
+        a = ast_to_expr(t.operand, s)
+        return expression_factory(op, a)
+    if isinstance(t, ast.BinOp):
+        a1 = ast_to_expr(t.left, s)
+        a2 = ast_to_expr(t.right, s)
+        return expression_factory(op, a1, a2)
+    raise_parser_error('Unknown token %s' % t, s, t)
 
 
 def parse(s):
@@ -98,8 +94,6 @@ def parse(s):
     try:
         body = ast.parse(s, mode='eval').body
         return ast_to_expr(body, s)
-    except (TypeError, AttributeError):
-        raise TypeError('Parse argument must be a string')
     except SyntaxError as e:
         if type(e) is not ParserSyntaxError:
             raise ParserSyntaxError(e)

@@ -163,6 +163,7 @@ def cached(f):
 
 
 class Flyweight(object):
+
     _cache = weakref.WeakValueDictionary()
 
     def __new__(cls, *args, **kwargs):
