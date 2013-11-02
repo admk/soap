@@ -9,7 +9,7 @@ import multiprocessing
 import soap.logger as logger
 from soap.common import cached
 from soap.expression.common import is_expr
-from soap.expression import Expr
+from soap.expression import expression_factory
 
 
 RECURSION_LIMIT = sys.getrecursionlimit()
@@ -52,7 +52,7 @@ class TreeTransformer(object):
 
     :param tree_or_trees: An input expression, or a container of equivalent
         expressions.
-    :type tree_or_trees: :class:`soap.expression.Expr`
+    :type tree_or_trees: :class:`soap.expression.Expression`
     :param validate: If set, tries to validate equivalence, subclasses
         of :class:`TreeTransformer` should implement a member function
         :member:`TreeTransformer.validate`.
@@ -80,7 +80,7 @@ class TreeTransformer(object):
                  step_plugin=None, reduce_plugin=None,
                  multiprocessing=True):
         try:
-            self._t = [Expr(tree_or_trees)]
+            self._t = [expression_factory(tree_or_trees)]
         except TypeError:
             self._t = tree_or_trees
         self._v = validate
@@ -196,9 +196,9 @@ class TreeTransformer(object):
         bugs in equivalence rules.
 
         :param t: An original tree.
-        :type t: :class:`soap.expression.Expr`
+        :type t: :class:`soap.expression.Expression`
         :param tn: A transformed tree.
-        :type tn: :class:`soap.expression.Expr`
+        :type tn: :class:`soap.expression.Expression`
         :raises: ValidationError
         """
         pass
@@ -233,7 +233,7 @@ def _walk_r(t, f, v, d):
         s.add(e)
     for a, b in (t.args, t.args[::-1]):
         for e in _walk_r(a, f, v, d - 1):
-            s.add(Expr(t.op, e, b))
+            s.add(expression_factory(t.op, e, b))
     if not v:
         return s
     try:

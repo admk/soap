@@ -5,14 +5,13 @@
 import re
 import random
 
-import soap.logger as logger
 from soap.expression.common import (
     ADD_OP, MULTIPLY_OP, ASSOCIATIVITY_OPERATORS,
     LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS,
     RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS,
     is_expr
 )
-from soap.expression import Expr
+from soap.expression import BinaryArithExpr
 from soap.transformer.core import (
     item_to_list, none_to_list, TreeTransformer, ValidationError
 )
@@ -27,7 +26,7 @@ def associativity(t):
         (a + b) + c == a + (b + c)
 
     :param t: The expression tree.
-    :type t: :class:`soap.expression.Expr`
+    :type t: :class:`soap.expression.BinaryArithExpr`
     :returns: A list of expressions that are derived with assoicativity from
         the input tree.
     """
@@ -35,7 +34,7 @@ def associativity(t):
         for a in args:
             al = list(args)
             al.remove(a)
-            yield Expr(t.op, a, Expr(t.op, al))
+            yield BinaryArithExpr(t.op, a, BinaryArithExpr(t.op, al))
     if not t.op in ASSOCIATIVITY_OPERATORS:
         return
     s = []
@@ -53,21 +52,21 @@ def distribute_for_distributivity(t):
         (a + b) * c == (a * c) + (b * c)
 
     :param t: The expression tree.
-    :type t: :class:`soap.expression.Expr`
+    :type t: :class:`soap.expression.BinaryArithExpr`
     :returns: A list of expressions that are derived with distributivity from
         the input tree.
     """
     s = []
     if t.op in LEFT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a2):
         if (t.op, t.a2.op) in LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS:
-            s.append(Expr(t.a2.op,
-                          Expr(t.op, t.a1, t.a2.a1),
-                          Expr(t.op, t.a1, t.a2.a2)))
+            s.append(BinaryArithExpr(t.a2.op,
+                                     BinaryArithExpr(t.op, t.a1, t.a2.a1),
+                                     BinaryArithExpr(t.op, t.a1, t.a2.a2)))
     if t.op in RIGHT_DISTRIBUTIVITY_OPERATORS and is_expr(t.a1):
         if (t.op, t.a1.op) in RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS:
-            s.append(Expr(t.a1.op,
-                          Expr(t.op, t.a1.a1, t.a2),
-                          Expr(t.op, t.a1.a2, t.a2)))
+            s.append(BinaryArithExpr(t.a1.op,
+                                     BinaryArithExpr(t.op, t.a1.a1, t.a2),
+                                     BinaryArithExpr(t.op, t.a1.a2, t.a2)))
     return s
 
 
@@ -79,7 +78,7 @@ def collect_for_distributivity(t):
         (a * c) + (b * c) == (a + b) * c
 
     :param t: The expression tree.
-    :type t: :class:`soap.expression.Expr`
+    :type t: :class:`soap.expression.BinaryArithExpr`
     :returns: A list of expressions that are derived with distributivity from
         the input tree.
     """
@@ -109,7 +108,7 @@ def collect_for_distributivity(t):
     s = []
     for ac in set.intersection(*(set(a) for a in af)):
         an = [sub(an, ac) for an in af]
-        s.append(Expr(MULTIPLY_OP, ac, Expr(ADD_OP, an)))
+        s.append(BinaryArithExpr(MULTIPLY_OP, ac, BinaryArithExpr(ADD_OP, an)))
     return s
 
 
@@ -130,7 +129,7 @@ def multiplicative_identity_reduction(t):
         a * 1 == a
 
     :param t: The expression tree.
-    :type t: :class:`soap.expression.Expr`
+    :type t: :class:`soap.expression.BinaryArithExpr`
     :returns: A list containing an expression related by this reduction rule.
     """
     return _identity_reduction(t, MULTIPLY_OP, 1)
@@ -144,7 +143,7 @@ def additive_identity_reduction(t):
         a + 0 == a
 
     :param t: The expression tree.
-    :type t: :class:`soap.expression.Expr`
+    :type t: :class:`soap.expression.BinaryArithExpr`
     :returns: A list containing an expression related by this reduction rule.
     """
     return _identity_reduction(t, ADD_OP, 0)
@@ -158,7 +157,7 @@ def zero_reduction(t):
         a * 0 == 0
 
     :param t: The expression tree.
-    :type t: :class:`soap.expression.Expr`
+    :type t: :class:`soap.expression.BinaryArithExpr`
     :returns: A list containing an expression related by this reduction rule.
     """
     if t.op != MULTIPLY_OP:
@@ -176,7 +175,7 @@ def constant_reduction(t):
         1 + 2 == 3
 
     :param t: The expression tree.
-    :type t: :class:`soap.expression.Expr`
+    :type t: :class:`soap.expression.BinaryArithExpr`
     :returns: A list containing an expression related by this reduction rule.
     """
     def is_exact(v):
@@ -225,21 +224,3 @@ class ArithTreeTransformer(TreeTransformer):
                 'Failed validation\n'
                 'Original: %s %s,\n'
                 'Transformed: %s %s' % (to, t, no, tn))
-
-
-if __name__ == '__main__':
-    from soap.common import profiled, timed
-    Expr.__repr__ = Expr.__str__
-    logger.set_context(level=logger.levels.info)
-    e = '(a + 1) * b | (b + 1) * a | a * b'
-    t = Expr(e)
-    logger.info('Expr:', str(t))
-    logger.info('Tree:', t.tree())
-    with profiled(), timed():
-        s = ArithTreeTransformer(t).closure()
-    logger.info('Transformed:', len(s))
-    from soap.analysis.utils import plot, analyse
-    v = {'a': ['1', '2'], 'b': ['100', '200']}
-    a = analyse(s, v)
-    logger.info(a)
-    plot(a)

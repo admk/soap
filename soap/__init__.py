@@ -14,9 +14,7 @@ from soap.semantics import (
     IntegerInterval, FloatInterval, FractionInterval, ErrorSemantics, BoxState,
     mpz, mpq, mpfr, mpz_type, mpq_type, mpfr_type, inf, ulp, cast,
 )
-"""
 from soap.transformer import (
     closure, greedy_frontier_closure, expand, reduce, parsings,
     martel_trace, greedy_trace, frontier_trace,
 )
-"""

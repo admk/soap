@@ -4,16 +4,17 @@ from soap.expression.common import (
     LESS_EQUAL_OP, UNARY_NEGATION_OP, AND_OP, OR_OP, OPERATORS,
     UNARY_OPERATORS, ASSOCIATIVITY_OPERATORS, COMMUTATIVITY_OPERATORS,
     LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS,
-    RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS
+    RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS,
+    expression_factory
 )
 from soap.expression.base import (
     Expression, UnaryExpression, BinaryExpression, TernaryExpression
 )
 from soap.expression.variable import Variable
 from soap.expression.arithmetic import (
-    UnaryArithExpr, BinaryArithExpr, TernaryArithExpr
+    ArithExpr, UnaryArithExpr, BinaryArithExpr, TernaryArithExpr
 )
 from soap.expression.boolean import (
-    UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr
+    BoolExpr, UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr
 )
 from soap.expression.parser import parse as expr
