@@ -5,8 +5,6 @@
 import math
 import itertools
 
-from matplotlib import rc, pyplot
-
 import soap.logger as logger
 
 
@@ -322,6 +320,9 @@ class Plot(object):
             return self.figure
         except AttributeError:
             pass
+        from matplotlib import rc, pyplot
+        rc('font', family='serif', size=24, serif='Times')
+        rc('text', usetex=True)
         self.figure = pyplot.figure()
         plot = self.figure.add_subplot(111)
         colors = self._colors()
@@ -402,6 +403,7 @@ class Plot(object):
 
     def show(self):
         """Shows the plot"""
+        from matplotlib import pyplot
         logger.info('Showing plot')
         self._plot()
         pyplot.show()
@@ -441,10 +443,6 @@ def analyse_and_plot(s, v, d=None, f=None, o=False, t=True):
     except KeyboardInterrupt:
         pass
     return p
-
-
-rc('font', family='serif', size=24, serif='Times')
-rc('text', usetex=True)
 
 
 if __name__ == '__main__':

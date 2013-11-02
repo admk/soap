@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import sys
 from pprint import pformat
@@ -49,7 +50,8 @@ def format(*args):
     return ' '.join(pformat(a) if not isinstance(a, str) else a for a in args)
 
 
-def log(*args, l=levels.info):
+def log(*args, **kwargs):
+    l = kwargs.get('l', levels.info)
     if l < get_context()['level']:
         return
     f = get_context()['file'] or sys.stdout
@@ -65,17 +67,20 @@ def log(*args, l=levels.info):
             sys.exit(-1)
 
 
-def line(*args, l=levels.info):
+def line(*args, **kwargs):
+    l = kwargs.get('l', levels.info)
     args += ('\n', )
     log(*args, l=l)
 
 
-def rewrite(*args, l=levels.info):
+def rewrite(*args, **kwargs):
+    l = kwargs.get('l', levels.info)
     args += ('\r', )
     log(*args, l=l)
 
 
-def persistent(name, *args, l=levels.info):
+def persistent(name, *args, **kwargs):
+    l = kwargs.get('l', levels.info)
     prev = get_context()['persistent'].get(name)
     curr = args + (l, )
     if prev == curr:
@@ -83,10 +88,12 @@ def persistent(name, *args, l=levels.info):
     get_context()['persistent'][name] = curr
     s = []
     for k, v in get_context()['persistent'].items():
-        *v, l = v
+        v = list(v)
+        l = v.pop()
         s.append(k + ': ' + format(*v))
     s = '; '.join(s)
     s += ' ' * (78 - len(s))
+    s = s[:80]
     rewrite(s, l=l)
 
 
@@ -108,7 +115,8 @@ def local_context(**kwargs):
 
 def log_level(l):
     def wrapper(f):
-        def wrapped(*args, l=l):
+        def wrapped(*args, **kwargs):
+            l = kwargs.get('l', levels.info)
             f(*args, l=l)
         return wrapped
     return wrapper

@@ -105,54 +105,54 @@ def invalidate_cache():
 
 
 def cached(f):
+    class NonLocals(object):
+        pass
     CACHE_CAPACITY = 1000
     cache = {}
-    full = False
-    hits = misses = currsize = 0
-    root = []
-    root[:] = [root, root, None, None]
+    NonLocals.full = False
+    NonLocals.hits = NonLocals.misses = NonLocals.currsize = 0
+    NonLocals.root = []
+    NonLocals.root[:] = [NonLocals.root, NonLocals.root, None, None]
     PREV, NEXT, KEY, RESULT = range(4)
 
     def decorated(*args, **kwargs):
-        nonlocal root, hits, misses, currsize, full
         key = pickle.dumps((f.__name__, args, tuple(kwargs.items())))
         link = cache.get(key)
         if not link is None:
             p, n, k, r = link
             p[NEXT] = n
             n[PREV] = p
-            last = root[PREV]
-            last[NEXT] = root[PREV] = link
+            last = NonLocals.root[PREV]
+            last[NEXT] = NonLocals.root[PREV] = link
             link[PREV] = last
-            link[NEXT] = root
-            hits += 1
+            link[NEXT] = NonLocals.root
+            NonLocals.hits += 1
             return r
         r = f(*args, **kwargs)
-        if full:
-            root[KEY] = key
-            root[RESULT] = r
-            cache[key] = root
-            root = root[NEXT]
-            del cache[root[KEY]]
-            root[KEY] = root[RESULT] = None
+        if NonLocals.full:
+            NonLocals.root[KEY] = key
+            NonLocals.root[RESULT] = r
+            cache[key] = NonLocals.root
+            NonLocals.root = NonLocals.root[NEXT]
+            del cache[NonLocals.root[KEY]]
+            NonLocals.root[KEY] = NonLocals.root[RESULT] = None
         else:
-            last = root[PREV]
-            link = [last, root, key, r]
-            cache[key] = last[NEXT] = root[PREV] = link
-            currsize += 1
-            full = (currsize == CACHE_CAPACITY)
-        misses += 1
+            last = NonLocals.root[PREV]
+            link = [last, NonLocals.root, key, r]
+            cache[key] = last[NEXT] = NonLocals.root[PREV] = link
+            NonLocals.currsize += 1
+            NonLocals.full = (NonLocals.currsize == CACHE_CAPACITY)
+        NonLocals.misses += 1
         return r
 
     def cache_info():
-        return hits, misses, currsize
+        return NonLocals.hits, NonLocals.misses, NonLocals.currsize
 
     def cache_clear():
-        nonlocal hits, misses, currsize, full
         cache.clear()
-        root[:] = [root, root, None, None]
-        hits = misses = currsize = 0
-        full = False
+        NonLocals.root[:] = [NonLocals.root, NonLocals.root, None, None]
+        NonLocals.hits = NonLocals.misses = NonLocals.currsize = 0
+        NonLocals.full = False
 
     d = functools.wraps(f)(decorated)
     d.cache_info = cache_info
