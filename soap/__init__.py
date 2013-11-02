@@ -1,3 +1,8 @@
+__version__ = '2.0.dev'
+__author__ = 'Xitong Gao'
+__email__ = '@'.join(['xtg08', 'ic.ac.uk'])
+
+
 try:
     from IPython.core import ultratb
 except ImportError:
