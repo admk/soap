@@ -29,6 +29,8 @@ class DynamicMethods(object):
 
 class Comparable(object):
 
+    __slots__ = ()
+
     def __ne__(self, other):
         return not self.__eq__(other)
 
@@ -163,6 +165,8 @@ def cached(f):
 
 
 class Flyweight(object):
+
+    __slots__ = ('__weakref__', )
     _cache = weakref.WeakValueDictionary()
 
     def __new__(cls, *args, **kwargs):
