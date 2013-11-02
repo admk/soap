@@ -31,19 +31,19 @@ class BoolExpr(Expression):
         return BinaryBoolExpr(op=OR_OP, a1=self, a2=other)
 
 
-class UnaryBoolExpr(BoolExpr, UnaryExpression):
+class UnaryBoolExpr(UnaryExpression, BoolExpr):
     """Unary boolean expressions."""
 
     __slots__ = ()
 
 
-class BinaryBoolExpr(BoolExpr, BinaryExpression):
+class BinaryBoolExpr(BinaryExpression, BoolExpr):
     """Binary boolean expressions."""
 
     __slots__ = ()
 
 
-class TernaryBoolExpr(BoolExpr, TernaryExpression):
+class TernaryBoolExpr(TernaryExpression, BoolExpr):
     """Ternary boolean expressions."""
 
     __slots__ = ()
