@@ -6,7 +6,14 @@ from soap.expression.common import (
     LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS,
     RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS
 )
-from soap.expression.arithmetic import Expr
-from soap.expression.boolean import BoolExpr
-from soap.expression.variable import Var
+from soap.expression.base import (
+    Expression, UnaryExpression, BinaryExpression, TernaryExpression
+)
+from soap.expression.variable import Variable
+from soap.expression.arithmetic import (
+    UnaryArithExpr, BinaryArithExpr, TernaryArithExpr
+)
+from soap.expression.boolean import (
+    UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr
+)
 from soap.expression.parser import parse as expr

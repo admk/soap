@@ -6,7 +6,7 @@ from functools import wraps
 
 from soap.expression import (
     LESS_OP, GREATER_OP, LESS_EQUAL_OP, GREATER_EQUAL_OP,
-    EQUAL_OP, NOT_EQUAL_OP, Expr, Var
+    EQUAL_OP, NOT_EQUAL_OP, Expression, Variable
 )
 from soap.lattice import map
 from soap.semantics import (
@@ -75,9 +75,9 @@ class State(object):
 
     def eval(self, expr):
         """Evaluates an expression with state's mapping."""
-        if isinstance(expr, Var):
+        if isinstance(expr, Variable):
             return self[expr]
-        if isinstance(expr, Expr):
+        if isinstance(expr, Expression):
             return expr.eval(self)
         if isinstance(expr, (IntegerInterval, FloatInterval, ErrorSemantics)):
             return expr
@@ -114,7 +114,7 @@ _negate_dict = {
 }
 
 
-class BoxState(State, map(Var, (IntegerInterval, ErrorSemantics))):
+class BoxState(State, map(Variable, (IntegerInterval, ErrorSemantics))):
     """The program analysis domain object based on intervals and error
     semantics.
 

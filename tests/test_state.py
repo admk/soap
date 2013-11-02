@@ -1,7 +1,7 @@
 import unittest
 
 from soap.semantics import BoxState
-from soap.expression import Expr, BoolExpr
+from soap.expression import expr
 
 
 class TestBoxState(unittest.TestCase):
@@ -13,30 +13,30 @@ class TestBoxState(unittest.TestCase):
         self.two_four = BoxState({'x': [2, 4]})
 
     def test_assign(self):
-        self.assertEqual(self.bot.assign('x', Expr('x + 1')), self.bot)
+        self.assertEqual(self.bot.assign('x', expr('x + 1')), self.bot)
         self.assertEqual(
-            self.one_three.assign('x', Expr('x + 1')), self.two_four)
+            self.one_three.assign('x', expr('x + 1')), self.two_four)
 
     def test_conditional(self):
         self.assertEqual(
-            self.one_three.conditional(BoolExpr('x < 1'), True),
+            self.one_three.conditional(expr('x < 1'), True),
             self.bot)
         self.assertEqual(
-            self.one_three.conditional(BoolExpr('x < 1'), False),
+            self.one_three.conditional(expr('x < 1'), False),
             self.one_three)
         self.assertEqual(
-            self.one_three.conditional(BoolExpr('x < 2'), True),
+            self.one_three.conditional(expr('x < 2'), True),
             BoxState({'x': 1}))
         self.assertEqual(
-            self.one_three.conditional(BoolExpr('x < 2'), False),
+            self.one_three.conditional(expr('x < 2'), False),
             BoxState({'x': [2, 3]}))
         self.assertEqual(
-            self.one_three.conditional(BoolExpr('x < 3'), True),
+            self.one_three.conditional(expr('x < 3'), True),
             BoxState({'x': [1, 2]}))
         self.assertEqual(
-            self.one_three.conditional(BoolExpr('x < 3'), False),
+            self.one_three.conditional(expr('x < 3'), False),
             BoxState({'x': 3}))
         self.assertEqual(
-            self.bot.conditional(BoolExpr('x < 3'), True), self.bot)
+            self.bot.conditional(expr('x < 3'), True), self.bot)
         self.assertEqual(
-            self.bot.conditional(BoolExpr('x < 3'), False), self.bot)
+            self.bot.conditional(expr('x < 3'), False), self.bot)
