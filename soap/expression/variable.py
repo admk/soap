@@ -2,17 +2,15 @@
 .. module:: soap.expression.variable
     :synopsis: The class of variables.
 """
-from soap.common import Flyweight, Comparable
+from soap.common import Flyweight
 
 
-class Variable(Flyweight, Comparable):
+class Variable(Flyweight):
     """The variable class."""
 
     __slots__ = ('n', )
 
     def __init__(self, name):
-        if not isinstance(name, str):
-            raise ValueError('asdf')
         self.n = name
 
     def __str__(self):
@@ -26,11 +24,6 @@ class Variable(Flyweight, Comparable):
         if not isinstance(other, self.__class__):
             return False
         return self.n == other.n
-
-    def __lt__(self, other):
-        if not isinstance(other, Variable):
-            return False
-        return self.n < other.n
 
     def __hash__(self):
         return hash(self.n)
