@@ -9,6 +9,16 @@ from soap.transformer.arithmetic import (
 from soap.transformer.utils import parsings
 
 
+def test_associativity():
+    from soap.transformer.pattern import pattern_transformer_factory
+    assoc = pattern_transformer_factory(
+        ['(a + b) + c', 'c + (a + b)'],
+        ['a + (b + c)', 'b + (a + c)'],
+        'associativity')
+    for e in assoc(expr('(x + y) + z')):
+        print(e)
+
+
 class TestArithmeticEquivalence(unittest.TestCase):
     """
     Unit testing for :mod:`soap.transformer.arithmetic`.

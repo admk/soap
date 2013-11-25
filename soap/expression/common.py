@@ -66,6 +66,16 @@ op_func_dict_by_ary_list = [
 ]
 
 
+def is_variable(e):
+    from soap.expression.variable import Variable
+    return isinstance(e, Variable)
+
+
+def is_constant(e):
+    from soap.semantics.error import mpz_type, mpfr_type
+    return isinstance(e, (mpz_type, mpfr_type))
+
+
 def is_expr(e):
     from soap.expression.base import Expression
     return isinstance(e, Expression)

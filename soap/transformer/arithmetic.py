@@ -6,13 +6,12 @@ from soap.expression.common import (
     ADD_OP, MULTIPLY_OP, ASSOCIATIVITY_OPERATORS,
     LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS,
     RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS,
-    is_expr
+    is_expr, is_constant
 )
 from soap.expression import BinaryArithExpr
 from soap.transformer.core import (
     item_to_list, none_to_list, TreeTransformer
 )
-from soap.semantics import mpz_type, mpfr_type
 
 
 @none_to_list
@@ -176,8 +175,6 @@ def constant_reduction(t):
     :type t: :class:`soap.expression.BinaryArithExpr`
     :returns: A list containing an expression related by this reduction rule.
     """
-    def is_constant(v):
-        return isinstance(v, (mpz_type, mpfr_type))
     if not all(is_constant(a) for a in t.args):
         return
     if t.op == MULTIPLY_OP:
