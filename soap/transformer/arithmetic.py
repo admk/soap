@@ -2,9 +2,6 @@
 .. module:: soap.transformer.arithmetic
     :synopsis: Transforms arithmetic expression instances.
 """
-import re
-import random
-
 from soap.expression.common import (
     ADD_OP, MULTIPLY_OP, ASSOCIATIVITY_OPERATORS,
     LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS,
@@ -13,9 +10,9 @@ from soap.expression.common import (
 )
 from soap.expression import BinaryArithExpr
 from soap.transformer.core import (
-    item_to_list, none_to_list, TreeTransformer, ValidationError
+    item_to_list, none_to_list, TreeTransformer
 )
-from soap.semantics import mpq_type
+from soap.semantics import mpz_type, mpfr_type
 
 
 @none_to_list
@@ -34,14 +31,14 @@ def associativity(t):
         for a in args:
             al = list(args)
             al.remove(a)
-            yield BinaryArithExpr(t.op, a, BinaryArithExpr(t.op, al))
+            yield BinaryArithExpr(t.op, a, BinaryArithExpr(t.op, *al))
     if not t.op in ASSOCIATIVITY_OPERATORS:
         return
     s = []
     if is_expr(t.a1) and t.a1.op == t.op:
-        s.extend(list(expr_from_args(t.a1.args + [t.a2])))
+        s.extend(expr_from_args(list(t.a1.args) + [t.a2]))
     if is_expr(t.a2) and t.a2.op == t.op:
-        s.extend(list(expr_from_args(t.a2.args + [t.a1])))
+        s.extend(expr_from_args(list(t.a2.args) + [t.a1]))
     return s
 
 
@@ -108,7 +105,8 @@ def collect_for_distributivity(t):
     s = []
     for ac in set.intersection(*(set(a) for a in af)):
         an = [sub(an, ac) for an in af]
-        s.append(BinaryArithExpr(MULTIPLY_OP, ac, BinaryArithExpr(ADD_OP, an)))
+        s.append(
+            BinaryArithExpr(MULTIPLY_OP, ac, BinaryArithExpr(ADD_OP, *an)))
     return s
 
 
@@ -178,9 +176,9 @@ def constant_reduction(t):
     :type t: :class:`soap.expression.BinaryArithExpr`
     :returns: A list containing an expression related by this reduction rule.
     """
-    def is_exact(v):
-        return isinstance(v, (int, mpq_type))
-    if not is_exact(t.a1) or not is_exact(t.a2):
+    def is_constant(v):
+        return isinstance(v, (mpz_type, mpfr_type))
+    if not all(is_constant(a) for a in t.args):
         return
     if t.op == MULTIPLY_OP:
         return t.a1 * t.a2
@@ -201,26 +199,3 @@ class ArithTreeTransformer(TreeTransformer):
     reduction_methods = [multiplicative_identity_reduction,
                          additive_identity_reduction, zero_reduction,
                          constant_reduction]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    VAR_RE = re.compile(r"[^\d\W]\w*", re.UNICODE)
-
-    def validate(t, tn):
-        # FIXME: broken after ErrorSemantics
-        def vars(tree_str):
-            return set(ArithTreeTransformer.VAR_RE.findall(tree_str))
-        to, no = ts, ns = str(t), str(tn)
-        tsv, nsv = vars(ts), vars(ns)
-        if tsv != nsv:
-            raise ValidationError('Variable domain mismatch.')
-        vv = {v: random.randint(0, 127) for v in tsv}
-        for v, i in vv.items():
-            ts = re.sub(r'\b%s\b' % v, str(i), ts)
-            ns = re.sub(r'\b%s\b' % v, str(i), ns)
-        if eval(ts) != eval(ns):
-            raise ValidationError(
-                'Failed validation\n'
-                'Original: %s %s,\n'
-                'Transformed: %s %s' % (to, t, no, tn))

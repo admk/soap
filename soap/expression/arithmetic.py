@@ -2,9 +2,9 @@
 .. module:: soap.expression.arithmetic
     :synopsis: The class of expressions.
 """
-from soap.common import Comparable, Flyweight
 from soap.expression.common import (
-    ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP, ARITHMETIC_OPERATORS
+    ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP,
+    ARITHMETIC_OPERATORS, COMMUTATIVITY_OPERATORS
 )
 from soap.expression.base import (
     Expression, UnaryExpression, BinaryExpression, TernaryExpression
@@ -50,6 +50,13 @@ class BinaryArithExpr(BinaryExpression, ArithExpr):
     """Binary arithmetic expressions."""
 
     __slots__ = ()
+
+    def _attr(self):
+        if self.op in COMMUTATIVITY_OPERATORS:
+            args = frozenset(self.args)
+        else:
+            args = tuple(self.args)
+        return (self.op, args)
 
 
 class TernaryArithExpr(TernaryExpression, ArithExpr):

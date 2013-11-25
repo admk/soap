@@ -43,20 +43,12 @@ def none_to_list(f):
     return functools.wraps(f)(wrapper)
 
 
-class ValidationError(Exception):
-    """Failed to find equivalence."""
-
-
 class TreeTransformer(object):
     """The base class that finds the transitive closure of transformed trees.
 
     :param tree_or_trees: An input expression, or a container of equivalent
         expressions.
     :type tree_or_trees: :class:`soap.expression.Expression`
-    :param validate: If set, tries to validate equivalence, subclasses
-        of :class:`TreeTransformer` should implement a member function
-        :member:`TreeTransformer.validate`.
-    :type validate: bool
     :param depth: The depth limit for equivalence finding, if not specified, a
         depth limit will not be used.
     :type depth: int or None
@@ -76,14 +68,9 @@ class TreeTransformer(object):
     reduction_methods = None
 
     def __init__(self, tree_or_trees,
-                 validate=False, depth=None,
-                 step_plugin=None, reduce_plugin=None,
+                 depth=None, step_plugin=None, reduce_plugin=None,
                  multiprocessing=True):
-        try:
-            self._t = [expression_factory(tree_or_trees)]
-        except TypeError:
-            self._t = tree_or_trees
-        self._v = validate
+        self._t = [tree_or_trees] if is_expr(tree_or_trees) else tree_or_trees
         self._m = multiprocessing
         self._d = depth or RECURSION_LIMIT
         self._n = {}
@@ -134,7 +121,6 @@ class TreeTransformer(object):
     def _step(self, s, c=False, d=None):
         """One step of the transitive closure."""
         fs = self.transform_methods if c else self.reduction_methods
-        v = self._validate if self._v else None
         if self._m:
             cpu_count = multiprocessing.cpu_count()
             chunksize = int(len(s) / cpu_count) + 1
@@ -143,7 +129,7 @@ class TreeTransformer(object):
             cpu_count = chunksize = 1
             map = lambda f, l, _: [f(a) for a in l]
         union = lambda s, _: functools.reduce(lambda x, y: x | y, s)
-        r = [(t, fs, v, c, d) for i, t in enumerate(s)]
+        r = [(t, fs, c, d) for i, t in enumerate(s)]
         b, r = list(zip(*map(_walk, r, chunksize)))
         s = {t for i, t in enumerate(s) if b[i]}
         r = union(r, cpu_count)
@@ -190,39 +176,20 @@ class TreeTransformer(object):
         s = self._seed(s)
         return s
 
-    def validate(self, t, tn):
-        """Perform validation of tree, subclasses must implement this method
-        if validation of equivalence is needed. This is useful for discovering
-        bugs in equivalence rules.
 
-        :param t: An original tree.
-        :type t: :class:`soap.expression.Expression`
-        :param tn: A transformed tree.
-        :type tn: :class:`soap.expression.Expression`
-        :raises: ValidationError
-        """
-        pass
-
-    def _validate(self, t, tn):
-        if t == tn:
-            return
-        if self._v:
-            self.validate(t, tn)
-
-
-def _walk(t_fs_v_c_d):
-    t, fs, v, c, d = t_fs_v_c_d
+def _walk(t_fs_c_d):
+    t, fs, c, d = t_fs_c_d
     s = set()
     d = d if c and d else RECURSION_LIMIT
     for f in fs:
-        s |= _walk_r(t, f, v, d)
+        s |= _walk_r(t, f, d)
     if c:
         s.add(t)
     return True if not c and not s else False, s
 
 
 @cached
-def _walk_r(t, f, v, d):
+def _walk_r(t, f, d):
     """Tree walker"""
     s = set()
     if d == 0:
@@ -232,16 +199,8 @@ def _walk_r(t, f, v, d):
     for e in f(t):
         s.add(e)
     for a, b in (t.args, t.args[::-1]):
-        for e in _walk_r(a, f, v, d - 1):
+        for e in _walk_r(a, f, d - 1):
             s.add(expression_factory(t.op, e, b))
-    if not v:
-        return s
-    try:
-        for tn in s:
-            v(t, tn)
-    except ValidationError:
-        logger.error('Violating transformation:', f.__name__)
-        raise
     return s
 
 

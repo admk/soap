@@ -11,6 +11,8 @@ class Variable(Flyweight, Comparable):
     __slots__ = ('n', )
 
     def __init__(self, name):
+        if not isinstance(name, str):
+            raise ValueError('asdf')
         self.n = name
 
     def __str__(self):
