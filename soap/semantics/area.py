@@ -5,8 +5,6 @@
 import pickle
 import itertools
 
-from matplotlib import rc, pyplot, pylab
-
 import soap.expression
 import soap.logger as logger
 from soap.common import Comparable
@@ -110,6 +108,19 @@ def pool():
     return _pool
 
 
+_setup_rc_done = False
+
+
+def _setup_rc():
+    global _setup_rc_done
+    if _setup_rc_done:
+        return
+    from matplotlib import rc
+    rc('font', family='serif', size=24, serif='Times')
+    rc('text', usetex=True)
+    _setup_rc_done = True
+
+
 class AreaEstimateValidator(object):
     """Validates our area model by comparing it against synthesis"""
 
@@ -136,6 +147,8 @@ class AreaEstimateValidator(object):
             return self.figure
         except AttributeError:
             pass
+        from matplotlib import pyplot, pylab
+        _setup_rc()
         self.figure = pyplot.figure()
         plot = self.figure.add_subplot(111)
         for ax in [plot.xaxis, plot.yaxis]:
@@ -161,6 +174,7 @@ class AreaEstimateValidator(object):
         return self.figure
 
     def show_plot(self):
+        from matplotlib import pyplot
         pyplot.show(self._plot())
 
     def save_plot(self, *args, **kwargs):
@@ -177,10 +191,6 @@ class AreaEstimateValidator(object):
         p = self.scatter_points()
         with open(f, 'wb') as f:
             pickle.dump(p, f)
-
-
-rc('font', family='serif', size=24, serif='Times')
-rc('text', usetex=True)
 
 
 if __name__ == '__main__':
