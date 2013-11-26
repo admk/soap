@@ -8,7 +8,7 @@ __email__ = '@'.join(['gxtfmx', 'gmail.com'])
 __license__ = 'MIT'
 
 
-from soap.patmat.mimic import (
+from patmat.mimic import (
     Val, ZeroFsGiven, _, Type, Attr, Seq, List, Tuple, Dict, Mimic,
 )
-from soap.patmat.match import Match, Switch, case
+from patmat.match import Match, Switch, case

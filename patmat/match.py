@@ -3,7 +3,7 @@ try:
 except ImportError:
     from itertools import izip_longest as zip_longest
 
-from soap.patmat.mimic import Mimic
+from patmat.mimic import Mimic
 
 
 class Match(object):

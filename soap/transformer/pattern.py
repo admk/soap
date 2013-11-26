@@ -1,9 +1,10 @@
+from patmat.mimic import _Mimic, Val
+
 from soap.common import cached
 from soap.expression.common import (
     is_expr, is_variable, is_constant, expression_factory
 )
 from soap.expression.parser import parse
-from soap.patmat.mimic import _Mimic, Val
 
 
 class _ExprMimic(_Mimic):
@@ -34,7 +35,7 @@ def abstract(expression):
     if is_constant(expression):
         return expression
     raise ValueError(
-        'Do not know how to convert {} to a _ExprMimic instance.'
+        'Do not know how to convert {!r} to an _ExprMimic instance.'
         ''.format(expression))
 
 
@@ -48,15 +49,15 @@ def concretize(mimic, env):
     if is_constant(mimic):
         return mimic
     raise ValueError(
-        'Do not know how to convert {} to an Expression instance.'
+        'Do not know how to convert {!r} to an Expression instance.'
         ''.format(mimic))
 
 
-def pattern_transformer_factory(patterns, matches, name):
-    patterns = (abstract(parse(p)) for p in patterns)
-    matches = (abstract(parse(m)) for m in matches)
+def pattern_transformer_factory(patterns, matches, name=None):
+    patterns, matches = ((abstract(parse(e)) for e in expressions)
+                         for expressions in (patterns, matches))
 
-    def transform(expression):
+    def _transform(expression):
         concrete_matches = set()
         for p in patterns:
             env = p.match(expression)
@@ -66,5 +67,6 @@ def pattern_transformer_factory(patterns, matches, name):
                 concrete_matches.add(concretize(m, env))
         return concrete_matches
 
-    transform.__name__ = name
-    return transform
+    if name:
+        _transform.__name__ = name
+    return _transform
