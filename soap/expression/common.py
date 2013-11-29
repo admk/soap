@@ -2,6 +2,9 @@
 .. module:: soap.expression.common
     :synopsis: Common definitions for expressions.
 """
+from soap.common.cache import cached
+
+
 ADD_OP = '+'
 SUBTRACT_OP = '-'
 UNARY_SUBTRACT_OP = '-'
@@ -110,6 +113,7 @@ def split_multi_expr(e):
     return split_multi_expr(e.a1) + split_multi_expr(e.a2)
 
 
+@cached
 def expression_factory(op, *args):
     from soap.expression.base import Variable
     from soap.expression.arithmetic import (

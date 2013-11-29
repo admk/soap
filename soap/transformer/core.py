@@ -3,44 +3,16 @@
     :synopsis: Base class for transforming expression instances.
 """
 import sys
+import itertools
 import functools
 import multiprocessing
 
 import soap.logger as logger
 from soap.common import cached
-from soap.expression.common import is_expr
-from soap.expression import expression_factory
+from soap.expression.common import is_expr, expression_factory
 
 
 RECURSION_LIMIT = sys.getrecursionlimit()
-
-
-def item_to_list(f):
-    """Utility decorator for equivalence rules.
-
-    :param f: The transform function.
-    :type f: function
-    :returns: A new function that returns a list containing the return value of
-        the original function.
-    """
-    def wrapper(t):
-        v = f(t)
-        return [v] if not v is None else []
-    return functools.wraps(f)(wrapper)
-
-
-def none_to_list(f):
-    """Utility decorator for equivalence rules.
-
-    :param f: The transform function.
-    :type f: function
-    :returns: A new function that returns an empty list if the original
-        function returns None.
-    """
-    def wrapper(t):
-        v = f(t)
-        return v if not v is None else []
-    return functools.wraps(f)(wrapper)
 
 
 class TreeTransformer(object):
@@ -177,31 +149,39 @@ class TreeTransformer(object):
         return s
 
 
-def _walk(t_fs_c_d):
-    t, fs, c, d = t_fs_c_d
-    s = set()
-    d = d if c and d else RECURSION_LIMIT
-    for f in fs:
-        s |= _walk_r(t, f, d)
-    if c:
-        s.add(t)
-    return True if not c and not s else False, s
+def _walk(args):
+    expression, funcs, closure, depth = args
+    discovered = set()
+    depth = depth if closure and depth else RECURSION_LIMIT
+    try:
+        for f in funcs:
+            discovered |= _recursive_walk(expression, f, depth)
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        raise
+    if closure:
+        discovered.add(expression)
+    return not closure and not discovered, discovered
 
 
 @cached
-def _walk_r(t, f, d):
+def _recursive_walk(expression, func, depth):
     """Tree walker"""
-    s = set()
-    if d == 0:
-        return s
-    if not is_expr(t):
-        return s
-    for e in f(t):
-        s.add(e)
-    for a, b in (t.args, t.args[::-1]):
-        for e in _walk_r(a, f, d - 1):
-            s.add(expression_factory(t.op, e, b))
-    return s
+    discovered = set()
+    if depth == 0:
+        return discovered
+    if not is_expr(expression):
+        return discovered
+    for e in func(expression):
+        discovered.add(e)
+    args_discovered = (_recursive_walk(a, func, depth) | {a}
+                       for a in expression.args)
+    for args in itertools.product(*args_discovered):
+        discovered.add(expression_factory(expression.op, *args))
+    if expression in discovered:
+        discovered.remove(expression)
+    return discovered
 
 
 def par_union(sl):

@@ -54,8 +54,9 @@ def concretize(mimic, env):
 
 
 def pattern_transformer_factory(patterns, matches, name=None):
-    patterns, matches = ((abstract(parse(e)) for e in expressions)
-                         for expressions in (patterns, matches))
+    patterns, matches = [
+        [e if isinstance(e, _Mimic) else abstract(parse(e))
+         for e in expressions] for expressions in (patterns, matches)]
 
     def _transform(expression):
         concrete_matches = set()
@@ -66,6 +67,20 @@ def pattern_transformer_factory(patterns, matches, name=None):
             for m in matches:
                 concrete_matches.add(concretize(m, env))
         return concrete_matches
+
+    if name:
+        _transform.__name__ = name
+    return _transform
+
+
+def pattern_transformer_group(*rules, name=None):
+    pattern_funcs = [pattern_transformer_factory(*r) for r in rules]
+
+    def _transform(expression):
+        matches = set()
+        for f in pattern_funcs:
+            matches |= f(expression)
+        return matches
 
     if name:
         _transform.__name__ = name
