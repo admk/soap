@@ -4,10 +4,11 @@
         ArithTreeTransformer.
 """
 import soap.logger as logger
-from soap.expression import expression_factory
+from soap.expression.common import is_expr
 from soap.transformer.core import TreeTransformer
 from soap.transformer.arithmetic import (
-    associativity, distribute_for_distributivity, ArithTreeTransformer
+    associativity_addition, associativity_multiplication,
+    distribute_for_distributivity, ArithTreeTransformer
 )
 from soap.analysis import expr_frontier
 
@@ -42,17 +43,14 @@ def greedy_frontier_closure(tree, var_env=None, prec=None, **kwargs):
     return expr_frontier(closure, var_env, prec)
 
 
-def transform(tree,
-              reduction_methods=None, transform_methods=None,
+def transform(tree, reduction_rules=None, transform_rules=None,
               step_plugin=None, reduce_plugin=None, depth=None,
               multiprocessing=True):
     """One liner for :class:`soap.transformer.TreeTransformer`."""
-    t = TreeTransformer(
-        tree, step_plugin=step_plugin, reduce_plugin=reduce_plugin,
-        depth=depth, multiprocessing=multiprocessing)
-    t.reduction_methods = reduction_methods or []
-    t.transform_methods = transform_methods or []
-    return t.closure()
+    return TreeTransformer(
+        tree, transform_rules=transform_rules, reduction_rules=reduction_rules,
+        step_plugin=step_plugin, reduce_plugin=reduce_plugin,
+        depth=depth, multiprocessing=multiprocessing).closure()
 
 
 def expand(tree):
@@ -66,7 +64,7 @@ def expand(tree):
         if s:
             return [s.pop()]
         return s
-    return transform(tree, reduction_methods=[distribute_for_distributivity],
+    return transform(tree, reduction_rules=[distribute_for_distributivity],
                      reduce_plugin=pop, multiprocessing=False).pop()
 
 
@@ -77,12 +75,10 @@ def reduce(tree):
     :type tree: :class:`soap.expression.Expression` or str
     :returns: A new expression tree.
     """
-    try:
-        tree = expression_factory(tree)
-    except TypeError:
+    if not is_expr(tree):
         with logger.local_context(level=logger.levels.info):
             return {reduce(t) for t in tree}
-    t = transform(tree, ArithTreeTransformer.reduction_methods,
+    t = transform(tree, ArithTreeTransformer.reduction_rules,
                   multiprocessing=False)
     s = set(t)
     if len(s) > 1:
@@ -99,7 +95,8 @@ def parsings(tree):
     :type tree: :class:`soap.expression.Expression` or str
     :returns: A set of trees.
     """
-    return transform(tree, None, [associativity])
+    return transform(
+        tree, None, [associativity_addition, associativity_multiplication])
 
 
 def collecting_closure(tree, depth=None):
@@ -112,7 +109,7 @@ def collecting_closure(tree, depth=None):
     :returns: A set of trees.
     """
     t = ArithTreeTransformer(tree, depth=depth)
-    t.transform_methods.remove(distribute_for_distributivity)
+    t.transform_rules.remove(distribute_for_distributivity)
     return t.closure()
 
 
@@ -130,8 +127,8 @@ def martel_trace(tree, var_env=None, depth=2, prec=None, **kwargs):
         single precision.
     :type prec: int
     """
-    from soap.transformer.utils import MartelTraceExpr
-    expression = MartelTraceExpr(*tree)
+    from soap.transformer.trace import MartelTraceExpr
+    expression = MartelTraceExpr(tree.op, *tree.args)
     return reduce(expression.traces(var_env, depth, prec, **kwargs))
 
 
@@ -149,7 +146,7 @@ def greedy_trace(tree, var_env=None, depth=2, prec=None, **kwargs):
         single precision.
     :type prec: int
     """
-    from soap.transformer.utils import GreedyTraceExpr
+    from soap.transformer.trace import GreedyTraceExpr
     expression = GreedyTraceExpr(*tree)
     return reduce(expression.traces(var_env, depth, prec, **kwargs))
 
@@ -168,6 +165,6 @@ def frontier_trace(tree, var_env=None, depth=2, prec=None, **kwargs):
         single precision.
     :type prec: int
     """
-    from soap.transformer.utils import FrontierTraceExpr
+    from soap.transformer.trace import FrontierTraceExpr
     expression = FrontierTraceExpr(*tree)
     return reduce(expression.traces(var_env, depth, prec, **kwargs))

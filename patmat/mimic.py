@@ -33,6 +33,7 @@ class _Mimic(object):
 
     def __hash__(self):
         raise NotImplementedError
+mimic_type = _Mimic
 
 
 class Val(_Mimic):
@@ -60,10 +61,9 @@ class Val(_Mimic):
     def __hash__(self):
         return hash((self.__class__, self.name))
 
-    def __str__(self):
+    def __repr__(self):
         return '{cls}({name!r})'.format(
             cls=self.__class__.__name__, name=self.name)
-    __repr__ = __str__
 
 
 class ZeroFsGiven(_Mimic):
@@ -74,9 +74,8 @@ class ZeroFsGiven(_Mimic):
     def __hash__(self):
         return hash(self.__class__)
 
-    def __str__(self):
+    def __repr__(self):
         return '{cls}()'.format(cls=self.__class__.__name__)
-    __repr__ = __str__
 _ = ZeroFsGiven
 
 
@@ -99,11 +98,9 @@ class Type(_Mimic):
     def __hash__(self):
         return hash((self.__class__, self.type, self.mimic))
 
-    def __str__(self):
-        return '{cls}({type!r}, {mimic!r})'.format(
-            cls=self.__class__.__name__,
-            type=self.type.__name__, mimic=self.mimic)
-    __repr__ = __str__
+    def __repr__(self):
+        return '{cls}({type}, {mimic!r})'.format(
+            cls=self.__class__.__name__, type=self.type, mimic=self.mimic)
 
 
 class Attr(_Mimic):
@@ -125,12 +122,11 @@ class Attr(_Mimic):
     def __hash__(self):
         return hash((self.__class__, self.attrs))
 
-    def __str__(self):
+    def __repr__(self):
         attrs = ', '.join('{k}={v!r}'.format(k=k, v=v)
                           for k, v in self.attrs.items())
         return '{cls}({attrs})'.format(
             cls=self.__class__.__name__, attrs=attrs)
-    __repr__ = __str__
 
 
 class Seq(_Mimic):
@@ -176,10 +172,9 @@ class Seq(_Mimic):
     def __hash__(self):
         return hash((self.__class__, self.seq))
 
-    def __str__(self):
+    def __repr__(self):
         return '{cls}({seq!r})'.format(
             cls=self.__class__.__name__, seq=self.seq)
-    __repr__ = __str__
 
 
 class _TypedSeq(Type):
@@ -189,10 +184,9 @@ class _TypedSeq(Type):
     def __init__(self, seq):
         super(_TypedSeq, self).__init__(self.type, Seq(seq))
 
-    def __str__(self):
+    def __repr__(self):
         return '{cls}({seq!r})'.format(
             cls=self.__class__.__name__, seq=self.mimic.seq)
-    __repr__ = __str__
 
 
 class List(_TypedSeq):
@@ -230,12 +224,32 @@ class Dict(_Mimic):
     def __hash__(self):
         return hash((self.__class__, tuple(self.dictionary.items())))
 
-    def __str__(self):
+    def __repr__(self):
         attrs = ', '.join('{k!r}: {v!r}'.format(k=k, v=v)
                           for k, v in self.dictionary.items())
         return '{cls}({{{attrs}}})'.format(
             cls=self.__class__.__name__, attrs=attrs)
-    __repr__ = __str__
+
+
+class Pred(_Mimic):
+    """Mimics something satisfying a predicate.  """
+    def __init__(self, predicate, mimic=ZeroFsGiven()):
+        super(Pred, self).__init__()
+        self.predicate = predicate
+        self.mimic = mimic
+
+    def _match(self, other, env=None):
+        if not self.predicate(other):
+            return False
+        return self.mimic._match(other, env)
+
+    def __hash__(self):
+        return hash((self.__class__, self.predicate, self.mimic))
+
+    def __repr__(self):
+        return '{cls}({predicate}, {mimic!r})'.format(
+            cls=self.__class__.__name__,
+            predicate=self.predicate, mimic=self.mimic)
 
 
 def Mimic(*args, **kwargs):
@@ -260,4 +274,6 @@ def Mimic(*args, **kwargs):
         return Tuple(Mimic(v) for v in value)
     if isinstance(value, dict):
         return Dict({Mimic(k): Mimic(v) for k, v in value.items()})
+    if callable(value):
+        return Pred(value)
     return value

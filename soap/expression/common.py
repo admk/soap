@@ -123,6 +123,9 @@ def expression_factory(op, *args):
         UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr
     )
     if not args:
+        if not isinstance(op, str):
+            raise ValueError('Do not know how to construct expression from '
+                             '{!r}'.format(op))
         return Variable(op)
     if op in ARITHMETIC_OPERATORS:
         class_list = [UnaryArithExpr, BinaryArithExpr, TernaryArithExpr]

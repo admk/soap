@@ -16,5 +16,5 @@ class MartelTreeTransformer(ArithTreeTransformer):
     def _seed(self, trees):
         return trees
 
-    def _step(self, s, c=False, d=None):
-        return super()._step(s, c, self._d)
+    def _step(self, expressions, closure=False, depth=None):
+        return super()._step(expressions, closure, self.depth)
