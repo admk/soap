@@ -2,6 +2,9 @@
 .. module:: soap.expression.common
     :synopsis: Common definitions for expressions.
 """
+from soap.common.cache import cached
+
+
 ADD_OP = '+'
 SUBTRACT_OP = '-'
 UNARY_SUBTRACT_OP = '-'
@@ -66,6 +69,16 @@ op_func_dict_by_ary_list = [
 ]
 
 
+def is_variable(e):
+    from soap.expression.variable import Variable
+    return isinstance(e, Variable)
+
+
+def is_constant(e):
+    from soap.semantics.error import mpz_type, mpfr_type
+    return isinstance(e, (mpz_type, mpfr_type))
+
+
 def is_expr(e):
     from soap.expression.base import Expression
     return isinstance(e, Expression)
@@ -100,6 +113,7 @@ def split_multi_expr(e):
     return split_multi_expr(e.a1) + split_multi_expr(e.a2)
 
 
+@cached
 def expression_factory(op, *args):
     from soap.expression.base import Variable
     from soap.expression.arithmetic import (
@@ -109,6 +123,9 @@ def expression_factory(op, *args):
         UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr
     )
     if not args:
+        if not isinstance(op, str):
+            raise ValueError('Do not know how to construct expression from '
+                             '{!r}'.format(op))
         return Variable(op)
     if op in ARITHMETIC_OPERATORS:
         class_list = [UnaryArithExpr, BinaryArithExpr, TernaryArithExpr]

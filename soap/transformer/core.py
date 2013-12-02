@@ -2,61 +2,62 @@
 .. module:: soap.transformer.core
     :synopsis: Base class for transforming expression instances.
 """
-import sys
 import functools
+import itertools
 import multiprocessing
+import sys
 
-import soap.logger as logger
+from soap import logger
 from soap.common import cached
-from soap.expression.common import is_expr
-from soap.expression import expression_factory
+from soap.expression.common import expression_factory, is_expr
+from soap.expression.parser import parse
+from soap.transformer import pattern
 
 
 RECURSION_LIMIT = sys.getrecursionlimit()
 
 
-def item_to_list(f):
-    """Utility decorator for equivalence rules.
+class TreeFarmer(object):
+    def __init__(self, depth):
+        super().__init__()
+        self.depth = depth
 
-    :param f: The transform function.
-    :type f: function
-    :returns: A new function that returns a list containing the return value of
-        the original function.
-    """
-    def wrapper(t):
-        v = f(t)
-        return [v] if not v is None else []
-    return functools.wraps(f)(wrapper)
+    def _harvest(self, trees):
+        """Crops all trees at the depth limit."""
+        if self.depth >= RECURSION_LIMIT:
+            return trees
+        logger.debug('Harvesting trees.')
+        cropped = []
+        for t in trees:
+            try:
+                t, e = t.crop(self.depth)
+            except AttributeError:
+                t, e = t, {}
+            cropped.append(t)
+            self._crop_env.update(e)
+        return cropped
+
+    def _seed(self, trees):
+        """Stitches all trees."""
+        logger.debug('Seeding trees.')
+        if not self._crop_env:
+            return trees
+        seeded = set()
+        for t in trees:
+            try:
+                t = t.stitch(self._crop_env)
+            except AttributeError:
+                pass
+            seeded.add(t)
+        return seeded
 
 
-def none_to_list(f):
-    """Utility decorator for equivalence rules.
-
-    :param f: The transform function.
-    :type f: function
-    :returns: A new function that returns an empty list if the original
-        function returns None.
-    """
-    def wrapper(t):
-        v = f(t)
-        return v if not v is None else []
-    return functools.wraps(f)(wrapper)
-
-
-class ValidationError(Exception):
-    """Failed to find equivalence."""
-
-
-class TreeTransformer(object):
+class TreeTransformer(TreeFarmer):
     """The base class that finds the transitive closure of transformed trees.
 
     :param tree_or_trees: An input expression, or a container of equivalent
         expressions.
     :type tree_or_trees: :class:`soap.expression.Expression`
-    :param validate: If set, tries to validate equivalence, subclasses
-        of :class:`TreeTransformer` should implement a member function
-        :member:`TreeTransformer.validate`.
-    :type validate: bool
     :param depth: The depth limit for equivalence finding, if not specified, a
         depth limit will not be used.
     :type depth: int or None
@@ -72,55 +73,31 @@ class TreeTransformer(object):
         new equivalent trees.
     :type multiprocessing: bool
     """
-    transform_methods = None
-    reduction_methods = None
+    transform_rules = None
+    reduction_rules = None
 
     def __init__(self, tree_or_trees,
-                 validate=False, depth=None,
+                 depth=None, transform_rules=None, reduction_rules=None,
                  step_plugin=None, reduce_plugin=None,
                  multiprocessing=True):
-        try:
-            self._t = [expression_factory(tree_or_trees)]
-        except TypeError:
-            self._t = tree_or_trees
-        self._v = validate
-        self._m = multiprocessing
-        self._d = depth or RECURSION_LIMIT
-        self._n = {}
-        self._sp = step_plugin
-        self._rp = reduce_plugin
-        self.transform_methods = list(self.__class__.transform_methods or [])
-        self.reduction_methods = list(self.__class__.reduction_methods or [])
-        super().__init__()
-
-    def _harvest(self, trees):
-        """Crops all trees at the depth limit."""
-        if self._d >= RECURSION_LIMIT:
-            return trees
-        logger.debug('Harvesting trees.')
-        cropped = []
-        for t in trees:
-            try:
-                t, e = t.crop(self._d)
-            except AttributeError:
-                t, e = t, {}
-            cropped.append(t)
-            self._n.update(e)
-        return cropped
-
-    def _seed(self, trees):
-        """Stitches all trees."""
-        logger.debug('Seeding trees.')
-        if not self._n:
-            return trees
-        seeded = set()
-        for t in trees:
-            try:
-                t = t.stitch(self._n)
-            except AttributeError:
-                pass
-            seeded.add(t)
-        return seeded
+        depth = depth or RECURSION_LIMIT
+        if depth >= RECURSION_LIMIT and self.transform_rules:
+            logger.warning('Depth limit not set.', depth)
+        super().__init__(depth=depth)
+        self.multiprocessing = multiprocessing
+        self.step_plugin = step_plugin
+        self.reduce_plugin = reduce_plugin
+        self.transform_rules = list(
+            transform_rules or self.__class__.transform_rules or [])
+        self.reduction_rules = list(
+            reduction_rules or self.__class__.reduction_rules or [])
+        if isinstance(tree_or_trees, str):
+            self._expressions = [parse(tree_or_trees)]
+        elif is_expr(tree_or_trees):
+            self._expressions = [tree_or_trees]
+        else:
+            self._expressions = tree_or_trees
+        self._crop_env = {}
 
     def _plugin(self, trees, plugin):
         """Plugin function call setup and cleanup."""
@@ -131,34 +108,36 @@ class TreeTransformer(object):
         trees = set(self._harvest(trees))
         return trees
 
-    def _step(self, s, c=False, d=None):
+    def _step(self, expressions, closure=False, depth=None):
         """One step of the transitive closure."""
-        fs = self.transform_methods if c else self.reduction_methods
-        v = self._validate if self._v else None
-        if self._m:
+        rules = self.transform_rules if closure else self.reduction_rules
+        if self.multiprocessing:
             cpu_count = multiprocessing.cpu_count()
-            chunksize = int(len(s) / cpu_count) + 1
-            map = pool().imap_unordered
+            chunksize = int(len(expressions) / cpu_count) + 1
+            # this gives the desired deterministic behaviour for reduction
+            # so never change it to imap_unordered!!
+            map = pool().imap
         else:
             cpu_count = chunksize = 1
-            map = lambda f, l, _: [f(a) for a in l]
+            map = lambda func, args_list, _: [func(args) for args in args_list]
         union = lambda s, _: functools.reduce(lambda x, y: x | y, s)
-        r = [(t, fs, v, c, d) for i, t in enumerate(s)]
-        b, r = list(zip(*map(_walk, r, chunksize)))
-        s = {t for i, t in enumerate(s) if b[i]}
-        r = union(r, cpu_count)
-        return s, r
+        args_list = [(expression, rules, closure, depth)
+                     for index, expression in enumerate(expressions)]
+        should_include, discovered_sets = \
+            zip(*map(_walk, args_list, chunksize))
+        expressions = {
+            expression for index, expression in enumerate(expressions)
+            if should_include[index]}
+        discovered = union(discovered_sets, cpu_count)
+        return expressions, discovered
 
-    def _closure_r(self, trees, reduced=False):
+    def _recursive_closure(self, trees, reduced=False):
         """Transitive closure algorithm."""
-        if self._d >= RECURSION_LIMIT and self.transform_methods:
-            logger.warning('Depth limit not set.', self._d)
         done_trees = set()
         todo_trees = set(trees)
-        i = 0
+        i = 1
         while todo_trees:
             # print set size
-            i += 1
             logger.persistent(
                 'Iteration' if not reduced else 'Reduction', i)
             logger.persistent('Trees', len(done_trees))
@@ -167,16 +146,17 @@ class TreeTransformer(object):
                 _, step_trees = \
                     self._step(todo_trees, not reduced, None)
                 step_trees -= done_trees
-                step_trees = self._closure_r(step_trees, True)
-                step_trees = self._plugin(step_trees, self._sp)
+                step_trees = self._recursive_closure(step_trees, True)
+                step_trees = self._plugin(step_trees, self.step_plugin)
                 done_trees |= todo_trees
                 todo_trees = step_trees - done_trees
             else:
                 nore_trees, step_trees = \
                     self._step(todo_trees, not reduced, None)
-                step_trees = self._plugin(step_trees, self._rp)
+                step_trees = self._plugin(step_trees, self.reduce_plugin)
                 done_trees |= nore_trees
                 todo_trees = step_trees - nore_trees
+            i += 1
         logger.unpersistent('Iteration', 'Reduction', 'Trees', 'Todo')
         return done_trees
 
@@ -185,64 +165,44 @@ class TreeTransformer(object):
 
         :returns: A set of trees after transform.
         """
-        s = self._harvest(self._t)
-        s = self._closure_r(s)
-        s = self._seed(s)
-        return s
-
-    def validate(self, t, tn):
-        """Perform validation of tree, subclasses must implement this method
-        if validation of equivalence is needed. This is useful for discovering
-        bugs in equivalence rules.
-
-        :param t: An original tree.
-        :type t: :class:`soap.expression.Expression`
-        :param tn: A transformed tree.
-        :type tn: :class:`soap.expression.Expression`
-        :raises: ValidationError
-        """
-        pass
-
-    def _validate(self, t, tn):
-        if t == tn:
-            return
-        if self._v:
-            self.validate(t, tn)
+        expressions = self._harvest(self._expressions)
+        expressions = self._recursive_closure(expressions)
+        expressions = self._seed(expressions)
+        return expressions
 
 
-def _walk(t_fs_v_c_d):
-    t, fs, v, c, d = t_fs_v_c_d
-    s = set()
-    d = d if c and d else RECURSION_LIMIT
-    for f in fs:
-        s |= _walk_r(t, f, v, d)
-    if c:
-        s.add(t)
-    return True if not c and not s else False, s
+def _walk(args):
+    expression, rules, closure, depth = args
+    discovered = set()
+    depth = depth if closure and depth else RECURSION_LIMIT
+    try:
+        discovered = _recursive_walk(expression, rules, depth)
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        raise
+    if closure:
+        discovered.add(expression)
+    return not closure and not discovered, discovered
 
 
 @cached
-def _walk_r(t, f, v, d):
+def _recursive_walk(expression, rules, depth):
     """Tree walker"""
-    s = set()
-    if d == 0:
-        return s
-    if not is_expr(t):
-        return s
-    for e in f(t):
-        s.add(e)
-    for a, b in (t.args, t.args[::-1]):
-        for e in _walk_r(a, f, v, d - 1):
-            s.add(expression_factory(t.op, e, b))
-    if not v:
-        return s
-    try:
-        for tn in s:
-            v(t, tn)
-    except ValidationError:
-        logger.error('Violating transformation:', f.__name__)
-        raise
-    return s
+    discovered = set()
+    if depth == 0:
+        return discovered
+    if not is_expr(expression):
+        return discovered
+    for rule in rules:
+        discovered |= pattern.transform(rule, expression)
+    args_discovered = (_recursive_walk(a, rules, depth) | {a}
+                       for a in expression.args)
+    for args in itertools.product(*args_discovered):
+        discovered.add(expression_factory(expression.op, *args))
+    if expression in discovered:
+        discovered.remove(expression)
+    return discovered
 
 
 def par_union(sl):

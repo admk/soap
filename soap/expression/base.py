@@ -2,31 +2,31 @@
 .. module:: soap.expression.base
     :synopsis: The base classes of expressions.
 """
-from soap.common import Comparable, Flyweight, Label, cached
+from soap.common import Flyweight, Label, cached
 from soap.expression.common import (
-    expression_factory, op_func_dict_by_ary_list, COMMUTATIVITY_OPERATORS
+    expression_factory, op_func_dict_by_ary_list
 )
 from soap.expression.variable import Variable
 
 
-class Expression(Flyweight, Comparable):
+class Expression(Flyweight):
     """A base class for expressions."""
 
-    __slots__ = ('op', 'args', '_hash')
+    __slots__ = ('_op', '_args', '_hash')
 
     def __init__(self, op, *args):
         if not args:
             raise ValueError('There is no arguments.')
-        super().__setattr__('op', op)
-        super().__setattr__('args', args)
+        self._op = op
+        self._args = args
 
-    def __getattribute__(self, attribute):
+    def __getattr__(self, attribute):
         if attribute[0] != 'a':
-            return super().__getattribute__(attribute)
+            return super().__getattr__(attribute)
         try:
             index = int(attribute[1:]) - 1
         except ValueError:
-            return super().__getattribute__(attribute)
+            return super().__getattr__(attribute)
         try:
             return self.args[index]
         except KeyError:
@@ -34,9 +34,13 @@ class Expression(Flyweight, Comparable):
                 '{} has no attribute at index {}'.format(
                     self.__class__.__name__, index))
 
-    def __setattribute__(self, *_):
-        raise NotImplementedError
-    __delattribute__ = __setattribute__
+    @property
+    def op(self):
+        return self._op
+
+    @property
+    def args(self):
+        return self._args
 
     @property
     def ary(self):
@@ -227,30 +231,24 @@ class Expression(Flyweight, Comparable):
         return "{name}(op={op!r}, {args})".format(
             name=self.__class__.__name__, op=self.op, args=args)
 
-    def _sort_attr(self):
-        args = list(self.args)
-        if self.op in COMMUTATIVITY_OPERATORS:
-            args = sorted(args)
-        return tuple([self.op] + args)
+    def _attr(self):
+        return (self.op, tuple(self.args))
 
     def __eq__(self, other):
         if not isinstance(other, Expression):
             return False
         if id(self) == id(other):
             return True
-        return self._sort_attr() == other._sort_attr()
-
-    def __lt__(self, other):
-        if not isinstance(other, Expression):
+        if hash(self) != hash(other):
             return False
-        return self._sort_attr() < other._sort_attr()
+        return self._attr() == other._attr()
 
     def __hash__(self):
         try:
             return self._hash
         except AttributeError:
             pass
-        self._hash = hash(self._sort_attr())
+        self._hash = hash(self._attr())
         return self._hash
 
 
