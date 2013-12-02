@@ -1,4 +1,4 @@
-from patmat.mimic import _Mimic, Val, Pred
+from patmat.mimic import _Mimic, Val
 
 from soap.common import cached
 from soap.expression.common import (
@@ -49,7 +49,7 @@ def compile(*expressions):
             return ExprMimic(
                 expression.op, [_compile(a) for a in expression.args])
         if is_variable(expression):
-            return Val(expression.n)
+            return Val(expression.name)
         if is_constant(expression):
             return expression
         if isinstance(expression, ExprMimic):

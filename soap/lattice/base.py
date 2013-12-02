@@ -10,7 +10,7 @@ class LatticeMeta(type):
         class UnifiedSummationLattice(Lattice):
             """Defines a summation of two partial orders with unified top and
             bottom elements."""
-            def __init__(self, *args, top=top, bottom=bottom, **kwargs):
+            def __init__(self, *args, top=False, bottom=False, **kwargs):
                 super().__init__(top=top, bottom=bottom)
                 if top or bottom:
                     return
@@ -113,7 +113,7 @@ class LatticeMeta(type):
                            zip(self.components, other.components))
 
             def __str__(self):
-                return '(%s)' % ', '.join(str(c) for c in components)
+                return '(%s)' % ', '.join(str(c) for c in self.components)
 
             def __repr__(self):
                 return '%s(%s)' % \
@@ -132,9 +132,8 @@ def _decorate(cls):
             v = func(*args, **kwargs)
             if v is not None:
                 return v
-            raise RuntimeError(
-                'Function %s of %r does not return a value' %
-                (func.__name__, self))
+            raise RuntimeError('Function {} does not return a value'
+                               ''.format(func.__qualname__))
         return checker
 
     def decorate_self(base_func, decd_func):
@@ -149,12 +148,6 @@ def _decorate(cls):
         @_check_return
         @wraps(decd_func)
         def wrapper(self, other):
-            """
-            if self.__class__ != other.__class__:
-                raise TypeError(
-                    'Inconsistent lattices %r, %r for function %s' %
-                    (self, other, decd_func))
-            """
             t = base_func(self, other)
             return t if t is not None else decd_func(self, other)
         return wrapper

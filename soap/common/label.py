@@ -1,3 +1,6 @@
+from soap.common.cache import Flyweight
+
+
 _label_count = 0
 _label_map = None
 
@@ -18,13 +21,14 @@ def fresh_int(e=None):
     return l
 
 
-class Label(object):
+class Label(Flyweight):
     """Constructs a label for the expression `e`"""
+    __slots__ = ('l', 'e', 'desc')
+
     def __init__(self, e=None, l=None, desc=None):
         self.l = l or fresh_int(e)
         self.e = e
         self.desc = desc
-        self.__slots__ = []
         super().__init__()
 
     def signal_name(self):
@@ -46,7 +50,7 @@ class Label(object):
         return s
 
     def __repr__(self):
-        return 'Label(%s, %s)' % (repr(self.e), repr(self.l))
+        return 'Label({!r}, {!r})'.format(self.e, self.l)
 
     def __eq__(self, other):
         if not isinstance(other, Label):
