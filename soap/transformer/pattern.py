@@ -1,9 +1,13 @@
+import collections
+import itertools
+
 from patmat.mimic import _Mimic, Val
 
 from soap.common import cached
 from soap.expression.common import (
-    is_expr, is_variable, is_constant, expression_factory
+    is_expr, is_variable, is_constant, expression_factory,
 )
+from soap.expression.operators import ASSOCIATIVITY_OPERATORS
 from soap.expression.parser import parse
 
 
@@ -13,14 +17,30 @@ class ExprMimic(_Mimic):
         self.op = op
         self.args = args
 
-    def _match(self, other, env=None):
+    def _initial_match(self, other, env):
         if not is_expr(other):
             return False
         if not self._match_item(self.op, other.op, env):
             return False
-        for sa, oa in zip(self.args, other.args):
-            if not self._match_item(sa, oa, env):
-                return False
+        return True
+
+    def _match(self, other, env):
+        if not self._initial_match(other, env):
+            return False
+        if other.op in ASSOCIATIVITY_OPERATORS:
+            other_args_permutations = itertools.permutations(other.args)
+        else:
+            other_args_permutations = [other.args]
+        for other_args in other_args_permutations:
+            args_env = dict(env)
+            for sa, oa in zip(self.args, other_args):
+                if not self._match_item(sa, oa, args_env):
+                    break
+            else:  # everything matches
+                env.update(args_env)
+                break
+        else:  # tried all permutations, no match found
+            return False
         return True
 
     def __hash__(self):
@@ -31,14 +51,19 @@ class ExprMimic(_Mimic):
             cls=self.__class__.__name__, op=self.op, args=self.args)
 
 
-class ConstVal(Val):
-    def __init__(self, value):
-        super().__init__(value)
+class ExprConstPropMimic(ExprMimic):
+    def __init__(self):
+        super().__init__(op=Val('op'), args=None)
 
     def _match(self, other, env):
-        if not is_constant(other):
+        if not self._initial_match(other, env):
             return False
-        return super()._match(other, env)
+        if not isinstance(other.args, collections.Sequence):
+            return False
+        if not all(is_constant(a) for a in other.args):
+            return False
+        env['args'] = other.args
+        return True
 
 
 def compile(*expressions):
@@ -87,3 +112,12 @@ def transform(rule, expression):
             m = m(**env) if callable(m) else decompile(m, env)
             concrete_matches.add(m)
     return concrete_matches
+
+
+def transformer_factory(rule):
+    """Create a function that transforms an expression from the given rule.
+
+    :func:`functools.partial` is used instead of lambda to support pickling.
+    """
+    from functools import partial
+    return partial(transform, rule=rule)

@@ -3,12 +3,14 @@
     :synopsis: Useful utility functions to simplify calls to
         ArithTreeTransformer.
 """
-import soap.logger as logger
+from soap import logger
+from soap.expression import operators
 from soap.expression.common import is_expr
 from soap.transformer.core import TreeTransformer
 from soap.transformer.arithmetic import (
     associativity_addition, associativity_multiplication,
-    distribute_for_distributivity, ArithTreeTransformer
+    distributivity_distribute_multiplication,
+    distributivity_distribute_division, ArithTreeTransformer
 )
 from soap.analysis import expr_frontier
 
@@ -64,8 +66,13 @@ def expand(tree):
         if s:
             return [s.pop()]
         return s
-    return transform(tree, reduction_rules=[distribute_for_distributivity],
-                     reduce_plugin=pop, multiprocessing=False).pop()
+    reduction_rules = [
+        distributivity_distribute_multiplication,
+        distributivity_distribute_division,
+    ]
+    return transform(
+        tree, reduction_rules=reduction_rules, reduce_plugin=pop,
+        multiprocessing=False).pop()
 
 
 def reduce(tree):
@@ -96,21 +103,10 @@ def parsings(tree):
     :returns: A set of trees.
     """
     return transform(
-        tree, None, [associativity_addition, associativity_multiplication])
-
-
-def collecting_closure(tree, depth=None):
-    """Fully closure, sans distributing terms.
-
-    :param tree: The expression tree.
-    :type tree: :class:`soap.expression.Expression` or str
-    :param depth: The depth limit.
-    :type depth: int
-    :returns: A set of trees.
-    """
-    t = ArithTreeTransformer(tree, depth=depth)
-    t.transform_rules.remove(distribute_for_distributivity)
-    return t.closure()
+        tree, None, {
+            operators.ADD_OP: [associativity_addition],
+            operators.MULTIPLY_OP: [associativity_multiplication]
+        })
 
 
 def martel_trace(tree, var_env=None, depth=2, prec=None, **kwargs):

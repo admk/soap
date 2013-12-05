@@ -2,7 +2,7 @@
 .. module:: soap.expression.arithmetic
     :synopsis: The class of expressions.
 """
-from soap.expression.common import (
+from soap.expression.operators import (
     ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP,
     ARITHMETIC_OPERATORS, COMMUTATIVITY_OPERATORS
 )

@@ -3,9 +3,8 @@
     :synopsis: The base classes of expressions.
 """
 from soap.common import Flyweight, Label, cached
-from soap.expression.common import (
-    expression_factory, op_func_dict_by_ary_list
-)
+from soap.expression.common import expression_factory
+from soap.expression.operators import op_func_dict_by_ary_list
 from soap.expression.variable import Variable
 
 

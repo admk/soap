@@ -2,7 +2,7 @@
 .. module:: soap.expression.boolean
     :synopsis: The class of boolean expressions.
 """
-from soap.expression.common import (
+from soap.expression.operators import (
     EQUAL_OP, GREATER_OP, LESS_OP, UNARY_NEGATION_OP, AND_OP, OR_OP,
     BOOLEAN_OPERATORS
 )
