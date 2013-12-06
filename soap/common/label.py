@@ -22,48 +22,64 @@ def fresh_int(e=None):
 
 
 class Label(Flyweight):
-    """Constructs a label for the expression `e`"""
-    __slots__ = ('l', 'e', 'desc')
+    """Constructs a label for expression or statement `statement`"""
+    __slots__ = ('label_value', 'statement', 'description')
 
-    def __init__(self, e=None, l=None, desc=None):
-        self.l = l or fresh_int(e)
-        self.e = e
-        self.desc = desc
+    def __init__(self, statement=None, label_value=None, description=None):
+        self.label_value = label_value or fresh_int(
+            (statement, self.__class__))
+        self.statement = statement
+        self.description = description
         super().__init__()
 
     def signal_name(self):
-        return 's_%d' % self.l
+        return 's_{}'.format(self.label_value)
 
     def port_name(self):
-        from soap.expression.common import OPERATORS
+        from soap.expression.operators import OPERATORS
         forbidden = OPERATORS + [',', '(', ')', '[', ']']
         if any(k in str(self.e) for k in forbidden):
-            s = self.l
+            s = self.label_value
         else:
-            s = self.e
+            s = self.statement
         return 'p_%s' % str(s)
 
     def __str__(self):
-        s = 'l{}'.format(self.l)
-        if self.desc:
+        s = 'l{}'.format(self.label_value)
+        if self.description:
             s += ':{.desc}'.format(self)
         return s
 
     def __repr__(self):
-        return 'Label({!r}, {!r})'.format(self.e, self.l)
+        return '{cls}({statement!r}, {label!r})'.format(
+            cls=self.__class__.__name__,
+            statement=self.statement,
+            label=self.label_value)
 
     def __eq__(self, other):
         if not isinstance(other, Label):
             return False
-        return self.l == other.l
-
-    def __lt__(self, other):
-        if not isinstance(other, Label):
-            return False
-        return self.l < other.l
+        return self.label_value == other.label_value
 
     def __hash__(self):
-        return hash(self.l)
+        return hash(self.label_value)
+
+
+class FlowLabel(Label):
+    def __init__(self, flow=None, iteration=0):
+        super().__init__(label_value=fresh_int(flow))
+        self.statement = flow
+        self.iteration = iteration
+
+    def __eq__(self, other):
+        if not isinstance(other, FlowLabel):
+            return False
+        if self.label_value != other.label_value:
+            return False
+        return self.iteration == other.iteration
+
+    def __hash__(self):
+        return hash((self.label_value, self.iteration))
 
 
 class Labels(object):
@@ -76,3 +92,7 @@ class Labels(object):
         if e in list(self.s.items()):
             return
         self.s[Label()] = e
+
+
+def superscript(label):
+    return label

@@ -4,6 +4,7 @@
 """
 from functools import wraps
 
+from soap import logger
 from soap.expression import (
     LESS_OP, GREATER_OP, LESS_EQUAL_OP, GREATER_EQUAL_OP,
     EQUAL_OP, NOT_EQUAL_OP, Expression, Variable
@@ -13,17 +14,17 @@ from soap.semantics import (
     inf, ulp, cast, mpz_type, mpfr_type,
     IntegerInterval, FloatInterval, ErrorSemantics
 )
-from soap import logger
+from soap.common.label import superscript
 
 
 def _decorate(cls):
     def decorate_assign(func):
         @wraps(func)
-        def assign(self, var, expr):
-            state = func(self, var, expr)
-            logger.debug(
-                '⟦' + str(var) + ' := ' + str(expr) + '⟧:',
-                str(self), '→', str(state))
+        def assign(self, var, expr, label=None):
+            state = func(self, var, expr, label)
+            logger.debug('⟦({var} := {expr}){label}⟧: {prev} → {next}'.format(
+                var=var, expr=expr, label=superscript(label),
+                prev=self, next=state))
             return state
         return assign
 
@@ -31,9 +32,10 @@ def _decorate(cls):
         @wraps(func)
         def conditional(self, expr, cond):
             state = func(self, expr, cond)
-            logger.debug(
-                '⟦' + str(expr if cond else ~expr) + '⟧:',
-                str(self), '→', str(state))
+            if cond:
+                expr = ~expr
+            logger.debug('⟦{expr}⟧: {prev} → {next}'.format(
+                expr=expr, prev=self, next=state))
             return state
         return conditional
 
@@ -41,7 +43,8 @@ def _decorate(cls):
         @wraps(func)
         def join(self, other):
             state = func(self, other)
-            logger.debug(str(self) + ' ⊔ ' + str(other), '→', str(state))
+            logger.debug('{prev} ⊔ {other} → {next}'.format(
+                prev=self, other=other, next=state))
             return state
         return join
 
@@ -49,7 +52,9 @@ def _decorate(cls):
         @wraps(func)
         def le(self, other):
             b = func(self, other)
-            logger.debug(str(self), '⊑' if b else '⋢', str(other))
+            le_or_nle = '⊑' if b else '⋢'
+            logger.debug('{prev} {le_or_nle} {other}'.format(
+                prev=self, le_or_nle=le_or_nle, other=other))
             return b
         return le
 
@@ -85,10 +90,10 @@ class State(object):
             return expr
         raise TypeError('Do not know how to evaluate {!r}'.format(expr))
 
-    def assign(self, var, expr):
+    def assign(self, var, expr, label=None):
         """Makes an assignment and returns a new state object."""
         mapping = dict(self)
-        mapping[var] = self.eval(expr)
+        mapping[Variable(name=var.name, label=label)] = self.eval(expr)
         return self.__class__(mapping)
 
     def conditional(self, expr, cond):

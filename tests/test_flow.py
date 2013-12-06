@@ -37,8 +37,8 @@ class TestIfFlow(unittest.TestCase):
     def setUp(self):
         self.flow = IfFlow(
             expr('x < 2'),
-            AssignFlow('x', expr('x + 1')),
-            AssignFlow('x', expr('x - 1')))
+            AssignFlow(expr('x'), expr('x + 1')),
+            AssignFlow(expr('x'), expr('x - 1')))
         self.state = BoxState(x=[1, 3])
 
     def test_flow(self):
@@ -49,7 +49,7 @@ class TestWhileFlow(unittest.TestCase):
     """Unittesting for :class:`soap.program.WhileFlow`."""
     def setUp(self):
         self.flow = WhileFlow(
-            expr('x < 3'), AssignFlow('x', expr('x + 1')))
+            expr('x < 3'), AssignFlow(expr('x'), expr('x + 1')))
         self.state = BoxState(x=[1, 4])
 
     def test_flow(self):
@@ -60,8 +60,8 @@ class TestCompositionalFlow(unittest.TestCase):
     """Unittesting for :class:`soap.program.CompositionalFlow`."""
     def setUp(self):
         self.flow = CompositionalFlow()
-        self.flow += AssignFlow('x', expr('x + 1'))
-        self.flow += AssignFlow('x', expr('x - 1'))
+        self.flow += AssignFlow(expr('x'), expr('x + 1'))
+        self.flow += AssignFlow(expr('x'), expr('x - 1'))
         self.state = BoxState(x=[1, 4])
 
     def test_flow(self):

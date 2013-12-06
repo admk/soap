@@ -14,10 +14,21 @@ def pr(*args):
 ps = lambda *args: pr(*[str(a) for a in args])
 
 
+class __IntervalShortcut(object):
+    def __init__(self, cls):
+        self.cls = cls
+
+    def __getitem__(self, key):
+        return self.cls(key)
+
+
 I = Int = IntegerInterval
 F = Float = FloatInterval
 E = Error = ErrorSemantics
 S = Box = BoxState
+i = __IntervalShortcut(IntegerInterval)
+f = __IntervalShortcut(FloatInterval)
+e = __IntervalShortcut(ErrorSemantics)
 
 
 if __name__ == '__main__':

@@ -33,7 +33,7 @@ def ast_to_flow(prog_ast, prog_str):
         else:
             raise_parser_error(
                 'Unknown statement {}'.format(stmt), prog_str, stmt)
-    return flow
+    return flow or IdentityFlow()
 
 
 def parse(prog_str):

@@ -13,9 +13,9 @@ class TestBoxState(unittest.TestCase):
         self.two_four = BoxState({'x': [2, 4]})
 
     def test_assign(self):
-        self.assertEqual(self.bot.assign('x', expr('x + 1')), self.bot)
+        self.assertEqual(self.bot.assign(expr('x'), expr('x + 1')), self.bot)
         self.assertEqual(
-            self.one_three.assign('x', expr('x + 1')), self.two_four)
+            self.one_three.assign(expr('x'), expr('x + 1')), self.two_four)
 
     def test_conditional(self):
         self.assertEqual(

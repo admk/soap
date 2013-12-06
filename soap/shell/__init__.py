@@ -15,10 +15,10 @@ class Shell(IPython.terminal.embed.InteractiveShellEmbed):
                 author=soap.__author__,
                 email=soap.__email__),
             'Type "soap?" for help.', ''])
-        self.ast_transformers.extend(
-            [FlowTransformer(self),
-             TraceTransformer(self),
-             CastTransformer(self)])
+        self.ast_transformers.extend([
+            FlowTransformer(self),
+            TraceTransformer(self),
+        ])
 
     def run_cell(self, raw_cell,
                  store_history=False, silent=False, shell_futures=True):
