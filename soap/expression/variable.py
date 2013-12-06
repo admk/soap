@@ -3,24 +3,22 @@
     :synopsis: The class of variables.
 """
 from soap.common.cache import Flyweight
-from soap.common.label import Label
 
 
 class Variable(Flyweight):
     """The variable class."""
 
-    __slots__ = ('name', 'label')
+    __slots__ = ('name')
 
-    def __init__(self, name, label=None):
+    def __init__(self, name):
         self.name = name
-        self.label = label or Label(name)
 
     def __str__(self):
         return str(self.name)
 
     def __repr__(self):
-        return '{cls}({name!r}, {label!r})'.format(
-            cls=self.__class__.__name__, name=self.name, label=self.label)
+        return '{cls}({name!r})'.format(
+            cls=self.__class__.__name__, name=self.name)
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):

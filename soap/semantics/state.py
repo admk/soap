@@ -93,7 +93,7 @@ class State(object):
     def assign(self, var, expr, label=None):
         """Makes an assignment and returns a new state object."""
         mapping = dict(self)
-        mapping[Variable(name=var.name, label=label)] = self.eval(expr)
+        mapping[var] = self.eval(expr)
         return self.__class__(mapping)
 
     def conditional(self, expr, cond):
@@ -122,11 +122,6 @@ _negate_dict = {
 class BoxState(State, map(Variable, (IntegerInterval, ErrorSemantics))):
     """The program analysis domain object based on intervals and error
     semantics.
-
-    Supports only simple boolean expressions::
-        <variable> <operator> <arithmetic expression>
-    For example::
-        x <= 3 * y.
     """
     def _cast_value(self, v=None, top=False, bottom=False):
         if top or bottom:
@@ -134,6 +129,12 @@ class BoxState(State, map(Variable, (IntegerInterval, ErrorSemantics))):
         return cast(v)
 
     def conditional(self, expr, cond):
+        """
+        Supports only simple boolean expressions::
+            <variable> <operator> <arithmetic expression>
+        For example::
+            x <= 3 * y.
+        """
         def eval(expr):
             bound = self.eval(expr)
             if isinstance(bound, (int, mpz_type)):
@@ -190,7 +191,7 @@ class BoxState(State, map(Variable, (IntegerInterval, ErrorSemantics))):
         if bot:
             """Branch evaluates to false, because no possible values of the
             variable satisfies the constraint condition, it is safe to return
-            *bottom* to denote an unreachable state."""
+            *bottom* to denote an unreachable state. """
             return self.__class__(bottom=True)
         cstr_env = self.__class__(self)
         cstr_env[expr.a1] = cstr

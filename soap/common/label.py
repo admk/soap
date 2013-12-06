@@ -1,3 +1,5 @@
+from reprlib import recursive_repr
+
 from soap.common.cache import Flyweight
 
 
@@ -42,7 +44,7 @@ class Label(Flyweight):
             s = self.label_value
         else:
             s = self.statement
-        return 'p_%s' % str(s)
+        return 'p_{}'.format(s)
 
     def __str__(self):
         s = 'l{}'.format(self.label_value)
@@ -50,6 +52,7 @@ class Label(Flyweight):
             s += ':{.desc}'.format(self)
         return s
 
+    @recursive_repr()
     def __repr__(self):
         return '{cls}({statement!r}, {label!r})'.format(
             cls=self.__class__.__name__,
