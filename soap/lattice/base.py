@@ -59,33 +59,12 @@ class LatticeMeta(type):
     def __mul__(self_class, other_class):
         class ComponentWiseLattice(Lattice):
             """Defines a component-wise partial order."""
-            def __init__(self,
-                         self_class_args=None, self_class_kwargs=None,
-                         other_class_args=None, other_class_kwargs=None,
+            def __init__(self, self_obj=None, other_obj=None,
                          top=False, bottom=False):
                 super().__init__(top=top, bottom=bottom)
                 if top or bottom:
                     return
-                if not other_class_args:
-                    if self_class_kwargs and not other_class_kwargs:
-                        other_class_args = self_class_kwargs
-                        self_class_kwargs = None
-                self_class_kwargs = self_class_kwargs or {}
-                other_class_kwargs = other_class_kwargs or {}
-                self.components = []
-                class_args = [
-                    (self_class, self_class_args, self_class_kwargs),
-                    (other_class, other_class_args, other_class_kwargs),
-                ]
-                for cls, args, kwargs in class_args:
-                    if isinstance(args, Lattice) and not kwargs:
-                        c = args
-                    else:
-                        try:
-                            c = cls(*args, **kwargs)
-                        except (TypeError, ValueError):
-                            c = cls(args, **kwargs)
-                    self.components.append(c)
+                self.components = (self_obj, other_obj)
 
             def is_top(self):
                 return all(c.is_top() for c in self.components)
@@ -111,6 +90,9 @@ class LatticeMeta(type):
                 return all(self_comp <= other_comp
                            for self_comp, other_comp in
                            zip(self.components, other.components))
+
+            def __hash__(self):
+                return hash((self.__class__, self.components))
 
             def __str__(self):
                 return '(%s)' % ', '.join(str(c) for c in self.components)
@@ -158,6 +140,7 @@ def _decorate(cls):
         cls._decorated = True
     cls.__str__ = decorate_self(Lattice.__str__, cls.__str__)
     cls.__repr__ = decorate_self(Lattice.__repr__, cls.__repr__)
+    cls.__hash__ = decorate_self(Lattice.__hash__, cls.__hash__)
     cls.is_top = decorate_self(Lattice.is_top, cls.is_top)
     cls.is_bottom = decorate_self(Lattice.is_bottom, cls.is_bottom)
     cls.join = decorate_self_other(Lattice.join, cls.join)
@@ -229,6 +212,10 @@ class Lattice(object, metaclass=LatticeMeta):
     __ge__ = lambda self, other: other.le(self)
     __lt__ = lambda self, other: not other.le(self)
     __gt__ = lambda self, other: not self.le(other)
+
+    def __hash__(self):
+        if self.is_top() or self.is_bottom():
+            return hash((self.__class__, self.is_top(), self.is_bottom()))
 
     def __str__(self):
         if self.is_top():

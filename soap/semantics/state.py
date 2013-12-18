@@ -14,24 +14,24 @@ from soap.semantics import (
     inf, ulp, cast, mpz_type, mpfr_type,
     IntegerInterval, FloatInterval, ErrorSemantics
 )
-from soap.common.label import superscript
+from soap.common import superscript
 
 
 def _decorate(cls):
     def decorate_assign(func):
         @wraps(func)
-        def assign(self, var, expr, label=None):
+        def assign(self, var, expr, label):
             state = func(self, var, expr, label)
             logger.debug('⟦({var} := {expr}){label}⟧: {prev} → {next}'.format(
-                var=var, expr=expr, label=superscript(label),
+                var=var, expr=expr, label=superscript(label.label_value),
                 prev=self, next=state))
             return state
         return assign
 
     def decorate_conditional(func):
         @wraps(func)
-        def conditional(self, expr, cond):
-            state = func(self, expr, cond)
+        def conditional(self, expr, cond, label):
+            state = func(self, expr, cond, label)
             if cond:
                 expr = ~expr
             logger.debug('⟦{expr}⟧: {prev} → {next}'.format(
@@ -52,9 +52,8 @@ def _decorate(cls):
         @wraps(func)
         def le(self, other):
             b = func(self, other)
-            le_or_nle = '⊑' if b else '⋢'
             logger.debug('{prev} {le_or_nle} {other}'.format(
-                prev=self, le_or_nle=le_or_nle, other=other))
+                prev=self, le_or_nle='⊑⋢'[b], other=other))
             return b
         return le
 
@@ -90,13 +89,13 @@ class State(object):
             return expr
         raise TypeError('Do not know how to evaluate {!r}'.format(expr))
 
-    def assign(self, var, expr, label=None):
+    def assign(self, var, expr, label):
         """Makes an assignment and returns a new state object."""
         mapping = dict(self)
         mapping[var] = self.eval(expr)
         return self.__class__(mapping)
 
-    def conditional(self, expr, cond):
+    def conditional(self, expr, cond, label):
         """Imposes a conditional on the state, returns a new state."""
         raise NotImplementedError
 
@@ -128,7 +127,7 @@ class BoxState(State, map(Variable, (IntegerInterval, ErrorSemantics))):
             return IntegerInterval(top=top, bottom=bottom)
         return cast(v)
 
-    def conditional(self, expr, cond):
+    def conditional(self, expr, cond, label):
         """
         Supports only simple boolean expressions::
             <variable> <operator> <arithmetic expression>

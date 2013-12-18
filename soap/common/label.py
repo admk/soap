@@ -1,6 +1,8 @@
 from reprlib import recursive_repr
 
 from soap.common.cache import Flyweight
+from soap.lattice.base import Lattice
+from soap.lattice.flat import flat, denotational
 
 
 _label_count = 0
@@ -23,16 +25,17 @@ def fresh_int(e=None):
     return l
 
 
-class Label(Flyweight):
+class Label(flat(int), Flyweight):
     """Constructs a label for expression or statement `statement`"""
     __slots__ = ('label_value', 'statement', 'description')
 
-    def __init__(self, statement=None, label_value=None, description=None):
+    def __init__(self, statement=None, label_value=None, description=None,
+                 top=False, bottom=False):
         self.label_value = label_value or fresh_int(
             (statement, self.__class__))
         self.statement = statement
         self.description = description
-        super().__init__()
+        super().__init__(top=top, bottom=bottom, value=self.label_value)
 
     def signal_name(self):
         return 's_{}'.format(self.label_value)
@@ -54,10 +57,9 @@ class Label(Flyweight):
 
     @recursive_repr()
     def __repr__(self):
-        return '{cls}({statement!r}, {label!r})'.format(
+        return '{cls}({label!r}, {statement!r})'.format(
             cls=self.__class__.__name__,
-            statement=self.statement,
-            label=self.label_value)
+            label=self.label_value, statement=self.statement)
 
     def __eq__(self, other):
         if not isinstance(other, Label):
@@ -65,37 +67,35 @@ class Label(Flyweight):
         return self.label_value == other.label_value
 
     def __hash__(self):
-        return hash(self.label_value)
+        return hash((self.__class__, self.label_value))
 
 
-class FlowLabel(Label):
-    def __init__(self, flow=None, iteration=0):
-        super().__init__(label_value=fresh_int(flow))
-        self.statement = flow
-        self.iteration = iteration
-
-    def __eq__(self, other):
-        if not isinstance(other, FlowLabel):
-            return False
-        if self.label_value != other.label_value:
-            return False
-        return self.iteration == other.iteration
-
-    def __hash__(self):
-        return hash((self.label_value, self.iteration))
+class Iteration(denotational(int)):
+    pass
 
 
-class Labels(object):
-    """Not used... Check if this can be removed."""
-    def __init__(self, s):
-        self.s = {fresh_int: e for e in s}
-        super().__init__()
+class Identifier(Lattice):
 
-    def add(self, e):
-        if e in list(self.s.items()):
-            return
-        self.s[Label()] = e
+    class Annotation(Label * Iteration):
+        __slots__ = ('label', 'iteration')
 
+        def __init__(self, label=None, iteration=None):
+            self.label = label or Label(bottom=True)
+            self.iteration = iteration or Iteration(bottom=True)
+            super().__init__(self_obj=label, other_obj=iteration)
 
-def superscript(label):
-    return label
+    __slots__ = ('name', 'annotation')
+
+    def __init__(self, variable, label=None, iteration=None):
+        self.variable = variable
+        self.annotation = self.Annotation(label=label, iteration=iteration)
+
+    def __str__(self):
+        return '({variable}, {label}, {iteration})'.format(
+            variable=self.variable,
+            label=self.annotation.label, iteration=self.annotation.iteration)
+
+    def __repr__(self):
+        return '{cls}({variable!r}, {label!r}, {iteration!r})'.format(
+            cls=self.__class__.__name__, variable=self.variable,
+            label=self.annotation.label, iteration=self.annotation.iteration)

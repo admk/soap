@@ -8,7 +8,8 @@ from akpytemp import Template
 from akpytemp.utils import code_gobble as _code_gobble
 
 from soap import logger
-from soap.common.label import FlowLabel, superscript
+from soap.common import superscript
+from soap.common.label import Label
 from soap.semantics.error import Interval
 from soap.semantics.state import BoxState
 
@@ -30,7 +31,7 @@ class Flow(object):
     the definition of the state.
     """
     def _update_label(self, label):
-        self.label = label or FlowLabel(self)
+        self.label = label or Label(self)
 
     def flow(self, state=None):
         state = state or BoxState()
@@ -88,7 +89,7 @@ class IdentityFlow(Flow):
         self._update_label(label)
 
     def format(self, env=None):
-        s = '[skip]{label}; '.format(label=superscript(self.label))
+        s = '[skip]{label}; '.format(label=superscript(self.label.label_value))
         if env is not None:
             s += '\n{state}'.format(state=self._env_get(env)[None])
         return s
@@ -125,7 +126,8 @@ class AssignFlow(Flow):
 
     def format(self, env=None):
         s = '[{var} ≔ {expr}]{label}; '.format(
-            var=self.var, expr=self.expr, label=superscript(self.label))
+            var=self.var, expr=self.expr,
+            label=superscript(self.label.label_value))
         if env is not None:
             s += '\n{state}'.format(state=color(self._env_get(env)[None]))
         return s
@@ -185,7 +187,7 @@ class IfFlow(SplitFlow):
             {# color(flow._env_get(env)[None]) #}{% end %}
             """))
         return template.render(
-            render_kwargs, label=superscript(self.label),
+            render_kwargs, label=superscript(self.label.label_value),
             true_format=true_format, false_format=false_format)
 
     @recursive_repr()
@@ -271,7 +273,7 @@ class WhileFlow(SplitFlow):
             {# color(flow._env_get(env)[False]) #}{% end %}
             """))
         rendered = template.render(
-            render_kwargs, label=superscript(self.label),
+            render_kwargs, label=superscript(self.label.label_value),
             loop_format=loop_format)
         return rendered
 
