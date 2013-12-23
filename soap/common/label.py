@@ -1,7 +1,6 @@
 from reprlib import recursive_repr
 
 from soap.common.cache import Flyweight
-from soap.lattice.base import Lattice
 from soap.lattice.flat import flat, denotational
 
 
@@ -74,21 +73,41 @@ class Iteration(denotational(int)):
     pass
 
 
-class Identifier(Lattice):
+class Annotation(Label * Iteration):
+    __slots__ = ('label', 'iteration')
 
-    class Annotation(Label * Iteration):
-        __slots__ = ('label', 'iteration')
+    def __init__(self, label=None, iteration=None):
+        self.label = label or Label(bottom=True)
+        self.iteration = iteration or Iteration(bottom=True)
+        super().__init__(self_obj=label, other_obj=iteration)
 
-        def __init__(self, label=None, iteration=None):
-            self.label = label or Label(bottom=True)
-            self.iteration = iteration or Iteration(bottom=True)
-            super().__init__(self_obj=label, other_obj=iteration)
+    def __str__(self):
+        return '({label}, {iteration})'.format(
+            label=self.label, iteration=self.iteration)
 
-    __slots__ = ('name', 'annotation')
+    def __repr__(self):
+        return '{cls}({label!r}, {iteration!r})'.format(
+            cls=self.__class__.__name__,
+            label=self.label, iteration=self.iteration)
 
-    def __init__(self, variable, label=None, iteration=None):
+
+class Identifier(object):
+
+    __slots__ = ('variable', 'annotation')
+
+    def __init__(self, variable, label=None, iteration=None, annotation=None):
+        super().__init__()
         self.variable = variable
-        self.annotation = self.Annotation(label=label, iteration=iteration)
+        self.annotation = (
+            annotation or Annotation(label=label, iteration=iteration))
+
+    @property
+    def label(self):
+        return self.annotation.label
+
+    @property
+    def iteration(self):
+        return self.annotation.iteration
 
     def __str__(self):
         return '({variable}, {label}, {iteration})'.format(

@@ -7,35 +7,39 @@ from functools import wraps
 from soap import logger
 from soap.expression import (
     LESS_OP, GREATER_OP, LESS_EQUAL_OP, GREATER_EQUAL_OP,
-    EQUAL_OP, NOT_EQUAL_OP, Expression, Variable
+    EQUAL_OP, NOT_EQUAL_OP, Expression, Variable, expression_factory
 )
 from soap.lattice import map
-from soap.semantics import (
+from soap.semantics.error import (
     inf, ulp, cast, mpz_type, mpfr_type,
     IntegerInterval, FloatInterval, ErrorSemantics
 )
 from soap.common import superscript
+from soap.common.label import Identifier, Annotation, Label, Iteration
 
 
 def _decorate(cls):
     def decorate_assign(func):
         @wraps(func)
-        def assign(self, var, expr, label):
-            state = func(self, var, expr, label)
-            logger.debug('⟦({var} := {expr}){label}⟧: {prev} → {next}'.format(
-                var=var, expr=expr, label=superscript(label.label_value),
-                prev=self, next=state))
+        def assign(self, var, expr, annotation):
+            state = func(self, var, expr, annotation)
+            logger.debug(
+                '⟦[{var} := {expr}]{annotation}⟧: {prev} → {next}'.format(
+                    var=var, expr=expr, annotation=superscript(annotation),
+                    prev=self, next=state))
             return state
         return assign
 
     def decorate_conditional(func):
         @wraps(func)
-        def conditional(self, expr, cond, label):
-            state = func(self, expr, cond, label)
+        def conditional(self, expr, cond, annotation):
+            state = func(self, expr, cond, annotation)
             if cond:
                 expr = ~expr
-            logger.debug('⟦{expr}⟧: {prev} → {next}'.format(
-                expr=expr, prev=self, next=state))
+            logger.debug(
+                '⟦[{expr}]{annotation}⟧: {prev} → {next}'.format(
+                    expr=expr, annotation=superscript(annotation),
+                    prev=self, next=state))
             return state
         return conditional
 
@@ -58,7 +62,7 @@ def _decorate(cls):
         return le
 
     try:
-        if cls == State or cls._state_decorated:
+        if cls == BaseState or cls._state_decorated:
             return
     except AttributeError:
         cls._state_decorated = True
@@ -68,14 +72,46 @@ def _decorate(cls):
     cls.le = decorate_le(cls.le)
 
 
-class State(object):
-    """Program state.
-
-    This provides the base class of all semantics-based state objects.
-    """
+class BaseState(object):
+    """Base state for all program states."""
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__()
         _decorate(self.__class__)
+
+    def assign(self, var, expr, annotation):
+        """Makes an assignment and returns a new state object."""
+        raise NotImplementedError
+
+    def conditional(self, expr, cond, annotation):
+        """Imposes a conditional on the state, returns a new state."""
+        raise NotImplementedError
+
+    def is_fixpoint(self, other):
+        """Fixpoint test, defaults to equality."""
+        return self == other
+
+    def widen(self, other):
+        """Widening, defaults to least upper bound (i.e. join)."""
+        return self | other
+
+
+class BoxState(BaseState, map(Variable, (IntegerInterval, ErrorSemantics))):
+    """The program analysis domain object based on intervals and error
+    semantics.
+    """
+    _negate_dict = {
+        LESS_OP: GREATER_EQUAL_OP,
+        LESS_EQUAL_OP: GREATER_OP,
+        GREATER_OP: LESS_EQUAL_OP,
+        GREATER_EQUAL_OP: LESS_OP,
+        EQUAL_OP: NOT_EQUAL_OP,
+        NOT_EQUAL_OP: EQUAL_OP,
+    }
+
+    def _cast_value(self, v=None, top=False, bottom=False):
+        if top or bottom:
+            return IntegerInterval(top=top, bottom=bottom)
+        return cast(v)
 
     def eval(self, expr):
         """Evaluates an expression with state's mapping."""
@@ -89,45 +125,12 @@ class State(object):
             return expr
         raise TypeError('Do not know how to evaluate {!r}'.format(expr))
 
-    def assign(self, var, expr, label):
-        """Makes an assignment and returns a new state object."""
+    def assign(self, var, expr, annotation):
         mapping = dict(self)
         mapping[var] = self.eval(expr)
         return self.__class__(mapping)
 
-    def conditional(self, expr, cond, label):
-        """Imposes a conditional on the state, returns a new state."""
-        raise NotImplementedError
-
-    def is_fixpoint(self, other):
-        """Fixpoint test, defaults to equality."""
-        return self == other
-
-    def widen(self, other):
-        """Widening, defaults to least upper bound (i.e. join)."""
-        return self | other
-
-
-_negate_dict = {
-    LESS_OP: GREATER_EQUAL_OP,
-    LESS_EQUAL_OP: GREATER_OP,
-    GREATER_OP: LESS_EQUAL_OP,
-    GREATER_EQUAL_OP: LESS_OP,
-    EQUAL_OP: NOT_EQUAL_OP,
-    NOT_EQUAL_OP: EQUAL_OP,
-}
-
-
-class BoxState(State, map(Variable, (IntegerInterval, ErrorSemantics))):
-    """The program analysis domain object based on intervals and error
-    semantics.
-    """
-    def _cast_value(self, v=None, top=False, bottom=False):
-        if top or bottom:
-            return IntegerInterval(top=top, bottom=bottom)
-        return cast(v)
-
-    def conditional(self, expr, cond, label):
+    def conditional(self, expr, cond, annotation):
         """
         Supports only simple boolean expressions::
             <variable> <operator> <arithmetic expression>
@@ -163,7 +166,7 @@ class BoxState(State, map(Variable, (IntegerInterval, ErrorSemantics))):
             return bmin, bmax
 
         def constraint(op, bound):
-            op = _negate_dict[op] if not cond else op
+            op = self._negate_dict[op] if not cond else op
             if bound.is_bottom():
                 return bound
             bound_min, bound_max = contract(op, bound)
@@ -241,3 +244,73 @@ class BoxState(State, map(Variable, (IntegerInterval, ErrorSemantics))):
             else:
                 mapping[k] = mapping[k].widen(v)
         return self.__class__(mapping)
+
+
+class ExpressionState(BaseState, map(Identifier, Expression)):
+    """Analyzes variable identifiers to be represented with expressions. """
+    iteration_limit = 3
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # update the mapping with the current identifiers of variables
+        for k, v in self.items():
+            identifier = Identifier(
+                k.variable, annotation=Annotation(top=True))
+            self[identifier] = k
+
+    def _cast_key(self, key):
+        """Convert a variable into an identifier.
+
+        An initial identifier of a variable is always::
+            ([variable_name], ⊥, ⊥)
+        """
+        if isinstance(key, Identifier):
+            return key
+        if isinstance(key, str):
+            key = Variable(key)
+        if isinstance(key, Variable):
+            return Identifier(key, annotation=Annotation(bottom=True))
+        raise TypeError(
+            'Do not know how to convert {!r} into an identifier'.format(key))
+
+    def _cast_value(self, v=None, top=False, bottom=False):
+        if top or bottom:
+            return IntegerInterval(top=top, bottom=bottom)
+        return cast(v)
+
+    def assign(self, var, expr, annotation):
+        """Makes an assignment and returns a new state object."""
+        def eval(self, var, expr):
+            """
+            Evaluates a syntactic expression into an expression of identifiers.
+            """
+            if isinstance(expr, Variable):
+                # expr is a variable, try to find the current expression value
+                # of the variable
+                return self[Identifier(expr, annotation=Annotation(top=True))]
+            if isinstance(expr, Identifier):
+                if expr.variable != var:
+                    return expr
+                if expr.iteration.is_bottom():
+                    iteration = Iteration(0)
+                else:
+                    iteration = expr.iteration
+                iteration += 1
+                if iteration > self.iteration_limit:
+                    iteration = Iteration(top=True)
+                return Identifier(expr.variable, expr.label, iteration)
+            if isinstance(expr, Expression):
+                return expression_factory(
+                    expr.op, (self.eval(a) for a in expr.args))
+            return
+        mapping = dict(self)
+        mapping[Identifier(var, annotation=annotation)] = self.eval(expr)
+        return self.__class__(mapping)
+
+    def conditional(self, expr, cond, annotation):
+        """Imposes a conditional on the state, returns a new state."""
+        raise NotImplementedError
+
+    def widen(self, other):
+        """No widening is possible, simply return other."""
+        return other

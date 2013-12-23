@@ -2,14 +2,12 @@
 .. module:: soap.program.flow
     :synopsis: Program flow graphs.
 """
-from reprlib import recursive_repr
-
 from akpytemp import Template
 from akpytemp.utils import code_gobble as _code_gobble
 
 from soap import logger
 from soap.common import superscript
-from soap.common.label import Label
+from soap.common.label import Label, Iteration, Annotation
 from soap.semantics.error import Interval
 from soap.semantics.state import BoxState
 
@@ -30,8 +28,9 @@ class Flow(object):
     *effect* of the computation associated with the flow, which is specified in
     the definition of the state.
     """
-    def _update_label(self, label):
-        self.label = label or Label(self)
+    def __init__(self, iteration=None):
+        super().__init__()
+        self.iteration = iteration or Iteration(bottom=True)
 
     def flow(self, state=None):
         state = state or BoxState()
@@ -75,21 +74,25 @@ class Flow(object):
     def transition(self, state, env):
         raise NotImplementedError
 
+    @property
+    def annotation(self):
+        return Annotation(Label(statement=self), iteration=self.iteration)
+
+    def __eq__(self, other):
+        raise NotImplementedError
+
     def __str__(self):
         return self.format().replace('    ', '').replace('\n', '')
 
     def __hash__(self):
-        return hash(self.__class__.__name__)
+        return hash((self.__class__.__name__, self.iteration))
 
 
 class IdentityFlow(Flow):
     """Identity flow, does nothing."""
-    def __init__(self, label=None):
-        super().__init__()
-        self._update_label(label)
-
     def format(self, env=None):
-        s = '[skip]{label}; '.format(label=superscript(self.label.label_value))
+        s = '[skip]{annotation}; '.format(
+            annotation=superscript(self.annotation))
         if env is not None:
             s += '\n{state}'.format(state=self._env_get(env)[None])
         return s
@@ -101,10 +104,14 @@ class IdentityFlow(Flow):
     def __bool__(self):
         return False
 
-    @recursive_repr()
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        return self.iteration == other.iteration
+
     def __repr__(self):
-        return '{cls}(label={label!r})'.format(
-            cls=self.__class__.__name__, label=self.label)
+        return '{cls}(iteration={iteration!r})'.format(
+            cls=self.__class__.__name__, iteration=self.iteration)
 
 
 class AssignFlow(Flow):
@@ -113,11 +120,10 @@ class AssignFlow(Flow):
     Asks the state object to return a new state of assigning the variable with
     a value evaluated from the expression.
     """
-    def __init__(self, var, expr, label=None):
-        super().__init__()
+    def __init__(self, var, expr, iteration=None):
+        super().__init__(iteration=iteration)
         self.var = var
         self.expr = expr
-        self._update_label(label)
 
     def transition(self, state, env):
         state = state.assign(self.var, self.expr, self.label)
@@ -125,26 +131,32 @@ class AssignFlow(Flow):
         return state
 
     def format(self, env=None):
-        s = '[{var} ≔ {expr}]{label}; '.format(
+        s = '[{var} ≔ {expr}]{annotation}; '.format(
             var=self.var, expr=self.expr,
-            label=superscript(self.label.label_value))
+            annotation=superscript(self.annotation))
         if env is not None:
             s += '\n{state}'.format(state=color(self._env_get(env)[None]))
         return s
 
-    @recursive_repr()
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        return (self.var == other.var and self.expr == other.expr and
+                self.iteration == other.iteration)
+
     def __repr__(self):
-        return '{cls}(var={var!r}, expr={expr!r}, label={label!r})'.format(
+        return '{cls}(var={var!r}, expr={expr!r}, iteration={itr!r})'.format(
             cls=self.__class__.__name__,
-            var=self.var, expr=self.expr, label=self.label)
+            var=self.var, expr=self.expr, itr=self.iteration)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.var, self.expr))
+        return hash((self.__class__.__name__,
+                     self.var, self.expr, self.iteration))
 
 
 class SplitFlow(Flow):
     def _split(self, state):
-        return (state.conditional(self.conditional_expr, cond)
+        return (state.conditional(self.conditional_expr, cond, self)
                 for cond in (True, False))
 
 
@@ -153,12 +165,12 @@ class IfFlow(SplitFlow):
 
     Splits and joins the flow of the separate `True` and `False` branches.
     """
-    def __init__(self, conditional_expr, true_flow, false_flow, label=None):
-        super().__init__()
+    def __init__(self, conditional_expr, true_flow, false_flow,
+                 iteration=None):
+        super().__init__(iteration=iteration)
         self.conditional_expr = conditional_expr
         self.true_flow = true_flow
         self.false_flow = false_flow
-        self._update_label(label)
 
     def transition(self, state, env):
         true_split, false_split = self._split(state)
@@ -181,26 +193,33 @@ class IfFlow(SplitFlow):
             """))
         false_format = _indent(false_template.render(render_kwargs))
         template = Template(code_gobble("""
-            if [{# flow.conditional_expr #}]{# label #} (
+            if [{# flow.conditional_expr #}]{# annotation #} (
             {# true_format #}){% if flow.false_flow %} (
             {# false_format #});{% end %}{% if env %}
             {# color(flow._env_get(env)[None]) #}{% end %}
             """))
         return template.render(
-            render_kwargs, label=superscript(self.label.label_value),
+            render_kwargs, annotation=superscript(self.annotation),
             true_format=true_format, false_format=false_format)
 
-    @recursive_repr()
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        return (self.conditional_expr == other.conditional_expr and
+                self.true_flow == other.true_flow and
+                self.false_flow == other.false_flow and
+                self.iteration == other.iteration)
+
     def __repr__(self):
         return ('{cls}(conditional_expr={expr!r}, true_flow={true_flow!r}, '
-                'false_flow={false_flow!r}, label={label!r})').format(
-            cls=self.__class__.__name__, expr=self.conditional_expr,
-            true_flow=self.true_flow, false_flow=self.false_flow,
-            label=self.label)
+                'false_flow={false_flow!r}, iteration={itr!r})').format(
+                    cls=self.__class__.__name__, expr=self.conditional_expr,
+                    true_flow=self.true_flow, false_flow=self.false_flow,
+                    iteration=self.iteration)
 
     def __hash__(self):
         return hash((self.__class__.__name__, self.conditional_expr,
-                     self.true_flow, self.false_flow))
+                     self.true_flow, self.false_flow, self.iteration))
 
 
 class WhileFlow(SplitFlow):
@@ -209,13 +228,12 @@ class WhileFlow(SplitFlow):
     Makes use of :class:`IfFlow` to define conditional branching. Computes the
     fixpoint of the state object iteratively."""
     def __init__(self, conditional_expr, loop_flow,
-                 unroll_factor=50, widen_factor=100, label=None):
-        super().__init__()
+                 unroll_factor=50, widen_factor=100, iteration=None):
+        super().__init__(iteration=iteration)
         self.unroll_factor = unroll_factor
         self.widen_factor = widen_factor
         self.conditional_expr = conditional_expr
         self.loop_flow = loop_flow
-        self._update_label(label)
 
     def transition(self, state, env):
         check_itr = lambda itr, target_itr: (
@@ -268,26 +286,33 @@ class WhileFlow(SplitFlow):
             {% end %}{# flow.loop_flow.format(env) #}
             """)).render(render_kwargs))
         template = Template(code_gobble("""
-            while [{# flow.conditional_expr #}]{# label #} (
+            while [{# flow.conditional_expr #}]{# annotation #} (
             {# loop_format #});{% if env %}
             {# color(flow._env_get(env)[False]) #}{% end %}
             """))
         rendered = template.render(
-            render_kwargs, label=superscript(self.label.label_value),
+            render_kwargs, annotation=superscript(self.annotation),
             loop_format=loop_format)
         return rendered
 
-    @recursive_repr()
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        return (self.conditional_expr == other.conditional_expr and
+                self.loop_flow == other.loop_flow and
+                self.iteration == other.iteration)
+
     def __repr__(self):
         return ('{cls}(conditional_expr={expr!r}, loop_flow={flow!r}, '
-                'label={label!r})').format(
+                'iteration={iteration!r})').format(
             cls=self.__class__.__name__,
-            conditional_expr=self.conditional_expr, flow=self.loop_flow,
-            label=self.label)
+            expr=self.conditional_expr, flow=self.loop_flow,
+            iteration=self.iteration)
 
     def __hash__(self):
         return hash((
-            self.__class__.__name__, self.conditional_expr, self.loop_flow))
+            self.__class__.__name__,
+            self.conditional_expr, self.loop_flow, self.iteration))
 
 
 class CompositionalFlow(Flow):
@@ -295,10 +320,9 @@ class CompositionalFlow(Flow):
 
     Combines multiple flow objects into a unified flow.
     """
-    def __init__(self, flows=None, label=None):
-        super().__init__()
+    def __init__(self, flows=None, iteration=None):
+        super().__init__(iteration=iteration)
         self.flows = tuple(flows or [])
-        self._update_label(label)
 
     def transition(self, state, env):
         for flow in self.flows:
@@ -318,10 +342,16 @@ class CompositionalFlow(Flow):
     def format(self, env=None):
         return '\n'.join(flow.format(env) for flow in self.flows)
 
-    @recursive_repr()
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        return (self.flows == other.flows and
+                self.iteration == other.iteration)
+
     def __repr__(self):
-        return '{cls}(flows={flows!r})'.format(
-            cls=self.__class__.__name__, flows=self.flows)
+        return '{cls}(flows={flows!r}, iteration={iteration!r})'.format(
+            cls=self.__class__.__name__,
+            flows=self.flows, iteration=self.iteration)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.flows))
+        return hash((self.__class__.__name__, self.flows, self.iteration))
