@@ -29,12 +29,21 @@ class TestArithmeticEquivalence(unittest.TestCase):
             f = pattern.transform(
                 arithmetic.distributivity_distribute_multiplication, expr(e))
             self.assertIn(expr('a * c + b * c'), f)
+        e = expr('-(a + b)')
+        f = pattern.transform(
+            arithmetic.distributivity_distribute_subtraction, e)
+        self.assertIn(expr('-a + -b'), f)
 
     def test_distributivity_collect(self):
         e = expr('c * a + b * c')
         f = pattern.transform(
             arithmetic.distributivity_collect_multiplication, e)
         self.assertIn(expr('(a + b) * c'), f)
+
+    def test_negation(self):
+        e = expr('a - b')
+        f = pattern.transform(arithmetic.negation, e)
+        self.assertIn(expr('a + -b'), f)
 
     def test_identity_reduction(self):
         e = expr('0 + a')
@@ -45,6 +54,11 @@ class TestArithmeticEquivalence(unittest.TestCase):
         self.assertIn(expr('a'), f)
         e = expr('a / 1')
         f = pattern.transform(arithmetic.identity_reduction_division, e)
+        self.assertIn(expr('a'), f)
+
+    def test_double_negation_reduction(self):
+        e = expr('--a')
+        f = pattern.transform(arithmetic.double_negation_reduction, e)
         self.assertIn(expr('a'), f)
 
     def test_zero_reduction(self):

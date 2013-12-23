@@ -2,7 +2,10 @@
 .. module:: soap.transformer.arithmetic
     :synopsis: Transforms arithmetic expression instances.
 """
+from patmat.mimic import Val
+
 from soap.expression import operators
+from soap.expression.common import expression_factory
 from soap.transformer import pattern
 from soap.transformer.core import TreeTransformer
 
@@ -10,39 +13,57 @@ from soap.transformer.core import TreeTransformer
 associativity_addition = (
     pattern.compile('(a + b) + c'),
     pattern.compile('(a + c) + b', '(b + c) + a'),
-    'associativity_addition',
+    'associativity_addition'
 )
 associativity_multiplication = (
     pattern.compile('(a * b) * c'),
     pattern.compile('(a * c) * b', '(b * c) * a'),
-    'associativity_multiplication',
+    'associativity_multiplication'
 )
 associativity_division = (
     pattern.compile('(a / b) / c', 'a / (b * c)'),
     pattern.compile('(a / b) / c', 'a / (b * c)', '(a / c) / b'),
-    'associativity_division',
+    'associativity_division'
 )
 
+negation = (
+    pattern.compile('a - b'),
+    pattern.compile('a + -b'),
+    'negation'
+)
+
+
+def distributivity_distribute_subtraction_func(op, args):
+    args = [expression_factory(operators.UNARY_SUBTRACT_OP, a) for a in args]
+    return expression_factory(op, *args)
+
+distributivity_distribute_subtraction = (
+    pattern.compile(pattern.ExprMimic(
+        op=operators.UNARY_SUBTRACT_OP,
+        args=[pattern.ExprMimic(op=Val('op'), args=Val('args'))])),
+    pattern.compile(distributivity_distribute_subtraction_func),
+    'distributivity_distribute_subtraction'
+)
 distributivity_distribute_multiplication = (
     pattern.compile('(a + b) * c'),
     pattern.compile('a * c + b * c'),
-    'distributivity_distribute_multiplication',
+    'distributivity_distribute_multiplication'
 )
 distributivity_distribute_division = (
     pattern.compile('(a + b) / c'),
     pattern.compile('a / c + b / c'),
-    'distributivity_distribute_division',
+    'distributivity_distribute_division'
 )
 
 distributivity_collect_multiplication = (
     pattern.compile('a * c + b * c'),
     pattern.compile('(a + b) * c'),
-    'distributivity_collect_multiplication',
+    'distributivity_collect_multiplication'
 )
 distributivity_collect_multiplication_1 = (
     pattern.compile('a + a * b'),
     pattern.compile('a * (1 + b)'),
-    'distributivity_collect_multiplication_1',
+    'distributivity_collect_multiplication_1'
 )
 distributivity_collect_multiplication_2 = (
     pattern.compile('a + a'),
@@ -87,10 +108,21 @@ identity_reduction_division = (
     'identity_reduction_division'
 )
 
+double_negation_reduction = (
+    pattern.compile('--a'),
+    pattern.compile('a'),
+    'double_negation_reduction'
+)
+
+zero_reduction_subtraction = (
+    pattern.compile('a - a'),
+    pattern.compile('0'),
+    'zero_reduction_subtraction'
+)
 zero_reduction_multiplication = (
     pattern.compile('a * 0'),
     pattern.compile('0'),
-    'zero_reduction'
+    'zero_reduction_multiplication'
 )
 zero_reduction_division = (
     pattern.compile('0 / a'),
@@ -131,7 +163,10 @@ class ArithTreeTransformer(TreeTransformer):
             distributivity_collect_division_1,
             distributivity_collect_division_2,
         ],
-        operators.SUBTRACT_OP: [],
+        operators.SUBTRACT_OP: [
+            negation,
+            distributivity_distribute_subtraction,
+        ],
         operators.MULTIPLY_OP: [
             associativity_multiplication,
             distributivity_distribute_multiplication,
@@ -141,6 +176,9 @@ class ArithTreeTransformer(TreeTransformer):
             distributivity_distribute_division,
             inversive_division,
         ],
+        operators.UNARY_SUBTRACT_OP: [
+            distributivity_distribute_subtraction,
+        ]
     }
     reduction_rules = {
         operators.ADD_OP: [
@@ -161,4 +199,8 @@ class ArithTreeTransformer(TreeTransformer):
             one_reduction_division,
             constant_reduction,
         ],
+        operators.UNARY_SUBTRACT_OP: [
+            double_negation_reduction,
+            zero_reduction_subtraction,
+        ]
     }

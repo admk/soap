@@ -27,6 +27,8 @@ class ExprMimic(_Mimic):
     def _match(self, other, env):
         if not self._initial_match(other, env):
             return False
+        if isinstance(self.args, Val):
+            return self.args._match(other.args, env)
         if other.op in ASSOCIATIVITY_OPERATORS:
             other_args_permutations = itertools.permutations(other.args)
         else:

@@ -4,7 +4,7 @@
 """
 ADD_OP = '+'
 SUBTRACT_OP = '-'
-UNARY_SUBTRACT_OP = '-'
+UNARY_SUBTRACT_OP = '_'
 MULTIPLY_OP = '*'
 DIVIDE_OP = '/'
 
