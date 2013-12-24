@@ -58,17 +58,17 @@ class Flow(object):
                 env[k] = v
         if env is None:
             return
-        update((self.label, None), state)
-        update((self.label, True), true_state)
-        update((self.label, False), false_state)
+        update((self.annotation, None), state)
+        update((self.annotation, True), true_state)
+        update((self.annotation, False), false_state)
 
     def _env_get(self, env):
         def get(k, a):
             return env.get((k, a), Interval(bottom=True))
         return {
-            None: get(self.label, None),
-            True: get(self.label, True),
-            False: get(self.label, False),
+            None: get(self.annotation, None),
+            True: get(self.annotation, True),
+            False: get(self.annotation, False),
         }
 
     def transition(self, state, env):
@@ -126,7 +126,7 @@ class AssignFlow(Flow):
         self.expr = expr
 
     def transition(self, state, env):
-        state = state.assign(self.var, self.expr, self.label)
+        state = state.assign(self.var, self.expr, self.annotation)
         self._env_update(env, state)
         return state
 
@@ -156,7 +156,7 @@ class AssignFlow(Flow):
 
 class SplitFlow(Flow):
     def _split(self, state):
-        return (state.conditional(self.conditional_expr, cond, self)
+        return (state.conditional(self.conditional_expr, cond, self.annotation)
                 for cond in (True, False))
 
 
@@ -213,9 +213,9 @@ class IfFlow(SplitFlow):
     def __repr__(self):
         return ('{cls}(conditional_expr={expr!r}, true_flow={true_flow!r}, '
                 'false_flow={false_flow!r}, iteration={itr!r})').format(
-                    cls=self.__class__.__name__, expr=self.conditional_expr,
-                    true_flow=self.true_flow, false_flow=self.false_flow,
-                    iteration=self.iteration)
+            cls=self.__class__.__name__, expr=self.conditional_expr,
+            true_flow=self.true_flow, false_flow=self.false_flow,
+            iteration=self.iteration)
 
     def __hash__(self):
         return hash((self.__class__.__name__, self.conditional_expr,

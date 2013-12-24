@@ -75,7 +75,7 @@ def _decorate(cls):
 class BaseState(object):
     """Base state for all program states."""
     def __init__(self, *args, **kwargs):
-        super().__init__()
+        super().__init__(*args, **kwargs)
         _decorate(self.__class__)
 
     def assign(self, var, expr, annotation):
@@ -107,6 +107,13 @@ class BoxState(BaseState, map(Variable, (IntegerInterval, ErrorSemantics))):
         EQUAL_OP: NOT_EQUAL_OP,
         NOT_EQUAL_OP: EQUAL_OP,
     }
+
+    def _cast_key(self, key):
+        if isinstance(key, Variable):
+            return key
+        if isinstance(key, str):
+            return Variable(key)
+        raise TypeError('Do not know how to convert key {!r}'.format(key))
 
     def _cast_value(self, v=None, top=False, bottom=False):
         if top or bottom:
@@ -274,9 +281,7 @@ class ExpressionState(BaseState, map(Identifier, Expression)):
             'Do not know how to convert {!r} into an identifier'.format(key))
 
     def _cast_value(self, v=None, top=False, bottom=False):
-        if top or bottom:
-            return IntegerInterval(top=top, bottom=bottom)
-        return cast(v)
+        ...
 
     def assign(self, var, expr, annotation):
         """Makes an assignment and returns a new state object."""
