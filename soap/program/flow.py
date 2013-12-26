@@ -6,8 +6,7 @@ from akpytemp import Template
 from akpytemp.utils import code_gobble as _code_gobble
 
 from soap import logger
-from soap.common import superscript
-from soap.common.label import Label, Iteration, Annotation
+from soap.label import superscript, Label, Iteration, Annotation
 from soap.semantics.error import Interval
 from soap.semantics.state import BoxState
 

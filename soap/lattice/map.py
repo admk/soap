@@ -89,12 +89,11 @@ def map(from_cls, to_lattice, name=None):
         if isinstance(key, from_cls):
             return key
         return from_cls(key)
-    if not name:
+    if not name and from_cls and to_lattice:
         try:
             to_lattice_name = to_lattice.__name__
         except AttributeError:
             to_lattice_name = type(to_lattice).__name__
-        name = 'MapLattice_%s_to_%s' % (from_cls.__name__, to_lattice_name)
+        name = 'MapLattice_{}_to_{}'.format(from_cls.__name__, to_lattice_name)
     cls = _lattice_factory(to_lattice, MapLattice, name)
-    cls._cast_key = cast_key
     return cls

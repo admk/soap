@@ -2,10 +2,11 @@
 .. module:: soap.expression.base
     :synopsis: The base classes of expressions.
 """
-from soap.common import Flyweight, Label, cached
+from soap.common import Flyweight, cached
 from soap.expression.common import expression_factory
 from soap.expression.operators import op_func_dict_by_ary_list
 from soap.expression.variable import Variable
+from soap.label.base import Label
 
 
 class Expression(Flyweight):
@@ -145,10 +146,9 @@ class Expression(Flyweight):
             single precision.
         :type prec: int
         """
-        # FIXME regression: integer intervals won't produce errors.
-        from soap.semantics import precision_context, BoxState
+        from soap.semantics import precision_context, BoxState, ErrorSemantics
         with precision_context(prec):
-            return self.eval(BoxState(var_env))
+            return ErrorSemantics(self.eval(BoxState(var_env)))
 
     @cached
     def as_labels(self):

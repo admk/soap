@@ -9,13 +9,12 @@ from soap.expression import (
     LESS_OP, GREATER_OP, LESS_EQUAL_OP, GREATER_EQUAL_OP,
     EQUAL_OP, NOT_EQUAL_OP, Expression, Variable, expression_factory
 )
-from soap.lattice import map
+from soap.lattice.map import map
 from soap.semantics.error import (
     inf, ulp, cast, mpz_type, mpfr_type,
     IntegerInterval, FloatInterval, ErrorSemantics
 )
-from soap.common import superscript
-from soap.common.label import Identifier, Annotation, Label, Iteration
+from soap.label import superscript, Identifier, Annotation, Iteration
 
 
 def _decorate(cls):
@@ -24,7 +23,7 @@ def _decorate(cls):
         def assign(self, var, expr, annotation):
             state = func(self, var, expr, annotation)
             logger.debug(
-                '⟦[{var} := {expr}]{annotation}⟧: {prev} → {next}'.format(
+                '⟦[{var} := {expr}]{annotation}⟧{prev} → {next}'.format(
                     var=var, expr=expr, annotation=superscript(annotation),
                     prev=self, next=state))
             return state
@@ -37,7 +36,7 @@ def _decorate(cls):
             if cond:
                 expr = ~expr
             logger.debug(
-                '⟦[{expr}]{annotation}⟧: {prev} → {next}'.format(
+                '⟦[{expr}]{annotation}⟧{prev} → {next}'.format(
                     expr=expr, annotation=superscript(annotation),
                     prev=self, next=state))
             return state
@@ -95,7 +94,7 @@ class BaseState(object):
         return self | other
 
 
-class BoxState(BaseState, map(Variable, (IntegerInterval, ErrorSemantics))):
+class IdentifierBoxState(BaseState, map(None, None)):
     """The program analysis domain object based on intervals and error
     semantics.
     """
@@ -108,11 +107,35 @@ class BoxState(BaseState, map(Variable, (IntegerInterval, ErrorSemantics))):
         NOT_EQUAL_OP: EQUAL_OP,
     }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # update the mapping with initial identifiers of variables
+        for key, value in self.items():
+            self[key.initial()] = value
+
+    def __setitem__(self, key, value):
+        # increment iterations for key value pair
+        key, value = self._cast_key(key), self._cast_value(value)
+        if key.iteration.is_top():
+            # depth limit reached, overwrite value at depth limit.
+            return super().__setitem__(key, value)
+        # recursively update value for previous iteration before overwriting
+        self.__setitem__(*self._increment_iteration(key))
+        # update current iteration
+        super().__setitem__(key, value)
+        # also updates the current identifier
+        super().__setitem__(key.final(), value)
+
+    def _increment_iteration(self, key):
+        return key.prev_iteration(), self[key]
+
     def _cast_key(self, key):
-        if isinstance(key, Variable):
-            return key
         if isinstance(key, str):
-            return Variable(key)
+            key = Variable(key)
+        if isinstance(key, Variable):
+            return Identifier(key, annotation=Annotation(bottom=True))
+        if isinstance(key, Identifier):
+            return key
         raise TypeError('Do not know how to convert key {!r}'.format(key))
 
     def _cast_value(self, v=None, top=False, bottom=False):
@@ -253,6 +276,17 @@ class BoxState(BaseState, map(Variable, (IntegerInterval, ErrorSemantics))):
         return self.__class__(mapping)
 
 
+class BoxState(BaseState, map(None, None)):
+    def _cast_key(self, key):
+        if isinstance(key, Identifier):
+            return key.variable
+        if isinstance(key, Variable):
+            return key
+        if isinstance(key, str):
+            return Variable(key)
+        raise TypeError('Do not know how to convert key {!r}'.format(key))
+
+
 class ExpressionState(BaseState, map(Identifier, Expression)):
     """Analyzes variable identifiers to be represented with expressions. """
     iteration_limit = 3
@@ -317,5 +351,8 @@ class ExpressionState(BaseState, map(Identifier, Expression)):
         raise NotImplementedError
 
     def widen(self, other):
-        """No widening is possible, simply return other."""
+        """No widening is possible, simply return other.
+
+        TODO widening should be elimination of deep recursions.
+        """
         return other
