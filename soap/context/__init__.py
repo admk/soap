@@ -1,4 +1,1 @@
-from soap.context.base import _ContextDict
-
-
-context = _ContextDict()
+from soap.context.default import context

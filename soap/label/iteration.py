@@ -1,7 +1,9 @@
-from soap.lattice.flat import denotational
+from soap.context import context
+
+from soap.lattice.base import Lattice
 
 
-class Iteration(denotational(int)):
+class Iteration(Lattice, int):
     """
     FIXME This should be a finite total order instead of a flat lattice.
 
@@ -10,14 +12,23 @@ class Iteration(denotational(int)):
     __slots__ = ()
 
     def __init__(self, value=None, top=False, bottom=False):
+        if top:
+            value = 1000
         if bottom:
             value = 0
-            bottom = False
-        super().__init__(value=value, top=top, bottom=bottom)
+        super().__init__(value)
 
     def is_top(self):
-        # return self > SOME_TODO_GLOBAL_VALUE
-        return False
+        return int(self) > context.program_depth
 
     def is_bottom(self):
-        return self.v == 0
+        return int(self) == 0
+
+    def join(self, other):
+        return self.__class__(max(self, other))
+
+    def meet(self, other):
+        return self.__class__(min(self, other))
+
+    def le(self, other):
+        return int(self) <= int(other)

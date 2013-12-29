@@ -18,9 +18,6 @@ mpq_type = type(_mpq('1.0'))
 inf = _mpfr('Inf')
 
 
-gmpy2.set_context(gmpy2.ieee(64))
-
-
 def _unpack(v):
     if type(v) is str:
         return v, v

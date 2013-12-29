@@ -14,6 +14,7 @@ else:
 
 import gmpy2
 
+from soap.context import context
 from soap.analysis import analyse, frontier, Plot, plot, analyse_and_plot
 from soap.expression import expr
 from soap.program import flow, Flow

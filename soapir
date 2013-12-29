@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 import soap
 from soap import (
-    IntegerInterval, FloatInterval, FractionInterval, ErrorSemantics, mpz,
-    mpq, mpfr, mpz_type, mpq_type, mpfr_type, inf, ulp, cast, BoxState, expr,
-    flow, closure, expand, reduce, parsings, martel_trace, greedy_trace,
+    context, IntegerInterval, FloatInterval, FractionInterval, ErrorSemantics,
+    mpz, mpq, mpfr, mpz_type, mpq_type, mpfr_type, inf, ulp, cast, BoxState,
+    expr, flow, closure, expand, reduce, parsings, martel_trace, greedy_trace,
     frontier_trace, logger
 )
 

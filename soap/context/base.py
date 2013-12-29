@@ -8,9 +8,9 @@ class RestoreSnapshotError(Exception):
     """Cannot restore snapshot.  """
 
 
-class _ContextDict(dict):
+class _Context(dict):
     """
-    _ContextDict, a dictionary subclass with dot syntax and snapshot support.
+    _Context, a dictionary subclass with dot syntax and snapshot support.
     """
     def __init__(self, dictionary=None, **kwargs):
         if dictionary:
@@ -26,6 +26,8 @@ class _ContextDict(dict):
         del self.should_invalidate_cache
 
     def __setattr__(self, key, value):
+        hook = getattr(self, key + '_hook', lambda k, v: (k, v))
+        key, value = hook(key, value)
         self[key] = self._cast_dict(value)
         if self.get('should_invalidate_cache', True):
             invalidate_cache()

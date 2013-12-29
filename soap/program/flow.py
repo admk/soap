@@ -6,6 +6,7 @@ from akpytemp import Template
 from akpytemp.utils import code_gobble as _code_gobble
 
 from soap import logger
+from soap.context import context
 from soap.label import superscript, Label, Iteration, Annotation
 from soap.semantics.error import Interval
 from soap.semantics.state import BoxState
@@ -226,11 +227,8 @@ class WhileFlow(SplitFlow):
 
     Makes use of :class:`IfFlow` to define conditional branching. Computes the
     fixpoint of the state object iteratively."""
-    def __init__(self, conditional_expr, loop_flow,
-                 unroll_factor=50, widen_factor=100, iteration=None):
+    def __init__(self, conditional_expr, loop_flow, iteration=None):
         super().__init__(iteration=iteration)
-        self.unroll_factor = unroll_factor
-        self.widen_factor = widen_factor
         self.conditional_expr = conditional_expr
         self.loop_flow = loop_flow
 
@@ -246,7 +244,7 @@ class WhileFlow(SplitFlow):
                 logger.persistent('Iteration', iter_count)
                 # Fixpoint test
                 curr_join_state = state | prev_join_state
-                if check_itr(iter_count, self.unroll_factor):
+                if check_itr(iter_count, context.unroll_factor):
                     # join all states in previous iterations
                     logger.persistent(
                         'No unroll', iter_count, l=logger.levels.info)
@@ -264,7 +262,7 @@ class WhileFlow(SplitFlow):
                 # Comes before widening to ensure preciseness?
                 self._env_update(env, state, true_split, false_split)
                 # Widening
-                if check_itr(iter_count, self.widen_factor):
+                if check_itr(iter_count, context.widen_factor):
                     logger.persistent(
                         'Widening', iter_count, l=logger.levels.info)
                     state = prev_state.widen(state)
