@@ -29,6 +29,7 @@ S = Box = BoxState
 i = __IntervalShortcut(IntegerInterval)
 f = __IntervalShortcut(FloatInterval)
 e = __IntervalShortcut(ErrorSemantics)
+ctx = context
 
 
 if __name__ == '__main__':

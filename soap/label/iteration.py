@@ -1,22 +1,20 @@
 from soap.context import context
-
 from soap.lattice.base import Lattice
 
 
 class Iteration(Lattice, int):
     """
-    FIXME This should be a finite total order instead of a flat lattice.
-
-    What was I thinking.
+    Iteration, interger bounded from 0 (current), aka bottom, to
+    context.program_depth, aka top. It is a total ordering.
     """
     __slots__ = ()
 
-    def __init__(self, value=None, top=False, bottom=False):
+    def __new__(cls, value=None, top=False, bottom=False):
         if top:
             value = 1000
         if bottom:
             value = 0
-        super().__init__(value)
+        return super().__new__(cls, value)
 
     def is_top(self):
         return int(self) > context.program_depth
@@ -32,3 +30,9 @@ class Iteration(Lattice, int):
 
     def le(self, other):
         return int(self) <= int(other)
+
+    def __str__(self):
+        return str(int(self))
+
+    def __repr__(self):
+        return repr(int(self))

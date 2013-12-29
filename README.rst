@@ -1,10 +1,10 @@
 TODOs
 =====
 
+* Actually use context.window_depth and context.precision
+* Deprecate prec arguments, because of context support
 * General program transform
 * Multiple mantissa widths
-* Support for subtraction & maybe division
-* Unit testing
 
 Changelog
 =========
