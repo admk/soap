@@ -4,6 +4,8 @@ import sys
 from pprint import pformat
 from contextlib import contextmanager
 
+from soap.context import context as _global_context
+
 
 class levels():
     pass
@@ -14,13 +16,15 @@ for i, l in enumerate(['debug', 'info', 'warning', 'error', 'off']):
     levels.__dict__[l] = i
 
 
-context = {
-    'level': levels.warning,
-    'pause_level': levels.off,
-    'color': True,
-    'file': None,
-    'persistent': {},
-}
+with _global_context.no_invalidate_cache():
+    _global_context.logger = {
+        'level': levels.warning,
+        'pause_level': levels.off,
+        'color': True,
+        'file': None,
+        'persistent': {},
+    }
+    context = _global_context.logger
 
 
 def set_context(**kwargs):
@@ -116,8 +120,8 @@ def local_context(**kwargs):
 def log_level(l):
     def wrapper(f):
         def wrapped(*args, **kwargs):
-            l = kwargs.get('l', levels.info)
-            f(*args, l=l)
+            kwargs['l'] = l
+            f(*args, **kwargs)
         return wrapped
     return wrapper
 
