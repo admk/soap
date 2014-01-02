@@ -27,7 +27,7 @@ class MapLattice(Lattice, dict):
         return False
 
     def is_bottom(self):
-        return all(v.is_bottom() for _, v in self.items())
+        return all(v.is_bottom() for v in self.values())
 
     def join(self, other):
         join_dict = dict(self)
@@ -56,16 +56,24 @@ class MapLattice(Lattice, dict):
                 return False
         return True
 
+    def __contains__(self, key):
+        return super().__contains__(self._cast_key(key))
+
     def __getitem__(self, key):
         if self.is_top():
             return self._cast_value(top=True)
-        if not self.is_bottom() and key in self:
-            return super().__getitem__(key)
-        return self._cast_value(bottom=True)
+        if self.is_bottom():
+            return self._cast_value(bottom=True)
+        try:
+            return super().__getitem__(self._cast_key(key))
+        except KeyError:
+            return self._cast_value(bottom=True)
 
     def __setitem__(self, key, value):
         key = self._cast_key(key)
         value = self._cast_value(value)
+        if value.is_bottom():
+            return
         super().__setitem__(key, value)
 
     def __str__(self):
@@ -85,10 +93,6 @@ def map(from_cls, to_lattice, name=None):
     :param to_lattice: The range of the function, must be a lattice.
     :type name: :class:`soap.lattice.Lattice`
     """
-    def cast_key(self, key):
-        if isinstance(key, from_cls):
-            return key
-        return from_cls(key)
     if not name and from_cls and to_lattice:
         try:
             to_lattice_name = to_lattice.__name__

@@ -33,6 +33,16 @@ class Identifier(object):
         return Identifier(
             self.variable, label=self.label, iteration=(iteration + 1))
 
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        if self.variable != other.variable:
+            return False
+        return self.annotation == other.annotation
+
+    def __hash__(self):
+        return hash((self.__class__, self.variable, self.annotation))
+
     def __str__(self):
         return '({variable}, {label}, {iteration})'.format(
             variable=self.variable,

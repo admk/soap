@@ -51,13 +51,13 @@ class _Context(dict):
         return self.__class__(dictionary)
 
     def take_snapshot(self):
-        self.__snapshot__ = copy.deepcopy(self)
+        self._snapshot = copy.deepcopy(self)
 
     def restore_snapshot(self):
-        if '__snapshot__' not in self:
+        if '_snapshot' not in self:
             raise RestoreSnapshotError(
                 'Cannot restore snapshot: no snapshot exists.')
-        snapshot = self.__snapshot__
+        snapshot = self._snapshot
         self.update(snapshot)
         for k in list(self.keys()):
             if k not in snapshot:

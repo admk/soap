@@ -6,6 +6,8 @@ class Iteration(Lattice, int):
     """
     Iteration, interger bounded from 0 (current), aka bottom, to
     context.program_depth, aka top. It is a total ordering.
+
+    Methods __hash__, __str__ and __repr__ are necessary because of the MRO.
     """
     __slots__ = ()
 
@@ -31,8 +33,19 @@ class Iteration(Lattice, int):
     def le(self, other):
         return int(self) <= int(other)
 
+    def __add__(self, other):
+        return self.__class__(int(self) + int(other))
+
+    def __sub__(self, other):
+        raise NotImplementedError
+    __rsub__ = __sub__
+
+    def __hash__(self):
+        return hash((self.__class__, int(self)))
+
     def __str__(self):
         return str(int(self))
 
     def __repr__(self):
-        return repr(int(self))
+        return '{cls}({val!r})'.format(
+            cls=self.__class__.__name__, val=int(self))

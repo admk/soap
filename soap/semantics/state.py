@@ -71,11 +71,17 @@ def _decorate(cls):
     cls.le = decorate_le(cls.le)
 
 
-class BaseState(object):
+class BaseState(map(None, None)):
     """Base state for all program states."""
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _decorate(self.__class__)
+
+    def _cast_key(self, key):
+        raise NotImplementedError
+
+    def _cast_value(self, v=None, top=False, bottom=False):
+        raise NotImplementedError
 
     def assign(self, var, expr, annotation):
         """Makes an assignment and returns a new state object."""
@@ -94,7 +100,7 @@ class BaseState(object):
         return self | other
 
 
-class IdentifierBoxState(BaseState, map(None, None)):
+class IdentifierBoxState(BaseState):
     """The program analysis domain object based on intervals and error
     semantics.
     """
@@ -107,19 +113,13 @@ class IdentifierBoxState(BaseState, map(None, None)):
         NOT_EQUAL_OP: EQUAL_OP,
     }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # update the mapping with initial identifiers of variables
-        for key, value in self.items():
-            self[key.initial()] = value
-
     def __setitem__(self, key, value):
         # increment iterations for key value pair
         key, value = self._cast_key(key), self._cast_value(value)
         if key.iteration.is_top():
-            # depth limit reached, overwrite value at depth limit.
-            return super().__setitem__(key, value)
-        # recursively update value for previous iteration before overwriting
+            # depth limit reached, join with value at depth limit.
+            return super().__setitem__(key, value | self[key])
+        # recursively update values for previous iterations before overwriting
         self.__setitem__(*self._increment_iteration(key))
         # update current iteration
         super().__setitem__(key, value)
@@ -276,15 +276,8 @@ class IdentifierBoxState(BaseState, map(None, None)):
         return self.__class__(mapping)
 
 
-class BoxState(BaseState, map(None, None)):
-    def _cast_key(self, key):
-        if isinstance(key, Identifier):
-            return key.variable
-        if isinstance(key, Variable):
-            return key
-        if isinstance(key, str):
-            return Variable(key)
-        raise TypeError('Do not know how to convert key {!r}'.format(key))
+class BoxState(IdentifierBoxState):
+    ...
 
 
 class ExpressionState(BaseState, map(Identifier, Expression)):

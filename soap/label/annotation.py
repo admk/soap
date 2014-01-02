@@ -3,19 +3,19 @@ from soap.label.iteration import Iteration
 
 
 class Annotation(Label * Iteration):
-    __slots__ = ('label', 'iteration')
+    __slots__ = ()
 
     def __init__(self, label=None, iteration=None, top=False, bottom=False):
-        self.label = label or Label(bottom=True)
-        self.iteration = iteration or Iteration(bottom=True)
         super().__init__(
             top=top, bottom=bottom, self_obj=label, other_obj=iteration)
 
-    def is_bottom(self):
-        return self.label.is_bottom()
+    @property
+    def label(self):
+        return self.components[0]
 
-    def is_top(self):
-        return self.label.is_top()
+    @property
+    def iteration(self):
+        return self.components[1]
 
     def __str__(self):
         return '({label}, {iteration})'.format(

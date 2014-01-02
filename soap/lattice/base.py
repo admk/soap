@@ -63,8 +63,11 @@ class LatticeMeta(type):
                          top=False, bottom=False):
                 super().__init__(top=top, bottom=bottom)
                 if top or bottom:
-                    return
-                self.components = (self_obj, other_obj)
+                    self.components = tuple(
+                        cls(top=top, bottom=bottom)
+                        for cls in (self_class, other_class))
+                else:
+                    self.components = (self_obj, other_obj)
 
             def is_top(self):
                 return all(c.is_top() for c in self.components)

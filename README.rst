@@ -1,6 +1,7 @@
 TODOs
 =====
 
+* Lattice.__slots__
 * Actually use context.window_depth and context.precision
 * Deprecate prec arguments, because of context support
 * General program transform

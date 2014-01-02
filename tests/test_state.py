@@ -1,18 +1,31 @@
 import unittest
 
 from soap.expression import expr
-from soap.common.label import Label
-from soap.semantics.state import BoxState
+from soap.label import Identifier, Annotation
+from soap.semantics.state import IdentifierBoxState
+from soap.semantics.error import ErrorSemantics
 
 
-class TestBoxState(unittest.TestCase):
+class TestIdentifierBoxState(unittest.TestCase):
     """Unittesting for :class:`soap.semantics.BoxState`."""
     def setUp(self):
-        self.bot = BoxState(bottom=True)
-        self.top = BoxState(top=True)
-        self.one_three = BoxState({'x': [1, 3]})
-        self.two_four = BoxState({'x': [2, 4]})
-        self.lab = Label()
+        self.bot = IdentifierBoxState(bottom=True)
+        self.top = IdentifierBoxState(top=True)
+        self.ann_bot = Annotation(bottom=True)
+        self.ann_top = Annotation(top=True)
+
+    def test_init(self):
+        current_identifier = Identifier(expr('x'), annotation=self.ann_bot)
+        error = ErrorSemantics(['1.0', '3.0'])
+        state = IdentifierBoxState({'x': error})
+        self.assertEqual(state['x'], error)
+        self.assertEqual(state[current_identifier], error)
+
+    def test_getter_and_setter(self):
+        raise NotImplementedError
+
+    def test_iteration_increment(self):
+        raise NotImplementedError
 
     def test_assign(self):
         self.assertEqual(
