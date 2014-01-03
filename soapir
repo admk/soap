@@ -22,6 +22,19 @@ class __IntervalShortcut(object):
         return self.cls(key)
 
 
+class __StateShortcut(object):
+    def __init__(self, cls):
+        self.cls = cls
+
+    def __getitem__(self, key):
+        if not isinstance(key, slice):
+            raise TypeError(
+                'State shortcut accepts keys in the form of variable:value.')
+        s = self.cls()
+        s[key.start] = key.stop
+        return s
+
+
 I = Int = IntegerInterval
 F = Float = FloatInterval
 E = Error = ErrorSemantics
@@ -29,6 +42,7 @@ S = Box = BoxState
 i = __IntervalShortcut(IntegerInterval)
 f = __IntervalShortcut(FloatInterval)
 e = __IntervalShortcut(ErrorSemantics)
+s = __StateShortcut(BoxState)
 ctx = context
 
 

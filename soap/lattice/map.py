@@ -2,6 +2,8 @@
 .. module:: soap.lattice.map
     :synopsis: The mapping lattice.
 """
+import copy
+
 from soap.lattice import Lattice
 from soap.lattice.common import _lattice_factory
 
@@ -62,6 +64,10 @@ class MapLattice(Lattice, dict):
     def __getitem__(self, key):
         if self.is_top():
             return self._cast_value(top=True)
+        if isinstance(key, slice):
+            new_map = copy.deepcopy(self)
+            new_map.__setitem__(key.start, key.stop)
+            return new_map
         if self.is_bottom():
             return self._cast_value(bottom=True)
         try:
