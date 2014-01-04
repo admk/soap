@@ -20,9 +20,19 @@ class Identifier(object):
         return self.annotation.iteration
 
     def initial(self):
-        return Identifier(self.variable, annotation=Annotation(top=True))
+        return Identifier(
+            self.variable, annotation=Annotation(
+                self.annotation.label, Iteration(top=True)))
 
     def final(self):
+        return Identifier(
+            self.variable, annotation=Annotation(
+                self.annotation.label, Iteration(bottom=True)))
+
+    def global_initial(self):
+        return Identifier(self.variable, annotation=Annotation(top=True))
+
+    def global_final(self):
         return Identifier(self.variable, annotation=Annotation(bottom=True))
 
     def prev_iteration(self):

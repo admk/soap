@@ -90,7 +90,7 @@ class MapLattice(Lattice, dict):
         return '%s(%r)' % (self.__class__.__name__, dict(self))
 
 
-def map(from_cls, to_lattice, name=None):
+def map(from_cls=None, to_lattice=None, name=None):
     """Returns a mapping lattice which orders the partial maps from a class
     `from_cls` to a lattice `to_lattice`.
 

@@ -64,5 +64,13 @@ class TestIdentifier(unittest.TestCase):
         self.assertEqual(
             self.identifier.final().iteration, Iteration(bottom=True))
         self.assertEqual(
+            self.identifier.global_initial().label, Label(top=True))
+        self.assertEqual(
+            self.identifier.global_initial().iteration, Iteration(top=True))
+        self.assertEqual(
+            self.identifier.global_final().label, Label(bottom=True))
+        self.assertEqual(
+            self.identifier.global_final().iteration, Iteration(bottom=True))
+        self.assertEqual(
             self.identifier.prev_iteration().iteration,
             Iteration(int(self.iteration) + 1))

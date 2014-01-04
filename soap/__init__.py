@@ -1,3 +1,9 @@
+"""
+SOAP
+====
+
+Structural Optimization of Arithmetic Programs.
+"""
 __version__ = '2.0.dev'
 __author__ = 'Xitong Gao'
 __email__ = '@'.join(['xtg08', 'ic.ac.uk'])

@@ -522,7 +522,9 @@ class ErrorSemantics(Lattice):
         return hash((self.v, self.e))
 
 
-def cast(v):
+def cast(v=None):
+    if v is None:
+        return IntegerInterval(bottom=True)
     if isinstance(v, str):
         if v.isdigit():
             return IntegerInterval(v)
