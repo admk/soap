@@ -176,5 +176,6 @@ class IdentifierBoxState(IdentifierBaseState, BoxState):
         return key.prev_iteration(), self[key]
 
     def assign(self, var, expr, annotation):
-        print(self, self[Identifier(var, annotation=annotation):self.eval(expr)])
-        return self[Identifier(var, annotation=annotation):self.eval(expr)]
+        key = Identifier(var, annotation=annotation)
+        value = self.eval(expr)
+        return self[key:value]
