@@ -247,6 +247,9 @@ class Expression(FlatLattice, Flyweight):
             return False
         return self._attr() == other._attr()
 
+    def __ne__(self, other):
+        return not self == other
+
     def __hash__(self):
         try:
             return self._hash

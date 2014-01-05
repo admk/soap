@@ -4,6 +4,11 @@ from soap.lattice.meta import LatticeMeta
 
 
 def _decorate(cls):
+    if not hasattr(cls, '_decorated'):
+        cls._decorated = set()
+    if cls is Lattice or cls in cls._decorated:
+        return
+
     def check_return(func):
         @wraps(func)
         def checker(*args, **kwargs):
@@ -41,11 +46,6 @@ def _decorate(cls):
 
         return wrapper
 
-    if not hasattr(cls, '_decorated'):
-        cls._decorated = set()
-    if cls is Lattice or cls in cls._decorated:
-        return
-    cls._decorated.add(cls)
     cls.__str__ = decorate_self(Lattice.__str__, cls.__str__)
     cls.__repr__ = decorate_self(Lattice.__repr__, cls.__repr__)
     cls.__hash__ = decorate_self(Lattice.__hash__, cls.__hash__)
@@ -54,6 +54,7 @@ def _decorate(cls):
     cls.join = decorate_self_other(Lattice.join, cls.join)
     cls.meet = decorate_self_other(Lattice.meet, cls.meet)
     cls.le = decorate_self_other(Lattice.le, cls.le)
+    cls._decorated.add(cls)
     return cls
 
 

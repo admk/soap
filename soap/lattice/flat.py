@@ -162,7 +162,7 @@ def denotational(cls=None, name=None):
         >>> a + c
         Int(bottom=True)
     """
-    class DenotationalFlatLattice(Denotational, flat(cls)):
+    class DenotationalFlatLattice(flat(cls), Denotational):
         __slots__ = ()
     if name:
         DenotationalFlatLattice.__name__ = name
