@@ -8,8 +8,7 @@ class Identifier(object):
     def __init__(self, variable, label=None, iteration=None, annotation=None):
         super().__init__()
         self.variable = variable
-        self.annotation = (
-            annotation or Annotation(label=label, iteration=iteration))
+        self.annotation = annotation or Annotation(label, iteration)
 
     @property
     def label(self):
@@ -20,14 +19,12 @@ class Identifier(object):
         return self.annotation.iteration
 
     def initial(self):
-        return Identifier(
-            self.variable, annotation=Annotation(
-                self.annotation.label, Iteration(top=True)))
+        return Identifier(self.variable, annotation=Annotation(
+            self.annotation.label, Iteration(top=True)))
 
     def final(self):
-        return Identifier(
-            self.variable, annotation=Annotation(
-                self.annotation.label, Iteration(bottom=True)))
+        return Identifier(self.variable, annotation=Annotation(
+            self.annotation.label, Iteration(bottom=True)))
 
     def global_initial(self):
         return Identifier(self.variable, annotation=Annotation(top=True))
@@ -55,8 +52,8 @@ class Identifier(object):
 
     def __str__(self):
         return '({variable}, {label}, {iteration})'.format(
-            variable=self.variable,
-            label=self.annotation.label, iteration=self.annotation.iteration)
+            variable=self.variable, label=self.annotation.label,
+            iteration=self.annotation.iteration)
 
     def __repr__(self):
         return '{cls}({variable!r}, {label!r}, {iteration!r})'.format(

@@ -1,37 +1,20 @@
+from soap.context import context
 from soap.expression import Expression, expression_factory, Variable
 from soap.label import Annotation, Identifier, Iteration
 from soap.lattice.map import map
-from soap.semantics.state.base import BaseState
+from soap.semantics.state.identifier import IdentifierBaseState
 
 
-class IdentifierExpressionState(BaseState, map(Identifier, Expression)):
+class IdentifierExpressionState(
+        IdentifierBaseState, map(Identifier, Expression)):
     """Analyzes variable identifiers to be represented with expressions. """
-    iteration_limit = 3
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # update the mapping with the current identifiers of variables
-        for k, v in self.items():
-            identifier = Identifier(
-                k.variable, annotation=Annotation(top=True))
-            self[identifier] = k
-
-    def _cast_key(self, key):
-        """Convert a variable into an identifier.
-
-        An initial identifier of a variable is always::
-            ([variable_name], ⊥, ⊥)
-        """
-        if isinstance(key, Identifier):
-            return key
-        if isinstance(key, str):
-            key = Variable(key)
-        if isinstance(key, Variable):
-            return Identifier(key, annotation=Annotation(bottom=True))
-        raise TypeError(
-            'Do not know how to convert {!r} into an identifier'.format(key))
-
     def _cast_value(self, v=None, top=False, bottom=False):
+        ...
+
+    def _key_value_for_top_iteration(self, key, value):
+        ...
+
+    def _key_value_for_consecutive_iteration(self, key, value):
         ...
 
     def assign(self, var, expr, annotation):
@@ -52,7 +35,7 @@ class IdentifierExpressionState(BaseState, map(Identifier, Expression)):
                 else:
                     iteration = expr.iteration
                 iteration += 1
-                if iteration > self.iteration_limit:
+                if iteration > context.program_depth:
                     iteration = Iteration(top=True)
                 return Identifier(expr.variable, expr.label, iteration)
             if isinstance(expr, Expression):

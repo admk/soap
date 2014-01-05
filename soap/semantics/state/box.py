@@ -116,7 +116,7 @@ class BoxState(BaseState):
             variable satisfies the constraint condition, it is safe to return
             *bottom* to denote an unreachable state. """
             return self.__class__(bottom=True)
-        return self[expr.a1:cstr]
+        return self.assign(expr.a1, cstr, annotation)
 
     def is_fixpoint(self, other):
         """Checks if `self` is equal to `other` in the value ranges.

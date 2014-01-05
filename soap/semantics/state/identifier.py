@@ -31,6 +31,11 @@ class IdentifierBaseState(BaseState):
         raise NotImplementedError
 
     def _cast_key(self, key):
+        """Convert a variable into an identifier.
+
+        A current identifier of a variable is always::
+            ([variable_name], ⊥, ⊥)
+        """
         if isinstance(key, str):
             key = Variable(key)
         if isinstance(key, Variable):
