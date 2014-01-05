@@ -24,7 +24,7 @@ class FlatLattice(Lattice):
             return
         self.v = self._cast_value(value)
 
-    def _cast_value(self):
+    def _cast_value(self, value, top=False, bottom=False):
         raise NotImplementedError
 
     def is_top(self):

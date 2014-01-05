@@ -3,15 +3,22 @@
     :synopsis: The class of variables.
 """
 from soap.common.cache import Flyweight
+from soap.lattice.flat import FlatLattice
 
 
-class Variable(Flyweight):
+class Variable(FlatLattice, Flyweight):
     """The variable class."""
 
     __slots__ = ('name')
 
-    def __init__(self, name):
+    def __init__(self, name=None, top=False, bottom=False):
+        super().__init__(top=top, bottom=bottom)
+        if top or bottom:
+            return
         self.name = name
+
+    def _cast_value(self, value, top=False, bottom=False):
+        return value
 
     def __str__(self):
         return str(self.name)

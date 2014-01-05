@@ -4,11 +4,10 @@ import itertools
 from patmat.mimic import _Mimic, Val
 
 from soap.common import cached
-from soap.expression.common import (
-    is_expr, is_variable, is_constant, expression_factory,
-)
+from soap.expression.common import is_expr, is_variable, expression_factory
 from soap.expression.operators import ASSOCIATIVITY_OPERATORS
 from soap.expression.parser import parse
+from soap.semantics.common import is_constant
 
 
 class ExprMimic(_Mimic):

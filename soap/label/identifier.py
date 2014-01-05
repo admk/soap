@@ -1,14 +1,24 @@
+from soap.expression.variable import Variable
 from soap.label.iteration import Iteration
 from soap.label.annotation import Annotation
 
 
-class Identifier(object):
-    __slots__ = ('variable', 'annotation')
+class Identifier(Variable * Annotation):
+    __slots__ = ()
 
-    def __init__(self, variable, label=None, iteration=None, annotation=None):
-        super().__init__()
-        self.variable = variable
-        self.annotation = annotation or Annotation(label, iteration)
+    def __init__(self, variable, label=None, iteration=None,
+                 annotation=None, top=False, bottom=False):
+        annotation = annotation or Annotation(
+            label, iteration, top=top, bottom=bottom)
+        super().__init__(self_obj=variable, other_obj=annotation)
+
+    @property
+    def variable(self):
+        return self.components[0]
+
+    @property
+    def annotation(self):
+        return self.components[1]
 
     @property
     def label(self):
@@ -39,16 +49,6 @@ class Identifier(object):
             iteration = self.iteration
         return Identifier(
             self.variable, label=self.label, iteration=(iteration + 1))
-
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        if self.variable != other.variable:
-            return False
-        return self.annotation == other.annotation
-
-    def __hash__(self):
-        return hash((self.__class__, self.variable, self.annotation))
 
     def __str__(self):
         return '({variable}, {label}, {iteration})'.format(

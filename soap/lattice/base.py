@@ -10,30 +10,42 @@ def _decorate(cls):
             v = func(*args, **kwargs)
             if v is not None:
                 return v
-            raise RuntimeError('Function {} does not return a value'
-                               ''.format(func.__qualname__))
+            raise RuntimeError('Function {} does not return a value'.format(
+                func.__qualname__))
         return checker
 
     def decorate_self(base_func, decd_func):
+        if not decd_func:
+            raise ValueError(
+                'No function matching {} from class {} to decorate'.format(
+                    base_func.__qualname__, cls))
+
         @check_return
         @wraps(decd_func)
         def wrapper(self):
             t = base_func(self)
             return t if t is not None else decd_func(self)
+
         return wrapper
 
     def decorate_self_other(base_func, decd_func):
+        if not decd_func:
+            raise ValueError('No matching {} function to decorate'.format(
+                base_func.__qualname__))
+
         @check_return
         @wraps(decd_func)
         def wrapper(self, other):
             t = base_func(self, other)
             return t if t is not None else decd_func(self, other)
+
         return wrapper
-    try:
-        if cls == Lattice or cls._decorated:
-            return
-    except AttributeError:
-        cls._decorated = True
+
+    if not hasattr(cls, '_decorated'):
+        cls._decorated = set()
+    if cls is Lattice or cls in cls._decorated:
+        return
+    cls._decorated.add(cls)
     cls.__str__ = decorate_self(Lattice.__str__, cls.__str__)
     cls.__repr__ = decorate_self(Lattice.__repr__, cls.__repr__)
     cls.__hash__ = decorate_self(Lattice.__hash__, cls.__hash__)
@@ -42,6 +54,7 @@ def _decorate(cls):
     cls.join = decorate_self_other(Lattice.join, cls.join)
     cls.meet = decorate_self_other(Lattice.meet, cls.meet)
     cls.le = decorate_self_other(Lattice.le, cls.le)
+    return cls
 
 
 class Lattice(object, metaclass=LatticeMeta):

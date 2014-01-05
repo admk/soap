@@ -16,10 +16,10 @@ class ArithExpr(Expression):
 
     __slots__ = ()
 
-    def __init__(self, op, *args):
+    def __init__(self, op=None, *args, top=False, bottom=False):
         if op not in ARITHMETIC_OPERATORS:
             raise ValueError('Boolean expression must use a boolean operator.')
-        super().__init__(op, *args)
+        super().__init__(op, *args, top=top, bottom=bottom)
 
     def __add__(self, other):
         return BinaryArithExpr(op=ADD_OP, a1=self, a2=other)

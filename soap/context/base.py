@@ -30,10 +30,7 @@ class _Context(dict):
         key, value = hook(key, value)
         self[key] = self._cast_dict(value)
         if self.get('should_invalidate_cache', True):
-            try:
-                invalidate_cache()
-            except ImportError:
-                pass
+            invalidate_cache()
 
     def __getattr__(self, key):
         try:

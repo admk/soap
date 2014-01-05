@@ -16,10 +16,10 @@ class BoolExpr(Expression):
 
     __slots__ = ()
 
-    def __init__(self, op, *args):
+    def __init__(self, op=None, *args, top=False, bottom=False):
         if op not in BOOLEAN_OPERATORS:
             raise ValueError('Boolean expression must use a boolean operator.')
-        super().__init__(op, *args)
+        super().__init__(op, *args, top=top, bottom=bottom)
 
     def __invert__(self):
         return UnaryBoolExpr(op=UNARY_NEGATION_OP, a=self)
