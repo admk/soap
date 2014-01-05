@@ -1,50 +1,54 @@
-from soap.context import context
 from soap.expression import Expression, expression_factory, Variable
-from soap.label import Annotation, Identifier, Iteration
-from soap.lattice.map import map
+from soap.label import Annotation, Identifier
+from soap.lattice import Lattice, map
+from soap.semantics.common import is_numeral
 from soap.semantics.state.identifier import IdentifierBaseState
 
 
-class IdentifierExpressionState(
-        IdentifierBaseState, map(Identifier, Expression)):
+class IdentifierExpressionState(IdentifierBaseState, map()):
     """Analyzes variable identifiers to be represented with expressions. """
+    __slots__ = ()
+
+    def eval(self, expr, var=None):
+        if isinstance(expr, Lattice):
+            if expr.is_top() or expr.is_bottom():
+                return expr
+        if is_numeral(expr):
+            return expr
+        if isinstance(expr, Expression):
+            return expression_factory(
+                expr.op, *[self.eval(a) for a in expr.args])
+        if isinstance(expr, Variable):
+            value = self.get(
+                Identifier(expr, annotation=Annotation(bottom=True)), None)
+            if value is not None:
+                return value
+            # initial variable
+            return Identifier(expr, annotation=Annotation(top=True))
+        if isinstance(expr, Identifier):
+            if not var or expr.variable != var:
+                return expr
+            # bump iteration for variable
+            return Identifier(expr.variable, expr.label, expr.iteration + 1)
+
     def _cast_value(self, v=None, top=False, bottom=False):
-        ...
+        if top or bottom:
+            return Expression(top=top, bottom=bottom)
+        return self.eval(v)
 
     def _key_value_for_top_iteration(self, key, value):
-        ...
+        return key, self.eval(value, key.variable)
 
     def _key_value_for_consecutive_iteration(self, key, value):
-        ...
+        return key.prev_iteration(), self.eval(self[key], key.variable)
+
+    def _key_value_for_final_iteration(self, key, value):
+        return key.global_final(), key
 
     def assign(self, var, expr, annotation):
         """Makes an assignment and returns a new state object."""
-        def eval(self, var, expr):
-            """
-            Evaluates a syntactic expression into an expression of identifiers.
-            """
-            if isinstance(expr, Variable):
-                # expr is a variable, try to find the current expression value
-                # of the variable
-                return self[Identifier(expr, annotation=Annotation(top=True))]
-            if isinstance(expr, Identifier):
-                if expr.variable != var:
-                    return expr
-                if expr.iteration.is_bottom():
-                    iteration = Iteration(0)
-                else:
-                    iteration = expr.iteration
-                iteration += 1
-                if iteration > context.program_depth:
-                    iteration = Iteration(top=True)
-                return Identifier(expr.variable, expr.label, iteration)
-            if isinstance(expr, Expression):
-                return expression_factory(
-                    expr.op, (self.eval(a) for a in expr.args))
-            return
-        mapping = dict(self)
-        mapping[Identifier(var, annotation=annotation)] = self.eval(expr)
-        return self.__class__(mapping)
+        identifier = Identifier(var, annotation=annotation)
+        return self[identifier:self.eval(expr, var)]
 
     def conditional(self, expr, cond, annotation):
         """Imposes a conditional on the state, returns a new state."""
