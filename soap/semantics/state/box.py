@@ -133,8 +133,8 @@ class BoxState(BaseState):
             return True
         if self.is_bottom() and other.is_bottom():
             return True
-        non_bottom_keys = lambda d: set([k for k, v in d.items()
-                                         if not v.is_bottom()])
+        non_bottom_keys = lambda d: set(
+            [k for k, v in d.items() if not v.is_bottom()])
         if non_bottom_keys(self) != non_bottom_keys(other):
             return False
         for k, v in self.items():

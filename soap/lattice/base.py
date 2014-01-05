@@ -1,117 +1,10 @@
-import copy
 from functools import wraps
 
-
-class LatticeMeta(type):
-    """The metaclass of lattices.
-
-    It defines the behaviour of the systematic design of lattices."""
-    def __add__(self_class, other_class):
-        class UnifiedSummationLattice(Lattice):
-            """Defines a summation of two partial orders with unified top and
-            bottom elements."""
-            def __init__(self, *args, top=False, bottom=False, **kwargs):
-                super().__init__(top=top, bottom=bottom)
-                if top or bottom:
-                    return
-                for c in (self_class, other_class):
-                    v = self._try_class(c, *args, **kwargs)
-                    if v is not NotImplemented:
-                        break
-                self.v = v
-
-            def _try_class(self, cls, *args, **kwargs):
-                if len(args) == 1:
-                    if isinstance(args[0], cls):
-                        return cls
-                try:
-                    return cls(*args, **kwargs)
-                except Exception:
-                    return NotImplemented
-
-            def is_top(self):
-                return self.v.is_top()
-
-            def is_bottom(self):
-                return self.v.is_bottom()
-
-            def join(self, other):
-                if type(self.v) is not type(other.v):
-                    return self.__class__(top=True)
-                return self.v | other.v
-
-            def meet(self, other):
-                if type(self.v) is not type(other.v):
-                    return self.__class__(bottom=True)
-                return self.v & other.v
-
-            def le(self, other):
-                if type(self.v) is not type(other.v):
-                    return False
-                return self.v <= other.v
-
-            def __str__(self):
-                return str(self.v)
-
-            def __repr__(self):
-                return '%s(%r)' % (self.__class__.__name__, self.v)
-
-    def __mul__(self_class, other_class):
-        class ComponentWiseLattice(Lattice):
-            """Defines a component-wise partial order."""
-            def __init__(self, self_obj=None, other_obj=None,
-                         top=False, bottom=False):
-                super().__init__(top=top, bottom=bottom)
-                if top or bottom:
-                    self.components = tuple(
-                        cls(top=top, bottom=bottom)
-                        for cls in (self_class, other_class))
-                else:
-                    self.components = (self_obj, other_obj)
-
-            def is_top(self):
-                return all(c.is_top() for c in self.components)
-
-            def is_bottom(self):
-                return all(c.is_bottom() for c in self.components)
-
-            def join(self, other):
-                e = copy.copy(self)
-                e.components = [self_comp | other_comp
-                                for self_comp, other_comp in
-                                zip(self.components, other.components)]
-                return e
-
-            def meet(self, other):
-                e = copy.copy(self)
-                e.components = [self_comp & other_comp
-                                for self_comp, other_comp in
-                                zip(self.components, other.components)]
-                return e
-
-            def le(self, other):
-                return all(self_comp <= other_comp
-                           for self_comp, other_comp in
-                           zip(self.components, other.components))
-
-            def __hash__(self):
-                return hash((self.__class__, self.components))
-
-            def __str__(self):
-                return '(%s)' % ', '.join(str(c) for c in self.components)
-
-            def __repr__(self):
-                return '%s(%s)' % \
-                    (self.__class__.__name__,
-                     ', '.join(repr(c) for c in self.components))
-
-        ComponentWiseLattice.__name__ = 'ComponentWiseLattice_%s_%s' % \
-            (self_class.__name__, other_class.__name__)
-        return ComponentWiseLattice
+from soap.lattice.meta import LatticeMeta
 
 
 def _decorate(cls):
-    def _check_return(func):
+    def check_return(func):
         @wraps(func)
         def checker(*args, **kwargs):
             v = func(*args, **kwargs)
@@ -122,7 +15,7 @@ def _decorate(cls):
         return checker
 
     def decorate_self(base_func, decd_func):
-        @_check_return
+        @check_return
         @wraps(decd_func)
         def wrapper(self):
             t = base_func(self)
@@ -130,7 +23,7 @@ def _decorate(cls):
         return wrapper
 
     def decorate_self_other(base_func, decd_func):
-        @_check_return
+        @check_return
         @wraps(decd_func)
         def wrapper(self, other):
             t = base_func(self, other)

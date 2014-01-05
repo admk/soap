@@ -10,8 +10,12 @@ from soap.lattice.common import _lattice_factory
 
 class MapLattice(Lattice, dict):
     """Defines a lattice for mappings/functions."""
+    __slots__ = ()
+
     def __init__(self, mapping=None, top=False, bottom=False, **kwargs):
         super().__init__(top=top, bottom=bottom)
+        if top or bottom:
+            return
         d = dict(mapping or {}, **kwargs)
         for k, v in d.items():
             k = self._cast_key(k)

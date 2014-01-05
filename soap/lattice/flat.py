@@ -16,6 +16,8 @@ class FlatLattice(Lattice):
          ...  \ \ | / / ...
                   ⊥
     """
+    __slots__ = ('v', )
+
     def __init__(self, value=None, top=False, bottom=False):
         super().__init__(top=top, bottom=bottom)
         if top or bottom:
@@ -55,6 +57,8 @@ class FlatLattice(Lattice):
 
 
 class Denotational(object):
+    __slots__ = ()
+
     def _op(self, op, other=None):
         try:
             if self.is_top() or (other is not None and other.is_top()):
@@ -159,7 +163,7 @@ def denotational(cls=None, name=None):
         Int(bottom=True)
     """
     class DenotationalFlatLattice(Denotational, flat(cls)):
-        pass
+        __slots__ = ()
     if name:
         DenotationalFlatLattice.__name__ = name
     elif callable(cls):

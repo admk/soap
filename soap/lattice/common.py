@@ -12,6 +12,8 @@ def _lattice_factory(cls, lattice_cls, name):
         is_class_list = False
 
     class L(lattice_cls):
+        __slots__ = ()
+
         def _class(self):
             return cls
 

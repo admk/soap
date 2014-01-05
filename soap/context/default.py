@@ -1,10 +1,10 @@
 from soap.context.soap import SoapContext
 
 
-context = SoapContext()
-with context.no_invalidate_cache():
-    context.unroll_factor = 50
-    context.widen_factor = 100
-    context.precision = 'single'
-    context.window_depth = 2
-    context.program_depth = 3
+context = SoapContext(
+    unroll_factor=50,
+    widen_factor=100,
+    precision='single',
+    window_depth=2,
+    program_depth=3,
+)
