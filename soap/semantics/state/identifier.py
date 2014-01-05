@@ -22,12 +22,15 @@ class IdentifierBaseState(BaseState):
         # update current iteration
         super().__setitem__(key, value)
         # also updates the current identifier
-        super().__setitem__(key.global_final(), value)
+        super().__setitem__(*self._key_value_for_final_iteration(key, value))
 
     def _key_value_for_top_iteration(self, key, value):
         raise NotImplementedError
 
     def _key_value_for_consecutive_iteration(self, key, value):
+        raise NotImplementedError
+
+    def _key_value_for_final_iteration(self, key, value):
         raise NotImplementedError
 
     def _cast_key(self, key):

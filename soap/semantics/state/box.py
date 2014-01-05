@@ -175,6 +175,9 @@ class IdentifierBoxState(IdentifierBaseState, BoxState):
     def _key_value_for_consecutive_iteration(self, key, value):
         return key.prev_iteration(), self[key]
 
+    def _key_value_for_final_iteration(self, key, value):
+        return key.global_final(), value
+
     def assign(self, var, expr, annotation):
         key = Identifier(var, annotation=annotation)
         value = self.eval(expr)
