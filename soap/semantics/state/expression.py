@@ -42,7 +42,7 @@ class IdentifierExpressionState(IdentifierBaseState, map()):
     def _key_value_for_consecutive_iteration(self, key, value):
         return key.prev_iteration(), self.eval(self[key], key.variable)
 
-    def _key_value_for_final_iteration(self, key, value):
+    def _key_value_for_bottom_iteration(self, key, value):
         return key.global_final(), key
 
     def assign(self, var, expr, annotation):
