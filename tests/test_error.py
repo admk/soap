@@ -1,9 +1,18 @@
 import unittest
-from gmpy2 import mpfr
 
+from soap.context import context
 from soap.semantics import (
     inf, mpq, mpfr, ulp, FloatInterval, IntegerInterval, ErrorSemantics
 )
+
+
+def setUp():
+    context.take_snapshot()
+    context.precision = 'double'
+
+
+def tearDown():
+    context.restore_snapshot()
 
 
 class TestFoundation(unittest.TestCase):

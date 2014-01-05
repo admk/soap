@@ -106,4 +106,6 @@ def map(from_cls=None, to_lattice=None, name=None):
             to_lattice_name = type(to_lattice).__name__
         name = 'MapLattice_{}_to_{}'.format(from_cls.__name__, to_lattice_name)
     cls = _lattice_factory(to_lattice, MapLattice, name)
+    if from_cls:
+        cls._cast_key = lambda self, key: from_cls(key)
     return cls
