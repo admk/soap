@@ -5,7 +5,7 @@
 """
 from soap import logger
 from soap.expression import operators
-from soap.expression.common import is_expr
+from soap.expression.common import is_expression
 from soap.transformer.core import TreeTransformer
 from soap.transformer.arithmetic import (
     associativity_addition, associativity_multiplication,
@@ -82,7 +82,7 @@ def reduce(tree):
     :type tree: :class:`soap.expression.Expression` or str
     :returns: A new expression tree.
     """
-    if not is_expr(tree):
+    if not is_expression(tree):
         with logger.local_context(level=logger.levels.info):
             return {reduce(t) for t in tree}
     t = transform(tree, ArithTreeTransformer.reduction_rules,

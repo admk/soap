@@ -9,7 +9,7 @@ import sys
 
 from soap import logger
 from soap.common import cached
-from soap.expression.common import expression_factory, is_expr
+from soap.expression.common import expression_factory, is_expression
 from soap.expression.parser import parse
 from soap.transformer import pattern
 
@@ -90,7 +90,7 @@ class TreeTransformer(TreeFarmer):
             self.reduction_rules = reduction_rules
         if isinstance(tree_or_trees, str):
             self._expressions = [parse(tree_or_trees)]
-        elif is_expr(tree_or_trees):
+        elif is_expression(tree_or_trees):
             self._expressions = [tree_or_trees]
         else:
             self._expressions = tree_or_trees
@@ -198,7 +198,7 @@ def _recursive_walk(expression, rules, depth):
     discovered = set()
     if depth == 0:
         return discovered
-    if not is_expr(expression):
+    if not is_expression(expression):
         return discovered
     for rule in rules.get(expression.op, []):
         discovered |= pattern.transform(rule, expression)

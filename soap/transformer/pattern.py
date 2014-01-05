@@ -4,7 +4,9 @@ import itertools
 from patmat.mimic import _Mimic, Val
 
 from soap.common import cached
-from soap.expression.common import is_expr, is_variable, expression_factory
+from soap.expression.common import (
+    is_expression, is_variable, expression_factory
+)
 from soap.expression.operators import ASSOCIATIVITY_OPERATORS
 from soap.expression.parser import parse
 from soap.semantics.common import is_constant
@@ -17,7 +19,7 @@ class ExprMimic(_Mimic):
         self.args = args
 
     def _initial_match(self, other, env):
-        if not is_expr(other):
+        if not is_expression(other):
             return False
         if not self._match_item(self.op, other.op, env):
             return False
@@ -71,7 +73,7 @@ def compile(*expressions):
     def _compile(expression):
         if isinstance(expression, str):
             return _compile(parse(expression))
-        if is_expr(expression):
+        if is_expression(expression):
             return ExprMimic(
                 expression.op, [_compile(a) for a in expression.args])
         if is_variable(expression):
