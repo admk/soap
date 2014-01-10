@@ -167,21 +167,13 @@ class BoxState(BaseState):
 
 class IdentifierBoxState(IdentifierBaseState, BoxState):
     __slots__ = ()
+    _final_value_is_key = False
 
-    def _key_value_for_top_iteration(self, key, value):
-        # iteration limit reached, join with value at the limit.
-        return key, self[key] | value
-
-    def _key_value_for_consecutive_iteration(self, key, value):
-        return key.prev_iteration(), self[key]
-
-    def _key_value_for_current_iteration(self, key, value):
-        return key, value
-
-    def _key_value_for_bottom_iteration(self, key, value):
-        return key.global_final(), value
+    def eval(self, expr):
+        if isinstance(expr, Identifier):
+            return self[expr]
+        return super().eval(expr)
 
     def assign(self, var, expr, annotation):
-        key = Identifier(var, annotation=annotation)
-        value = self.eval(expr)
-        return self[key:value]
+        return self.increment(
+            Identifier(var, annotation=annotation), self.eval(expr))

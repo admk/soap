@@ -21,31 +21,12 @@ class IdentifierExpressionState(IdentifierBaseState, map()):
             return expression_factory(
                 expr.op, *[self._cast_value(a) for a in expr.args])
         if isinstance(expr, Variable):
-            value = self.get(
-                Identifier(expr, annotation=Annotation(bottom=True)), None)
-            if value is not None:
-                return value
-            # initial variable
-            return Identifier(expr, annotation=Annotation(top=True))
+            return self.get(
+                Identifier(expr, annotation=Annotation(bottom=True)),
+                Identifier(expr, annotation=Annotation(top=True)))
         if isinstance(expr, Identifier):
             return expr
         raise TypeError('Do not know how to evaluate {!r}'.format(expr))
-
-    def _increment(self, value, identifier):
-        if isinstance(value, Lattice):
-            if value.is_top() or value.is_bottom():
-                return value
-        if isinstance(value, Expression):
-            args = [self._increment(a, identifier) for a in value.args]
-            return expression_factory(value.op, *args)
-        if isinstance(value, Identifier):
-            if value.variable == identifier.variable:
-                if value.label == identifier.label:
-                    return value.prev_iteration()
-            return value
-        if is_numeral(value):
-            return value
-        raise TypeError('Do not know how to increment {!r}'.format(value))
 
     def assign(self, var, expr, annotation):
         """Makes an assignment and returns a new state object."""
