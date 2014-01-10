@@ -9,7 +9,9 @@ class IdentifierExpressionState(IdentifierBaseState, map()):
     """Analyzes variable identifiers to be represented with expressions. """
     __slots__ = ()
 
-    def eval(self, expr, var=None):
+    def _cast_value(self, expr=None, top=False, bottom=False):
+        if top or bottom:
+            return Expression(top=top, bottom=bottom)
         if isinstance(expr, Lattice):
             if expr.is_top() or expr.is_bottom():
                 return expr
@@ -17,7 +19,7 @@ class IdentifierExpressionState(IdentifierBaseState, map()):
             return expr
         if isinstance(expr, Expression):
             return expression_factory(
-                expr.op, *[self.eval(a) for a in expr.args])
+                expr.op, *[self._cast_value(a) for a in expr.args])
         if isinstance(expr, Variable):
             value = self.get(
                 Identifier(expr, annotation=Annotation(bottom=True)), None)
@@ -26,29 +28,28 @@ class IdentifierExpressionState(IdentifierBaseState, map()):
             # initial variable
             return Identifier(expr, annotation=Annotation(top=True))
         if isinstance(expr, Identifier):
-            if not var or expr.variable != var:
-                return expr
-            # bump iteration for variable
-            return Identifier(expr.variable, expr.label, expr.iteration + 1)
+            return expr
+        raise TypeError('Do not know how to evaluate {!r}'.format(expr))
 
-    def _cast_value(self, v=None, top=False, bottom=False):
-        if top or bottom:
-            return Expression(top=top, bottom=bottom)
-        return self.eval(v)
-
-    def _key_value_for_top_iteration(self, key, value):
-        return key, self.eval(value, key.variable)
-
-    def _key_value_for_consecutive_iteration(self, key, value):
-        return key.prev_iteration(), self.eval(self[key], key.variable)
-
-    def _key_value_for_bottom_iteration(self, key, value):
-        return key.global_final(), key
+    def _increment(self, value, identifier):
+        if isinstance(value, Lattice):
+            if value.is_top() or value.is_bottom():
+                return value
+        if isinstance(value, Expression):
+            args = [self._increment(a, identifier) for a in value.args]
+            return expression_factory(value.op, *args)
+        if isinstance(value, Identifier):
+            if value.variable == identifier.variable:
+                if value.label == identifier.label:
+                    return value.prev_iteration()
+            return value
+        if is_numeral(value):
+            return value
+        raise TypeError('Do not know how to increment {!r}'.format(value))
 
     def assign(self, var, expr, annotation):
         """Makes an assignment and returns a new state object."""
-        identifier = Identifier(var, annotation=annotation)
-        return self[identifier:self.eval(expr, var)]
+        return self.increment(Identifier(var, annotation=annotation), expr)
 
     def conditional(self, expr, cond, annotation):
         """Imposes a conditional on the state, returns a new state."""
