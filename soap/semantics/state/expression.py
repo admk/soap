@@ -1,4 +1,4 @@
-from soap.expression import Expression, expression_factory, Variable
+from soap.expression import Expression, expression_factory, Variable, parse
 from soap.label import Annotation, Identifier
 from soap.lattice import Lattice, map
 from soap.semantics.common import is_numeral
@@ -26,6 +26,8 @@ class IdentifierExpressionState(IdentifierBaseState, map()):
                 Identifier(expr, annotation=Annotation(top=True)))
         if isinstance(expr, Identifier):
             return expr
+        if isinstance(expr, str):
+            return self._cast_value(parse(expr))
         raise TypeError('Do not know how to evaluate {!r}'.format(expr))
 
     def assign(self, var, expr, annotation):

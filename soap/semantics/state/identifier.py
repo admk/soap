@@ -45,6 +45,9 @@ class IdentifierBaseState(BaseState):
         raise TypeError('Do not know how to increment {!r}'.format(value))
 
     def increment(self, key, value):
+        if self.is_top():
+            # if conflict, return itself
+            return self
         key, value = self._cast_key(key), self._cast_value(value)
         if not key.iteration.is_bottom():
             raise ValueError('Incrementer must be current.')
@@ -65,8 +68,3 @@ class IdentifierBaseState(BaseState):
             value = key
         incr_map[key.global_final()] = value
         return self.__class__(incr_map)
-
-    def __getitem__(self, key):
-        if isinstance(key, slice):
-            return self.increment(key.start, key.stop)
-        return super().__getitem__(key)
