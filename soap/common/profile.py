@@ -2,10 +2,9 @@ import time
 import functools
 from contextlib import contextmanager
 
-import soap.logger as logger
-
 
 def timeit(f):
+    from soap import logger
     def timed(*args, **kwargs):
         ts = time.time()
         result = f(*args, **kwargs)
@@ -17,6 +16,7 @@ def timeit(f):
 
 @contextmanager
 def timed(name=''):
+    from soap import logger
     ts = time.time()
     yield
     te = time.time()

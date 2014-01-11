@@ -2,14 +2,20 @@
 .. module:: soap.lattice.map
     :synopsis: The mapping lattice.
 """
+import copy
+
 from soap.lattice import Lattice
 from soap.lattice.common import _lattice_factory
 
 
 class MapLattice(Lattice, dict):
     """Defines a lattice for mappings/functions."""
+    __slots__ = ()
+
     def __init__(self, mapping=None, top=False, bottom=False, **kwargs):
         super().__init__(top=top, bottom=bottom)
+        if top or bottom:
+            return
         d = dict(mapping or {}, **kwargs)
         for k, v in d.items():
             k = self._cast_key(k)
@@ -27,7 +33,7 @@ class MapLattice(Lattice, dict):
         return False
 
     def is_bottom(self):
-        return all(v.is_bottom() for _, v in self.items())
+        return all(v.is_bottom() for v in self.values())
 
     def join(self, other):
         join_dict = dict(self)
@@ -56,16 +62,28 @@ class MapLattice(Lattice, dict):
                 return False
         return True
 
+    def __contains__(self, key):
+        return super().__contains__(self._cast_key(key))
+
     def __getitem__(self, key):
         if self.is_top():
             return self._cast_value(top=True)
-        if not self.is_bottom() and key in self:
-            return super().__getitem__(key)
-        return self._cast_value(bottom=True)
+        if isinstance(key, slice):
+            new_map = copy.deepcopy(self)
+            new_map.__setitem__(key.start, key.stop)
+            return new_map
+        if self.is_bottom():
+            return self._cast_value(bottom=True)
+        try:
+            return super().__getitem__(self._cast_key(key))
+        except KeyError:
+            return self._cast_value(bottom=True)
 
     def __setitem__(self, key, value):
         key = self._cast_key(key)
         value = self._cast_value(value)
+        if value.is_bottom():
+            return
         super().__setitem__(key, value)
 
     def __str__(self):
@@ -76,7 +94,7 @@ class MapLattice(Lattice, dict):
         return '%s(%r)' % (self.__class__.__name__, dict(self))
 
 
-def map(from_cls, to_lattice, name=None):
+def map(from_cls=None, to_lattice=None, name=None):
     """Returns a mapping lattice which orders the partial maps from a class
     `from_cls` to a lattice `to_lattice`.
 
@@ -85,16 +103,13 @@ def map(from_cls, to_lattice, name=None):
     :param to_lattice: The range of the function, must be a lattice.
     :type name: :class:`soap.lattice.Lattice`
     """
-    def cast_key(self, key):
-        if isinstance(key, from_cls):
-            return key
-        return from_cls(key)
-    if not name:
+    if not name and from_cls and to_lattice:
         try:
             to_lattice_name = to_lattice.__name__
         except AttributeError:
             to_lattice_name = type(to_lattice).__name__
-        name = 'MapLattice_%s_to_%s' % (from_cls.__name__, to_lattice_name)
+        name = 'MapLattice_{}_to_{}'.format(from_cls.__name__, to_lattice_name)
     cls = _lattice_factory(to_lattice, MapLattice, name)
-    cls._cast_key = cast_key
+    if from_cls:
+        cls._cast_key = lambda self, key: from_cls(key)
     return cls

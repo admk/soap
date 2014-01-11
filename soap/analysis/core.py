@@ -4,7 +4,8 @@
 """
 import gmpy2
 
-import soap.logger as logger
+from soap import logger
+from soap.context import context
 from soap.common import DynamicMethods, Flyweight
 from soap.expression import Expr
 from soap.semantics import mpfr
@@ -44,7 +45,7 @@ class Analysis(DynamicMethods, Flyweight):
 
         :returns: a list of integers indicating precisions.
         """
-        return [gmpy2.ieee(32).precision - 1]
+        return [context.precision]
 
     def analyse(self):
         """Analyses the set of expressions with input ranges and precisions

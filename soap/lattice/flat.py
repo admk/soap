@@ -2,8 +2,7 @@
 .. module:: soap.lattice.flat
     :synopsis: The flat lattice.
 """
-from soap.common import ignored
-from soap.lattice import Lattice
+from soap.lattice.base import Lattice
 from soap.lattice.common import _lattice_factory
 
 
@@ -17,13 +16,15 @@ class FlatLattice(Lattice):
          ...  \ \ | / / ...
                   ⊥
     """
-    def __init__(self, var=None, top=False, bottom=False):
+    __slots__ = ('v', )
+
+    def __init__(self, value=None, top=False, bottom=False):
         super().__init__(top=top, bottom=bottom)
         if top or bottom:
             return
-        self.v = self._cast_value(var)
+        self.v = self._cast_value(value)
 
-    def _cast_value(self):
+    def _cast_value(self, value, top=False, bottom=False):
         raise NotImplementedError
 
     def is_top(self):
@@ -45,6 +46,9 @@ class FlatLattice(Lattice):
     def le(self, other):
         return self.v == other.v
 
+    def __hash__(self):
+        return hash((self.__class__, self.v))
+
     def __str__(self):
         return str(self.v)
 
@@ -53,15 +57,21 @@ class FlatLattice(Lattice):
 
 
 class Denotational(object):
+    __slots__ = ()
+
     def _op(self, op, other=None):
-        with ignored(AttributeError):
+        try:
             if self.is_top() or (other is not None and other.is_top()):
                 # top denotes conflict
                 return self.__class__(top=True)
-        with ignored(AttributeError):
+        except AttributeError:
+            pass
+        try:
             if self.is_bottom() or (other is not None and other.is_bottom()):
                 # bottom denotes no information
                 return self.__class__(bottom=True)
+        except AttributeError:
+            pass
         if other is None:
             v = op(self.v)
         else:
@@ -152,8 +162,8 @@ def denotational(cls=None, name=None):
         >>> a + c
         Int(bottom=True)
     """
-    class DenotationalFlatLattice(Denotational, flat(cls)):
-        pass
+    class DenotationalFlatLattice(flat(cls), Denotational):
+        __slots__ = ()
     if name:
         DenotationalFlatLattice.__name__ = name
     elif callable(cls):

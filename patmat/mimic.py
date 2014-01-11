@@ -7,7 +7,7 @@ class _Mimic(object):
     Subclasses must override :member:`_match` and :member:`__hash__`.
     """
     def _match_item(self, mimic, value, env):
-        sub_env = {}
+        sub_env = dict(env)
         if isinstance(mimic, _Mimic):
             value_match = mimic._match(value, sub_env)
             if not value_match:
@@ -17,7 +17,7 @@ class _Mimic(object):
         env.update(sub_env)
         return True
 
-    def _match(self, other, env=None):
+    def _match(self, other, env):
         raise NotImplementedError
 
     def match(self, other):
@@ -46,16 +46,15 @@ class Val(_Mimic):
         super(Val, self).__init__()
         self.name = name
 
-    def _match(self, other, env=None):
-        if env is not None:
-            if self.name in env:
-                raise ValueError(
-                    'Name collision, {!r} already declared.'.format(self.name))
-            if isinstance(other, _Mimic):
-                raise ValueError(
-                    'A Mimic instance {} exists in the value to be '
-                    'matched.'.format(other))
-            env[self.name] = other
+    def _match(self, other, env):
+        value = env.get(self.name, _dummy)
+        if value is not _dummy:
+            return self._match_item(value, other, env)
+        if isinstance(other, _Mimic):
+            raise ValueError(
+                'A Mimic instance {} exists in the value to be '
+                'matched.'.format(other))
+        env[self.name] = other
         return True
 
     def __hash__(self):
@@ -90,7 +89,7 @@ class Type(_Mimic):
         self.type = type
         self.mimic = mimic
 
-    def _match(self, other, env=None):
+    def _match(self, other, env):
         if not isinstance(other, self.type):
             return False
         return self.mimic._match(other, env)
@@ -109,7 +108,7 @@ class Attr(_Mimic):
         super(Attr, self).__init__()
         self.attrs = kwargs
 
-    def _match(self, other, env=None):
+    def _match(self, other, env):
         for attr, attr_value in self.attrs.items():
             try:
                 other_value = getattr(other, attr)
@@ -135,7 +134,7 @@ class Seq(_Mimic):
         super(Seq, self).__init__()
         self.seq = tuple(sequence)
 
-    def _match(self, other, env=None):
+    def _match(self, other, env):
         index = other_index = 0
         while index < len(self.seq):
             if self.seq[index] is Ellipsis:
@@ -238,7 +237,7 @@ class Pred(_Mimic):
         self.predicate = predicate
         self.mimic = mimic
 
-    def _match(self, other, env=None):
+    def _match(self, other, env):
         if not self.predicate(other):
             return False
         return self.mimic._match(other, env)

@@ -2,66 +2,148 @@
 .. module:: soap.transformer.arithmetic
     :synopsis: Transforms arithmetic expression instances.
 """
-import patmat
+from patmat.mimic import Val
 
-from soap.expression.common import op_func_dict_by_ary_list
+from soap.expression import operators
+from soap.expression.common import expression_factory
 from soap.transformer import pattern
 from soap.transformer.core import TreeTransformer
 
 
-def _constant_2_ary_reduction_func(op, a, b):
-    return op_func_dict_by_ary_list[1][op](a, b)
-
-
 associativity_addition = (
-    pattern.compile('(a + b) + c', 'c + (a + b)'),
+    pattern.compile('(a + b) + c'),
     pattern.compile('(a + c) + b', '(b + c) + a'),
     'associativity_addition'
 )
 associativity_multiplication = (
-    pattern.compile('(a * b) * c', 'c * (a * b)'),
+    pattern.compile('(a * b) * c'),
     pattern.compile('(a * c) * b', '(b * c) * a'),
     'associativity_multiplication'
 )
-
-distribute_for_distributivity = (
-    pattern.compile('(a + b) * c', 'c * (a + b)'),
-    pattern.compile('a * c + b * c'),
-    'distribute_for_distributivity'
+associativity_division = (
+    pattern.compile('(a / b) / c', 'a / (b * c)'),
+    pattern.compile('(a / b) / c', 'a / (b * c)', '(a / c) / b'),
+    'associativity_division'
 )
-collect_for_distributivity = (
-    pattern.compile(
-        'a * c + b * c', 'a * c + c * b', 'c * a + c * b', 'c * a + b * c'),
+
+negation = (
+    pattern.compile('a - b'),
+    pattern.compile('a + -b'),
+    'negation'
+)
+
+
+def distributivity_distribute_subtraction_func(op, args):
+    args = [expression_factory(operators.UNARY_SUBTRACT_OP, a) for a in args]
+    return expression_factory(op, *args)
+
+distributivity_distribute_subtraction = (
+    pattern.compile(pattern.ExprMimic(
+        op=operators.UNARY_SUBTRACT_OP,
+        args=[pattern.ExprMimic(op=Val('op'), args=Val('args'))])),
+    pattern.compile(distributivity_distribute_subtraction_func),
+    'distributivity_distribute_subtraction'
+)
+distributivity_distribute_multiplication = (
     pattern.compile('(a + b) * c'),
-    'collect_for_distributivity'
+    pattern.compile('a * c + b * c'),
+    'distributivity_distribute_multiplication'
+)
+distributivity_distribute_division = (
+    pattern.compile('(a + b) / c'),
+    pattern.compile('a / c + b / c'),
+    'distributivity_distribute_division'
 )
 
-multiplicative_identity_reduction = (
-    pattern.compile('a * 1', '1 * a'),
-    pattern.compile('a'),
-    'multiplicative_identity_reduction'
+distributivity_collect_multiplication = (
+    pattern.compile('a * c + b * c'),
+    pattern.compile('(a + b) * c'),
+    'distributivity_collect_multiplication'
 )
-additive_identity_reduction = (
-    pattern.compile('a + 0', '0 + a'),
+distributivity_collect_multiplication_1 = (
+    pattern.compile('a + a * b'),
+    pattern.compile('a * (1 + b)'),
+    'distributivity_collect_multiplication_1'
+)
+distributivity_collect_multiplication_2 = (
+    pattern.compile('a + a'),
+    pattern.compile('2 * a'),
+    'distributivity_collect_multiplication_2'
+)
+distributivity_collect_division = (
+    pattern.compile('a / c + b'),
+    pattern.compile('(a + b * c) / c'),
+    'distributivity_collect_division'
+)
+distributivity_collect_division_1 = (
+    pattern.compile('a / c + b / c'),
+    pattern.compile('(a + b) / c'),
+    'distributivity_collect_division_1'
+)
+distributivity_collect_division_2 = (
+    pattern.compile('a / c + b / d'),
+    pattern.compile('(a * d + b * c) / (c * d)'),
+    'distributivity_collect_division_2'
+)
+
+inversive_division = (
+    pattern.compile('a / (b / c)'),
+    pattern.compile('(a * c) / b'),
+    'inversive_division'
+)
+
+identity_reduction_addition = (
+    pattern.compile('a + 0'),
     pattern.compile('a'),
     'additive_identity_reduction'
 )
-zero_reduction = (
-    pattern.compile('a * 0', '0 * a'),
-    pattern.compile('0'),
-    'zero_reduction'
+identity_reduction_multiplication = (
+    pattern.compile('a * 1'),
+    pattern.compile('a'),
+    'identity_reduction_multiplication'
+)
+identity_reduction_division = (
+    pattern.compile('a / 1'),
+    pattern.compile('a'),
+    'identity_reduction_division'
 )
 
-constant_2_ary_reduction = (
-    pattern.compile(
-        pattern.ExprMimic(
-            op=patmat.Val('op'),
-            args=[
-                pattern.ConstVal('a'),
-                pattern.ConstVal('b'),
-            ])),
-    pattern.compile(_constant_2_ary_reduction_func),
-    'constant_2_ary_reduction'
+double_negation_reduction = (
+    pattern.compile('--a'),
+    pattern.compile('a'),
+    'double_negation_reduction'
+)
+
+zero_reduction_subtraction = (
+    pattern.compile('a - a'),
+    pattern.compile('0'),
+    'zero_reduction_subtraction'
+)
+zero_reduction_multiplication = (
+    pattern.compile('a * 0'),
+    pattern.compile('0'),
+    'zero_reduction_multiplication'
+)
+zero_reduction_division = (
+    pattern.compile('0 / a'),
+    pattern.compile('0'),
+    'zero_reduction_division'
+)
+
+one_reduction_division = (
+    pattern.compile('a / a'),
+    pattern.compile('1'),
+    'one_reduction_division'
+)
+
+
+def _constant_reduction_func(op, args):
+    return operators.op_func_dict_by_ary_list[len(args) - 1][op](*args)
+
+constant_reduction = (
+    pattern.compile(pattern.ExprConstPropMimic()),
+    pattern.compile(_constant_reduction_func),
+    'constant_reduction'
 )
 
 
@@ -71,15 +153,54 @@ class ArithTreeTransformer(TreeTransformer):
     It has the same arguments as :class:`soap.transformer.TreeTransformer`,
     which is the class it is derived from.
     """
-    transform_rules = [
-        associativity_addition,
-        associativity_multiplication,
-        distribute_for_distributivity,
-        collect_for_distributivity,
-    ]
-    reduction_rules = [
-        multiplicative_identity_reduction,
-        additive_identity_reduction,
-        zero_reduction,
-        constant_2_ary_reduction,
-    ]
+    transform_rules = {
+        operators.ADD_OP: [
+            associativity_addition,
+            distributivity_collect_multiplication,
+            distributivity_collect_multiplication_1,
+            distributivity_collect_multiplication_2,
+            distributivity_collect_division,
+            distributivity_collect_division_1,
+            distributivity_collect_division_2,
+        ],
+        operators.SUBTRACT_OP: [
+            negation,
+            distributivity_distribute_subtraction,
+        ],
+        operators.MULTIPLY_OP: [
+            associativity_multiplication,
+            distributivity_distribute_multiplication,
+        ],
+        operators.DIVIDE_OP: [
+            associativity_division,
+            distributivity_distribute_division,
+            inversive_division,
+        ],
+        operators.UNARY_SUBTRACT_OP: [
+            distributivity_distribute_subtraction,
+        ]
+    }
+    reduction_rules = {
+        operators.ADD_OP: [
+            identity_reduction_addition,
+            constant_reduction,
+        ],
+        operators.SUBTRACT_OP: [
+            constant_reduction,
+        ],
+        operators.MULTIPLY_OP: [
+            identity_reduction_multiplication,
+            zero_reduction_multiplication,
+            constant_reduction,
+        ],
+        operators.DIVIDE_OP: [
+            identity_reduction_division,
+            zero_reduction_division,
+            one_reduction_division,
+            constant_reduction,
+        ],
+        operators.UNARY_SUBTRACT_OP: [
+            double_negation_reduction,
+            zero_reduction_subtraction,
+        ]
+    }

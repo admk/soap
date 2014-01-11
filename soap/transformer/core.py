@@ -9,7 +9,7 @@ import sys
 
 from soap import logger
 from soap.common import cached
-from soap.expression.common import expression_factory, is_expr
+from soap.expression.common import expression_factory, is_expression
 from soap.expression.parser import parse
 from soap.transformer import pattern
 
@@ -73,31 +73,30 @@ class TreeTransformer(TreeFarmer):
         new equivalent trees.
     :type multiprocessing: bool
     """
-    transform_rules = None
-    reduction_rules = None
+    transform_rules = {}
+    reduction_rules = {}
 
     def __init__(self, tree_or_trees,
                  depth=None, transform_rules=None, reduction_rules=None,
                  step_plugin=None, reduce_plugin=None,
                  multiprocessing=True):
-        depth = depth or RECURSION_LIMIT
-        if depth >= RECURSION_LIMIT and self.transform_rules:
-            logger.warning('Depth limit not set.', depth)
-        super().__init__(depth=depth)
+        super().__init__(depth=depth or RECURSION_LIMIT)
         self.multiprocessing = multiprocessing
         self.step_plugin = step_plugin
         self.reduce_plugin = reduce_plugin
-        self.transform_rules = list(
-            transform_rules or self.__class__.transform_rules or [])
-        self.reduction_rules = list(
-            reduction_rules or self.__class__.reduction_rules or [])
+        if transform_rules:
+            self.transform_rules = transform_rules
+        if reduction_rules:
+            self.reduction_rules = reduction_rules
         if isinstance(tree_or_trees, str):
             self._expressions = [parse(tree_or_trees)]
-        elif is_expr(tree_or_trees):
+        elif is_expression(tree_or_trees):
             self._expressions = [tree_or_trees]
         else:
             self._expressions = tree_or_trees
         self._crop_env = {}
+        if self.depth >= RECURSION_LIMIT and self.transform_rules:
+            logger.warning('Depth limit not set.', depth)
 
     def _plugin(self, trees, plugin):
         """Plugin function call setup and cleanup."""
@@ -178,8 +177,15 @@ def _walk(args):
     try:
         discovered = _recursive_walk(expression, rules, depth)
     except Exception:
-        import traceback
-        traceback.print_exc()
+        try:
+            from IPython.core.ultratb import VerboseTB
+        except ImportError:
+            import traceback
+            traceback.print_exc()
+        else:
+            import sys
+            exc = sys.exc_info()
+            print(VerboseTB().text(*exc))
         raise
     if closure:
         discovered.add(expression)
@@ -192,9 +198,9 @@ def _recursive_walk(expression, rules, depth):
     discovered = set()
     if depth == 0:
         return discovered
-    if not is_expr(expression):
+    if not is_expression(expression):
         return discovered
-    for rule in rules:
+    for rule in rules.get(expression.op, []):
         discovered |= pattern.transform(rule, expression)
     args_discovered = (_recursive_walk(a, rules, depth) | {a}
                        for a in expression.args)

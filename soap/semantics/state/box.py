@@ -1,77 +1,40 @@
-"""
-.. module:: soap.semantics.state
-    :synopsis: Program states.
-"""
-from functools import wraps
-
 from soap.expression import (
     LESS_OP, GREATER_OP, LESS_EQUAL_OP, GREATER_EQUAL_OP,
     EQUAL_OP, NOT_EQUAL_OP, Expression, Variable
 )
-from soap.lattice import map
-from soap.semantics import (
+from soap.label.identifier import Identifier
+from soap.semantics.error import (
     inf, ulp, cast, mpz_type, mpfr_type,
     IntegerInterval, FloatInterval, ErrorSemantics
 )
-from soap import logger
+from soap.semantics.state.base import BaseState
+from soap.semantics.state.identifier import IdentifierBaseState
 
 
-def _decorate(cls):
-    def decorate_assign(func):
-        @wraps(func)
-        def assign(self, var, expr):
-            state = func(self, var, expr)
-            logger.debug(
-                '⟦' + str(var) + ' := ' + str(expr) + '⟧:',
-                str(self), '→', str(state))
-            return state
-        return assign
+class BoxState(BaseState):
+    __slots__ = ()
 
-    def decorate_conditional(func):
-        @wraps(func)
-        def conditional(self, expr, cond):
-            state = func(self, expr, cond)
-            logger.debug(
-                '⟦' + str(expr if cond else ~expr) + '⟧:',
-                str(self), '→', str(state))
-            return state
-        return conditional
+    _negate_dict = {
+        LESS_OP: GREATER_EQUAL_OP,
+        LESS_EQUAL_OP: GREATER_OP,
+        GREATER_OP: LESS_EQUAL_OP,
+        GREATER_EQUAL_OP: LESS_OP,
+        EQUAL_OP: NOT_EQUAL_OP,
+        NOT_EQUAL_OP: EQUAL_OP,
+    }
 
-    def decorate_join(func):
-        @wraps(func)
-        def join(self, other):
-            state = func(self, other)
-            logger.debug(str(self) + ' ⊔ ' + str(other), '→', str(state))
-            return state
-        return join
+    def _cast_key(self, key):
+        if isinstance(key, str):
+            return Variable(key)
+        if isinstance(key, Variable):
+            return key
+        raise TypeError(
+            'Do not know how to convert {!r} into a variable'.format(key))
 
-    def decorate_le(func):
-        @wraps(func)
-        def le(self, other):
-            b = func(self, other)
-            logger.debug(str(self), '⊑' if b else '⋢', str(other))
-            return b
-        return le
-
-    try:
-        if cls == State or cls._state_decorated:
-            return
-    except AttributeError:
-        cls._state_decorated = True
-    cls.assign = decorate_assign(cls.assign)
-    cls.conditional = decorate_conditional(cls.conditional)
-    cls.join = decorate_join(cls.join)
-    cls.le = decorate_le(cls.le)
-
-
-class State(object):
-    """Program state.
-
-    This provides the base class of all semantics-based state objects.
-    """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        _decorate(self.__class__)
+    def _cast_value(self, v=None, top=False, bottom=False):
+        if top or bottom:
+            return IntegerInterval(top=top, bottom=bottom)
+        return cast(v)
 
     def eval(self, expr):
         """Evaluates an expression with state's mapping."""
@@ -85,50 +48,16 @@ class State(object):
             return expr
         raise TypeError('Do not know how to evaluate {!r}'.format(expr))
 
-    def assign(self, var, expr):
-        """Makes an assignment and returns a new state object."""
-        mapping = dict(self)
-        mapping[var] = self.eval(expr)
-        return self.__class__(mapping)
+    def assign(self, var, expr, annotation):
+        return self[var:self.eval(expr)]
 
-    def conditional(self, expr, cond):
-        """Imposes a conditional on the state, returns a new state."""
-        raise NotImplementedError
-
-    def is_fixpoint(self, other):
-        """Fixpoint test, defaults to equality."""
-        return self == other
-
-    def widen(self, other):
-        """Widening, defaults to least upper bound (i.e. join)."""
-        return self | other
-
-
-_negate_dict = {
-    LESS_OP: GREATER_EQUAL_OP,
-    LESS_EQUAL_OP: GREATER_OP,
-    GREATER_OP: LESS_EQUAL_OP,
-    GREATER_EQUAL_OP: LESS_OP,
-    EQUAL_OP: NOT_EQUAL_OP,
-    NOT_EQUAL_OP: EQUAL_OP,
-}
-
-
-class BoxState(State, map(Variable, (IntegerInterval, ErrorSemantics))):
-    """The program analysis domain object based on intervals and error
-    semantics.
-
-    Supports only simple boolean expressions::
-        <variable> <operator> <arithmetic expression>
-    For example::
-        x <= 3 * y.
-    """
-    def _cast_value(self, v=None, top=False, bottom=False):
-        if top or bottom:
-            return IntegerInterval(top=top, bottom=bottom)
-        return cast(v)
-
-    def conditional(self, expr, cond):
+    def conditional(self, expr, cond, annotation):
+        """
+        Supports only simple boolean expressions::
+            <variable> <operator> <arithmetic expression>
+        For example::
+            x <= 3 * y.
+        """
         def eval(expr):
             bound = self.eval(expr)
             if isinstance(bound, (int, mpz_type)):
@@ -158,7 +87,7 @@ class BoxState(State, map(Variable, (IntegerInterval, ErrorSemantics))):
             return bmin, bmax
 
         def constraint(op, bound):
-            op = _negate_dict[op] if not cond else op
+            op = self._negate_dict[op] if not cond else op
             if bound.is_bottom():
                 return bound
             bound_min, bound_max = contract(op, bound)
@@ -185,11 +114,9 @@ class BoxState(State, map(Variable, (IntegerInterval, ErrorSemantics))):
         if bot:
             """Branch evaluates to false, because no possible values of the
             variable satisfies the constraint condition, it is safe to return
-            *bottom* to denote an unreachable state."""
+            *bottom* to denote an unreachable state. """
             return self.__class__(bottom=True)
-        cstr_env = self.__class__(self)
-        cstr_env[expr.a1] = cstr
-        return cstr_env
+        return self.assign(expr.a1, cstr, annotation)
 
     def is_fixpoint(self, other):
         """Checks if `self` is equal to `other` in the value ranges.
@@ -206,8 +133,8 @@ class BoxState(State, map(Variable, (IntegerInterval, ErrorSemantics))):
             return True
         if self.is_bottom() and other.is_bottom():
             return True
-        non_bottom_keys = lambda d: set([k for k, v in d.items()
-                                         if not v.is_bottom()])
+        non_bottom_keys = lambda d: set(
+            [k for k, v in d.items() if not v.is_bottom()])
         if non_bottom_keys(self) != non_bottom_keys(other):
             return False
         for k, v in self.items():
@@ -236,3 +163,17 @@ class BoxState(State, map(Variable, (IntegerInterval, ErrorSemantics))):
             else:
                 mapping[k] = mapping[k].widen(v)
         return self.__class__(mapping)
+
+
+class IdentifierBoxState(IdentifierBaseState, BoxState):
+    __slots__ = ()
+    _final_value_is_key = False
+
+    def eval(self, expr):
+        if isinstance(expr, Identifier):
+            return self[expr]
+        return super().eval(expr)
+
+    def assign(self, var, expr, annotation):
+        return self.increment(
+            Identifier(var, annotation=annotation), self.eval(expr))

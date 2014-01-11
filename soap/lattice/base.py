@@ -1,175 +1,61 @@
-import copy
 from functools import wraps
 
-
-class LatticeMeta(type):
-    """The metaclass of lattices.
-
-    It defines the behaviour of the systematic design of lattices."""
-    def __add__(self_class, other_class):
-        class UnifiedSummationLattice(Lattice):
-            """Defines a summation of two partial orders with unified top and
-            bottom elements."""
-            def __init__(self, *args, top=top, bottom=bottom, **kwargs):
-                super().__init__(top=top, bottom=bottom)
-                if top or bottom:
-                    return
-                for c in (self_class, other_class):
-                    v = self._try_class(c, *args, **kwargs)
-                    if v is not NotImplemented:
-                        break
-                self.v = v
-
-            def _try_class(self, cls, *args, **kwargs):
-                if len(args) == 1:
-                    if isinstance(args[0], cls):
-                        return cls
-                try:
-                    return cls(*args, **kwargs)
-                except Exception:
-                    return NotImplemented
-
-            def is_top(self):
-                return self.v.is_top()
-
-            def is_bottom(self):
-                return self.v.is_bottom()
-
-            def join(self, other):
-                if type(self.v) is not type(other.v):
-                    return self.__class__(top=True)
-                return self.v | other.v
-
-            def meet(self, other):
-                if type(self.v) is not type(other.v):
-                    return self.__class__(bottom=True)
-                return self.v & other.v
-
-            def le(self, other):
-                if type(self.v) is not type(other.v):
-                    return False
-                return self.v <= other.v
-
-            def __str__(self):
-                return str(self.v)
-
-            def __repr__(self):
-                return '%s(%r)' % (self.__class__.__name__, self.v)
-
-    def __mul__(self_class, other_class):
-        class ComponentWiseLattice(Lattice):
-            """Defines a component-wise partial order."""
-            def __init__(self,
-                         self_class_args=None, self_class_kwargs=None,
-                         other_class_args=None, other_class_kwargs=None,
-                         top=False, bottom=False):
-                super().__init__(top=top, bottom=bottom)
-                if top or bottom:
-                    return
-                if not other_class_args:
-                    if self_class_kwargs and not other_class_kwargs:
-                        other_class_args = self_class_kwargs
-                        self_class_kwargs = None
-                self_class_kwargs = self_class_kwargs or {}
-                other_class_kwargs = other_class_kwargs or {}
-                self.components = []
-                class_args = [
-                    (self_class, self_class_args, self_class_kwargs),
-                    (other_class, other_class_args, other_class_kwargs),
-                ]
-                for cls, args, kwargs in class_args:
-                    if isinstance(args, Lattice) and not kwargs:
-                        c = args
-                    else:
-                        try:
-                            c = cls(*args, **kwargs)
-                        except (TypeError, ValueError):
-                            c = cls(args, **kwargs)
-                    self.components.append(c)
-
-            def is_top(self):
-                return all(c.is_top() for c in self.components)
-
-            def is_bottom(self):
-                return all(c.is_bottom() for c in self.components)
-
-            def join(self, other):
-                e = copy.copy(self)
-                e.components = [self_comp | other_comp
-                                for self_comp, other_comp in
-                                zip(self.components, other.components)]
-                return e
-
-            def meet(self, other):
-                e = copy.copy(self)
-                e.components = [self_comp & other_comp
-                                for self_comp, other_comp in
-                                zip(self.components, other.components)]
-                return e
-
-            def le(self, other):
-                return all(self_comp <= other_comp
-                           for self_comp, other_comp in
-                           zip(self.components, other.components))
-
-            def __str__(self):
-                return '(%s)' % ', '.join(str(c) for c in components)
-
-            def __repr__(self):
-                return '%s(%s)' % \
-                    (self.__class__.__name__,
-                     ', '.join(repr(c) for c in self.components))
-
-        ComponentWiseLattice.__name__ = 'ComponentWiseLattice_%s_%s' % \
-            (self_class.__name__, other_class.__name__)
-        return ComponentWiseLattice
+from soap.lattice.meta import LatticeMeta
 
 
 def _decorate(cls):
-    def _check_return(func):
+    if not hasattr(cls, '_decorated'):
+        cls._decorated = set()
+    if cls is Lattice or cls in cls._decorated:
+        return
+
+    def check_return(func):
         @wraps(func)
         def checker(*args, **kwargs):
             v = func(*args, **kwargs)
             if v is not None:
                 return v
-            raise RuntimeError(
-                'Function %s of %r does not return a value' %
-                (func.__name__, self))
+            raise RuntimeError('Function {} does not return a value'.format(
+                func.__qualname__))
         return checker
 
     def decorate_self(base_func, decd_func):
-        @_check_return
+        if not decd_func:
+            raise ValueError(
+                'No function matching {} from class {} to decorate'.format(
+                    base_func.__qualname__, cls))
+
+        @check_return
         @wraps(decd_func)
         def wrapper(self):
             t = base_func(self)
             return t if t is not None else decd_func(self)
+
         return wrapper
 
     def decorate_self_other(base_func, decd_func):
-        @_check_return
+        if not decd_func:
+            raise ValueError('No matching {} function to decorate'.format(
+                base_func.__qualname__))
+
+        @check_return
         @wraps(decd_func)
         def wrapper(self, other):
-            """
-            if self.__class__ != other.__class__:
-                raise TypeError(
-                    'Inconsistent lattices %r, %r for function %s' %
-                    (self, other, decd_func))
-            """
             t = base_func(self, other)
             return t if t is not None else decd_func(self, other)
+
         return wrapper
-    try:
-        if cls == Lattice or cls._decorated:
-            return
-    except AttributeError:
-        cls._decorated = True
+
     cls.__str__ = decorate_self(Lattice.__str__, cls.__str__)
     cls.__repr__ = decorate_self(Lattice.__repr__, cls.__repr__)
+    cls.__hash__ = decorate_self(Lattice.__hash__, cls.__hash__)
     cls.is_top = decorate_self(Lattice.is_top, cls.is_top)
     cls.is_bottom = decorate_self(Lattice.is_bottom, cls.is_bottom)
     cls.join = decorate_self_other(Lattice.join, cls.join)
     cls.meet = decorate_self_other(Lattice.meet, cls.meet)
     cls.le = decorate_self_other(Lattice.le, cls.le)
+    cls._decorated.add(cls)
+    return cls
 
 
 class Lattice(object, metaclass=LatticeMeta):
@@ -216,6 +102,8 @@ class Lattice(object, metaclass=LatticeMeta):
             return self
 
     def le(self, other):
+        if not isinstance(other, self.__class__):
+            return False
         if self.is_bottom():
             return True
         if other.is_top():
@@ -236,6 +124,10 @@ class Lattice(object, metaclass=LatticeMeta):
     __ge__ = lambda self, other: other.le(self)
     __lt__ = lambda self, other: not other.le(self)
     __gt__ = lambda self, other: not self.le(other)
+
+    def __hash__(self):
+        if self.is_top() or self.is_bottom():
+            return hash((self.__class__, self.is_top(), self.is_bottom()))
 
     def __str__(self):
         if self.is_top():

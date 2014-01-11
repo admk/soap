@@ -2,37 +2,42 @@
 .. module:: soap.expression.base
     :synopsis: The base classes of expressions.
 """
-from soap.common import Flyweight, Label, cached
-from soap.expression.common import (
-    expression_factory, op_func_dict_by_ary_list
-)
+from soap.common import Flyweight, cached
+from soap.expression.common import expression_factory
+from soap.expression.operators import op_func_dict_by_ary_list
 from soap.expression.variable import Variable
+from soap.label.base import Label
+from soap.lattice.flat import FlatLattice
 
 
-class Expression(Flyweight):
+class Expression(FlatLattice, Flyweight):
     """A base class for expressions."""
 
     __slots__ = ('_op', '_args', '_hash')
 
-    def __init__(self, op, *args):
-        if not args:
+    def __init__(self, op=None, *args, top=False, bottom=False):
+        super().__init__(top=top, bottom=bottom)
+        if top or bottom:
+            return
+        if not args and not all(args):
             raise ValueError('There is no arguments.')
         self._op = op
         self._args = args
 
+    def _cast_value(self, value, top=False, bottom=False):
+        return value
+
     def __getattr__(self, attribute):
-        if attribute[0] != 'a':
-            return super().__getattr__(attribute)
+        def raise_err():
+            raise AttributeError('{} has no attribute {!r}'.format(
+                self.__class__.__name__, attribute))
+        if not attribute.startswith('a'):
+            raise_err()
         try:
             index = int(attribute[1:]) - 1
-        except ValueError:
-            return super().__getattr__(attribute)
-        try:
             return self.args[index]
-        except KeyError:
-            raise AttributeError(
-                '{} has no attribute at index {}'.format(
-                    self.__class__.__name__, index))
+        except (ValueError, KeyError):
+            raise_err()
 
     @property
     def op(self):
@@ -146,10 +151,9 @@ class Expression(Flyweight):
             single precision.
         :type prec: int
         """
-        # FIXME regression: integer intervals won't produce errors.
-        from soap.semantics import precision_context, BoxState
+        from soap.semantics import precision_context, BoxState, ErrorSemantics
         with precision_context(prec):
-            return self.eval(BoxState(var_env))
+            return ErrorSemantics(self.eval(BoxState(var_env)))
 
     @cached
     def as_labels(self):
@@ -243,6 +247,9 @@ class Expression(Flyweight):
             return False
         return self._attr() == other._attr()
 
+    def __ne__(self, other):
+        return not self == other
+
     def __hash__(self):
         try:
             return self._hash
@@ -257,8 +264,8 @@ class UnaryExpression(Expression):
 
     __slots__ = ()
 
-    def __init__(self, op, a):
-        super().__init__(op, a)
+    def __init__(self, op=None, a=None, top=False, bottom=False):
+        super().__init__(op, a, top=top, bottom=bottom)
 
     @property
     def a(self):
@@ -273,8 +280,8 @@ class BinaryExpression(Expression):
 
     __slots__ = ()
 
-    def __init__(self, op, a1, a2):
-        super().__init__(op, a1, a2)
+    def __init__(self, op=None, a1=None, a2=None, top=False, bottom=False):
+        super().__init__(op, a1, a2, top=top, bottom=bottom)
 
     def __str__(self):
         a1, a2 = self._args_to_str()
@@ -286,5 +293,6 @@ class TernaryExpression(Expression):
 
     __slots__ = ()
 
-    def __init__(self, op, a1, a2, a3):
-        super().__init__(op, a1, a2, a3)
+    def __init__(self, op=None, a1=None, a2=None, a3=None,
+                 top=False, bottom=False):
+        super().__init__(op, a1, a2, a3, top=top, bottom=bottom)

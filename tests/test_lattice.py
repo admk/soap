@@ -231,22 +231,25 @@ class TestSummationLattice(unittest.TestCase):
 class TestMapLattice(unittest.TestCase):
     """Unittesting for :class:`soap.lattice.MapLattice`."""
     def setUp(self):
-        self.Lat = map(str, flat(int, 'Int'), 'State')
+        Int = flat(int, 'Int')
+        self.val_bot = Int(bottom=True)
+        self.val_top = Int(top=True)
+        self.Lat = map(str, Int, 'State')
         self.bot = self.Lat(bottom=True)
         self.top = self.Lat(top=True)
-        self.bot_bot = self.Lat({'x': 'bottom', 'y': 'bottom'})
-        self.bot_one = self.Lat({'x': 'bottom', 'y': 1})
+        self.bot_bot = self.Lat({'x': self.val_bot, 'y': self.val_bot})
+        self.bot_one = self.Lat({'x': self.val_bot, 'y': 1})
         self.one_one = self.Lat({'x': 1, 'y': 1})
         self.one_two = self.Lat({'x': 1, 'y': 2})
         self.one_bot = self.Lat({'x': 1})
-        self.one_top = self.Lat({'x': 1, 'y': 'top'})
+        self.one_top = self.Lat({'x': 1, 'y': self.val_top})
 
     def test_top_and_bottom(self):
         self.assertEqual(self.Lat({}), self.bot)
         self.assertEqual(self.bot, self.Lat({}))
         self.assertEqual(self.bot_bot, self.bot)
         self.assertEqual(self.bot_one, self.Lat({'y': 1}))
-        self.assertNotEqual(self.Lat({'x': 'top'}), self.top)
+        self.assertNotEqual(self.Lat({'x': self.val_top}), self.top)
 
     def test_order(self):
         self.assertTrue(self.bot_one <= self.one_one)

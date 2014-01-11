@@ -2,7 +2,7 @@
 .. module:: soap.expression.arithmetic
     :synopsis: The class of expressions.
 """
-from soap.expression.common import (
+from soap.expression.operators import (
     ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP,
     ARITHMETIC_OPERATORS, COMMUTATIVITY_OPERATORS
 )
@@ -16,10 +16,10 @@ class ArithExpr(Expression):
 
     __slots__ = ()
 
-    def __init__(self, op, *args):
+    def __init__(self, op=None, *args, top=False, bottom=False):
         if op not in ARITHMETIC_OPERATORS:
             raise ValueError('Boolean expression must use a boolean operator.')
-        super().__init__(op, *args)
+        super().__init__(op, *args, top=top, bottom=bottom)
 
     def __add__(self, other):
         return BinaryArithExpr(op=ADD_OP, a1=self, a2=other)

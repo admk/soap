@@ -18,9 +18,6 @@ mpq_type = type(_mpq('1.0'))
 inf = _mpfr('Inf')
 
 
-gmpy2.set_context(gmpy2.ieee(64))
-
-
 def _unpack(v):
     if type(v) is str:
         return v, v
@@ -525,7 +522,9 @@ class ErrorSemantics(Lattice):
         return hash((self.v, self.e))
 
 
-def cast(v):
+def cast(v=None):
+    if v is None:
+        return IntegerInterval(bottom=True)
     if isinstance(v, str):
         if v.isdigit():
             return IntegerInterval(v)

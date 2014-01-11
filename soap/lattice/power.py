@@ -22,6 +22,8 @@ class PowerLattice(Lattice):
           \ | /
             ⊥ = Ø
     """
+    __slots__ = ('elements', )
+
     def __init__(self, elements=None, top=False, bottom=False):
         super().__init__(top=top, bottom=bottom)
         if top or bottom:
