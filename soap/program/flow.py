@@ -33,7 +33,8 @@ class Flow(object):
         self.iteration = iteration or Iteration(bottom=True)
 
     def flow(self, state=None):
-        state = state or BoxState()
+        if state is None:
+            state = BoxState()
         return self.transition(state, None)
 
     def flow_debug(self, state):
@@ -79,13 +80,15 @@ class Flow(object):
         return Annotation(Label(statement=self), iteration=self.iteration)
 
     def __eq__(self, other):
-        raise NotImplementedError
+        if type(self) is not type(other):
+            return False
+        return self.iteration == other.iteration
 
     def __str__(self):
         return self.format().replace('    ', '').replace('\n', '')
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.iteration))
+        return hash((self.__class__, self.iteration))
 
 
 class IdentityFlow(Flow):
@@ -103,11 +106,6 @@ class IdentityFlow(Flow):
 
     def __bool__(self):
         return False
-
-    def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        return self.iteration == other.iteration
 
     def __repr__(self):
         return '{cls}(iteration={iteration!r})'.format(
@@ -139,10 +137,9 @@ class AssignFlow(Flow):
         return s
 
     def __eq__(self, other):
-        if type(self) is not type(other):
+        if not super().__eq__(other):
             return False
-        return (self.var == other.var and self.expr == other.expr and
-                self.iteration == other.iteration)
+        return (self.var == other.var and self.expr == other.expr)
 
     def __repr__(self):
         return '{cls}(var={var!r}, expr={expr!r}, iteration={itr!r})'.format(
@@ -150,8 +147,7 @@ class AssignFlow(Flow):
             var=self.var, expr=self.expr, itr=self.iteration)
 
     def __hash__(self):
-        return hash((self.__class__.__name__,
-                     self.var, self.expr, self.iteration))
+        return hash((self.__class__, self.var, self.expr, self.iteration))
 
 
 class SplitFlow(Flow):
@@ -203,12 +199,11 @@ class IfFlow(SplitFlow):
             true_format=true_format, false_format=false_format)
 
     def __eq__(self, other):
-        if type(self) is not type(other):
+        if not super().__eq__(other):
             return False
         return (self.conditional_expr == other.conditional_expr and
                 self.true_flow == other.true_flow and
-                self.false_flow == other.false_flow and
-                self.iteration == other.iteration)
+                self.false_flow == other.false_flow)
 
     def __repr__(self):
         return ('{cls}(conditional_expr={expr!r}, true_flow={true_flow!r}, '
@@ -218,7 +213,7 @@ class IfFlow(SplitFlow):
             iteration=self.iteration)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.conditional_expr,
+        return hash((self.__class__, self.conditional_expr,
                      self.true_flow, self.false_flow, self.iteration))
 
 
@@ -293,11 +288,10 @@ class WhileFlow(SplitFlow):
         return rendered
 
     def __eq__(self, other):
-        if type(self) is not type(other):
+        if not super().__eq__(other):
             return False
         return (self.conditional_expr == other.conditional_expr and
-                self.loop_flow == other.loop_flow and
-                self.iteration == other.iteration)
+                self.loop_flow == other.loop_flow)
 
     def __repr__(self):
         return ('{cls}(conditional_expr={expr!r}, loop_flow={flow!r}, '
@@ -308,8 +302,8 @@ class WhileFlow(SplitFlow):
 
     def __hash__(self):
         return hash((
-            self.__class__.__name__,
-            self.conditional_expr, self.loop_flow, self.iteration))
+            self.__class__, self.conditional_expr, self.loop_flow,
+            self.iteration))
 
 
 class CompositionalFlow(Flow):
@@ -340,10 +334,9 @@ class CompositionalFlow(Flow):
         return '\n'.join(flow.format(env) for flow in self.flows)
 
     def __eq__(self, other):
-        if type(self) is not type(other):
+        if not super().__eq__(other):
             return False
-        return (self.flows == other.flows and
-                self.iteration == other.iteration)
+        return (self.flows == other.flows)
 
     def __repr__(self):
         return '{cls}(flows={flows!r}, iteration={iteration!r})'.format(
@@ -351,4 +344,4 @@ class CompositionalFlow(Flow):
             flows=self.flows, iteration=self.iteration)
 
     def __hash__(self):
-        return hash((self.__class__.__name__, self.flows, self.iteration))
+        return hash((self.__class__, self.flows, self.iteration))
