@@ -2,10 +2,7 @@
 .. module:: soap.expression.boolean
     :synopsis: The class of boolean expressions.
 """
-from soap.expression.operators import (
-    EQUAL_OP, GREATER_OP, LESS_OP, UNARY_NEGATION_OP, AND_OP, OR_OP,
-    BOOLEAN_OPERATORS
-)
+from soap.expression import operators
 from soap.expression.base import (
     Expression, UnaryExpression, BinaryExpression, TernaryExpression
 )
@@ -17,18 +14,18 @@ class BoolExpr(Expression):
     __slots__ = ()
 
     def __init__(self, op=None, *args, top=False, bottom=False):
-        if op not in BOOLEAN_OPERATORS:
+        if not top and not bottom and op not in operators.BOOLEAN_OPERATORS:
             raise ValueError('Boolean expression must use a boolean operator.')
         super().__init__(op, *args, top=top, bottom=bottom)
 
     def __invert__(self):
-        return UnaryBoolExpr(op=UNARY_NEGATION_OP, a=self)
+        return UnaryBoolExpr(op=operators.UNARY_NEGATION_OP, a=self)
 
     def __and__(self, other):
-        return BinaryBoolExpr(op=AND_OP, a1=self, a2=other)
+        return BinaryBoolExpr(op=operators.AND_OP, a1=self, a2=other)
 
     def __or__(self, other):
-        return BinaryBoolExpr(op=OR_OP, a1=self, a2=other)
+        return BinaryBoolExpr(op=operators.OR_OP, a1=self, a2=other)
 
 
 class UnaryBoolExpr(UnaryExpression, BoolExpr):

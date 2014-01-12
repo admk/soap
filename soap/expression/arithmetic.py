@@ -17,7 +17,7 @@ class ArithExpr(Expression):
     __slots__ = ()
 
     def __init__(self, op=None, *args, top=False, bottom=False):
-        if op not in ARITHMETIC_OPERATORS:
+        if not top and not bottom and op not in ARITHMETIC_OPERATORS:
             raise ValueError('Boolean expression must use a boolean operator.')
         super().__init__(op, *args, top=top, bottom=bottom)
 
