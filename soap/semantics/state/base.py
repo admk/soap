@@ -2,7 +2,6 @@ from functools import wraps
 
 from soap import logger
 from soap.label import superscript
-from soap.lattice.map import map
 
 
 def _decorate(cls):
@@ -59,7 +58,7 @@ def _decorate(cls):
     cls.le = decorate_le(cls.le)
 
 
-class BaseState(map()):
+class BaseState(object):
     """Base state for all program states."""
     __slots__ = ()
 

@@ -28,14 +28,14 @@ class IdentifierBaseState(BaseState):
             'Do not know how to convert key {!r} into an identifier.'
             ''.format(key))
 
-    def _increment(self, value, identifier):
+    def increment_item(self, value, identifier):
         if isinstance(value, Lattice):
             if value.is_top() or value.is_bottom():
                 return value
         if is_numeral(value):
             return value
         if isinstance(value, Expression):
-            args = [self._increment(a, identifier) for a in value.args]
+            args = [self.increment_item(a, identifier) for a in value.args]
             return expression_factory(value.op, *args)
         if isinstance(value, Identifier):
             if value.variable == identifier.variable:
@@ -58,11 +58,11 @@ class IdentifierBaseState(BaseState):
             return self.__class__(incr_map)
         # increment iterations for previous assignments
         incr_map = {
-            self._increment(k, key): self._increment(v, key)
+            self.increment_item(k, key): self.increment_item(v, key)
             for k, v in self.items()
         }
         # now use the incremented value for assignment
-        incr_map[key] = self._increment(value, key)
+        incr_map[key] = self.increment_item(value, key)
         # update final key
         if self._final_value_is_key:
             value = key

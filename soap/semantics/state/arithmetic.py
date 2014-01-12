@@ -1,17 +1,20 @@
-from soap.expression import Expression, expression_factory, Variable, parse
+from soap.expression import (
+    ArithExpr, Expression, expression_factory, Variable, parse
+)
 from soap.label import Annotation, Identifier
 from soap.lattice import Lattice, map
 from soap.semantics.common import is_numeral
 from soap.semantics.state.identifier import IdentifierBaseState
 
 
-class IdentifierExpressionState(IdentifierBaseState, map()):
+class IdentifierArithmeticState(
+        IdentifierBaseState, map(Identifier, ArithExpr)):
     """Analyzes variable identifiers to be represented with expressions. """
     __slots__ = ()
 
     def _cast_value(self, expr=None, top=False, bottom=False):
         if top or bottom:
-            return Expression(top=top, bottom=bottom)
+            return ArithExpr(top=top, bottom=bottom)
         if isinstance(expr, Lattice):
             if expr.is_top() or expr.is_bottom():
                 return expr
@@ -36,7 +39,7 @@ class IdentifierExpressionState(IdentifierBaseState, map()):
 
     def conditional(self, expr, cond, annotation):
         """Imposes a conditional on the state, returns a new state."""
-        raise NotImplementedError
+        return self
 
     def widen(self, other):
         """No widening is possible, simply return other.

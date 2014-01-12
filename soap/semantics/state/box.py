@@ -3,6 +3,7 @@ from soap.expression import (
     EQUAL_OP, NOT_EQUAL_OP, Expression, Variable
 )
 from soap.label.identifier import Identifier
+from soap.lattice.map import map
 from soap.semantics.error import (
     inf, ulp, cast, mpz_type, mpfr_type,
     IntegerInterval, FloatInterval, ErrorSemantics
@@ -11,7 +12,7 @@ from soap.semantics.state.base import BaseState
 from soap.semantics.state.identifier import IdentifierBaseState
 
 
-class BoxState(BaseState):
+class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
     __slots__ = ()
 
     _negate_dict = {

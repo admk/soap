@@ -3,7 +3,7 @@ import unittest
 from soap.expression import expr, operators
 from soap.label import Identifier, Annotation, Label, Iteration
 from soap.semantics.state.box import IdentifierBoxState
-from soap.semantics.state.expression import IdentifierExpressionState
+from soap.semantics.state.arithmetic import IdentifierArithmeticState
 from soap.semantics.error import cast
 
 
@@ -92,8 +92,8 @@ class TestIdentifierBoxState(unittest.TestCase):
             self.top.conditional(expr('x < 3'), False, self.ann), self.top)
 
 
-class TestIdentifierExpressionState(unittest.TestCase):
-    """Unittesting for :class:`soap.semantics.state.IdentifierExpressionState`.
+class TestIdentifierArithmeticState(unittest.TestCase):
+    """Unittesting for :class:`soap.semantics.state.IdentifierArithmeticState`.
     """
     def assertExprOpArgs(self, expr, op, args):
         self.assertEqual(expr.op, op)
@@ -105,8 +105,8 @@ class TestIdentifierExpressionState(unittest.TestCase):
             self.assertIn(a, expr.args)
 
     def setUp(self):
-        self.bot = IdentifierExpressionState(bottom=True)
-        self.top = IdentifierExpressionState(top=True)
+        self.bot = IdentifierArithmeticState(bottom=True)
+        self.top = IdentifierArithmeticState(top=True)
         self.ann_top = Annotation(top=True)
         x = expr('x')
         self.ann = Annotation(Label(x), Iteration(bottom=True))
@@ -115,9 +115,9 @@ class TestIdentifierExpressionState(unittest.TestCase):
         self.ann_id = Identifier(x, annotation=self.ann)
 
     def test_init(self):
-        state1 = IdentifierExpressionState({self.bot_id: expr('x + 1')})
-        state2 = IdentifierExpressionState(x=expr('x + 1'))
-        state3 = IdentifierExpressionState()
+        state1 = IdentifierArithmeticState({self.bot_id: expr('x + 1')})
+        state2 = IdentifierArithmeticState(x=expr('x + 1'))
+        state3 = IdentifierArithmeticState()
         state3[self.bot_id] = expr('x + 1')
         self.assertEqual(state1, state2)
         self.assertEqual(state1, state3)
@@ -126,12 +126,12 @@ class TestIdentifierExpressionState(unittest.TestCase):
 
     def test_getter_and_setter(self):
         """Tests the transformation of state keys and values.  """
-        state = IdentifierExpressionState()
+        state = IdentifierArithmeticState()
         state[self.ann_id] = 'x + 1'
         self.assertExprOpArgs(
             state[self.ann_id], operators.ADD_OP, [self.top_id, expr('1')])
 
-        state = IdentifierExpressionState()
+        state = IdentifierArithmeticState()
         state['x'] = 'x + 1'
         self.assertExprOpArgs(
             state['x'], operators.ADD_OP, [self.top_id, expr('1')])
@@ -139,7 +139,7 @@ class TestIdentifierExpressionState(unittest.TestCase):
             state[self.bot_id], operators.ADD_OP, [self.top_id, expr('1')])
 
     def test_iteration(self):
-        state = IdentifierExpressionState()
+        state = IdentifierArithmeticState()
         state = state.increment(self.ann_id, expr('x + 1'))
         self.assertExprOpArgs(
             state[self.ann_id], operators.ADD_OP, [self.top_id, expr('1')])
@@ -155,7 +155,7 @@ class TestIdentifierExpressionState(unittest.TestCase):
             [self.top_id, expr('1')])
 
     def test_assign(self):
-        state = IdentifierExpressionState()
+        state = IdentifierArithmeticState()
 
         state1 = state.assign(expr('x'), expr('x + 1'), self.ann)
         state2 = state.increment(self.ann_id, expr('x + 1'))
