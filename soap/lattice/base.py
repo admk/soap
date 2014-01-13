@@ -104,9 +104,7 @@ class Lattice(object, metaclass=LatticeMeta):
     def le(self, other):
         if not isinstance(other, self.__class__):
             return False
-        if self.is_bottom():
-            return True
-        if other.is_top():
+        if self.is_bottom() or other.is_top():
             return True
         if self.is_top() and not other.is_top():
             return False
