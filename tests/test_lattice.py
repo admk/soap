@@ -1,11 +1,13 @@
 import unittest
 import itertools
 
-from soap.lattice import Lattice, flat, denotational, power, map
+from soap.lattice import (
+    Lattice, flat, denotational, power, map, list, reversed
+)
 
 
 class TestLattice(unittest.TestCase):
-    """Unittesting for :class:`soap.lattice.Lattice`."""
+    """Unittesting for :class:`soap.lattice.base.Lattice`."""
     def setUp(self):
         self.bottom = Lattice(bottom=True)
         self.top = Lattice(top=True)
@@ -27,7 +29,7 @@ class TestLattice(unittest.TestCase):
 
 
 class TestFlatLattice(unittest.TestCase):
-    """Unittesting for :class:`soap.lattice.FlatLattice`."""
+    """Unittesting for :class:`soap.lattice.flat.FlatLattice`."""
     def setUp(self):
         self.Lat = flat(int, 'IntLattice')
         self.b, self.t = self.Lat(bottom=True), self.Lat(top=True)
@@ -77,6 +79,32 @@ class TestFlatLattice(unittest.TestCase):
             self.FLat(4)
 
 
+class TestDenotationalLattice(unittest.TestCase):
+    """Unittesting for :class:`soap.lattice.flat.denotational`."""
+    def setUp(self):
+        self.Val = denotational(int, 'IntDenotationalLattice')
+        self.bot = self.Val(bottom=True)
+        self.v1 = self.Val(1)
+        self.v2 = self.Val(2)
+        self.v3 = self.Val(3)
+
+    def test_operators(self):
+        self.assertEqual(self.v1 + self.v2, self.v3)
+        self.assertEqual(self.bot + self.v1, self.bot)
+        self.assertEqual(self.v1 + self.bot, self.bot)
+        self.assertEqual(1 + self.bot, self.bot)
+        self.assertEqual(self.bot + 1, self.bot)
+        self.assertEqual(1 + self.v2, self.v3)
+        self.assertEqual(self.v2 + 1, self.v3)
+        self.assertEqual(self.v2 - self.v1, self.v1)
+        self.assertEqual(self.bot - self.v1, self.bot)
+        self.assertEqual(self.v1 - self.bot, self.bot)
+        self.assertEqual(1 - self.bot, self.bot)
+        self.assertEqual(self.bot - 1, self.bot)
+        self.assertEqual(2 - self.v1, self.v1)
+        self.assertEqual(self.v2 - 1, self.v1)
+
+
 class TestPowerLattice(unittest.TestCase):
     """Unittesting for :class:`soap.lattice.PowerLattice`."""
     def setUp(self):
@@ -93,6 +121,126 @@ class TestPowerLattice(unittest.TestCase):
         self.assertEqual(self.ILat([1]) | self.it, self.it)
         self.assertEqual(self.it | self.ILat([1]), self.it)
         self.assertEqual(self.it | self.it, self.it)
+
+
+class TestMapLattice(unittest.TestCase):
+    """Unittesting for :class:`soap.lattice.MapLattice`."""
+    def setUp(self):
+        Int = flat(int, 'Int')
+        self.val_bot = Int(bottom=True)
+        self.val_top = Int(top=True)
+        self.Lat = map(str, Int, 'State')
+        self.bot = self.Lat(bottom=True)
+        self.top = self.Lat(top=True)
+        self.bot_bot = self.Lat({'x': self.val_bot, 'y': self.val_bot})
+        self.bot_one = self.Lat({'x': self.val_bot, 'y': 1})
+        self.one_one = self.Lat({'x': 1, 'y': 1})
+        self.one_two = self.Lat({'x': 1, 'y': 2})
+        self.one_bot = self.Lat({'x': 1})
+        self.one_top = self.Lat({'x': 1, 'y': self.val_top})
+
+    def test_top_and_bottom(self):
+        self.assertEqual(self.Lat({}), self.bot)
+        self.assertEqual(self.bot, self.Lat({}))
+        self.assertEqual(self.bot_bot, self.bot)
+        self.assertEqual(self.bot_one, self.Lat({'y': 1}))
+        self.assertNotEqual(self.Lat({'x': self.val_top}), self.top)
+
+    def test_order(self):
+        self.assertTrue(self.bot_one <= self.one_one)
+        self.assertFalse(self.one_one <= self.bot_one)
+        self.assertFalse(self.one_one <= self.one_two)
+        self.assertFalse(self.one_two <= self.one_one)
+        self.assertTrue(self.one_bot <= self.one_one)
+        self.assertFalse(self.one_one <= self.one_bot)
+        self.assertFalse(self.one_bot <= self.bot_one)
+        self.assertFalse(self.bot_one <= self.one_bot)
+
+    def test_join(self):
+        self.assertEqual(self.bot_bot | self.bot, self.bot)
+        self.assertEqual(self.bot_bot | self.top, self.top)
+        self.assertEqual(self.one_bot | self.bot_one, self.one_one)
+        self.assertEqual(self.one_one | self.one_two, self.one_top)
+
+    def test_meet(self):
+        self.assertEqual(self.bot_bot & self.bot, self.bot)
+        self.assertEqual(self.bot_bot & self.top, self.bot)
+        self.assertEqual(self.one_bot & self.bot_one, self.bot)
+        self.assertEqual(self.one_one & self.one_two, self.one_bot)
+
+
+class TestListLattice(unittest.TestCase):
+    """Unittesting for :class:`soap.lattice.list.ListLattice`."""
+    def setUp(self):
+        self.Int = flat(int)
+        self.List = list(self.Int)
+        self.bot = self.List(bottom=True)
+        self.top = self.List(top=True)
+        self.one = self.List([1])
+        self.one_one = self.List([1, 1])
+        self.one_two = self.List([1, 2])
+        self.one_top = self.List([1, self.Int(top=True)])
+
+    def test_tail_bottoms(self):
+        one_two = self.List([1, 2])
+        one_two_alt = self.List([1, 2, self.Int(bottom=True)])
+        one_two_alt2 = self.List(
+            [1, 2, self.Int(bottom=True), self.Int(bottom=True)])
+        self.assertEqual(one_two, one_two_alt)
+        self.assertEqual(one_two, one_two_alt2)
+
+    def test_bottom(self):
+        self.assertEqual(self.List([]), self.bot)
+
+    def test_order(self):
+        self.assertTrue(self.one <= self.one_one)
+        self.assertFalse(self.one_one <= self.one)
+        self.assertFalse(self.one_one <= self.one_two)
+        self.assertFalse(self.one_two <= self.one_one)
+        self.assertTrue(self.one_one <= self.one_top)
+        self.assertFalse(self.one_top <= self.one_one)
+
+    def test_join(self):
+        self.assertEqual(self.one | self.one_one, self.one_one)
+        self.assertEqual(self.one_one | self.one_two, self.one_top)
+
+    def test_meet(self):
+        self.assertEqual(self.one & self.one_one, self.one)
+        self.assertEqual(self.one_top & self.one_one, self.one_one)
+        self.assertEqual(self.one_one & self.one_two, self.one)
+
+
+class TestReversedLattice(unittest.TestCase):
+    """Unittesting for :class:`soap.lattice.reversed.ReversedLattice`."""
+    def setUp(self):
+        self.Lat = power(int)
+        self.RevLat = reversed(self.Lat)
+        self.top = self.RevLat(top=True)
+        self.bot = self.RevLat(bottom=True)
+        self.empty = self.RevLat([])
+        self.one = self.RevLat([1])
+        self.one_two = self.RevLat([1, 2])
+        self.one_three = self.RevLat([1, 3])
+        self.one_two_three = self.RevLat([1, 2, 3])
+
+    def test_top(self):
+        self.assertEqual(self.empty, self.top)
+
+    def test_order(self):
+        self.assertTrue(self.one <= self.top)
+        self.assertFalse(self.top <= self.one)
+        self.assertTrue(self.one_two <= self.one)
+        self.assertFalse(self.one <= self.one_two)
+        self.assertFalse(self.one_two <= self.one_three)
+        self.assertFalse(self.one_three <= self.one_two)
+
+    def test_join(self):
+        self.assertEqual(self.one | self.one_two, self.one)
+        self.assertEqual(self.one_two | self.one_three, self.one)
+
+    def test_meet(self):
+        self.assertEqual(self.one & self.one_two, self.one_two)
+        self.assertEqual(self.one_two & self.one_three, self.one_two_three)
 
 
 class TestComponentWiseLattice(unittest.TestCase):
@@ -224,77 +372,4 @@ class TestComponentWiseLattice(unittest.TestCase):
 
 
 class TestSummationLattice(unittest.TestCase):
-    def setUp(self):
-        raise unittest.SkipTest
-
-
-class TestMapLattice(unittest.TestCase):
-    """Unittesting for :class:`soap.lattice.MapLattice`."""
-    def setUp(self):
-        Int = flat(int, 'Int')
-        self.val_bot = Int(bottom=True)
-        self.val_top = Int(top=True)
-        self.Lat = map(str, Int, 'State')
-        self.bot = self.Lat(bottom=True)
-        self.top = self.Lat(top=True)
-        self.bot_bot = self.Lat({'x': self.val_bot, 'y': self.val_bot})
-        self.bot_one = self.Lat({'x': self.val_bot, 'y': 1})
-        self.one_one = self.Lat({'x': 1, 'y': 1})
-        self.one_two = self.Lat({'x': 1, 'y': 2})
-        self.one_bot = self.Lat({'x': 1})
-        self.one_top = self.Lat({'x': 1, 'y': self.val_top})
-
-    def test_top_and_bottom(self):
-        self.assertEqual(self.Lat({}), self.bot)
-        self.assertEqual(self.bot, self.Lat({}))
-        self.assertEqual(self.bot_bot, self.bot)
-        self.assertEqual(self.bot_one, self.Lat({'y': 1}))
-        self.assertNotEqual(self.Lat({'x': self.val_top}), self.top)
-
-    def test_order(self):
-        self.assertTrue(self.bot_one <= self.one_one)
-        self.assertFalse(self.one_one <= self.bot_one)
-        self.assertFalse(self.one_one <= self.one_two)
-        self.assertFalse(self.one_two <= self.one_one)
-        self.assertTrue(self.one_bot <= self.one_one)
-        self.assertFalse(self.one_one <= self.one_bot)
-        self.assertFalse(self.one_bot <= self.bot_one)
-        self.assertFalse(self.bot_one <= self.one_bot)
-
-    def test_join(self):
-        self.assertEqual(self.bot_bot | self.bot, self.bot)
-        self.assertEqual(self.bot_bot | self.top, self.top)
-        self.assertEqual(self.one_bot | self.bot_one, self.one_one)
-        self.assertEqual(self.one_one | self.one_two, self.one_top)
-
-    def test_meet(self):
-        self.assertEqual(self.bot_bot & self.bot, self.bot)
-        self.assertEqual(self.bot_bot & self.top, self.bot)
-        self.assertEqual(self.one_bot & self.bot_one, self.bot)
-        self.assertEqual(self.one_one & self.one_two, self.one_bot)
-
-
-class TestDenotational(unittest.TestCase):
-    """Unittesting for :class:`soap.lattice.denotational`."""
-    def setUp(self):
-        self.Val = denotational(int, 'IntDenotational')
-        self.bot = self.Val(bottom=True)
-        self.v1 = self.Val(1)
-        self.v2 = self.Val(2)
-        self.v3 = self.Val(3)
-
-    def test_operators(self):
-        self.assertEqual(self.v1 + self.v2, self.v3)
-        self.assertEqual(self.bot + self.v1, self.bot)
-        self.assertEqual(self.v1 + self.bot, self.bot)
-        self.assertEqual(1 + self.bot, self.bot)
-        self.assertEqual(self.bot + 1, self.bot)
-        self.assertEqual(1 + self.v2, self.v3)
-        self.assertEqual(self.v2 + 1, self.v3)
-        self.assertEqual(self.v2 - self.v1, self.v1)
-        self.assertEqual(self.bot - self.v1, self.bot)
-        self.assertEqual(self.v1 - self.bot, self.bot)
-        self.assertEqual(1 - self.bot, self.bot)
-        self.assertEqual(self.bot - 1, self.bot)
-        self.assertEqual(2 - self.v1, self.v1)
-        self.assertEqual(self.v2 - 1, self.v1)
+    pass

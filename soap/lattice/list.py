@@ -1,64 +1,84 @@
+import builtins
 from itertools import zip_longest
 
 from soap.lattice.base import Lattice
 from soap.lattice.common import _lattice_factory
 
 
-class ListLattice(Lattice, list):
+class ListLattice(Lattice):
     """Defines a lattice for lists."""
     __slots__ = ()
 
     def __init__(self, iterable=None, top=False, bottom=False):
         super().__init__(top=top, bottom=bottom)
-        if top:
+        if top or bottom:
             return
-        if bottom:
-            iterable = []
         iterable = [self._cast_value(i) for i in iterable]
         while iterable and iterable[-1].is_bottom():
             iterable.pop()
-        list.__init__(self, iterable)
+        self.list = tuple(iterable)
 
-    def _cast_value(self, value, top=False, bottom=False):
+    def _cast_value(self, value=None, top=False, bottom=False):
         raise NotImplementedError
 
     def is_top(self):
-        return any(i.is_top() for i in self)
+        return False
 
     def is_bottom(self):
         return all(i.is_bottom() for i in self)
 
+    _zipper = lambda self, other: zip_longest(
+        self, other, fillvalue=self._cast_value(bottom=True))
+
     def le(self, other):
-        for j, k in zip(self, other):
+        for j, k in self._zipper(other):
             if j <= k:
                 continue
             return False
         return True
 
     def meet(self, other):
-        return self.__class__((j & k for j, k in zip(self, other)))
+        return self.__class__((j & k for j, k in self._zipper(other)))
 
     def join(self, other):
-        zipper = zip_longest(
-            self, other, fillvalue=self._cast_value(bottom=True))
-        return self.__class__((j & k for j, k in zipper))
+        return self.__class__((j | k for j, k in self._zipper(other)))
 
-    def __add__(self, other):
-        if self.is_top() or other.is_bottom():
+    def append(self, item):
+        if self.is_top():
             return self
-        if self.is_bottom() or other.is_top():
-            return other
-        return self.__class__(list.__add__(self, other))
+        l = [] if self.is_bottom() else self.list
+        return self.__class__(l + [self._cast_value(item)])
 
-    def __getitem__(self, item):
+    def __len__(self):
+        return len(self.list)
+
+    def __iter__(self):
+        return iter(self.list)
+
+    def __contains__(self, item):
+        return item in self.list
+
+    def __getitem__(self, index):
         if self.is_top():
             return self._cast_value(top=True)
-        if isinstance(item, slice):
+        if self.is_bottom():
+            return self._cast_value(bottom=True)
+        if isinstance(index, slice):
             raise NotImplementedError('slicing is not required...yet')
         try:
-            return self.__class__(list.__getitem__(self, item))
+            return self.list[index]
         except IndexError:
             return self._cast_value(bottom=True)
+
+    def __hash__(self):
+        return hash((self.__class__, self.list))
+
+    def __str__(self):
+        return str(builtins.list(self.list))
+
+    def __repr__(self):
+        return '{cls}({list})'.format(
+            cls=self.__class__.__name__, list=builtins.list(self.list))
 
 
 def list(cls=None, name=None):
