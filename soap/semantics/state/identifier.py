@@ -26,7 +26,7 @@ class IdentifierBaseState(BaseState):
             return self._cast_key(Variable(key))
         raise TypeError(
             'Do not know how to convert key {!r} into an identifier.'
-            ''.format(key))
+            .format(key))
 
     def increment_item(self, value, identifier):
         if isinstance(value, Lattice):

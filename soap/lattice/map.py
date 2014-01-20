@@ -87,11 +87,12 @@ class MapLattice(Lattice, dict):
         super().__setitem__(key, value)
 
     def __str__(self):
-        return '{%s}' % ', '.join(
-            str(k) + '↦' + str(v) for k, v in self.items())
+        return '{{{}}}'.format(', '.join(
+            '{key} ↦ {value}'.format(key=k, value=v) for k, v in self.items()))
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, dict(self))
+        return '{cls}({items!r})'.format(
+            cls=self.__class__.__name__, items=dict(self))
 
 
 def map(from_cls=None, to_lattice=None, name=None):

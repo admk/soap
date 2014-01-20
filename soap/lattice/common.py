@@ -45,7 +45,9 @@ def _lattice_factory(cls, lattice_cls, name):
                         pass
                 raise ValueError('Cannot convert value to any of the classes')
             if v not in cls:
-                raise ValueError('Non-existing element: %r' % v)
+                raise ValueError(
+                    'Cannot find {!r} in any of the allowed elements'
+                    .format(v))
             return v
 
     if name:

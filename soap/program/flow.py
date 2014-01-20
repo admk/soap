@@ -268,7 +268,7 @@ class WhileFlow(SplitFlow):
             logger.warning(
                 'While loop "{flow}" may never terminate with state '
                 '{state}, analysis assumes it always terminates'
-                ''.format(flow=self, state=true_split))
+                .format(flow=self, state=true_split))
         return false_state
 
     def format(self, env=None):
