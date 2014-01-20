@@ -86,7 +86,7 @@ def compile(*expressions):
             return expression
         raise ValueError(
             'Do not know how to convert {!r} to an ExprMimic instance.'
-            ''.format(expression))
+            .format(expression))
     return [_compile(e) for e in expressions]
 
 
@@ -101,7 +101,7 @@ def decompile(mimic, env):
         return mimic
     raise ValueError(
         'Do not know how to convert {!r} to an Expression instance.'
-        ''.format(mimic))
+        .format(mimic))
 
 
 def transform(rule, expression):
