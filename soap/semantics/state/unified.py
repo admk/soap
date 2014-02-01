@@ -1,8 +1,6 @@
-from soap.expression import Expression, expression_factory, operators, Variable
 from soap.lattice.meta import ComponentWiseLattice
 from soap.semantics.state.arithmetic import IdentifierArithmeticState
 from soap.semantics.state.base import BaseState
-from soap.semantics.state.boolean import IdentifierBooleanState
 from soap.semantics.state.box import IdentifierBoxState
 
 
@@ -16,13 +14,11 @@ class SoapState(BaseState, ComponentWiseLattice):
     _component_classes = (
         IdentifierBoxState,
         IdentifierArithmeticState,
-        IdentifierBooleanState,
     )
 
-    def __init__(self, numerical=None, arithmetic=None, boolean=None,
-                 top=False, bottom=False):
-        super().__init__(
-            numerical, arithmetic, boolean, top=top, bottom=bottom)
+    def __init__(
+            self, numerical=None, arithmetic=None, top=False, bottom=False):
+        super().__init__(numerical, arithmetic, top=top, bottom=bottom)
 
     @property
     def numerical(self):
@@ -31,39 +27,6 @@ class SoapState(BaseState, ComponentWiseLattice):
     @property
     def arithmetic(self):
         return self.components[1]
-
-    @property
-    def boolean(self):
-        return self.components[2]
-
-    def resolve_conditionals(self, expr):
-        """Resolves boolean conditions in analysed expressions. """
-        if isinstance(expr, Variable):
-            return expr
-        if isinstance(expr, Expression):
-            if expr.op == operators.TERNARY_SELECT_OP:
-                test, arg1, arg2 = expr.args
-                if test in self.boolean:
-                    resolved = arg1
-                elif not test in self.boolean:
-                    resolved = arg2
-                else:
-                    raise ConditionalResolutionError(
-                        'Cannot resolve conditional, conditional {} does not'
-                        'exist in analyzed conditionals'.format(test))
-                return self.resolve_conditionals(resolved)
-            args = (self.resolve_conditionals(a) for a in expr.args)
-            return expression_factory(expr.op, *args)
-        raise TypeError(
-            'Do not know how to resolve conditionals for {}'.format(expr))
-
-    def insert_conditionals(self, expr):
-        """Inserts boolean conditions. """
-        for b in self.boolean:
-            # FIXME we currently does not allow any compounds in boolean
-            # expressions, this includes negation.
-            if b.op == operators.UNARY_NEGATION_OP:
-                ...
 
     def assign(self, var, expr, annotation):
         """Makes an assignment and returns a new state object."""
