@@ -55,18 +55,21 @@ class UnifiedSummationLattice(object):
 
 class ComponentWiseLattice(object):
     """Defines a component-wise partial order."""
-    __slots__ = ('components', )
-    self_class = other_class = None
+    __slots__ = ('_components', )
+    _component_classes = None
 
-    def __init__(self, self_obj=None, other_obj=None,
-                 top=False, bottom=False):
+    def __init__(self, *components, top=False, bottom=False):
         super().__init__(top=top, bottom=bottom)
         if top or bottom:
-            self.components = tuple(
-                cls(top=top, bottom=bottom)
-                for cls in (self.self_class, self.other_class))
-        else:
-            self.components = (self_obj, other_obj)
+            return
+        self._components = components
+
+    @property
+    def components(self):
+        if self.top or self.bottom:
+            return tuple(cls(top=self.top, bottom=self.bottom)
+                         for cls in self._component_classes)
+        return self._components
 
     def is_top(self):
         return all(c.is_top() for c in self.components)
@@ -127,8 +130,7 @@ class LatticeMeta(type):
 
         class CompLat(ComponentWiseLattice, Lattice):
             __slots__ = ()
-            self_class = self
-            other_class = other
+            _component_classes = (self, other)
 
         CompLat.__name__ = 'ComponentWiseLattice_{}_{}'.format(
             self.__name__, other.__name__)

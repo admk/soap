@@ -4,7 +4,7 @@
 """
 from soap.expression.operators import (
     ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP,
-    ARITHMETIC_OPERATORS, COMMUTATIVITY_OPERATORS
+    TERNARY_SELECT_OP, ARITHMETIC_OPERATORS, COMMUTATIVITY_OPERATORS
 )
 from soap.expression.base import (
     Expression, UnaryExpression, BinaryExpression, TernaryExpression
@@ -63,3 +63,8 @@ class TernaryArithExpr(TernaryExpression, ArithExpr):
     """Ternary arithmetic expressions."""
 
     __slots__ = ()
+
+    def __str__(self):
+        if self.op == TERNARY_SELECT_OP:
+            return '{} ? {} : {}'.format(*self._args_to_str())
+        return super().__str__()

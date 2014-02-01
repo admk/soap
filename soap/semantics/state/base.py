@@ -66,12 +66,6 @@ class BaseState(object):
         super().__init__(*args, **kwargs)
         _decorate(self.__class__)
 
-    def _cast_key(self, key):
-        raise NotImplementedError
-
-    def _cast_value(self, v=None, top=False, bottom=False):
-        raise NotImplementedError
-
     def assign(self, var, expr, annotation):
         """Makes an assignment and returns a new state object."""
         raise NotImplementedError

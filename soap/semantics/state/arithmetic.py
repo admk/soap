@@ -15,22 +15,27 @@ class IdentifierArithmeticState(
     def _cast_value(self, expr=None, top=False, bottom=False):
         if top or bottom:
             return ArithExpr(top=top, bottom=bottom)
-        if isinstance(expr, Lattice):
-            if expr.is_top() or expr.is_bottom():
-                return expr
-        if is_numeral(expr):
-            return expr
         if isinstance(expr, Expression):
             return expression_factory(
                 expr.op, *[self._cast_value(a) for a in expr.args])
+        if isinstance(expr, Lattice):
+            if expr.is_top() or expr.is_bottom():
+                return expr
         if isinstance(expr, Variable):
             return self.get(
                 Identifier(expr, annotation=Annotation(bottom=True)),
                 Identifier(expr, annotation=Annotation(top=True)))
+        if is_numeral(expr):
+            return expr
         if isinstance(expr, Identifier):
             return expr
         if isinstance(expr, str):
-            return self._cast_value(parse(expr))
+            parsed_expr = parse(expr)
+            if not isinstance(parsed_expr, ArithExpr):
+                raise ValueError(
+                    'Expression {expr!r} is not an arithmetic expression.'
+                    .format(expr=expr))
+            return self._cast_value(parsed_expr)
         raise TypeError('Do not know how to evaluate {!r}'.format(expr))
 
     def assign(self, var, expr, annotation):
