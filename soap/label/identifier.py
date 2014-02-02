@@ -10,7 +10,7 @@ class Identifier(Variable * Annotation):
                  annotation=None, top=False, bottom=False):
         annotation = annotation or Annotation(
             label, iteration, top=top, bottom=bottom)
-        super().__init__(self_obj=variable, other_obj=annotation)
+        super().__init__(variable, annotation, top=top, bottom=bottom)
 
     @property
     def variable(self):

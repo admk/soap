@@ -6,8 +6,7 @@ class Annotation(Label * Iteration):
     __slots__ = ()
 
     def __init__(self, label=None, iteration=None, top=False, bottom=False):
-        super().__init__(
-            top=top, bottom=bottom, self_obj=label, other_obj=iteration)
+        super().__init__(label, iteration, top=top, bottom=bottom)
 
     @property
     def label(self):

@@ -71,6 +71,10 @@ class ComponentWiseLattice(object):
                          for cls in self._component_classes)
         return self._components
 
+    @components.setter
+    def components(self, value):
+        self._components = value
+
     def is_top(self):
         return all(c.is_top() for c in self.components)
 
