@@ -169,11 +169,14 @@ class IfFlow(SplitFlow):
         self.false_flow = false_flow
 
     def transition(self, state, env):
-        true_split, false_split = self._split(state)
+        true_split, false_split = state.pre_conditional(
+            self.conditional_expr, self.annotation)
         true_state = self.true_flow.transition(true_split, env)
         false_state = self.false_flow.transition(false_split, env)
-        state = true_state | false_state
+        state = state.post_conditional(
+            self.conditional_expr, true_state, false_state, self.annotation)
         self._env_update(env, state, true_split, false_split)
+        print(state)
         return state
 
     def format(self, env=None):

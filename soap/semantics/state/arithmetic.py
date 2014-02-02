@@ -42,9 +42,35 @@ class IdentifierArithmeticState(
         """Makes an assignment and returns a new state object."""
         return self.increment(Identifier(var, annotation=annotation), expr)
 
-    def conditional(self, expr, cond, annotation):
+    def pre_conditional(self, expr, cond, annotation):
         """Imposes a conditional on the state, returns a new state."""
         return self
+
+    def post_conditional(self, expr, true_state, false_state, annotation):
+        mapping = {}
+        for k, v in set(true_state.items()) | set(false_state.items()):
+            # if is not final identifier, keep its value
+            if not k.annotation.is_bottom():
+                existing_value = mapping.get(k)
+                if existing_value and existing_value != v:
+                    raise ValueError(
+                        'Conflict in mapping update, same key {k}, '
+                        'but different values {v}, {existing_value}'.format(
+                            k=k, v=v, existing_value=existing_value))
+                mapping[k] = v
+                continue
+            # if is final identifier, check final value conflicts;
+            true_value, false_value = true_state[k], false_state[k]
+            if true_value == false_value:
+                mapping[k] = true_value
+                continue
+            # if has branch conflict, insert conditional
+            join_id = Identifier(k.variable, annotation=annotation)
+            mapping[k] = join_id
+            mapping[join_id] = expression_factory(
+                TERNARY_SELECT_OP, self._cast_value(expr),
+                true_value, false_value)
+        return self.__class__(mapping)
 
     def widen(self, other):
         """No widening is possible, simply return other.
