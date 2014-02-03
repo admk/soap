@@ -44,7 +44,7 @@ class IdentifierArithmeticState(
 
     def pre_conditional(self, expr, cond, annotation):
         """Imposes a conditional on the state, returns a new state."""
-        return self
+        return self, self
 
     def post_conditional(self, expr, true_state, false_state, annotation):
         mapping = {}
