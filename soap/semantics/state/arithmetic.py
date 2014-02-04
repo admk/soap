@@ -1,6 +1,7 @@
 from soap.expression import (
     ArithExpr, Expression, expression_factory, Variable, parse
 )
+from soap.expression.operators import TERNARY_SELECT_OP
 from soap.label import Annotation, Identifier
 from soap.lattice import Lattice, map
 from soap.semantics.common import is_numeral
@@ -42,7 +43,7 @@ class IdentifierArithmeticState(
         """Makes an assignment and returns a new state object."""
         return self.increment(Identifier(var, annotation=annotation), expr)
 
-    def pre_conditional(self, expr, cond, annotation):
+    def pre_conditional(self, expr, annotation):
         """Imposes a conditional on the state, returns a new state."""
         return self, self
 

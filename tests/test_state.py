@@ -166,4 +166,29 @@ class TestIdentifierArithmeticState(unittest.TestCase):
         self.assertEqual(state1, state2)
 
     def test_conditional(self):
-        pass
+        cond = expr('x < 1')
+        cond_ann = Annotation(Label(cond))
+        x = expr('x')
+        xp1 = expr('x + 1')
+        xp1_ann = Annotation(Label(xp1))
+        xm1 = expr('x - 1')
+        xm1_ann = Annotation(Label(xm1))
+
+        state = IdentifierArithmeticState()
+
+        true_state, false_state = state.pre_conditional(cond, cond_ann)
+        true_state = true_state.assign(x, xp1, xp1_ann)
+        false_state = false_state.assign(x, xm1, xm1_ann)
+
+        state = state.post_conditional(cond, true_state, false_state, cond_ann)
+
+        identifier = Identifier(x, annotation=cond_ann)
+        expression = state[identifier]
+
+        self.assertEqual(state[x], identifier)
+
+        self.assertEqual(expression.op, operators.TERNARY_SELECT_OP)
+        self.assertExprOpArgs(
+            expression.args[0], operators.LESS_OP, [self.top_id, expr('1')])
+        self.assertEqual(expression.args[1], Identifier(x, annotation=xp1_ann))
+        self.assertEqual(expression.args[2], Identifier(x, annotation=xm1_ann))
