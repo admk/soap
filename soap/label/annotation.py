@@ -6,6 +6,7 @@ class Annotation(Label * Iteration):
     __slots__ = ()
 
     def __init__(self, label=None, iteration=None, top=False, bottom=False):
+        iteration = iteration or Iteration(bottom=True)
         super().__init__(label, iteration, top=top, bottom=bottom)
 
     @property
