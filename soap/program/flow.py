@@ -150,13 +150,20 @@ class AssignFlow(Flow):
         return hash((self.__class__, self.var, self.expr, self.iteration))
 
 
-class SplitFlow(Flow):
-    def _split(self, state):
-        return (state.conditional(self.conditional_expr, cond, self.annotation)
-                for cond in (True, False))
+class SplitJoinFlow(Flow):
+    def _split_flow(self, state, true_flow, false_flow):
+        true_split, false_split = state.pre_conditional(
+            self.conditional_expr, self.annotation)
+        true_state = true_flow.transition(true_split)
+        false_state = false_flow.transition(false_split)
+        return true_state, false_state
+
+    def _join_flow(self, state, true_state, false_state):
+        return state.post_conditional(
+            self.conditional_expr, true_state, false_state, self.annotation)
 
 
-class IfFlow(SplitFlow):
+class IfFlow(SplitJoinFlow):
     """Program flow for conditional non-loop branching.
 
     Splits and joins the flow of the separate `True` and `False` branches.
@@ -169,12 +176,9 @@ class IfFlow(SplitFlow):
         self.false_flow = false_flow
 
     def transition(self, state, env):
-        true_split, false_split = self._split(state)
-        true_state = self.true_flow.transition(true_split, env)
-        false_state = self.false_flow.transition(false_split, env)
-        state = true_state | false_state
-        self._env_update(env, state, true_split, false_split)
-        return state
+        true_state, false_state = self._split_flow(
+            state, self.true_flow, self.false_flow)
+        return self._join_flow(state, true_state, false_state)
 
     def format(self, env=None):
         render_kwargs = dict(flow=self, env=env, color=color)
@@ -217,7 +221,7 @@ class IfFlow(SplitFlow):
                      self.true_flow, self.false_flow, self.iteration))
 
 
-class WhileFlow(SplitFlow):
+class WhileFlow(SplitJoinFlow):
     """Program flow for conditional while loops.
 
     Makes use of :class:`IfFlow` to define conditional branching. Computes the

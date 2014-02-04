@@ -4,11 +4,10 @@
 """
 import ast
 
-from soap.common import ignored
 from soap.expression.operators import (
     ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP,
     EQUAL_OP, NOT_EQUAL_OP, GREATER_OP, LESS_OP, GREATER_EQUAL_OP,
-    LESS_EQUAL_OP, UNARY_NEGATION_OP, AND_OP, OR_OP
+    LESS_EQUAL_OP, UNARY_NEGATION_OP, AND_OP, OR_OP, TERNARY_SELECT_OP,
 )
 
 
@@ -46,7 +45,7 @@ def raise_parser_error(desc, text, token):
 def ast_to_expr(t, s):
     from soap.expression.common import expression_factory
     from soap.semantics.error import cast, mpz, mpfr
-    with ignored(AttributeError):  # constant
+    if isinstance(t, ast.Num):
         v = t.n
         if isinstance(v, int):
             return mpz(v)
@@ -66,14 +65,13 @@ def ast_to_expr(t, s):
         a1 = ast_to_expr(t.left, s)
         a2 = ast_to_expr(t.comparators.pop(), s)
         return expression_factory(op, a1, a2)
-    with ignored(AttributeError):
-        args = [ast_to_expr(a, s) for a in t.values]
-        op = OPERATOR_MAP[t.op.__class__]
+    if isinstance(t, ast.IfExp):
+        args = (ast_to_expr(a, s) for a in (t.test, t.body, t.orelse))
+        return expression_factory(TERNARY_SELECT_OP, *args)
+    op = OPERATOR_MAP[t.op.__class__]
+    if isinstance(t, ast.BoolOp):
+        args = (ast_to_expr(a, s) for a in t.values)
         return expression_factory(op, *args)
-    try:
-        op = OPERATOR_MAP[t.op.__class__]
-    except KeyError:
-        raise_parser_error('Unrecognised operator %s' % t.op, s, t)
     if isinstance(t, ast.UnaryOp):
         a = ast_to_expr(t.operand, s)
         return expression_factory(op, a)

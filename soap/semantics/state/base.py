@@ -16,18 +16,29 @@ def _decorate(cls):
             return state
         return assign
 
-    def decorate_conditional(func):
+    def decorate_pre_conditional(func):
         @wraps(func)
-        def conditional(self, expr, cond, annotation):
-            state = func(self, expr, cond, annotation)
-            if cond:
-                expr = ~expr
+        def pre_conditional(self, expr, annotation):
+            true_state, false_state = func(self, expr, annotation)
             logger.debug(
-                '⟦[{expr}]{annotation}⟧{prev} → {next}'.format(
+                '⟦[{expr}]{annotation}⟧{state} --split-→ ({true}, {false})'
+                .format(
                     expr=expr, annotation=superscript(annotation),
-                    prev=self, next=state))
+                    state=self, true=true_state, false=false_state))
+            return true_state, false_state
+        return pre_conditional
+
+    def decorate_post_conditional(func):
+        @wraps(func)
+        def post_conditional(self, expr, true_state, false_state, annotation):
+            state = func(self, expr, true_state, false_state, annotation)
+            logger.debug(
+                '⟦[{expr}]{annotation}⟧{prev}: '
+                '({true}, {false}) --join-→ {next}'.format(
+                    prev=self, expr=expr, annotation=superscript(annotation),
+                    true=true_state, false=false_state, next=state))
             return state
-        return conditional
+        return post_conditional
 
     def decorate_join(func):
         @wraps(func)
@@ -53,7 +64,8 @@ def _decorate(cls):
     except AttributeError:
         cls._state_decorated = True
     cls.assign = decorate_assign(cls.assign)
-    cls.conditional = decorate_conditional(cls.conditional)
+    cls.pre_conditional = decorate_pre_conditional(cls.pre_conditional)
+    cls.post_conditional = decorate_post_conditional(cls.post_conditional)
     cls.join = decorate_join(cls.join)
     cls.le = decorate_le(cls.le)
 
@@ -66,18 +78,17 @@ class BaseState(object):
         super().__init__(*args, **kwargs)
         _decorate(self.__class__)
 
-    def _cast_key(self, key):
-        raise NotImplementedError
-
-    def _cast_value(self, v=None, top=False, bottom=False):
-        raise NotImplementedError
-
     def assign(self, var, expr, annotation):
         """Makes an assignment and returns a new state object."""
         raise NotImplementedError
 
-    def conditional(self, expr, cond, annotation):
-        """Imposes a conditional on the state, returns a new state."""
+    def pre_conditional(self, expr, cond, annotation):
+        """Imposes a conditional on the state, returns a 2-tuple of states,
+        respectively represent true and false states."""
+        raise NotImplementedError
+
+    def post_conditional(self, expr, true_state, false_state, annotation):
+        """Joins true and false states, return a new state."""
         raise NotImplementedError
 
     def is_fixpoint(self, other):

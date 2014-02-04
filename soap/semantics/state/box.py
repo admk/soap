@@ -52,7 +52,7 @@ class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
     def assign(self, var, expr, annotation):
         return self[var:self.eval(expr)]
 
-    def conditional(self, expr, cond, annotation):
+    def pre_conditional(self, expr, annotation):
         """
         Supports only simple boolean expressions::
             <variable> <operator> <arithmetic expression>
@@ -87,7 +87,7 @@ class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
                 raise TypeError
             return bmin, bmax
 
-        def constraint(op, bound):
+        def constraint(op, cond, bound):
             op = self._negate_dict[op] if not cond else op
             if bound.is_bottom():
                 return bound
@@ -102,22 +102,31 @@ class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
                 return bound.__class__([bound_min, inf])
             raise ValueError('Unknown boolean operator %s' % op)
 
-        bound = eval(expr.a2)
-        if isinstance(self[expr.a1], (FloatInterval, ErrorSemantics)):
-            # Comparing floats
-            bound = FloatInterval(bound)
-        cstr = constraint(expr.op, bound)
-        if isinstance(cstr, FloatInterval):
-            cstr = ErrorSemantics(cstr, FloatInterval(top=True))
-        cstr &= self[expr.a1]
-        bot = isinstance(cstr, ErrorSemantics) and cstr.v.is_bottom()
-        bot = bot or cstr.is_bottom()
-        if bot:
-            """Branch evaluates to false, because no possible values of the
-            variable satisfies the constraint condition, it is safe to return
-            *bottom* to denote an unreachable state. """
-            return self.__class__(bottom=True)
-        return self.assign(expr.a1, cstr, annotation)
+        def conditional(cond):
+            bound = eval(expr.a2)
+            if isinstance(self[expr.a1], (FloatInterval, ErrorSemantics)):
+                # Comparing floats
+                bound = FloatInterval(bound)
+            cstr = constraint(expr.op, cond, bound)
+            if isinstance(cstr, FloatInterval):
+                cstr = ErrorSemantics(cstr, FloatInterval(top=True))
+            cstr &= self[expr.a1]
+            bot = isinstance(cstr, ErrorSemantics) and cstr.v.is_bottom()
+            bot = bot or cstr.is_bottom()
+            if bot:
+                """Branch evaluates to false, because no possible values of the
+                variable satisfies the constraint condition, it is safe to return
+                *bottom* to denote an unreachable state. """
+                return self.__class__(bottom=True)
+            return self.assign(expr.a1, cstr, annotation)
+
+        return (conditional(cond) for cond in (True, False))
+
+    def post_conditional(self, expr, true_state, false_state, annotation):
+        return true_state | false_state
+
+    def conditional(self, expr, cond, annotation):
+        return list(self.pre_conditional(expr, annotation))[not cond]
 
     def is_fixpoint(self, other):
         """Checks if `self` is equal to `other` in the value ranges.
