@@ -33,17 +33,16 @@ class Flow(object):
         self.iteration = iteration or Iteration(bottom=True)
 
     def flow(self, state=None):
-        if state is None:
-            state = BoxState()
+        state = state or BoxState()
         return self.transition(state, None)
 
     def flow_debug(self, state):
         env = {}
+        state = state or BoxState()
         curr_state = self.transition(state, env)
         return curr_state, color('{}\n'.format(state)) + self.format(env)
 
     def debug(self, state=None):
-        state = state or BoxState()
         return self.flow_debug(state)[1]
 
     def format(self, env=None):

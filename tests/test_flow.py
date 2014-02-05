@@ -71,6 +71,20 @@ class TestCompositionalFlow(unittest.TestCase):
 class TestExampleFlow(unittest.TestCase):
     """Unittesting for :class:`soap.program.flow`."""
     def setUp(self):
+        self.simple_if = code_gobble(
+            """
+            x = 0
+            if x <= 1:
+                x = x + 1
+            else:
+                x = x - 1
+            """)
+        self.simple_while = code_gobble(
+            """
+            x = 0
+            while x < 5:
+                x = x + 1
+            """)
         self.factorial = code_gobble(
             """
             while x <= 3:
