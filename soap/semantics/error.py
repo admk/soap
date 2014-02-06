@@ -141,7 +141,13 @@ def _coerce(self, other):
     try:
         return dominance_poset[self.__class__, other.__class__]
     except KeyError:
+        pass
+    try:
         return dominance_poset[other.__class__, self.__class__]
+    except KeyError:
+        raise TypeError(
+            'Do not know how to coerce values {!r} and {!r} into the same '
+            'type.'.format(self, other))
 
 
 def _decorate_coerce(func):
