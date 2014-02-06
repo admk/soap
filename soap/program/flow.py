@@ -150,16 +150,24 @@ class AssignFlow(Flow):
 
 
 class SplitJoinFlow(Flow):
-    def _split_flow(self, state, true_flow, false_flow):
+
+    def _split_flow(self, state, true_flow, false_flow, env):
+        annotations = [
+            Annotation(Label(statement=(self, cond)), iteration=self.iteration)
+            for cond in (True, False)]
         true_split, false_split = state.pre_conditional(
-            self.conditional_expr, self.annotation)
-        true_state = true_flow.transition(true_split)
-        false_state = false_flow.transition(false_split)
+            self.conditional_expr, *annotations)
+        self._env_update(env, None, true_split, false_split)
+        true_state = true_flow.transition(true_split, env)
+        false_state = false_flow.transition(false_split, env)
         return true_state, false_state
 
-    def _join_flow(self, state, true_state, false_state):
-        return state.post_conditional(
-            self.conditional_expr, true_state, false_state, self.annotation)
+    def _join_flow(self, state, true_state, false_state, env):
+        state = state.post_conditional(
+            self.conditional_expr, true_state, false_state,
+            self.annotation)
+        self._env_update(env, state)
+        return state
 
 
 class IfFlow(SplitJoinFlow):
@@ -176,8 +184,8 @@ class IfFlow(SplitJoinFlow):
 
     def transition(self, state, env):
         true_state, false_state = self._split_flow(
-            state, self.true_flow, self.false_flow)
-        return self._join_flow(state, true_state, false_state)
+            state, self.true_flow, self.false_flow, env)
+        return self._join_flow(state, true_state, false_state, env)
 
     def format(self, env=None):
         render_kwargs = dict(flow=self, env=env, color=color)
@@ -210,7 +218,7 @@ class IfFlow(SplitJoinFlow):
 
     def __repr__(self):
         return ('{cls}(conditional_expr={expr!r}, true_flow={true_flow!r}, '
-                'false_flow={false_flow!r}, iteration={itr!r})').format(
+                'false_flow={false_flow!r}, iteration={iteration!r})').format(
             cls=self.__class__.__name__, expr=self.conditional_expr,
             true_flow=self.true_flow, false_flow=self.false_flow,
             iteration=self.iteration)

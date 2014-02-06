@@ -43,39 +43,36 @@ class IdentifierArithmeticState(
         """Makes an assignment and returns a new state object."""
         return self.increment(Identifier(var, annotation=annotation), expr)
 
-    def pre_conditional(self, expr, annotation):
-        """Imposes a conditional on the state, returns a new state."""
+    def pre_conditional(self, expr, true_annotation, false_annotation):
+        """Imposes a conditional on the state, returns a new state.
+
+        TODO decide whether conditional should be assigned or not.
+        For example, the program `if (x < 1)l0 (x = x - 1)l1 (x = x + 1)l2` for
+        an empty input should produce as the output::
+
+            x := x0 < 1 ? x0 - 1 : x0 + 1
+
+        or::
+
+            x := x0 < 1 ? xl0t - 1 : xl0f + 1, xl0t := x0, xl0f := x0
+
+        Currently it is the first one.
+        """
         return self, self
 
-    def post_conditional(self, expr, true_state, false_state, annotation):
-        mapping = {}
-        for k, v in set(true_state.items()) | set(false_state.items()):
-            # if is not final identifier, keep its value
-            if not k.annotation.is_bottom():
-                existing_value = mapping.get(k)
-                if existing_value and existing_value != v:
-                    raise ValueError(
-                        'Conflict in mapping update, same key {k}, '
-                        'but different values {v}, {existing_value}'.format(
-                            k=k, v=v, existing_value=existing_value))
-                mapping[k] = v
-                continue
-            # if is final identifier, check final value conflicts;
-            true_value, false_value = true_state[k], false_state[k]
-            if true_value == false_value:
-                mapping[k] = true_value
-                continue
-            # if has branch conflict, insert conditional
-            join_id = Identifier(k.variable, annotation=annotation)
-            mapping[k] = join_id
-            mapping[join_id] = expression_factory(
-                TERNARY_SELECT_OP, self._cast_value(expr),
-                true_value, false_value)
-        return self.__class__(mapping)
+    def _post_conditional_join_value(
+            self, conditional_expr, final_key, true_state, false_state):
+        true_final_value = true_state[final_key]
+        false_final_value = false_state[final_key]
+        # check final values in branched states for conflicts
+        if true_final_value == false_final_value:
+            # no conflict, return same value
+            return true_final_value
+        # if has branch conflict, insert conditional
+        return expression_factory(
+            TERNARY_SELECT_OP, self._cast_value(conditional_expr),
+            true_final_value, false_final_value)
 
     def widen(self, other):
-        """No widening is possible, simply return other.
-
-        TODO widening should be elimination of deep recursions.
-        """
+        """No widening is possible, simply return other."""
         return other

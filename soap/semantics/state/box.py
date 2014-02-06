@@ -32,10 +32,10 @@ class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
         raise TypeError(
             'Do not know how to convert {!r} into a variable'.format(key))
 
-    def _cast_value(self, v=None, top=False, bottom=False):
+    def _cast_value(self, value=None, top=False, bottom=False):
         if top or bottom:
             return IntegerInterval(top=top, bottom=bottom)
-        return cast(v)
+        return cast(value)
 
     def eval(self, expr):
         """Evaluates an expression with state's mapping."""
@@ -52,7 +52,7 @@ class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
     def assign(self, var, expr, annotation):
         return self[var:self.eval(expr)]
 
-    def pre_conditional(self, expr, annotation):
+    def pre_conditional(self, expr, true_annotation, false_annotation):
         """
         Supports only simple boolean expressions::
             <variable> <operator> <arithmetic expression>
@@ -102,7 +102,7 @@ class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
                 return bound.__class__([bound_min, inf])
             raise ValueError('Unknown boolean operator %s' % op)
 
-        def conditional(cond):
+        def conditional(cond, annotation):
             bound = eval(expr.a2)
             if isinstance(self[expr.a1], (FloatInterval, ErrorSemantics)):
                 # Comparing floats
@@ -114,19 +114,20 @@ class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
             bot = isinstance(cstr, ErrorSemantics) and cstr.v.is_bottom()
             bot = bot or cstr.is_bottom()
             if bot:
-                """Branch evaluates to false, because no possible values of the
-                variable satisfies the constraint condition, it is safe to return
-                *bottom* to denote an unreachable state. """
+                """Branch evaluates to false, because no possible values of
+                the variable satisfies the constraint condition, it is safe to
+                return *bottom* to denote an unreachable state. """
                 return self.__class__(bottom=True)
             return self.assign(expr.a1, cstr, annotation)
 
-        return (conditional(cond) for cond in (True, False))
+        zipper = ((True, true_annotation), (False, false_annotation))
+        return (conditional(cond, ann) for cond, ann in zipper)
 
     def post_conditional(self, expr, true_state, false_state, annotation):
         return true_state | false_state
 
     def conditional(self, expr, cond, annotation):
-        return list(self.pre_conditional(expr, annotation))[not cond]
+        return list(self.pre_conditional(expr, *([annotation] * 2)))[not cond]
 
     def is_fixpoint(self, other):
         """Checks if `self` is equal to `other` in the value ranges.
@@ -177,7 +178,17 @@ class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
 
 class IdentifierBoxState(IdentifierBaseState, BoxState):
     __slots__ = ()
-    _final_value_is_key = False
+
+    def __getitem__(self, key):
+        item = super().__getitem__(key)
+        if isinstance(item, Identifier):
+            return super().__getitem__(item)
+        return item
+
+    def _cast_value(self, value=None, top=False, bottom=False):
+        if not isinstance(value, Identifier):
+            return super()._cast_value(value, top=top, bottom=bottom)
+        return value
 
     def eval(self, expr):
         if isinstance(expr, Identifier):
@@ -187,3 +198,7 @@ class IdentifierBoxState(IdentifierBaseState, BoxState):
     def assign(self, var, expr, annotation):
         return self.increment(
             Identifier(var, annotation=annotation), self.eval(expr))
+
+    def _post_conditional_join_value(
+            self, conditional_expr, final_key, true_state, false_state):
+        return true_state[final_key] | false_state[final_key]

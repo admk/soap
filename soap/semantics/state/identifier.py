@@ -10,7 +10,6 @@ class IdentifierBaseState(BaseState):
     semantics.
     """
     __slots__ = ()
-    _final_value_is_key = True
 
     def _cast_key(self, key):
         """Convert a variable into an identifier.
@@ -64,7 +63,29 @@ class IdentifierBaseState(BaseState):
         # now use the incremented value for assignment
         incr_map[key] = self.increment_item(value, key)
         # update final key
-        if self._final_value_is_key:
-            value = key
-        incr_map[key.global_final()] = value
+        incr_map[key.global_final()] = key
         return self.__class__(incr_map)
+
+    def _post_conditional_join_value(
+            self, conditional_expr, final_key, true_state, false_state):
+        raise NotImplementedError
+
+    def post_conditional(self, expr, true_state, false_state, annotation):
+        mapping = {}
+        for k, v in set(true_state.items()) | set(false_state.items()):
+            # if is not final identifier, keep its value
+            if not k.annotation.is_bottom():
+                existing_value = mapping.get(k)
+                if existing_value and existing_value != v:
+                    raise ValueError(
+                        'Conflict in mapping update, same key {k}, '
+                        'but different values {v}, {existing_value}'.format(
+                            k=k, v=v, existing_value=existing_value))
+                mapping[k] = v
+                continue
+            # if k is final, join values for k in true & false states
+            join_id = Identifier(k.variable, annotation=annotation)
+            mapping[k] = join_id
+            mapping[join_id] = self._post_conditional_join_value(
+                expr, k, true_state, false_state)
+        return self.__class__(mapping)

@@ -6,5 +6,5 @@ from soap.semantics.error import (
 )
 from soap.semantics.area import AreaSemantics
 from soap.semantics.state import (
-    BoxState, IdentifierBoxState, IdentifierArithmeticState
+    BoxState, IdentifierBoxState, IdentifierArithmeticState, SoapState
 )
