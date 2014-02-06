@@ -51,9 +51,9 @@ class Identifier(Variable * Annotation):
             self.variable, label=self.label, iteration=(iteration + 1))
 
     def __str__(self):
-        return '({variable}, {label}, {iteration})'.format(
-            variable=self.variable, label=self.annotation.label,
-            iteration=self.annotation.iteration)
+        from soap.label import superscript
+        return '{variable}{annotation}'.format(
+            variable=self.variable, annotation=superscript(self.annotation))
 
     def __repr__(self):
         return '{cls}({variable!r}, {label!r}, {iteration!r})'.format(

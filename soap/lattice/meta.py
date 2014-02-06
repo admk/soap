@@ -30,18 +30,22 @@ class UnifiedSummationLattice(object):
     def is_bottom(self):
         return self.v.is_bottom()
 
+    def _type_check(self, other):
+        self_type, other_type = type(self.v), type(other.v)
+        return self_type is other_type
+
     def join(self, other):
-        if type(self.v) is not type(other.v):
+        if not self._type_check(other):
             return self.__class__(top=True)
         return self.v | other.v
 
     def meet(self, other):
-        if type(self.v) is not type(other.v):
+        if not self._type_check(other):
             return self.__class__(bottom=True)
         return self.v & other.v
 
     def le(self, other):
-        if type(self.v) is not type(other.v):
+        if not self._type_check(other):
             return False
         return self.v <= other.v
 
@@ -59,6 +63,9 @@ class ComponentWiseLattice(object):
     _component_classes = None
 
     def __init__(self, *components, top=False, bottom=False):
+        components = tuple(
+            cls(bottom=True) if c is None else c
+            for c, cls in zip(components, self._component_classes))
         super().__init__(top=top, bottom=bottom)
         if top or bottom:
             return
@@ -107,8 +114,9 @@ class ComponentWiseLattice(object):
         return '({})'.format(','.join(str(c) for c in self.components))
 
     def __repr__(self):
-        return '{cls}({components!r})'.format(
-            cls=self.__class__.__name__, components=self.components)
+        components = ', '.join(repr(c) for c in self.components)
+        return '{cls}({components})'.format(
+            cls=self.__class__.__name__, components=components)
 
 
 class LatticeMeta(type):
