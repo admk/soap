@@ -7,7 +7,7 @@ import codegen
 
 from soap import logger
 from soap.program.parser import ast_to_flow
-from soap.semantics import cast, BoxState, ErrorSemantics, Interval
+from soap.semantics import cast, IdentifierBoxState, ErrorSemantics, Interval
 
 
 def __cast(v):
@@ -20,7 +20,7 @@ builtins.__cast = __cast
 
 def __print(v, n):
     with logger.debug_context():
-        logger.debug(n, ':=', repr(v))
+        logger.debug('{} := {!r}'.format(n, v))
     return v
 builtins.__print = __print
 
@@ -32,14 +32,23 @@ def _local_variables():
 def __flow(flow, vars):
     flow, vars = pickle.loads(flow), pickle.loads(vars)
     locs = _local_variables()
-    new_vars, debug_str = flow.flow_debug(vars)
+    new_vars = flow.flow(vars)
+    debug_str = flow.format(new_vars)
+    # update changes to input variables
     for k in vars:
+        if not k.annotation.is_bottom():
+            continue
+        k = k.variable.name
         locs[k] = new_vars[k]
+    # add newly added variables
     for k in new_vars:
-        if k not in vars:
-            locs[k] = new_vars[k]
-    logger.info('--------------------------------------'
-                '-------------------------------------')
+        if k in vars:
+            continue
+        if not k.annotation.is_bottom():
+            continue
+        k = k.variable.name
+        locs[k] = new_vars[k]
+    logger.info('-' * 75)
     with logger.local_context(color=False):
         logger.info(debug_str)
 builtins.__flow = __flow
@@ -141,7 +150,7 @@ class FlowTransformer(IPythonNodeTransformer):
             vars.update(self.VariableVisitor(magics_only=False).visit(n))
         return ast.parse('__flow({!r}, {!r})'.format(
             pickle.dumps(ast_to_flow(node, self.shell.raw_cell)),
-            pickle.dumps(BoxState(vars)))).body[0]
+            pickle.dumps(IdentifierBoxState(vars)))).body[0]
 
     def visit_control_structure(self, node):
         # collect variables in conditions
