@@ -3,21 +3,30 @@
     :synopsis: Program flow graphs.
 """
 from akpytemp import Template
-from akpytemp.utils import code_gobble as _code_gobble
+from akpytemp.utils import code_gobble
 
 from soap import logger
 from soap.context import context
-from soap.label import superscript, Label, Iteration, Annotation
-from soap.semantics.error import Interval
-from soap.semantics.state import BoxState
+from soap.label import Annotation, Iteration, Label, superscript
+from soap.semantics.state import IdentifierBoxState
 
 
-code_gobble = lambda s: _code_gobble(s).strip()
-color = lambda s: logger.color(str(s), l=logger.levels.debug)
+def _code_gobble(s):
+    return code_gobble(s).strip()
+
+
+def _color(s):
+    return logger.color(str(s), l=logger.levels.debug)
 
 
 def _indent(code):
     return '\n'.join('    ' + c for c in code.split('\n')).rstrip() + '\n'
+
+
+def _state_with_label(state, label):
+    return _color(state.__class__({
+        key: state[key] for key in state if key.label == label
+    }))
 
 
 class Flow(object):
@@ -33,50 +42,25 @@ class Flow(object):
         self.iteration = iteration or Iteration(bottom=True)
 
     def flow(self, state=None):
-        state = state or BoxState()
-        return self.transition(state, None)
-
-    def flow_debug(self, state):
-        env = {}
-        state = state or BoxState()
-        curr_state = self.transition(state, env)
-        return curr_state, color('{}\n'.format(state)) + self.format(env)
+        state = state or IdentifierBoxState()
+        return self.transition(state)
 
     def debug(self, state=None):
-        return self.flow_debug(state)[1]
+        return self.format(self.flow(state))
 
-    def format(self, env=None):
+    def format(self, state=None):
         raise NotImplementedError
 
-    def _env_update(self, env, state=None, true_state=None, false_state=None):
-        def update(k, v):
-            if v is None:
-                return
-            if k in env:
-                env[k] |= v
-            else:
-                env[k] = v
-        if env is None:
-            return
-        update((self.annotation, None), state)
-        update((self.annotation, True), true_state)
-        update((self.annotation, False), false_state)
-
-    def _env_get(self, env):
-        def get(k, a):
-            return env.get((k, a), Interval(bottom=True))
-        return {
-            None: get(self.annotation, None),
-            True: get(self.annotation, True),
-            False: get(self.annotation, False),
-        }
-
-    def transition(self, state, env):
+    def transition(self, state):
         raise NotImplementedError
 
     @property
+    def label(self):
+        return Label(statement=self)
+
+    @property
     def annotation(self):
-        return Annotation(Label(statement=self), iteration=self.iteration)
+        return Annotation(self.label, iteration=self.iteration)
 
     def __eq__(self, other):
         if type(self) is not type(other):
@@ -92,15 +76,11 @@ class Flow(object):
 
 class IdentityFlow(Flow):
     """Identity flow, does nothing."""
-    def format(self, env=None):
-        s = '[skip]{annotation}; '.format(
+    def format(self, state=None):
+        return '[skip]{annotation}; '.format(
             annotation=superscript(self.annotation))
-        if env is not None:
-            s += '\n{state}'.format(state=self._env_get(env)[None])
-        return s
 
-    def transition(self, state, env):
-        self._env_update(env, state)
+    def transition(self, state):
         return state
 
     def __bool__(self):
@@ -122,17 +102,15 @@ class AssignFlow(Flow):
         self.var = var
         self.expr = expr
 
-    def transition(self, state, env):
-        state = state.assign(self.var, self.expr, self.annotation)
-        self._env_update(env, state)
-        return state
+    def transition(self, state):
+        return state.assign(self.var, self.expr, self.annotation)
 
-    def format(self, env=None):
+    def format(self, state=None):
         s = '[{var} ≔ {expr}]{annotation}; '.format(
             var=self.var, expr=self.expr,
             annotation=superscript(self.annotation))
-        if env is not None:
-            s += '\n{state}'.format(state=color(self._env_get(env)[None]))
+        if state:
+            s += '\n' + _state_with_label(state, self.label)
         return s
 
     def __eq__(self, other):
@@ -150,24 +128,50 @@ class AssignFlow(Flow):
 
 
 class SplitJoinFlow(Flow):
+    """A utility flow base class for control flow spliting and joining."""
 
-    def _split_flow(self, state, true_flow, false_flow, env):
+    def _conditional_label(self, cond):
+        return Label(statement=(self, cond))
+
+    def _conditional_annotation(self, cond):
+        return Annotation(
+            self._conditional_label(cond), iteration=self.iteration)
+
+    def _conditional_format(self, state, cond):
+        return _state_with_label(state, self._conditional_label(cond))
+
+    @property
+    def true_split_label(self):
+        return self._conditional_label(True)
+
+    @property
+    def false_split_label(self):
+        return self._conditional_label(False)
+
+    @property
+    def true_split_annotation(self):
+        return self._conditional_annotation(True)
+
+    @property
+    def false_split_annotation(self):
+        return self._conditional_annotation(False)
+
+    @property
+    def conditional_variable(self):
+        return self.conditional_expr.args[0]
+
+    def _split_flow(self, state, true_flow, false_flow):
         annotations = [
-            Annotation(Label(statement=(self, cond)), iteration=self.iteration)
-            for cond in (True, False)]
+            self._conditional_annotation(cond) for cond in (True, False)]
         true_split, false_split = state.pre_conditional(
             self.conditional_expr, *annotations)
-        self._env_update(env, None, true_split, false_split)
-        true_state = true_flow.transition(true_split, env)
-        false_state = false_flow.transition(false_split, env)
+        true_state = true_flow.transition(true_split)
+        false_state = false_flow.transition(false_split)
         return true_state, false_state
 
-    def _join_flow(self, state, true_state, false_state, env):
-        state = state.post_conditional(
-            self.conditional_expr, true_state, false_state,
-            self.annotation)
-        self._env_update(env, state)
-        return state
+    def _join_flow(self, state, true_state, false_state):
+        return state.post_conditional(
+            self.conditional_expr, true_state, false_state, self.annotation)
 
 
 class IfFlow(SplitJoinFlow):
@@ -182,32 +186,38 @@ class IfFlow(SplitJoinFlow):
         self.true_flow = true_flow
         self.false_flow = false_flow
 
-    def transition(self, state, env):
+    def transition(self, state):
         true_state, false_state = self._split_flow(
-            state, self.true_flow, self.false_flow, env)
-        return self._join_flow(state, true_state, false_state, env)
+            state, self.true_flow, self.false_flow)
+        return self._join_flow(state, true_state, false_state)
 
-    def format(self, env=None):
-        render_kwargs = dict(flow=self, env=env, color=color)
-        true_template = Template(code_gobble("""
-            {% if env %}{# color(flow._env_get(env)[True]) #}
-            {% end %}{# flow.true_flow.format(env) #}
-            """))
-        true_format = _indent(true_template.render(render_kwargs))
-        false_template = Template(code_gobble("""
-            {% if env %}{# color(flow._env_get(env)[False]) #}
-            {% end %}{# flow.false_flow.format(env) #}
-            """))
-        false_format = _indent(false_template.render(render_kwargs))
-        template = Template(code_gobble("""
+    def format(self, state=None):
+        render_kwargs = {
+            'flow': self,
+            'state': state,
+            'annotation': superscript(self.annotation),
+        }
+        branch_template = Template(_code_gobble("""
+            {% if state %}{# split_format #}
+            {% end %}{# split_flow_format #}"""))
+
+        formats = []
+        for flow, cond in (self.true_flow, True), (self.false_flow, False):
+            split_format = self._conditional_format(state, cond)
+            f = branch_template.render(
+                render_kwargs, split_format=split_format,
+                split_flow_format=flow.format(state))
+            formats.append(_indent(f))
+
+        template = Template(_code_gobble("""
             if [{# flow.conditional_expr #}]{# annotation #} (
             {# true_format #}){% if flow.false_flow %} (
-            {# false_format #});{% end %}{% if env %}
-            {# color(flow._env_get(env)[None]) #}{% end %}
+            {# false_format #});{% end %}{% if state %}
+            {# join_format #}{% end %}
             """))
         return template.render(
-            render_kwargs, annotation=superscript(self.annotation),
-            true_format=true_format, false_format=false_format)
+            render_kwargs, true_format=formats[0], false_format=formats[1],
+            join_format=_state_with_label(state, self.label))
 
     def __eq__(self, other):
         if not super().__eq__(other):
@@ -238,7 +248,7 @@ class WhileFlow(SplitJoinFlow):
         self.conditional_expr = conditional_expr
         self.loop_flow = loop_flow
 
-    def transition(self, state, env):
+    def transition(self, state):
         check_itr = lambda itr, target_itr: (
             target_itr and itr % target_itr == 0)
         iter_count = 0
@@ -264,9 +274,7 @@ class WhileFlow(SplitJoinFlow):
                 # Control and data flow
                 true_split, false_split = self._split(state)
                 false_state |= false_split
-                state = self.loop_flow.transition(true_split, env)
-                # Comes before widening to ensure preciseness?
-                self._env_update(env, state, true_split, false_split)
+                state = self.loop_flow.transition(true_split)
                 # Widening
                 if check_itr(iter_count, context.widen_factor):
                     logger.persistent(
@@ -282,21 +290,23 @@ class WhileFlow(SplitJoinFlow):
                 .format(flow=self, state=true_split))
         return false_state
 
-    def format(self, env=None):
-        render_kwargs = dict(flow=self, env=env, color=color)
-        loop_format = _indent(Template(code_gobble("""
-            {% if env %}{# color(flow._env_get(env)[True]) #}
-            {% end %}{# flow.loop_flow.format(env) #}
+    def format(self, state=None):
+        render_kwargs = {
+            'flow': self,
+            'state': state,
+            'entry_format': self._conditional_format(state, True),
+            'exit_format': self._conditional_format(state, False),
+            'annotation': superscript(self.annotation),
+        }
+        loop_format = _indent(Template(_code_gobble("""
+            {% if state %}{# entry_format #}
+            {% end %}{# flow.loop_flow.format(state) #}
             """)).render(render_kwargs))
-        template = Template(code_gobble("""
+        template = Template(_code_gobble("""
             while [{# flow.conditional_expr #}]{# annotation #} (
-            {# loop_format #});{% if env %}
-            {# color(flow._env_get(env)[False]) #}{% end %}
-            """))
-        rendered = template.render(
-            render_kwargs, annotation=superscript(self.annotation),
-            loop_format=loop_format)
-        return rendered
+            {# loop_format #});{% if state %}
+            {# exit_format #}{% end %}"""))
+        return template.render(render_kwargs, loop_format=loop_format)
 
     def __eq__(self, other):
         if not super().__eq__(other):
@@ -326,10 +336,9 @@ class CompositionalFlow(Flow):
         super().__init__(iteration=iteration)
         self.flows = tuple(flows or [])
 
-    def transition(self, state, env):
+    def transition(self, state):
         for flow in self.flows:
-            state = flow.transition(state, env)
-        self._env_update(env, state)
+            state = flow.transition(state)
         return state
 
     def __add__(self, other):
@@ -341,8 +350,8 @@ class CompositionalFlow(Flow):
     def __bool__(self):
         return any(self.flows)
 
-    def format(self, env=None):
-        return '\n'.join(flow.format(env) for flow in self.flows)
+    def format(self, state=None):
+        return '\n'.join(flow.format(state) for flow in self.flows)
 
     def __eq__(self, other):
         if not super().__eq__(other):
