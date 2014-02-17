@@ -49,3 +49,11 @@ class Iteration(Lattice, int):
     def __repr__(self):
         return '{cls}({val!r})'.format(
             cls=self.__class__.__name__, val=int(self))
+
+
+def all_iterations():
+    itr = Iteration(bottom=True)
+    yield itr
+    while not itr.is_top():
+        itr += 1
+        yield itr
