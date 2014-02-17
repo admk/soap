@@ -44,6 +44,7 @@ def raise_parser_error(desc, text, token):
 
 def ast_to_expr(t, s):
     from soap.expression.common import expression_factory
+    from soap.semantics.common import is_constant
     from soap.semantics.error import cast, mpz, mpfr
     if isinstance(t, ast.Num):
         v = t.n
@@ -74,6 +75,9 @@ def ast_to_expr(t, s):
         return expression_factory(op, *args)
     if isinstance(t, ast.UnaryOp):
         a = ast_to_expr(t.operand, s)
+        if is_constant(a):
+            if op == UNARY_SUBTRACT_OP:
+                return -a
         return expression_factory(op, a)
     if isinstance(t, ast.BinOp):
         a1 = ast_to_expr(t.left, s)
