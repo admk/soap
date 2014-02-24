@@ -203,11 +203,20 @@ class IfFlow(SplitJoinFlow):
 
         formats = []
         for flow, cond in (self.true_flow, True), (self.false_flow, False):
-            split_format = self._conditional_format(state, cond)
+            if state:
+                split_format = self._conditional_format(state, cond)
+            else:
+                split_format = None
             f = branch_template.render(
                 render_kwargs, split_format=split_format,
                 split_flow_format=flow.format(state))
             formats.append(_indent(f))
+        true_format, false_format = formats
+
+        if state:
+            join_format = _state_with_label(state, self.label)
+        else:
+            join_format = None
 
         template = Template(_code_gobble("""
             if [{# flow.conditional_expr #}]{# annotation #} (
@@ -216,8 +225,8 @@ class IfFlow(SplitJoinFlow):
             {# join_format #}{% end %}
             """))
         return template.render(
-            render_kwargs, true_format=formats[0], false_format=formats[1],
-            join_format=_state_with_label(state, self.label))
+            render_kwargs, true_format=true_format, false_format=false_format,
+            join_format=join_format)
 
     def __eq__(self, other):
         if not super().__eq__(other):
