@@ -24,9 +24,7 @@ def _indent(code):
 
 
 def _state_with_label(state, label):
-    return _color(state.__class__({
-        key: state[key] for key in state if key.label == label
-    }))
+    return _color(state.filter(label=label))
 
 
 class Flow(object):

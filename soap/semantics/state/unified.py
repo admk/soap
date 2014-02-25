@@ -1,3 +1,5 @@
+import itertools
+
 from soap.semantics.state.arithmetic import IdentifierArithmeticState
 from soap.semantics.state.base import BaseState
 from soap.semantics.state.box import IdentifierBoxState
@@ -60,3 +62,17 @@ class SoapState(BaseState, IdentifierBoxState * IdentifierArithmeticState):
             for self_comp, other_comp in zip(self.components, other.components)
         )
         return self.__class__(*components)
+
+    def filter(self, variable=None, label=None, iteration=None):
+        components = tuple(
+            component.filter(
+                variable=variable, label=label, iteration=iteration)
+            for component in self.components)
+        return self.__class__(*components)
+
+    def __getitem__(self, key):
+        return tuple(component[key] for component in self.components)
+
+    def __iter__(self):
+        return iter(set(itertools.chain.from_iterable(
+            iter(component) for component in self.components)))

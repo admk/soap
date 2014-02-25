@@ -89,3 +89,19 @@ class IdentifierBaseState(BaseState):
             mapping[join_id] = self._post_conditional_join_value(
                 expr, k, true_state, false_state)
         return self.__class__(mapping)
+
+    def filter(self, variable=None, label=None, iteration=None):
+        kwargs = {
+            'variable': variable,
+            'label': label,
+            'iteration': iteration,
+        }
+        items = {}
+        for identifier, value in self.items():
+            for attr, attr_val in kwargs.items():
+                if attr_val is not None:
+                    if getattr(identifier, attr) != attr_val:
+                        break
+            else:
+                 items[identifier] = value
+        return self.__class__(items)
