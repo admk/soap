@@ -18,15 +18,12 @@ def _decorate(cls):
 
     def decorate_pre_conditional(func):
         @wraps(func)
-        def pre_conditional(self, expr, true_annotation, false_annotation):
-            true_state, false_state = func(
-                self, expr, true_annotation, false_annotation)
-            annotations = superscript(
-                ','.join(str(a) for a in (true_annotation, false_annotation)))
+        def pre_conditional(self, expr, annotation):
+            true_state, false_state = func(self, expr, annotation)
             logger.debug(
-                '⟦[{expr}]{annotations}⟧{state} --split-→ ({true}, {false})'
+                '⟦[{expr}]{annotation}⟧{state} --split-→ ({true}, {false})'
                 .format(
-                    expr=expr, annotations=annotations, state=self,
+                    expr=expr, annotation=annotation, state=self,
                     true=true_state, false=false_state))
             return true_state, false_state
         return pre_conditional
@@ -85,7 +82,7 @@ class BaseState(object):
         """Makes an assignment and returns a new state object."""
         raise NotImplementedError
 
-    def pre_conditional(self, expr, true_annotation, false_annotation):
+    def pre_conditional(self, expr, annotation):
         """Imposes a conditional on the state, returns a 2-tuple of states,
         respectively represent true and false states."""
         raise NotImplementedError

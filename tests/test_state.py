@@ -167,8 +167,7 @@ class TestIdentifierArithmeticState(unittest.TestCase):
 
     def test_conditional(self):
         cond = expr('x < 1')
-        true_ann, false_ann, cond_ann = (
-            Annotation(Label(cond)) for cond in (True, False, None))
+        cond_ann = Annotation(Label(cond))
         x = expr('x')
         xp1 = expr('x + 1')
         xp1_ann = Annotation(Label(xp1))
@@ -177,8 +176,7 @@ class TestIdentifierArithmeticState(unittest.TestCase):
 
         state = IdentifierArithmeticState()
 
-        true_state, false_state = state.pre_conditional(
-            cond, true_ann, false_ann)
+        true_state, false_state = state.pre_conditional(cond, cond_ann)
         true_state = true_state.assign(x, xp1, xp1_ann)
         false_state = false_state.assign(x, xm1, xm1_ann)
 

@@ -128,41 +128,17 @@ class AssignFlow(Flow):
 class SplitJoinFlow(Flow):
     """A utility flow base class for control flow spliting and joining."""
 
-    def _conditional_label(self, cond):
-        return Label(statement=(self, cond))
-
-    def _conditional_annotation(self, cond):
-        return Annotation(
-            self._conditional_label(cond), iteration=self.iteration)
-
     def _conditional_format(self, state, cond):
-        return _state_with_label(state, self._conditional_label(cond))
-
-    @property
-    def true_split_label(self):
-        return self._conditional_label(True)
-
-    @property
-    def false_split_label(self):
-        return self._conditional_label(False)
-
-    @property
-    def true_split_annotation(self):
-        return self._conditional_annotation(True)
-
-    @property
-    def false_split_annotation(self):
-        return self._conditional_annotation(False)
+        return _state_with_label(
+            state, self.annotation.label.attributed(cond))
 
     @property
     def conditional_variable(self):
         return self.conditional_expr.args[0]
 
     def _split_flow(self, state, true_flow, false_flow):
-        annotations = [
-            self._conditional_annotation(cond) for cond in (True, False)]
         true_split, false_split = state.pre_conditional(
-            self.conditional_expr, *annotations)
+            self.conditional_expr, self.annotation)
         true_state = true_flow.transition(true_split)
         false_state = false_flow.transition(false_split)
         return true_state, false_state

@@ -67,7 +67,7 @@ class IdentifierBaseState(BaseState):
         return self.__class__(incr_map)
 
     def _post_conditional_join_value(
-            self, conditional_expr, final_key, true_state, false_state):
+            self, final_key, true_value, false_value, annotation):
         raise NotImplementedError
 
     def post_conditional(self, expr, true_state, false_state, annotation):
@@ -87,7 +87,7 @@ class IdentifierBaseState(BaseState):
             join_id = Identifier(k.variable, annotation=annotation)
             mapping[k] = join_id
             mapping[join_id] = self._post_conditional_join_value(
-                expr, k, true_state, false_state)
+                k, true_state[k], false_state[k], annotation)
         return self.__class__(mapping)
 
     def filter(self, variable=None, label=None, iteration=None):
@@ -103,5 +103,5 @@ class IdentifierBaseState(BaseState):
                     if getattr(identifier, attr) != attr_val:
                         break
             else:
-                 items[identifier] = value
+                items[identifier] = value
         return self.__class__(items)

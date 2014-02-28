@@ -26,15 +26,24 @@ def fresh_int(e=None):
 
 class Label(flat(int), Flyweight):
     """Constructs a label for expression or statement `statement`"""
-    __slots__ = ('label_value', 'statement', 'description')
+    __slots__ = ('label_value', 'statement', 'attribute', 'description')
 
-    def __init__(self, statement=None, label_value=None, description=None,
-                 top=False, bottom=False):
-        self.label_value = label_value or fresh_int(
-            (statement, self.__class__))
+    def __init__(self, statement=None, attribute=None, label_value=None,
+                 description=None, top=False, bottom=False):
+        self.label_value = (
+            label_value or fresh_int((statement, self.__class__)))
         self.statement = statement
+        self.attribute = attribute
         self.description = description
         super().__init__(top=top, bottom=bottom, value=self.label_value)
+
+    def attributed(self, attribute):
+        if self.is_top() or self.is_bottom():
+            raise ValueError(
+                'Top or bottom label cannot be assigned attribute.')
+        return self.__class__(
+            statement=self.statement, attribute=attribute,
+            description=self.description)
 
     def signal_name(self):
         return 's_{}'.format(self.label_value)
@@ -49,21 +58,25 @@ class Label(flat(int), Flyweight):
         return 'p_{}'.format(s)
 
     def __str__(self):
-        s = 'l{}'.format(self.label_value)
+        s = '{}'.format(self.label_value)
+        if self.attribute:
+            s += '{}'.format(self.attribute)
         if self.description:
             s += ':{.desc}'.format(self)
         return s
 
     @recursive_repr()
     def __repr__(self):
-        return '{cls}({label!r}, {statement!r})'.format(
-            cls=self.__class__.__name__,
-            label=self.label_value, statement=self.statement)
+        return '{cls}({label!r}, {statement!r}, {attribute!r})'.format(
+            cls=self.__class__.__name__, label=self.label_value,
+            statement=self.statement, attribute=self.attribute)
 
     def __eq__(self, other):
         if not isinstance(other, Label):
             return False
-        return self.label_value == other.label_value
+        return (
+            self.label_value == other.label_value and
+            self.attribute == other.attribute)
 
     def __hash__(self):
-        return hash((self.__class__, self.label_value))
+        return hash((self.__class__, self.label_value, self.attribute))

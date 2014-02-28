@@ -52,7 +52,7 @@ class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
     def assign(self, var, expr, annotation):
         return self[var:self.eval(expr)]
 
-    def pre_conditional(self, expr, true_annotation, false_annotation):
+    def pre_conditional(self, expr, annotation):
         """
         Supports only simple boolean expressions::
             <variable> <operator> <arithmetic expression>
@@ -120,14 +120,18 @@ class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
                 return self.__class__(bottom=True)
             return self.assign(expr.a1, cstr, annotation)
 
-        zipper = ((True, true_annotation), (False, false_annotation))
+        zipper = [
+            (True, annotation.attributed_true()),
+            (False, annotation.attributed_false()),
+        ]
         return (conditional(cond, ann) for cond, ann in zipper)
 
     def post_conditional(self, expr, true_state, false_state, annotation):
         return true_state | false_state
 
     def conditional(self, expr, cond, annotation):
-        return list(self.pre_conditional(expr, *([annotation] * 2)))[not cond]
+        """FIXME deprecate this. """
+        return list(self.pre_conditional(expr, annotation))[not cond]
 
     def is_fixpoint(self, other):
         """Checks if `self` is equal to `other` in the value ranges.
@@ -200,5 +204,5 @@ class IdentifierBoxState(IdentifierBaseState, BoxState):
             Identifier(var, annotation=annotation), self.eval(expr))
 
     def _post_conditional_join_value(
-            self, conditional_expr, final_key, true_state, false_state):
-        return true_state[final_key] | false_state[final_key]
+            self, final_key, true_value, false_value, annotation):
+        return true_value | false_value
