@@ -27,15 +27,13 @@ class SoapState(BaseState, IdentifierBoxState * IdentifierArithmeticState):
 
     def assign(self, var, expr, annotation):
         """Makes an assignment and returns a new state object."""
-        components = tuple(
-            c.assign(var, expr, annotation) for c in self.components)
+        components = [c.assign(var, expr, annotation) for c in self.components]
         return self.__class__(*components)
 
-    def pre_conditional(self, expr, true_annotation, false_annotation):
+    def pre_conditional(self, expr, annotation):
         """Imposes a conditional on the state, returns a new state."""
-        zipped_components = tuple(
-            c.pre_conditional(expr, true_annotation, false_annotation)
-            for c in self.components)
+        zipped_components = [
+            c.pre_conditional(expr, annotation) for c in self.components]
         return (self.__class__(*components)
                 for components in zip(*zipped_components))
 
@@ -43,9 +41,9 @@ class SoapState(BaseState, IdentifierBoxState * IdentifierArithmeticState):
         """Imposes a conditional on the state, returns a new state."""
         zipper_components = zip(
             self.components, true_state.components, false_state.components)
-        components = tuple(
+        components = [
             c.post_conditional(expr, t, f, annotation)
-            for c, t, f in zipper_components)
+            for c, t, f in zipper_components]
         return self.__class__(*components)
 
     def is_fixpoint(self, other):
@@ -57,17 +55,17 @@ class SoapState(BaseState, IdentifierBoxState * IdentifierArithmeticState):
 
     def widen(self, other):
         """Widening, defaults to least upper bound (i.e. join)."""
-        components = tuple(
+        components = [
             self_comp.widen(other_comp)
             for self_comp, other_comp in zip(self.components, other.components)
-        )
+        ]
         return self.__class__(*components)
 
     def filter(self, variable=None, label=None, iteration=None):
-        components = tuple(
+        components = [
             component.filter(
                 variable=variable, label=label, iteration=iteration)
-            for component in self.components)
+            for component in self.components]
         return self.__class__(*components)
 
     def __getitem__(self, key):

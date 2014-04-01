@@ -232,6 +232,18 @@ class WhileFlow(SplitJoinFlow):
         self.loop_flow = loop_flow
 
     def transition(self, state):
+        prev_state = state.__class__(bottom=True)
+        try:
+            while not state.is_fixpoint(prev_state):
+                true_state, false_state = self._split_flow(
+                    state, self.loop_flow, IdentityFlow())
+                prev_state = state
+                state = self._join_flow(state, true_state, false_state)
+        except KeyboardInterrupt:
+            pass
+        return state
+
+    def _alt_transition(self, state):
         check_itr = lambda itr, target_itr: (
             target_itr and itr % target_itr == 0)
         iter_count = 0

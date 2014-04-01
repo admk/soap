@@ -72,16 +72,17 @@ class IdentifierBaseState(BaseState):
 
     def post_conditional(self, expr, true_state, false_state, annotation):
         mapping = {}
-        for k, v in set(true_state.items()) | set(false_state.items()):
+        for k in set(true_state) | set(false_state):
             # if is not final identifier, keep its value
             if not k.annotation.is_bottom():
-                existing_value = mapping.get(k)
-                if existing_value and existing_value != v:
+                true_value, false_value = true_state[k], false_state[k]
+                value = true_value.join(false_value)
+                if value.is_top():
                     raise ValueError(
-                        'Conflict in mapping update, same key {k}, '
-                        'but different values {v}, {existing_value}'.format(
-                            k=k, v=v, existing_value=existing_value))
-                mapping[k] = v
+                        'Joining {true_value} and {false_value} produces top, '
+                        'which signifies a conflict.'.format(
+                            true_value=true_value, false_value=false_value))
+                mapping[k] = value
                 continue
             # if k is final, join values for k in true & false states
             join_id = Identifier(k.variable, annotation=annotation)
