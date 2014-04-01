@@ -91,6 +91,9 @@ class IdentifierBaseState(BaseState):
                 k, true_state[k], false_state[k], annotation)
         return self.__class__(mapping)
 
+    def loop_exit(self, expr, exit_state, annotation):
+        ...
+
     def filter(self, variable=None, label=None, iteration=None):
         kwargs = {
             'variable': variable,

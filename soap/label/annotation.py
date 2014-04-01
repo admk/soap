@@ -30,6 +30,8 @@ class Annotation(Label * Iteration):
         return self.attributed('cl')
 
     def __str__(self):
+        if self.iteration.is_bottom():
+            return str(self.label)
         return '({label}, {iteration})'.format(
             label=self.label, iteration=self.iteration)
 
