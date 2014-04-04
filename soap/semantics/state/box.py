@@ -1,28 +1,14 @@
-from soap.expression import (
-    LESS_OP, GREATER_OP, LESS_EQUAL_OP, GREATER_EQUAL_OP,
-    EQUAL_OP, NOT_EQUAL_OP, Expression, Variable
-)
+from soap.expression.variable import Variable
 from soap.label.identifier import Identifier
 from soap.lattice.map import map
-from soap.semantics.error import (
-    inf, ulp, cast, mpz_type, mpfr_type,
-    IntegerInterval, FloatInterval, ErrorSemantics
-)
+from soap.semantics.error import cast, IntegerInterval, ErrorSemantics
 from soap.semantics.state.base import BaseState
 from soap.semantics.state.identifier import IdentifierBaseState
+from soap.semantics.state.functions import bool_eval
 
 
 class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
     __slots__ = ()
-
-    _negate_dict = {
-        LESS_OP: GREATER_EQUAL_OP,
-        LESS_EQUAL_OP: GREATER_OP,
-        GREATER_OP: LESS_EQUAL_OP,
-        GREATER_EQUAL_OP: LESS_OP,
-        EQUAL_OP: NOT_EQUAL_OP,
-        NOT_EQUAL_OP: EQUAL_OP,
-    }
 
     def _cast_key(self, key):
         if isinstance(key, str):
@@ -36,102 +22,6 @@ class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
         if top or bottom:
             return IntegerInterval(top=top, bottom=bottom)
         return cast(value)
-
-    def eval(self, expr):
-        """Evaluates an expression with state's mapping."""
-        if isinstance(expr, Variable):
-            return self[expr]
-        if isinstance(expr, Expression):
-            return expr.eval(self)
-        if isinstance(expr, (IntegerInterval, FloatInterval, ErrorSemantics)):
-            return expr
-        if isinstance(expr, (mpz_type, mpfr_type)):
-            return expr
-        raise TypeError('Do not know how to evaluate {!r}'.format(expr))
-
-    def assign(self, var, expr, annotation):
-        return self[var:self.eval(expr)]
-
-    def pre_conditional(self, expr, annotation):
-        """
-        Supports only simple boolean expressions::
-            <variable> <operator> <arithmetic expression>
-        For example::
-            x <= 3 * y.
-        """
-        def eval(expr):
-            bound = self.eval(expr)
-            if isinstance(bound, (int, mpz_type)):
-                return IntegerInterval(bound)
-            if isinstance(bound, (float, mpfr_type)):
-                return FloatInterval(bound)
-            if isinstance(bound, IntegerInterval):
-                return bound
-            if isinstance(bound, ErrorSemantics):
-                # It cannot handle incorrect branching due to error in
-                # evaluation of the expression.
-                return bound.v
-            raise TypeError(
-                'Evaluation returns an object of unknown type %r' % bound)
-
-        def contract(op, bound):
-            if op not in [LESS_OP, GREATER_OP]:
-                return bound.min, bound.max
-            if isinstance(bound, IntegerInterval):
-                bmin = bound.min + 1
-                bmax = bound.max - 1
-            elif isinstance(bound, FloatInterval):
-                bmin = bound.min + ulp(bound.min)
-                bmax = bound.max - ulp(bound.max)
-            else:
-                raise TypeError
-            return bmin, bmax
-
-        def constraint(op, cond, bound):
-            op = self._negate_dict[op] if not cond else op
-            if bound.is_bottom():
-                return bound
-            bound_min, bound_max = contract(op, bound)
-            if op == EQUAL_OP:
-                return bound
-            if op == NOT_EQUAL_OP:
-                raise NotImplementedError
-            if op in [LESS_OP, LESS_EQUAL_OP]:
-                return bound.__class__([-inf, bound_max])
-            if op in [GREATER_OP, GREATER_EQUAL_OP]:
-                return bound.__class__([bound_min, inf])
-            raise ValueError('Unknown boolean operator %s' % op)
-
-        def conditional(cond, annotation):
-            bound = eval(expr.a2)
-            if isinstance(self[expr.a1], (FloatInterval, ErrorSemantics)):
-                # Comparing floats
-                bound = FloatInterval(bound)
-            cstr = constraint(expr.op, cond, bound)
-            if isinstance(cstr, FloatInterval):
-                cstr = ErrorSemantics(cstr, FloatInterval(top=True))
-            cstr &= self[expr.a1]
-            bot = isinstance(cstr, ErrorSemantics) and cstr.v.is_bottom()
-            bot = bot or cstr.is_bottom()
-            if bot:
-                """Branch evaluates to false, because no possible values of
-                the variable satisfies the constraint condition, it is safe to
-                return *bottom* to denote an unreachable state. """
-                return self.__class__(bottom=True)
-            return self.assign(expr.a1, cstr, annotation)
-
-        zipper = [
-            (True, annotation.attributed_true()),
-            (False, annotation.attributed_false()),
-        ]
-        return (conditional(cond, ann) for cond, ann in zipper)
-
-    def post_conditional(self, expr, true_state, false_state, annotation):
-        return true_state | false_state
-
-    def conditional(self, expr, cond, annotation):
-        """FIXME deprecate this. """
-        return list(self.pre_conditional(expr, annotation))[not cond]
 
     def is_fixpoint(self, other):
         """Checks if `self` is equal to `other` in the value ranges.
@@ -183,26 +73,24 @@ class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
 class IdentifierBoxState(IdentifierBaseState, BoxState):
     __slots__ = ()
 
-    def __getitem__(self, key):
-        item = super().__getitem__(key)
-        if isinstance(item, Identifier):
-            return super().__getitem__(item)
-        return item
-
     def _cast_value(self, value=None, top=False, bottom=False):
         if not isinstance(value, Identifier):
             return super()._cast_value(value, top=top, bottom=bottom)
         return value
 
-    def eval(self, expr):
-        if isinstance(expr, Identifier):
-            return self[expr]
-        return super().eval(expr)
+    def annotated_assignment(self, key, value, annotation):
+        state = self.copy()
+        state[Identifier(key, annotation=annotation)] |= value
+        state[key] = value
+        return state
 
-    def assign(self, var, expr, annotation):
-        return self.increment(
-            Identifier(var, annotation=annotation), self.eval(expr))
+    def bool_eval(self, expr):
+        def conditional(cond):
+            var, cstr = bool_eval(self, expr, cond)
+            annotation = flow.annotation.attributed(cond)
+            return self.annotated_assignment(var, cstr, annotation)
+        return [conditional(True), conditional(False)]
 
-    def _post_conditional_join_value(
-            self, final_key, true_value, false_value, annotation):
-        return true_value | false_value
+    def visit_AssignFlow(self, flow):
+        value = self._cast_value(self.arith_eval(flow.expr))
+        return self.annotated_assignment(flow.var, value, flow.annotation)
