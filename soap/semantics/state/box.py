@@ -4,7 +4,7 @@ from soap.label import Label, Identifier
 from soap.lattice.map import map
 from soap.semantics.error import cast, ErrorSemantics, IntegerInterval
 from soap.semantics.state.base import BaseState
-from soap.semantics.state.functions import arith_eval, bool_eval
+from soap.semantics.state.functions import arith_eval
 from soap.semantics.state.identifier import IdentifierBaseState
 
 
@@ -48,7 +48,8 @@ class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
             if type(v) is not type(u):
                 return False
             if isinstance(v, ErrorSemantics):
-                u, v = u.v, v.v
+                if not v.is_top() and not u.is_top():
+                    u, v = u.v, v.v
             if u != v:
                 return False
         return True
