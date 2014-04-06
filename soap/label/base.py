@@ -45,6 +45,18 @@ class Label(flat(int), Flyweight):
             statement=self.statement, attribute=attribute,
             description=self.description)
 
+    def attributed_true(self):
+        return self.attributed('tt')
+
+    def attributed_false(self):
+        return self.attributed('ff')
+
+    def attributed_entry(self):
+        return self.attributed('en')
+
+    def attributed_exit(self):
+        return self.attributed('ex')
+
     def signal_name(self):
         return 's_{}'.format(self.label_value)
 

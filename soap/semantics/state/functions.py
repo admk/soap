@@ -98,5 +98,5 @@ def bool_eval(state, expr, cond):
     bot = isinstance(cstr, ErrorSemantics) and cstr.v.is_bottom()
     bot = bot or cstr.is_bottom()
     if bot:
-        return cstr.__class__(bottom=True)
+        return expr.a1, cstr.__class__(bottom=True)
     return expr.a1, cstr

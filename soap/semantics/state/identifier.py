@@ -1,7 +1,5 @@
-from soap.expression import Expression, expression_factory, Variable
+from soap.expression import Variable
 from soap.label import Annotation, Identifier
-from soap.lattice import Lattice
-from soap.semantics.common import is_numeral
 from soap.semantics.state.base import BaseState
 
 
@@ -36,9 +34,10 @@ class IdentifierBaseState(BaseState):
         items = {}
         for identifier, value in self.items():
             for attr, attr_val in kwargs.items():
-                if attr_val is not None:
-                    if getattr(identifier, attr) != attr_val:
-                        break
+                if attr_val is None:
+                    continue
+                if getattr(identifier, attr) != attr_val:
+                    break
             else:
                 items[identifier] = value
         return self.__class__(items)

@@ -22,11 +22,9 @@ def _indent(code):
 
 
 def _state_with_label(state, label):
+    if state is None:
+        return
     return _color(state.filter(label=label))
-
-
-def _conditional_format(flow, state, cond):
-    return state
 
 
 class Flow(object):
@@ -135,10 +133,11 @@ class IfFlow(Flow):
 
         formats = []
         for flow, cond in (self.true_flow, True), (self.false_flow, False):
-            if state:
-                split_format = _conditional_format(self, state, cond)
+            if cond:
+                label = flow.annotation.label.attributed_true()
             else:
-                split_format = None
+                label = flow.annotation.label.attributed_false()
+            split_format = _state_with_label(state, label)
             f = branch_template.render(
                 render_kwargs, split_format=split_format,
                 split_flow_format=flow.format(state))
@@ -146,7 +145,8 @@ class IfFlow(Flow):
         true_format, false_format = formats
 
         if state:
-            join_format = _state_with_label(state, self.label)
+            exit_label = self.label.attributed_exit()
+            join_format = _state_with_label(state, exit_label)
         else:
             join_format = None
 
@@ -189,11 +189,13 @@ class WhileFlow(Flow):
         self.loop_flow = loop_flow
 
     def format(self, state=None):
+        entry_label = self.annotation.label.attributed_entry()
+        exit_label = self.annotation.label.attributed_exit()
         render_kwargs = {
             'flow': self,
             'state': state,
-            'entry_format': _conditional_format(self, state, True),
-            'exit_format': _conditional_format(self, state, False),
+            'entry_format': _state_with_label(state, entry_label),
+            'exit_format': _state_with_label(state, exit_label),
             'annotation': superscript(self.annotation),
         }
         loop_format = _indent(Template(_code_gobble("""

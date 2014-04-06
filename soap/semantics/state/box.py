@@ -1,10 +1,11 @@
+from soap import logger
 from soap.expression.variable import Variable
-from soap.label.identifier import Identifier
+from soap.label import Label, Identifier
 from soap.lattice.map import map
-from soap.semantics.error import cast, IntegerInterval, ErrorSemantics
+from soap.semantics.error import cast, ErrorSemantics, IntegerInterval
 from soap.semantics.state.base import BaseState
+from soap.semantics.state.functions import arith_eval, bool_eval
 from soap.semantics.state.identifier import IdentifierBaseState
-from soap.semantics.state.functions import bool_eval
 
 
 class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
@@ -78,19 +79,47 @@ class IdentifierBoxState(IdentifierBaseState, BoxState):
             return super()._cast_value(value, top=top, bottom=bottom)
         return value
 
-    def annotated_assignment(self, key, value, annotation):
+    def _annotated_transition(self, annotation):
         state = self.copy()
-        state[Identifier(key, annotation=annotation)] |= value
-        state[key] = value
+        for k, v in self.items():
+            if not k.annotation.is_bottom():
+                continue
+            state[Identifier(k.variable, annotation=annotation)] |= v
         return state
 
-    def bool_eval(self, expr):
-        def conditional(cond):
-            var, cstr = bool_eval(self, expr, cond)
-            annotation = flow.annotation.attributed(cond)
-            return self.annotated_assignment(var, cstr, annotation)
-        return [conditional(True), conditional(False)]
-
     def visit_AssignFlow(self, flow):
-        value = self._cast_value(self.arith_eval(flow.expr))
-        return self.annotated_assignment(flow.var, value, flow.annotation)
+        state = self.copy()
+        state[flow.var] = self._cast_value(arith_eval(self, flow.expr))
+        return state._annotated_transition(flow.annotation)
+
+    def visit_IfFlow(self, flow):
+        true_annotation = flow.annotation.attributed_true()
+        false_annotation = flow.annotation.attributed_false()
+        exit_annotation = flow.annotation.attributed_exit()
+
+        true_state, false_state = self._split_states(flow)
+        true_state = true_state._annotated_transition(true_annotation)
+        false_state = false_state._annotated_transition(false_annotation)
+        true_state = true_state.transition(flow.true_flow)
+        false_state = false_state.transition(flow.false_flow)
+
+        state = true_state | false_state
+        return state._annotated_transition(exit_annotation)
+
+    def visit_WhileFlow(self, flow):
+        fixpoint = self._solve_fixpoint(flow)
+
+        last_entry = fixpoint['last_entry'].filter(label=Label(bottom=True))
+        if not last_entry.is_bottom():
+            logger.warning(
+                'While loop "{flow}" may never terminate with state {state},'
+                'analysis assumes it always terminates'.format(
+                    flow=flow, state=fixpoint['last_entry']))
+
+        entry_annotation = flow.annotation.attributed_entry()
+        exit_annotation = flow.annotation.attributed_exit()
+
+        join_state = fixpoint['entry']._annotated_transition(entry_annotation)
+        state = fixpoint['exit'] | join_state
+
+        return state._annotated_transition(exit_annotation)

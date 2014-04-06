@@ -26,8 +26,11 @@ class Annotation(Label * Iteration):
     def attributed_false(self):
         return self.attributed('ff')
 
-    def attributed_conditional(self):
-        return self.attributed('cl')
+    def attributed_entry(self):
+        return self.attributed('en')
+
+    def attributed_exit(self):
+        return self.attributed('ex')
 
     def __str__(self):
         if self.iteration.is_bottom():
