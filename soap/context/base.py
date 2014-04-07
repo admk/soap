@@ -13,11 +13,13 @@ class _Context(dict):
     _Context, a dictionary subclass with dot syntax and snapshot support.
     """
     def __init__(self, dictionary=None, **kwargs):
+        super().__init__()
         if dictionary:
             kwargs.update(dictionary)
         kwargs = {k: self._cast_dict(v) for k, v in kwargs.items()}
         with self.no_invalidate_cache():
-            super().__init__(kwargs)
+            for k, v in kwargs.items():
+                self.__setattr__(k, v)
 
     @contextmanager
     def no_invalidate_cache(self):
