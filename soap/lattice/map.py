@@ -83,8 +83,13 @@ class MapLattice(Lattice, dict):
         key = self._cast_key(key)
         value = self._cast_value(value)
         if value.is_bottom():
+            if key in self:
+                del self[key]
             return
         super().__setitem__(key, value)
+
+    def __delitem__(self, key):
+        super().__delitem__(self._cast_key(key))
 
     def __str__(self):
         return '{{{}}}'.format(', '.join(

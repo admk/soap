@@ -113,6 +113,9 @@ class TestExampleFlow(unittest.TestCase):
         flow_env = flow(self.factorial).flow(env)
         less_env = BoxState(x=[4, 5], y=[0, 12])
         self.assertLessEqual(less_env, flow_env)
+    
+    def test_simple_if(self):
+        ...
 
     def test_factorial_error_flow(self):
         print(flow(self.factorial).debug(BoxState(x=1, y='1.2')))

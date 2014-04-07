@@ -418,10 +418,10 @@ class ErrorSemantics(Lattice):
             self.v, self.e = FloatInterval(v), error(v, e)
 
     def is_top(self):
-        return self.v.is_top() and self.e.is_top()
+        return self.v.is_top()
 
     def is_bottom(self):
-        return self.v.is_bottom() and self.e.is_bottom()
+        return self.v.is_bottom()
 
     @_decorate_coerce
     def join(self, other, cls):

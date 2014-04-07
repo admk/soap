@@ -17,7 +17,24 @@ class Annotation(Label * Iteration):
     def iteration(self):
         return self.components[1]
 
+    def attributed(self, attribute):
+        return self.__class__(self.label.attributed(attribute), self.iteration)
+
+    def attributed_true(self):
+        return self.attributed('tt')
+
+    def attributed_false(self):
+        return self.attributed('ff')
+
+    def attributed_entry(self):
+        return self.attributed('en')
+
+    def attributed_exit(self):
+        return self.attributed('ex')
+
     def __str__(self):
+        if self.iteration.is_bottom():
+            return str(self.label)
         return '({label}, {iteration})'.format(
             label=self.label, iteration=self.iteration)
 

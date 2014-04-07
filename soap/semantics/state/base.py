@@ -1,95 +1,123 @@
-from functools import wraps
+import copy
 
 from soap import logger
-from soap.label import superscript
-
-
-def _decorate(cls):
-    def decorate_assign(func):
-        @wraps(func)
-        def assign(self, var, expr, annotation):
-            state = func(self, var, expr, annotation)
-            logger.debug(
-                '⟦[{var} := {expr}]{annotation}⟧{prev} → {next}'.format(
-                    var=var, expr=expr, annotation=superscript(annotation),
-                    prev=self, next=state))
-            return state
-        return assign
-
-    def decorate_pre_conditional(func):
-        @wraps(func)
-        def pre_conditional(self, expr, annotation):
-            true_state, false_state = func(self, expr, annotation)
-            logger.debug(
-                '⟦[{expr}]{annotation}⟧{state} --split-→ ({true}, {false})'
-                .format(
-                    expr=expr, annotation=superscript(annotation),
-                    state=self, true=true_state, false=false_state))
-            return true_state, false_state
-        return pre_conditional
-
-    def decorate_post_conditional(func):
-        @wraps(func)
-        def post_conditional(self, expr, true_state, false_state, annotation):
-            state = func(self, expr, true_state, false_state, annotation)
-            logger.debug(
-                '⟦[{expr}]{annotation}⟧{prev}: '
-                '({true}, {false}) --join-→ {next}'.format(
-                    prev=self, expr=expr, annotation=superscript(annotation),
-                    true=true_state, false=false_state, next=state))
-            return state
-        return post_conditional
-
-    def decorate_join(func):
-        @wraps(func)
-        def join(self, other):
-            state = func(self, other)
-            logger.debug('{prev} ⊔ {other} → {next}'.format(
-                prev=self, other=other, next=state))
-            return state
-        return join
-
-    def decorate_le(func):
-        @wraps(func)
-        def le(self, other):
-            b = func(self, other)
-            logger.debug('{prev} {le_or_nle} {other}'.format(
-                prev=self, le_or_nle='⊑⋢'[b], other=other))
-            return b
-        return le
-
-    try:
-        if cls == BaseState or cls._state_decorated:
-            return
-    except AttributeError:
-        cls._state_decorated = True
-    cls.assign = decorate_assign(cls.assign)
-    cls.pre_conditional = decorate_pre_conditional(cls.pre_conditional)
-    cls.post_conditional = decorate_post_conditional(cls.post_conditional)
-    cls.join = decorate_join(cls.join)
-    cls.le = decorate_le(cls.le)
+from soap.context import context
+from soap.semantics.state.functions import arith_eval, bool_eval
 
 
 class BaseState(object):
     """Base state for all program states."""
     __slots__ = ()
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        _decorate(self.__class__)
+    def copy(self):
+        return copy.deepcopy(self)
 
-    def assign(self, var, expr, annotation):
-        """Makes an assignment and returns a new state object."""
-        raise NotImplementedError
+    def empty(self):
+        return self.__class__(bottom=True)
 
-    def pre_conditional(self, expr, cond, annotation):
-        """Imposes a conditional on the state, returns a 2-tuple of states,
-        respectively represent true and false states."""
-        raise NotImplementedError
+    def transition(self, flow):
+        return getattr(self, 'visit_' + flow.__class__.__name__)(flow)
 
-    def post_conditional(self, expr, true_state, false_state, annotation):
-        """Joins true and false states, return a new state."""
-        raise NotImplementedError
+    def visit_IdentityFlow(self, flow):
+        return self
+
+    def visit_AssignFlow(self, flow):
+        state = self.copy()
+        state[flow.var] = arith_eval(self, flow.expr)
+        return state
+
+    def _split_states(self, flow):
+        def conditional(cond):
+            var, cstr = bool_eval(self, flow.conditional_expr, cond)
+            if cstr.is_bottom():
+                return self.empty()
+            state = self.copy()
+            state[var] = cstr
+            return state
+        for cond in (True, False):
+            yield conditional(cond)
+
+    def visit_IfFlow(self, flow):
+        true_split, false_split = self._split_states(flow)
+        true_split = true_split.transition(flow.true_flow)
+        false_split = false_split.transition(flow.false_flow)
+        return true_split | false_split
+
+    def _solve_fixpoint(self, flow):
+        def _is_fixpoint(
+                state, prev_state, curr_join_state, prev_join_state,
+                iter_count):
+            if context.unroll_factor:
+                if iter_count % context.unroll_factor == 0:
+                    # join all states in previous iterations
+                    logger.info('No unroll', iter_count)
+                    return curr_join_state.is_fixpoint(prev_join_state)
+            return state.is_fixpoint(prev_state)
+
+        def _widen(state, prev_state, iter_count):
+            if context.unroll_factor:
+                if iter_count % context.unroll_factor == 0:
+                    logger.info('Widening', iter_count)
+                    state = prev_state.widen(state)
+            return state
+
+        iter_count = 0
+        loop_state = self
+        entry_state = entry_join_state = exit_join_state = self.empty()
+        prev_entry_state = prev_entry_join_state = self.empty()
+        prev_loop_state = self.empty()
+
+        while True:
+            iter_count += 1
+            logger.persistent('Iteration', iter_count)
+
+            # Split state
+            entry_state, exit_state = loop_state._split_states(flow)
+            exit_join_state |= exit_state
+
+            # Fixpoint test
+            entry_join_state = entry_state | prev_entry_join_state
+            if _is_fixpoint(
+                    entry_state, prev_entry_state,
+                    entry_join_state, prev_entry_join_state,
+                    iter_count):
+                break
+
+            # Update previous values
+            prev_entry_state = entry_state
+            prev_entry_join_state = entry_join_state
+            prev_loop_state = loop_state
+
+            # Loop flow
+            loop_state = entry_state.transition(flow.loop_flow)
+
+            # Widening
+            loop_state = _widen(loop_state, prev_loop_state, iter_count)
+
+        logger.unpersistent('Iteration')
+
+        return {
+            'entry': entry_join_state,
+            'exit': exit_join_state,
+            'last_entry': entry_state,
+            'last_exit': loop_state,
+        }
+
+    def visit_WhileFlow(self, flow):
+        fixpoint = self._solve_fixpoint(flow)
+        if not fixpoint['last_entry'].is_bottom():
+            logger.warning(
+                'While loop "{flow}" may never terminate with state {state},'
+                'analysis assumes it always terminates'.format(
+                    flow=flow, state=fixpoint['last_entry']))
+        return fixpoint['exit']
+
+    def visit_CompositionalFlow(self, flow):
+        """Follows compositionality."""
+        state = self
+        for f in flow.flows:
+            state = state.transition(f)
+        return state
 
     def is_fixpoint(self, other):
         """Fixpoint test, defaults to equality."""

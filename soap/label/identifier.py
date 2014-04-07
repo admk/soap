@@ -52,8 +52,12 @@ class Identifier(Variable * Annotation):
 
     def __str__(self):
         from soap.label import superscript
+        if self.annotation.iteration.is_bottom():
+            annotation = self.annotation.label
+        else:
+            annotation = self.annotation
         return '{variable}{annotation}'.format(
-            variable=self.variable, annotation=superscript(self.annotation))
+            variable=self.variable, annotation=superscript(annotation))
 
     def __repr__(self):
         return '{cls}({variable!r}, {label!r}, {iteration!r})'.format(

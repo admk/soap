@@ -44,38 +44,51 @@ class IdentifierArithmeticState(
         return self.increment(Identifier(var, annotation=annotation), expr)
 
     def pre_conditional(self, expr, annotation):
-        """Imposes a conditional on the state, returns a new state."""
-        return self, self
+        """Imposes a conditional on the state, returns a new state.  """
+        def assign_conditional(state, variable):
+            """Constructs conditional expression assignment for the conditional
+            annotation.  For example, if (x < 1)l0 (x = x + 1)l1 gives
+            x^l0_conditional := x0 < 1.  This helps with iteration increment of
+            the conditional expression.  """
+            return state.assign(
+                variable, expr, annotation.attributed_conditional())
 
-    def post_conditional(self, expr, true_state, false_state, annotation):
-        mapping = {}
-        for k, v in set(true_state.items()) | set(false_state.items()):
-            # if is not final identifier, keep its value
-            if not k.annotation.is_bottom():
-                existing_value = mapping.get(k)
-                if existing_value and existing_value != v:
-                    raise ValueError(
-                        'Conflict in mapping update, same key {k}, '
-                        'but different values {v}, {existing_value}'.format(
-                            k=k, v=v, existing_value=existing_value))
-                mapping[k] = v
-                continue
-            # if is final identifier, check final value conflicts;
-            true_value, false_value = true_state[k], false_state[k]
-            if true_value == false_value:
-                mapping[k] = true_value
-                continue
-            # if has branch conflict, insert conditional
-            join_id = Identifier(k.variable, annotation=annotation)
-            mapping[k] = join_id
-            mapping[join_id] = expression_factory(
-                TERNARY_SELECT_OP, self._cast_value(expr),
-                true_value, false_value)
-        return self.__class__(mapping)
+        def assign_split_values(state, variable, annotations):
+            """Adds true and false versions of the variable under true and
+            false labels.  """
+            for annotation in annotations:
+                state = state.assign(variable, self[variable], annotation)
+            return state
+
+        def iterate_split_finals(state, variable):
+            """Iterates split states, with true and false being final values in
+            sequence.  """
+            false_annotations = [
+                annotation.attributed_true(),
+                annotation.attributed_false(),
+            ]
+            true_annotations = reversed(false_annotations)
+            for annotations in [true_annotations, false_annotations]:
+                yield assign_split_values(state, variable, annotations)
+
+        variable = expr.a1
+        state = assign_conditional(self, variable)
+        return tuple(iterate_split_finals(state, variable))
+
+    def _post_conditional_join_value(
+            self, final_key, true_value, false_value, annotation):
+        # check final values in branched states for conflicts
+        if true_value == false_value:
+            # no conflict, return same value
+            return true_value
+        # if has branch conflict, insert conditional
+        conditional_identifier = Identifier(
+            variable=final_key.variable,
+            annotation=annotation.attributed_conditional())
+        return expression_factory(
+            TERNARY_SELECT_OP, conditional_identifier,
+            true_value, false_value)
 
     def widen(self, other):
-        """No widening is possible, simply return other.
-
-        TODO widening should be elimination of deep recursions.
-        """
+        """No widening is possible, simply return other."""
         return other
