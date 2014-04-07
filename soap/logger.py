@@ -22,7 +22,7 @@ with _global_context.no_invalidate_cache():
         'pause_level': levels.off,
         'color': True,
         'file': None,
-        'persistent': {},
+        '_persistent': {},
     }
     context = _global_context.logger
 
@@ -85,13 +85,13 @@ def rewrite(*args, **kwargs):
 
 def persistent(name, *args, **kwargs):
     l = kwargs.get('l', levels.info)
-    prev = get_context()['persistent'].get(name)
+    prev = get_context()['_persistent'].get(name)
     curr = args + (l, )
     if prev == curr:
         return
-    get_context()['persistent'][name] = curr
+    get_context()['_persistent'][name] = curr
     s = []
-    for k, v in get_context()['persistent'].items():
+    for k, v in get_context()['_persistent'].items():
         v = list(v)
         l = v.pop()
         s.append(k + ': ' + format(*v))
@@ -102,7 +102,7 @@ def persistent(name, *args, **kwargs):
 
 
 def unpersistent(*args):
-    p = get_context()['persistent']
+    p = get_context()['_persistent']
     for n in args:
         if not n in p:
             continue
