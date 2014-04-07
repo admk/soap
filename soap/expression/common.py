@@ -12,7 +12,8 @@ def is_variable(e):
 
 def is_expression(e):
     from soap.expression.base import Expression
-    return isinstance(e, Expression)
+    from soap.expression.variable import Variable
+    return isinstance(e, Expression) and not isinstance(e, Variable)
 
 
 def is_arith_expr(e):
@@ -50,7 +51,7 @@ def expression_factory(op, *args):
     from soap.expression.operators import (
         ARITHMETIC_OPERATORS, BOOLEAN_OPERATORS
     )
-    from soap.expression.base import Variable
+    from soap.expression.variable import Variable
     from soap.expression.arithmetic import (
         UnaryArithExpr, BinaryArithExpr, TernaryArithExpr
     )

@@ -6,7 +6,9 @@ from soap.expression.operators import (
     LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS,
     RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS,
 )
-from soap.expression.common import expression_factory
+from soap.expression.common import (
+    expression_factory, is_expression, is_variable
+)
 from soap.expression.base import (
     Expression, UnaryExpression, BinaryExpression, TernaryExpression
 )

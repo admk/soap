@@ -11,15 +11,7 @@ from soap.expression.base import (
 )
 
 
-class ArithExpr(Expression):
-    """Base class for arithmetic expressions."""
-
-    __slots__ = ()
-
-    def __init__(self, op=None, *args, top=False, bottom=False):
-        if not top and not bottom and op not in ARITHMETIC_OPERATORS:
-            raise ValueError('Boolean expression must use a boolean operator.')
-        super().__init__(op, *args, top=top, bottom=bottom)
+class ArithmeticMixin(object):
 
     def __add__(self, other):
         return BinaryArithExpr(op=ADD_OP, a1=self, a2=other)
@@ -38,6 +30,21 @@ class ArithExpr(Expression):
 
     def __neg__(self):
         return UnaryArithExpr(op=UNARY_SUBTRACT_OP, a=self)
+
+
+class ArithExpr(ArithmeticMixin, Expression):
+    """Base class for arithmetic expressions."""
+
+    __slots__ = ()
+
+    def __init__(self, op=None, *args, top=False, bottom=False,
+                 _check_args=True):
+        if _check_args:
+            if not top and not bottom and op not in ARITHMETIC_OPERATORS:
+                raise ValueError(
+                    'ArithExpr expression must use an arithmetic operator.')
+        super().__init__(
+            op, *args, top=top, bottom=bottom, _check_args=_check_args)
 
 
 class UnaryArithExpr(UnaryExpression, ArithExpr):
