@@ -3,8 +3,8 @@ import soap
 from soap import (
     context, IntegerInterval, FloatInterval, FractionInterval, ErrorSemantics,
     mpz, mpq, mpfr, mpz_type, mpq_type, mpfr_type, inf, ulp, cast, BoxState,
-    expr, flow, closure, expand, reduce, parsings, martel_trace, greedy_trace,
-    frontier_trace, logger
+    MetaState, expr, flow, closure, expand, reduce, parsings, martel_trace,
+    greedy_trace, frontier_trace, logger
 )
 
 
@@ -42,14 +42,16 @@ I = Int = IntegerInterval
 F = Float = FloatInterval
 E = Error = ErrorSemantics
 S = Box = BoxState
+M = Meta = MetaState
 i = __IntervalShortcut(IntegerInterval)
 f = __IntervalShortcut(FloatInterval)
 e = __IntervalShortcut(ErrorSemantics)
 s = __StateShortcut(BoxState)
+m = __StateShortcut(MetaState)
 ctx = context
 
 
 if __name__ == '__main__':
-    from soap.shell import Shell, trace
+    from soap.shell import shell, trace
     with logger.info_context():
-        Shell()()
+        shell()

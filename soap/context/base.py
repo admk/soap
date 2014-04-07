@@ -28,8 +28,8 @@ class _Context(dict):
         del self.should_invalidate_cache
 
     def __setattr__(self, key, value):
-        hook = getattr(self, key + '_hook', lambda k, v: (k, v))
-        key, value = hook(key, value)
+        hook = getattr(self, key + '_hook', lambda v: v)
+        value = hook(value)
         self[key] = self._cast_dict(value)
         if self.get('should_invalidate_cache', True):
             invalidate_cache()
