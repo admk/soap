@@ -1,11 +1,8 @@
 from soap.expression import operators
-from soap.expression.arithmetic import ArithExpr
-from soap.expression.base import UnaryExpression, BinaryExpression
-from soap.expression.boolean import BoolExpr
-from soap.expression.variable import ExpandableVariable
+from soap.expression.arithmetic import BinaryArithExpr
 
 
-class LinkExpression(BinaryExpression):
+class LinkExpr(BinaryArithExpr):
     __slots__ = ()
 
     def __init__(self, a1=None, a2=None, top=False, bottom=False):
@@ -13,25 +10,25 @@ class LinkExpression(BinaryExpression):
         # TODO validate a1 is a free variable
         # TODO validate a2 is a state
 
+    def __str__(self):
+        expr, state = self._args_to_str()
+        return '{expr} % {state}'.format(expr=expr, state=state)
 
-class LinkBoolExpr(LinkExpression, BoolExpr):
-    __slots__ = ()
+    def __repr__(self):
+        return '{cls}({a1!r}, {a2!r})'.format(
+            cls=self.__class__.__name__, a1=self.a1, a2=self.a2)
 
 
-class LinkArithExpr(LinkExpression, ArithExpr):
-    __slots__ = ()
+class FixExpr(BinaryArithExpr):
+    """Fixpoint expression."""
 
-
-class FixpointExpr(UnaryExpression):
-    """
-    Fixpoint expression.
-
-    An object of this class consists of an operator 'fix', and an argument
-    which is an ExpandableVariable instance that models the fixpoint funtion.
-    """
-    def __init__(self, a=None, top=False, bottom=False):
-        super().__init__(operators.FIXPOINT_OP, a, top=top, bottom=bottom)
+    def __init__(self, a1=None, a2=None, top=False, bottom=False):
+        super().__init__(operators.FIXPOINT_OP, a1, a2, top=top, bottom=bottom)
         if top or bottom:
             return
-        if not isinstance(a, ExpandableVariable):
-            raise TypeError('Argument must be an ExpandableVariable instance.')
+        # TODO a1 : free var
+        # TODO a2 : fix expr?
+        a1.expr = a2
+
+    def __str__(self):
+        return '{op}[{a1} ↦ {a2}]'.format(op=self.op, a1=self.a1, a2=self.a2)

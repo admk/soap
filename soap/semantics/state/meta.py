@@ -1,11 +1,16 @@
 from soap.expression import (
-    Expression, expression_factory, is_expression, is_variable,
-    operators, parse, Variable
+    Expression, LinkExpr, FixExpr, expression_factory, is_expression,
+    is_variable, operators, parse, Variable, FreeFlowVar
 )
 from soap.lattice.map import map
 from soap.semantics.error import cast
 from soap.semantics.common import is_numeral
 from soap.semantics.state.base import BaseState
+
+
+def _if_then_else(bool_expr, true_expr, false_expr):
+    return expression_factory(
+        operators.TERNARY_SELECT_OP, bool_expr, true_expr, false_expr)
 
 
 class MetaState(BaseState, map(None, Expression)):
@@ -69,8 +74,26 @@ class MetaState(BaseState, map(None, Expression)):
             if true_state[var] == false_state[var]:
                 value = true_state[var]
             else:
-                value = expression_factory(
-                    operators.TERNARY_SELECT_OP,
+                value = _if_then_else(
                     bool_expr, true_state[var], false_state[var])
             state[var] = value
+        return state
+
+    def visit_WhileFlow(self, flow):
+        bool_expr = flow.conditional_expr
+        loop_flow = flow.loop_flow
+        var_list = loop_flow.vars()
+
+        def fix_var(var):
+            free_var = FreeFlowVar(name=var.name, flow=flow)
+            id_state = self.__class__({k: k for k in var_list})
+            loop_state = id_state.transition(loop_flow)
+            true_expr = LinkExpr(free_var, loop_state)
+
+            fix_expr = _if_then_else(bool_expr, true_expr, var)
+            return FixExpr(free_var, fix_expr)
+
+        state = self.copy()
+        for k in var_list:
+            state[k] = fix_var(k)
         return state

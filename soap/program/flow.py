@@ -35,6 +35,22 @@ class Flow(object):
     *effect* of the computation associated with the flow, which is specified in
     the definition of the state.
     """
+    def vars(self):
+        if isinstance(self, IdentityFlow):
+            return set()
+        if isinstance(self, AssignFlow):
+            return {self.var}
+        if isinstance(self, IfFlow):
+            return self.true_flow.vars() | self.false_flow.vars()
+        if isinstance(self, WhileFlow):
+            return self.loop_flow.vars()
+        if isinstance(self, CompositionalFlow):
+            vars = set()
+            for f in self.flows:
+                vars |= f.vars()
+            return vars
+        raise TypeError('Unrecognized self object {}'.format(self))
+
     def flow(self, state):
         return state.transition(self)
 

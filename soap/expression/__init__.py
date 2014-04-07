@@ -12,13 +12,14 @@ from soap.expression.common import (
 from soap.expression.base import (
     Expression, UnaryExpression, BinaryExpression, TernaryExpression
 )
-from soap.expression.variable import Variable
+from soap.expression.variable import Variable, FreeFlowVar
 from soap.expression.arithmetic import (
     ArithExpr, UnaryArithExpr, BinaryArithExpr, TernaryArithExpr
 )
 from soap.expression.boolean import (
     BoolExpr, UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr
 )
+from soap.expression.fixpoint import LinkExpr, FixExpr
 from soap.expression.parser import parse
 
 
