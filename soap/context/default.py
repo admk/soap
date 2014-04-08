@@ -1,7 +1,10 @@
+import contextlib
+import os
+
 from soap.context.soap import SoapContext
 
 
-context = SoapContext(
+context = dict(
     # interactive shell
     autocall=True,
     xmode='verbose',
@@ -13,3 +16,8 @@ context = SoapContext(
     window_depth=2,
     program_depth=3,
 )
+
+
+with open(os.devnull, 'w') as null:
+    with contextlib.redirect_stdout(null):
+        context = SoapContext(context)

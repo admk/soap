@@ -51,7 +51,33 @@ m = __StateShortcut(MetaState)
 ctx = context
 
 
-if __name__ == '__main__':
-    from soap.shell import shell, trace
-    with logger.info_context():
+def debug(program):
+    ps(flow(program).debug())
+
+
+def main():
+    import sys
+    args = sys.argv
+
+    def run_and_exit(program):
+        debug(program)
+        sys.exit(0)
+
+    if len(args) == 1:
+        from soap.shell import shell, trace
         shell()
+        return
+    if len(args) == 2:
+        if args[1] == '-':
+            run_and_exit(sys.stdin.read())
+        with open(args[1]) as f:
+            run_and_exit(f.read())
+    if len(args) == 3:
+        if args[1] == '-c':
+            run_and_exit(args[2])
+    logger.error('Malformed arguments: {}'.format(args))
+
+
+if __name__ == '__main__':
+    with logger.info_context():
+        main()
