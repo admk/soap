@@ -1,3 +1,4 @@
+from soap.common.formatting import superscript
 from soap.expression.variable import Variable
 from soap.label.iteration import Iteration
 from soap.label.annotation import Annotation
@@ -51,7 +52,6 @@ class Identifier(Variable * Annotation):
             self.variable, label=self.label, iteration=(iteration + 1))
 
     def __str__(self):
-        from soap.label import superscript
         if self.annotation.iteration.is_bottom():
             annotation = self.annotation.label
         else:

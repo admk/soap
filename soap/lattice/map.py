@@ -86,7 +86,6 @@ class MapLattice(Lattice, dict):
             if key in self:
                 del self[key]
             return
-        self.bottom = False
         super().__setitem__(key, value)
 
     def __delitem__(self, key):

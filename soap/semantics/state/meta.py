@@ -1,3 +1,4 @@
+from soap import logger
 from soap.expression import (
     Expression, LinkExpr, FixExpr, expression_factory, is_expression,
     is_variable, operators, parse, Variable, FreeFlowVar
@@ -31,9 +32,12 @@ class MetaState(BaseState, map(None, Expression)):
             return parse(value)
         if isinstance(value, Expression):
             return value
-        if is_numeral(value):
-            raise NotImplementedError('TODO Not sure about this yet.')
+        logger.warning(
+            'TODO Not sure what to do with numerical values at the moment.')
+        if isinstance(value, (int, float)):
             return cast(value)
+        if is_numeral(value):
+            return value
         raise TypeError(
             'Do not know how to convert {!r} into an expression'.format(value))
 
@@ -95,5 +99,5 @@ class MetaState(BaseState, map(None, Expression)):
 
         state = self.copy()
         for k in var_list:
-            state[k] = fix_var(k)
+            state[k] = LinkExpr(fix_var(k), self)
         return state

@@ -8,12 +8,13 @@ from soap.context import context as _global_context
 
 
 class levels():
-    pass
+    name = {}
 levels = levels()
 
 
 for i, l in enumerate(['debug', 'info', 'warning', 'error', 'off']):
     levels.__dict__[l] = i
+    levels.name[i] = l
 
 
 with _global_context.no_invalidate_cache():
@@ -35,19 +36,25 @@ def get_context():
     return context
 
 
-def color(s, l=levels.info):
-    colors = {
-        levels.debug: '\033[90m',
-        levels.info: '\033[92m',
-        levels.warning: '\033[93m',
-        levels.error: '\033[91m',
-    }
-    colors_end = '\033[0m'
-    if not 'color' in os.environ['TERM']:
-        return s
-    if not get_context()['color']:
-        return s
-    return colors[l] + s + colors_end
+_colors = {
+    levels.debug: '\033[100m',
+    levels.info: '\033[44m',
+    levels.warning: '\033[43m',
+    levels.error: '\033[41m',
+}
+_colors_end = '\033[0m'
+
+
+def header(s, l=levels.info):
+    color = _colors[l] + '\033[97m '
+    colors_end = ' ' + _colors_end
+    if 'color' not in os.environ['TERM'] or not get_context()['color']:
+        color = '['
+        colors_end = ']'
+    name = levels.name[l]
+    name = ' ' * (7 - len(name)) + name
+    return '{color}{level}{colors_end} {s}'.format(
+        color=color, level=name, colors_end=colors_end, s=s)
 
 
 def format(*args):
@@ -59,7 +66,7 @@ def log(*args, **kwargs):
     if l < get_context()['level']:
         return
     f = get_context()['file'] or sys.stdout
-    print(color(format(*args), l), end='', file=f)
+    print(header(format(*args), l), end='', file=f)
     while l >= get_context()['pause_level']:
         r = input('Continue [Return], Stack trace [t], Abort [q]: ')
         if not r:
@@ -104,7 +111,7 @@ def persistent(name, *args, **kwargs):
 def unpersistent(*args):
     p = get_context()['_persistent']
     for n in args:
-        if not n in p:
+        if n not in p:
             continue
         del p[n]
 

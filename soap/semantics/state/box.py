@@ -89,8 +89,7 @@ class IdentifierBoxState(IdentifierBaseState, BoxState):
         return state
 
     def visit_AssignFlow(self, flow):
-        state = self.copy()
-        state[flow.var] = self._cast_value(arith_eval(self, flow.expr))
+        state = super().visit_AssignFlow(flow)
         return state._annotated_transition(flow.annotation)
 
     def visit_IfFlow(self, flow):

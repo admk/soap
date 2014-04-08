@@ -6,15 +6,12 @@ from akpytemp import Template
 from akpytemp.utils import code_gobble
 
 from soap import logger
-from soap.label import Annotation, Label, superscript
+from soap.common.formatting import superscript
+from soap.label import Annotation, Label
 
 
 def _code_gobble(s):
     return code_gobble(s).strip()
-
-
-def _color(s):
-    return logger.color(str(s), l=logger.levels.debug)
 
 
 def _indent(code):
@@ -24,7 +21,7 @@ def _indent(code):
 def _state_with_label(state, label):
     if state is None:
         return
-    return _color(state.filter(label=label))
+    return str(state.filter(label=label))
 
 
 class Flow(object):
@@ -148,11 +145,11 @@ class IfFlow(Flow):
             {% end %}{# split_flow_format #}"""))
 
         formats = []
-        for flow, cond in (self.true_flow, True), (self.false_flow, False):
-            if cond:
-                label = flow.annotation.label.attributed_true()
-            else:
-                label = flow.annotation.label.attributed_false()
+        zipper = [(self.true_flow,
+                   self.label.attributed_true()),
+                  (self.false_flow,
+                   self.label.attributed_false())]
+        for flow, label in zipper:
             split_format = _state_with_label(state, label)
             f = branch_template.render(
                 render_kwargs, split_format=split_format,
@@ -205,8 +202,8 @@ class WhileFlow(Flow):
         self.loop_flow = loop_flow
 
     def format(self, state=None):
-        entry_label = self.annotation.label.attributed_entry()
-        exit_label = self.annotation.label.attributed_exit()
+        entry_label = self.label.attributed_entry()
+        exit_label = self.label.attributed_exit()
         render_kwargs = {
             'flow': self,
             'state': state,

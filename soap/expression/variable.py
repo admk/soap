@@ -2,6 +2,7 @@
 .. module:: soap.expression.variable
     :synopsis: The class of variables.
 """
+from soap.common.formatting import underline
 from soap.expression.base import UnaryExpression
 from soap.expression.arithmetic import ArithmeticMixin
 from soap.expression.boolean import BooleanMixin
@@ -41,18 +42,13 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
         return hash((self.name, self.__class__))
 
 
-def _underline(text):
-    combining_low_line = '\u0332'
-    return combining_low_line.join(list(text)) + combining_low_line
-
-
 class FreeFlowVar(Variable):
     """A free variable, must be substituted before evaluating for its value."""
-    __slots__ = ('flow', 'expr')
+    __slots__ = ('expr')
 
     def __init__(self, name=None, flow=None, top=False, bottom=False):
         name = '{name}{label}'.format(name=name, label=flow.label.label_value)
         super().__init__(name=name, top=top, bottom=bottom)
 
     def __str__(self):
-        return _underline('{}'.format(self.name))
+        return underline('{}'.format(self.name))
