@@ -63,9 +63,7 @@ class MetaState(BaseState, map(None, Expression)):
             'state {state}.'.format(expr=expr, state=self))
 
     def visit_AssignFlow(self, flow):
-        state = self.copy()
-        state[flow.var] = self.expand_expr(flow.expr)
-        return state
+        return self[flow.var:self.expand_expr(flow.expr)]
 
     def visit_IfFlow(self, flow):
         bool_expr = self.expand_expr(flow.conditional_expr)
@@ -97,7 +95,7 @@ class MetaState(BaseState, map(None, Expression)):
             fix_expr = _if_then_else(bool_expr, true_expr, var)
             return FixExpr(free_var, fix_expr)
 
-        state = self.copy()
+        mapping = self.copy()
         for k in var_list:
-            state[k] = LinkExpr(fix_var(k), self)
-        return state
+            mapping[k] = LinkExpr(fix_var(k), self)
+        return self.__class__(mapping)

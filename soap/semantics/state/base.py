@@ -1,5 +1,3 @@
-import copy
-
 from soap import logger
 from soap.context import context
 from soap.semantics.state.functions import arith_eval, bool_eval
@@ -8,9 +6,6 @@ from soap.semantics.state.functions import arith_eval, bool_eval
 class BaseState(object):
     """Base state for all program states."""
     __slots__ = ()
-
-    def copy(self):
-        return copy.deepcopy(self)
 
     def empty(self):
         return self.__class__(bottom=True)
@@ -22,18 +17,14 @@ class BaseState(object):
         return self
 
     def visit_AssignFlow(self, flow):
-        state = self.copy()
-        state[flow.var] = arith_eval(self, flow.expr)
-        return state
+        return self[flow.var:arith_eval(self, flow.expr)]
 
     def _split_states(self, flow):
         def conditional(cond):
             var, cstr = bool_eval(self, flow.conditional_expr, cond)
             if cstr.is_bottom():
                 return self.empty()
-            state = self.copy()
-            state[var] = cstr
-            return state
+            return self[self._cast_key(var):cstr]
         for cond in (True, False):
             yield conditional(cond)
 
@@ -103,13 +94,17 @@ class BaseState(object):
             'last_exit': loop_state,
         }
 
+    def _warn_non_termination(self, flow):
+        if self.is_bottom():
+            return
+        logger.warning(
+            'While loop "{flow}" may never terminate with state {state}, '
+            'analysis assumes it always terminates'.format(
+                flow=flow, state=self))
+
     def visit_WhileFlow(self, flow):
         fixpoint = self._solve_fixpoint(flow)
-        if not fixpoint['last_entry'].is_bottom():
-            logger.warning(
-                'While loop "{flow}" may never terminate with state {state},'
-                'analysis assumes it always terminates'.format(
-                    flow=flow, state=fixpoint['last_entry']))
+        fixpoint['last_entry']._warn_non_termination(flow)
         return fixpoint['exit']
 
     def visit_CompositionalFlow(self, flow):

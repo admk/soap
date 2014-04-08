@@ -2,15 +2,13 @@
 .. module:: soap.lattice.map
     :synopsis: The mapping lattice.
 """
-import copy
-
 from soap.lattice import Lattice
 from soap.lattice.common import _lattice_factory
 
 
 class MapLattice(Lattice, dict):
     """Defines a lattice for mappings/functions."""
-    __slots__ = ()
+    __slots__ = ('_hash')
 
     def __init__(self, mapping=None, top=False, bottom=False, **kwargs):
         super().__init__(top=top, bottom=bottom)
@@ -21,7 +19,16 @@ class MapLattice(Lattice, dict):
             k = self._cast_key(k)
             v = self._cast_value(v)
             if not v.is_bottom():
-                self[k] = v
+                self._inititem(k, v)
+
+    def _inititem(self, key, value):
+        key = self._cast_key(key)
+        value = self._cast_value(value)
+        if value.is_bottom():
+            if key in self:
+                del self[key]
+            return
+        super().__setitem__(key, value)
 
     def _cast_key(self, k):
         raise NotImplementedError
@@ -69,9 +76,9 @@ class MapLattice(Lattice, dict):
         if self.is_top():
             return self._cast_value(top=True)
         if isinstance(key, slice):
-            new_map = copy.deepcopy(self)
-            new_map.__setitem__(key.start, key.stop)
-            return new_map
+            new_map = dict(self)
+            new_map[self._cast_key(key.start)] = self._cast_value(key.stop)
+            return self.__class__(new_map)
         if self.is_bottom():
             return self._cast_value(bottom=True)
         try:
@@ -80,16 +87,20 @@ class MapLattice(Lattice, dict):
             return self._cast_value(bottom=True)
 
     def __setitem__(self, key, value):
-        key = self._cast_key(key)
-        value = self._cast_value(value)
-        if value.is_bottom():
-            if key in self:
-                del self[key]
-            return
-        super().__setitem__(key, value)
+        raise TypeError('Cannot set item for class {cls}'.format(
+            cls=self.__class__.__name__))
 
     def __delitem__(self, key):
         super().__delitem__(self._cast_key(key))
+
+    def __hash__(self):
+        try:
+            return self._hash
+        except AttributeError:
+            pass
+        hash_val = hash(tuple(self.items()))
+        self._hash = hash_val
+        return hash_val
 
     def __str__(self):
         return '{{{}}}'.format(', '.join(

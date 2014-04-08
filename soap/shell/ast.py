@@ -28,7 +28,6 @@ def _local_variables():
 
 
 def __flow(flow, vars):
-    from soap import logger
     flow, vars = pickle.loads(flow), pickle.loads(vars)
     locs = _local_variables()
     new_vars = flow.flow(vars)
@@ -47,9 +46,8 @@ def __flow(flow, vars):
             continue
         k = k.variable.name
         locs[k] = new_vars[k]
-    logger.info('-' * 75)
-    with logger.local_context(color=False):
-        logger.info(debug_str)
+    print('-' * 75)
+    print(debug_str)
 builtins.__flow = __flow
 
 

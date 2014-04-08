@@ -5,7 +5,6 @@
 from akpytemp import Template
 from akpytemp.utils import code_gobble
 
-from soap import logger
 from soap.common.formatting import superscript
 from soap.label import Annotation, Label
 
@@ -21,7 +20,7 @@ def _indent(code):
 def _state_with_label(state, label):
     if state is None:
         return
-    return str(state.filter(label=label))
+    return str(state.filter(lambda k: k.label == label))
 
 
 class Flow(object):

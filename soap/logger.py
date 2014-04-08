@@ -66,7 +66,8 @@ def log(*args, **kwargs):
     if l < get_context()['level']:
         return
     f = get_context()['file'] or sys.stdout
-    print(header(format(*args), l), end='', file=f)
+    begin = kwargs.get('begin', '')
+    print(begin + header(format(*args), l), end='', file=f)
     while l >= get_context()['pause_level']:
         r = input('Continue [Return], Stack trace [t], Abort [q]: ')
         if not r:
@@ -80,14 +81,12 @@ def log(*args, **kwargs):
 
 def line(*args, **kwargs):
     l = kwargs.get('l', levels.info)
-    args += ('\n', )
-    log(*args, l=l)
+    log(*args, begin='\n', l=l)
 
 
 def rewrite(*args, **kwargs):
     l = kwargs.get('l', levels.info)
-    args += ('\r', )
-    log(*args, l=l)
+    log(*args, begin='\r', l=l)
 
 
 def persistent(name, *args, **kwargs):
@@ -103,8 +102,8 @@ def persistent(name, *args, **kwargs):
         l = v.pop()
         s.append(k + ': ' + format(*v))
     s = '; '.join(s)
-    s += ' ' * (78 - len(s))
-    s = s[:80]
+    s += ' ' * (68 - len(s))
+    s = s[:70]
     rewrite(s, l=l)
 
 
