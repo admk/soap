@@ -47,7 +47,7 @@ def mpq(v):
         try:
             return _mpq(v)
         except ValueError:
-            raise ValueError('Invalid value %s' % v)
+            raise ValueError('Invalid value {}'.format(v))
     try:
         m, e = v.as_mantissa_exp()
     except (OverflowError, ValueError):
@@ -204,9 +204,10 @@ class Interval(Lattice):
         if self.is_top():
             return -inf
         if self.is_bottom():
-            raise AttributeError('%r has no attribute "min"' % self)
+            raise AttributeError('{!r} has no attribute "min"'.format(self))
         raise AttributeError(
-            '%r is not top or bottom but has no attribute "min"' % self)
+            '{!r} is not top or bottom but has no attribute "min"'
+            .format(self))
 
     @min.setter
     def min(self, v):
@@ -221,9 +222,11 @@ class Interval(Lattice):
         if self.is_top():
             return inf
         if self.is_bottom():
-            raise AttributeError('Bottom %r has no attribute "max"' % self)
+            raise AttributeError(
+                'Bottom {!r} has no attribute "max"'.format(self))
         raise AttributeError(
-            '%r is not top or bottom but has no attribute "max"' % self)
+            '{!r} is not top or bottom but has no attribute "max"'
+            .format(self))
 
     @max.setter
     def max(self, v):
@@ -303,7 +306,8 @@ class Interval(Lattice):
                  self.max / other.min, self.max / other.max)
         else:
             logger.warning(
-                '%s / %s has potential zero division error.' % (self, other))
+                '{} / {} has potential zero division error.'
+                .format(self, other))
             if other <= self.__class__([-inf, 0]):
                 v = (self.min * -inf, self.min / other.min,
                      self.max * -inf, self.max / other.min)
@@ -336,10 +340,13 @@ class Interval(Lattice):
     def __str__(self):
         min_val = '-∞' if self.min == -inf else self.min
         max_val = '∞' if self.max == inf else self.max
-        return '[%s, %s]' % (min_val, max_val)
+        if min_val == max_val:
+            return str(min_val)
+        return '[{}, {}]'.format(min_val, max_val)
 
     def __repr__(self):
-        return '%s([%r, %r])' % (self.__class__.__name__, self.min, self.max)
+        return '{cls}([{min!r}, {max!r}])'.format(
+            cls=self.__class__.__name__, min=self.min, max=self.max)
 
     def __hash__(self):
         return hash(tuple(self))
@@ -362,32 +369,30 @@ class FloatInterval(Interval):
     """The interval containing floating point values."""
     def __init__(self, v=None, top=False, bottom=False):
         super().__init__(v, top=top, bottom=bottom)
-        try:
-            self.min = mpfr(self.min)
-            self.max = mpfr(self.max)
-        except AttributeError:
-            'The interval is a top or bottom.'
+        if top or bottom:
+            return
+        self.min = mpfr(self.min)
+        self.max = mpfr(self.max)
 
     def __str__(self):
-        min_val = '-∞' if self.min == -inf else '%1.5g' % self.min
-        max_val = '∞' if self.max == inf else '%1.5g' % self.max
-        return '[%s, %s]' % (min_val, max_val)
+        min_val = '-∞' if self.min == -inf else '{:.5g}'.format(self.min)
+        max_val = '∞' if self.max == inf else '{:.5g}'.format(self.max)
+        return '[{}, {}]'.format(min_val, max_val)
 
 
 class FractionInterval(Interval):
     """The interval containing real rational values."""
     def __init__(self, v=None, top=False, bottom=False):
         super().__init__(v, top=top, bottom=bottom)
-        try:
-            self.min = mpq(self.min)
-            self.max = mpq(self.max)
-        except AttributeError:
-            'The interval is a top or bottom.'
+        if top or bottom:
+            return
+        self.min = mpq(self.min)
+        self.max = mpq(self.max)
 
     def __str__(self):
-        min_val = '-∞' if self.min == -inf else '%1.5g' % self.min
-        max_val = '∞' if self.max == inf else '%1.5g' % self.max
-        return '[%s, %s]' % (min_val, max_val)
+        min_val = '-∞' if self.min == -inf else '{:.5g}'.format(self.min)
+        max_val = '∞' if self.max == inf else '{:.5g}'.format(self.max)
+        return '[{}, {}]'.format(min_val, max_val)
 
 
 class ErrorSemantics(Lattice):
@@ -514,15 +519,17 @@ class ErrorSemantics(Lattice):
         try:
             k_min, k_max = key
         except (TypeError, ValueError):
-            raise KeyError('Do not know how to produce the error interval '
-                           'from {}'.format(key))
+            raise KeyError(
+                'Do not know how to produce the error interval from {}'
+                .format(key))
         return ErrorSemantics(self.v, [k_min, k_max])
 
     def __str__(self):
-        return '%s%s' % (self.v, self.e)
+        return '{value}{error}'.format(value=self.v, error=self.e)
 
     def __repr__(self):
-        return '%s(%r, %r)' % (self.__class__.__name__, self.v, self.e)
+        return '{cls}({value!}, {error!r})'.format(
+            cls=self.__class__.__name__, value=self.v, error=self.e)
 
     def __hash__(self):
         return hash((self.v, self.e))
@@ -554,4 +561,4 @@ def cast(v=None):
         isfloat = lambda val: isinstance(val, (float, mpfr_type))
         if isfloat(v_min) or isfloat(v_max):
             return ErrorSemantics(v)
-    raise TypeError('Do not know how to cast value %r' % v)
+    raise TypeError('Do not know how to cast value {!r}'.format(v))

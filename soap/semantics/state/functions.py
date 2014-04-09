@@ -1,7 +1,9 @@
 from soap.expression import (
     LESS_OP, GREATER_OP, LESS_EQUAL_OP, GREATER_EQUAL_OP,
-    EQUAL_OP, NOT_EQUAL_OP, Expression, Variable
+    EQUAL_OP, NOT_EQUAL_OP, Expression, Variable,
+    expression_factory, is_expression, is_variable
 )
+from soap.semantics.common import is_numeral
 from soap.semantics.error import (
     inf, ulp, mpz_type, mpfr_type,
     IntegerInterval, FloatInterval, ErrorSemantics
@@ -100,3 +102,16 @@ def bool_eval(state, expr, cond):
     if bot:
         return expr.a1, cstr.__class__(bottom=True)
     return expr.a1, cstr
+
+
+def expand_expr(meta_state, expr):
+    if is_expression(expr):
+        args = [expand_expr(meta_state, a) for a in expr.args]
+        return expression_factory(expr.op, *args)
+    if is_variable(expr):
+        return meta_state[expr]
+    if is_numeral(expr):
+        return expr
+    raise TypeError(
+        'Do not know how to expand the expression {expr} with expression '
+        'state {state}.'.format(expr=expr, state=meta_state))

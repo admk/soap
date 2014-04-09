@@ -51,10 +51,8 @@ def header(s, l=levels.info):
     if 'color' not in os.environ['TERM'] or not get_context()['color']:
         color = '['
         colors_end = ']'
-    name = levels.name[l]
-    name = ' ' * (7 - len(name)) + name
-    return '{color}{level}{colors_end} {s}'.format(
-        color=color, level=name, colors_end=colors_end, s=s)
+    return '{color}{level:^7}{colors_end} {s}'.format(
+        color=color, level=levels.name[l], colors_end=colors_end, s=s)
 
 
 def format(*args):
@@ -67,7 +65,8 @@ def log(*args, **kwargs):
         return
     f = get_context()['file'] or sys.stdout
     begin = kwargs.get('begin', '')
-    print(begin + header(format(*args), l), end='', file=f)
+    end = kwargs.get('end', '')
+    print(begin + header(format(*args), l), end=end, file=f)
     while l >= get_context()['pause_level']:
         r = input('Continue [Return], Stack trace [t], Abort [q]: ')
         if not r:
@@ -81,12 +80,12 @@ def log(*args, **kwargs):
 
 def line(*args, **kwargs):
     l = kwargs.get('l', levels.info)
-    log(*args, begin='\n', l=l)
+    log(*args, end='\n', l=l)
 
 
 def rewrite(*args, **kwargs):
     l = kwargs.get('l', levels.info)
-    log(*args, begin='\r', l=l)
+    log(*args, end='\r', l=l)
 
 
 def persistent(name, *args, **kwargs):

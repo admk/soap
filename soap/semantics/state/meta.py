@@ -1,12 +1,12 @@
-from soap import logger
 from soap.expression import (
-    Expression, LinkExpr, FixExpr, expression_factory, is_expression,
-    is_variable, operators, parse, Variable, FreeFlowVar
+    Expression, LinkExpr, FixExpr, expression_factory,
+    operators, parse, Variable, FreeFlowVar
 )
 from soap.lattice.map import map
 from soap.semantics.error import cast
 from soap.semantics.common import is_numeral
 from soap.semantics.state.base import BaseState
+from soap.semantics.state.functions import expand_expr
 
 
 def _if_then_else(bool_expr, true_expr, false_expr):
@@ -32,12 +32,8 @@ class MetaState(BaseState, map(None, Expression)):
             return parse(value)
         if isinstance(value, Expression):
             return value
-        logger.warning(
-            'TODO Not sure what to do with numerical values at the moment.')
-        if isinstance(value, (int, float)):
+        if isinstance(value, (int, float)) or is_numeral(value):
             return cast(value)
-        if is_numeral(value):
-            return value
         raise TypeError(
             'Do not know how to convert {!r} into an expression'.format(value))
 
@@ -50,23 +46,11 @@ class MetaState(BaseState, map(None, Expression)):
     def visit_IdentityFlow(self, flow):
         return self
 
-    def expand_expr(self, expr):
-        if is_expression(expr):
-            args = [self.expand_expr(a) for a in expr.args]
-            return expression_factory(expr.op, *args)
-        if is_variable(expr):
-            return self[expr]
-        if is_numeral(expr):
-            return expr
-        raise TypeError(
-            'Do not know how to expand the expression {expr} with expression '
-            'state {state}.'.format(expr=expr, state=self))
-
     def visit_AssignFlow(self, flow):
-        return self[flow.var:self.expand_expr(flow.expr)]
+        return self[flow.var:expand_expr(self, flow.expr)]
 
     def visit_IfFlow(self, flow):
-        bool_expr = self.expand_expr(flow.conditional_expr)
+        bool_expr = expand_expr(self, flow.conditional_expr)
         true_state = self.transition(flow.true_flow)
         false_state = self.transition(flow.false_flow)
         var_list = set(self.keys())
