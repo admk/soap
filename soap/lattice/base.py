@@ -1,5 +1,6 @@
 from functools import wraps
 
+from soap.common.cache import Flyweight
 from soap.lattice.meta import LatticeMeta
 
 
@@ -58,7 +59,7 @@ def _decorate(cls):
     return cls
 
 
-class Lattice(object, metaclass=LatticeMeta):
+class Lattice(Flyweight, metaclass=LatticeMeta):
     """Common lattice structure.
 
     Because the partial orders we are using are always complete lattices,
@@ -67,6 +68,8 @@ class Lattice(object, metaclass=LatticeMeta):
     Subclasses of this class must implement the member functions:
     :member:`join`, :member:`meet`, :member:`le`.
     """
+    __slots__ = ()
+
     def __init__(self, *args, top=False, bottom=False, **kwargs):
         super().__init__()
         if top and bottom:

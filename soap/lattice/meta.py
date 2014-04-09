@@ -1,3 +1,4 @@
+import abc
 import copy
 
 
@@ -119,7 +120,7 @@ class ComponentWiseLattice(object):
             cls=self.__class__.__name__, components=components)
 
 
-class LatticeMeta(type):
+class LatticeMeta(abc.ABCMeta):
     """
     The metaclass of lattices.
 

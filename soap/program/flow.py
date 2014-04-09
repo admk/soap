@@ -83,7 +83,7 @@ class Flow(object):
 class IdentityFlow(Flow):
     """Identity flow, does nothing."""
     def format(self, state=None):
-        return '[skip]{annotation}; '.format(
+        return '(skip){annotation}; '.format(
             annotation=superscript(self.annotation))
 
     def __bool__(self):
@@ -105,7 +105,7 @@ class AssignFlow(Flow):
         self.expr = expr
 
     def format(self, state=None):
-        s = '[{var} ≔ {expr}]{annotation}; '.format(
+        s = '({var} ≔ {expr}){annotation}; '.format(
             var=self.var, expr=self.expr,
             annotation=superscript(self.annotation))
         if state:
@@ -163,7 +163,7 @@ class IfFlow(Flow):
             join_format = None
 
         template = Template(_code_gobble("""
-            if [{# flow.conditional_expr #}]{# annotation #} (
+            if ({# flow.conditional_expr #}){# annotation #} (
             {# true_format #}){% if flow.false_flow %} (
             {# false_format #});{% end %}{% if state %}
             {# join_format #}{% end %}
@@ -215,7 +215,7 @@ class WhileFlow(Flow):
             {% end %}{# flow.loop_flow.format(state) #}
             """)).render(render_kwargs))
         template = Template(_code_gobble("""
-            while [{# flow.conditional_expr #}]{# annotation #} (
+            while ({# flow.conditional_expr #}){# annotation #} (
             {# loop_format #});{% if state %}
             {# exit_format #}{% end %}"""))
         return template.render(render_kwargs, loop_format=loop_format)

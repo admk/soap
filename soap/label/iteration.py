@@ -2,21 +2,24 @@ from soap.context import context
 from soap.lattice.base import Lattice
 
 
-class Iteration(Lattice, int):
+class Iteration(Lattice):
     """
     Iteration, interger bounded from 0 (current), aka bottom, to
     context.program_depth, aka top. It is a total ordering.
 
     Methods __hash__, __str__ and __repr__ are necessary because of the MRO.
     """
-    __slots__ = ()
+    __slots__ = ('_value', )
 
-    def __new__(cls, value=None, top=False, bottom=False):
+    def __init__(self, value=None, top=False, bottom=False):
         if top:
             value = 1000
         if bottom:
             value = 0
-        return super().__new__(cls, value)
+        self._value = value
+
+    def __int__(self):
+        return self._value
 
     def is_top(self):
         return int(self) > context.program_depth

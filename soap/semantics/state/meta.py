@@ -95,7 +95,7 @@ class MetaState(BaseState, map(None, Expression)):
             fix_expr = _if_then_else(bool_expr, true_expr, var)
             return FixExpr(free_var, fix_expr)
 
-        mapping = self.copy()
+        mapping = dict(self)
         for k in var_list:
             mapping[k] = LinkExpr(fix_var(k), self)
         return self.__class__(mapping)

@@ -2,33 +2,28 @@
 .. module:: soap.lattice.map
     :synopsis: The mapping lattice.
 """
+from collections import Mapping
+
 from soap.lattice import Lattice
 from soap.lattice.common import _lattice_factory
 
 
-class MapLattice(Lattice, dict):
+class MapLattice(Lattice, Mapping):
     """Defines a lattice for mappings/functions."""
-    __slots__ = ('_hash')
+    __slots__ = ('mapping', '_hash')
 
-    def __init__(self, mapping=None, top=False, bottom=False, **kwargs):
+    def __init__(self, dictionary=None, top=False, bottom=False, **kwargs):
         super().__init__(top=top, bottom=bottom)
         if top or bottom:
+            self._mapping = {}
             return
-        d = dict(mapping or {}, **kwargs)
-        for k, v in d.items():
+        mapping = {}
+        for k, v in dict(dictionary or {}, **kwargs).items():
             k = self._cast_key(k)
             v = self._cast_value(v)
             if not v.is_bottom():
-                self._inititem(k, v)
-
-    def _inititem(self, key, value):
-        key = self._cast_key(key)
-        value = self._cast_value(value)
-        if value.is_bottom():
-            if key in self:
-                del self[key]
-            return
-        super().__setitem__(key, value)
+                mapping[k] = v
+        self._mapping = mapping
 
     def _cast_key(self, k):
         raise NotImplementedError
@@ -40,7 +35,7 @@ class MapLattice(Lattice, dict):
         return False
 
     def is_bottom(self):
-        return all(v.is_bottom() for v in self.values())
+        return all(v.is_bottom() for v in self._mapping.values())
 
     def join(self, other):
         join_dict = dict(self)
@@ -49,7 +44,7 @@ class MapLattice(Lattice, dict):
                 join_dict[k] = self[k] | other[k]
             else:
                 join_dict[k] = other[k]
-        return self.__class__(mapping=join_dict)
+        return self.__class__(join_dict)
 
     def meet(self, other):
         meet_dict = {}
@@ -59,7 +54,7 @@ class MapLattice(Lattice, dict):
             v = self[k] & other[k]
             if not v.is_bottom():
                 meet_dict[k] = v
-        return self.__class__(mapping=meet_dict)
+        return self.__class__(meet_dict)
 
     def le(self, other):
         for k, v in self.items():
@@ -68,6 +63,12 @@ class MapLattice(Lattice, dict):
             if not v <= other[k]:
                 return False
         return True
+
+    def __len__(self):
+        return len(self._mapping)
+
+    def __iter__(self):
+        return iter(self._mapping)
 
     def __contains__(self, key):
         return super().__contains__(self._cast_key(key))
@@ -82,16 +83,9 @@ class MapLattice(Lattice, dict):
         if self.is_bottom():
             return self._cast_value(bottom=True)
         try:
-            return super().__getitem__(self._cast_key(key))
+            return self._mapping[self._cast_key(key)]
         except KeyError:
             return self._cast_value(bottom=True)
-
-    def __setitem__(self, key, value):
-        raise TypeError('Cannot set item for class {cls}'.format(
-            cls=self.__class__.__name__))
-
-    def __delitem__(self, key):
-        super().__delitem__(self._cast_key(key))
 
     def __hash__(self):
         try:
@@ -103,7 +97,7 @@ class MapLattice(Lattice, dict):
         return hash_val
 
     def __str__(self):
-        return '{{{}}}'.format(', '.join(
+        return '[{}]'.format(', '.join(
             '{key} ↦ {value}'.format(key=k, value=v) for k, v in self.items()))
 
     def __repr__(self):
