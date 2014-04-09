@@ -48,24 +48,31 @@ def split_multi_expr(e):
 
 @cached
 def expression_factory(op, *args):
-    from soap.expression.operators import (
-        ARITHMETIC_OPERATORS, BOOLEAN_OPERATORS
-    )
+    from soap.expression import operators
     from soap.expression.variable import Variable
     from soap.expression.arithmetic import (
-        UnaryArithExpr, BinaryArithExpr, TernaryArithExpr
+        UnaryArithExpr, BinaryArithExpr, TernaryArithExpr, SelectExpr
     )
     from soap.expression.boolean import (
         UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr
     )
+    from soap.expression.fixpoint import LinkExpr, FixExpr
     if not args:
-        if not isinstance(op, str):
-            raise ValueError('Do not know how to construct expression from '
-                             '{!r}'.format(op))
-        return Variable(op)
-    if op in ARITHMETIC_OPERATORS:
+        if isinstance(op, Variable):
+            return op
+        if isinstance(op, str):
+            return Variable(op)
+        raise ValueError(
+            'Do not know how to construct expression from {!r}'.format(op))
+    if op == operators.FIXPOINT_OP:
+        return FixExpr(*args)
+    if op == operators.LINK_OP:
+        return LinkExpr(*args)
+    if op == operators.TERNARY_SELECT_OP:
+        return SelectExpr(*args)
+    if op in operators.ARITHMETIC_OPERATORS:
         class_list = [UnaryArithExpr, BinaryArithExpr, TernaryArithExpr]
-    elif op in BOOLEAN_OPERATORS:
+    elif op in operators.BOOLEAN_OPERATORS:
         class_list = [UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr]
     else:
         raise ValueError('Unknown operator {}.'.format(op))
