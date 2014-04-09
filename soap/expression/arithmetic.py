@@ -58,7 +58,7 @@ class UnaryArithExpr(UnaryExpression, ArithExpr):
 
     @cached
     def eval(self, state):
-        a = self.a.eval(state)
+        a, = self._eval_args(state)
         try:
             op = self._operator_function_dictionary[self.op]
         except KeyError:
@@ -79,7 +79,7 @@ class BinaryArithExpr(BinaryExpression, ArithExpr):
 
     @cached
     def eval(self, state):
-        a1, a2 = [a.eval(state) for a in self.args]
+        a1, a2 = self._eval_args(state)
         try:
             op = self._operator_function_dictionary[self.op]
         except KeyError:
@@ -109,12 +109,15 @@ class SelectExpr(TernaryArithExpr):
         super().__init__(
             op=TERNARY_SELECT_OP, a1=a1, a2=a2, a3=a3, top=top, bottom=bottom)
 
+    @cached
     def eval(self, state):
+        def eval_split(expr, state):
+            return expr.eval(state) if isinstance(expr, Expression) else expr
         from soap.semantics.state.functions import bool_eval
         bool_expr, true_expr, false_expr = self.a1, self.a2, self.a3
         true_state, false_state = bool_eval(state, bool_expr)
-        true_value = true_expr.eval(true_state)
-        false_value = false_expr.eval(false_state)
+        true_value = eval_split(true_expr, true_state)
+        false_value = eval_split(false_expr, false_state)
         return true_value | false_value
 
     def __str__(self):

@@ -61,8 +61,12 @@ class Expression(FlatLattice, Flyweight):
     def is_ternary(self):
         return self.is_n_ary(3)
 
+    def _eval_args(self, state):
+        for a in self.args:
+            yield a.eval(state) if isinstance(a, Expression) else a
+
     @cached
-    def eval(self, var_env=None):
+    def eval(self, state):
         """Recursively evaluates expression using var_env.
 
         :param state: Mapping from variables to values

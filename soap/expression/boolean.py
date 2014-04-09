@@ -57,7 +57,7 @@ class BinaryBoolExpr(BinaryExpression, BoolExpr):
 
     @cached
     def eval(self, state):
-        a1, a2 = [a.eval(state) for a in self.args]
+        a1, a2 = self._eval_args(state)
         try:
             op = self._operator_function_dictionary[self.op]
         except KeyError:
