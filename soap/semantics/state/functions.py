@@ -79,16 +79,7 @@ def _constraint(op, cond, bound):
     raise ValueError('Unknown boolean operator %s' % op)
 
 
-def bool_eval(state, expr, cond):
-    """
-    Supports only simple boolean expressions::
-        <variable> <operator> <arithmetic expression>
-    For example::
-        x <= 3 * y.
-
-    Returns:
-        The variable on constraint, and the constraint.
-    """
+def _conditional(state, expr, cond):
     bound = _rhs_eval(state, expr.a2)
     if isinstance(state[expr.a1], (FloatInterval, ErrorSemantics)):
         # Comparing floats
@@ -102,6 +93,24 @@ def bool_eval(state, expr, cond):
     if bot:
         return expr.a1, cstr.__class__(bottom=True)
     return expr.a1, cstr
+
+
+def bool_eval(state, expr):
+    """
+    Supports only simple boolean expressions::
+        <variable> <operator> <arithmetic expression>
+    For example::
+        x <= 3 * y.
+
+    Returns:
+        Two states, respectively satisfying or dissatisfying the conditional.
+    """
+    for cond in True, False:
+        var, cstr = _conditional(state, expr, cond)
+        if cstr.is_bottom():
+            yield state.empty()
+        else:
+            yield state[var:cstr]
 
 
 def expand_expr(meta_state, expr):

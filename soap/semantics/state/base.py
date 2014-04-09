@@ -19,17 +19,8 @@ class BaseState(object):
     def visit_AssignFlow(self, flow):
         return self[flow.var:arith_eval(self, flow.expr)]
 
-    def _split_states(self, flow):
-        def conditional(cond):
-            var, cstr = bool_eval(self, flow.conditional_expr, cond)
-            if cstr.is_bottom():
-                return self.empty()
-            return self[self._cast_key(var):cstr]
-        for cond in (True, False):
-            yield conditional(cond)
-
     def visit_IfFlow(self, flow):
-        true_split, false_split = self._split_states(flow)
+        true_split, false_split = bool_eval(self, flow.conditional_expr)
         true_split = true_split.transition(flow.true_flow)
         false_split = false_split.transition(flow.false_flow)
         return true_split | false_split
@@ -63,7 +54,8 @@ class BaseState(object):
             logger.persistent('Iteration', iter_count)
 
             # Split state
-            entry_state, exit_state = loop_state._split_states(flow)
+            entry_state, exit_state = bool_eval(
+                loop_state, flow.conditional_expr)
             exit_join_state |= exit_state
 
             # Fixpoint test

@@ -109,15 +109,10 @@ class SelectExpr(TernaryArithExpr):
         super().__init__(
             op=TERNARY_SELECT_OP, a1=a1, a2=a2, a3=a3, top=top, bottom=bottom)
 
-    def _conditional(self, expr, state):
-        from soap.semantics.state.functions import bool_eval
-        for c in True, False:
-            var, cstr = bool_eval(state, expr, c)
-            yield state[var:cstr]
-
     def eval(self, state):
+        from soap.semantics.state.functions import bool_eval
         bool_expr, true_expr, false_expr = self.a1, self.a2, self.a3
-        true_state, false_state = self._conditional(bool_expr, state)
+        true_state, false_state = bool_eval(state, bool_expr)
         true_value = true_expr.eval(true_state)
         false_value = false_expr.eval(false_state)
         return true_value | false_value
