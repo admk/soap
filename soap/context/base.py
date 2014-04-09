@@ -13,11 +13,13 @@ class _Context(dict):
     _Context, a dictionary subclass with dot syntax and snapshot support.
     """
     def __init__(self, dictionary=None, **kwargs):
+        super().__init__()
         if dictionary:
             kwargs.update(dictionary)
         kwargs = {k: self._cast_dict(v) for k, v in kwargs.items()}
         with self.no_invalidate_cache():
-            super().__init__(kwargs)
+            for k, v in kwargs.items():
+                self.__setattr__(k, v)
 
     @contextmanager
     def no_invalidate_cache(self):
@@ -26,8 +28,8 @@ class _Context(dict):
         del self.should_invalidate_cache
 
     def __setattr__(self, key, value):
-        hook = getattr(self, key + '_hook', lambda k, v: (k, v))
-        key, value = hook(key, value)
+        hook = getattr(self, key + '_hook', lambda v: v)
+        value = hook(value)
         self[key] = self._cast_dict(value)
         if self.get('should_invalidate_cache', True):
             invalidate_cache()

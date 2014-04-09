@@ -3,10 +3,9 @@
     :synopsis: The base classes of expressions.
 """
 from soap.common import Flyweight, cached
-from soap.expression.common import expression_factory
+from soap.expression.common import expression_factory, is_expression
 from soap.expression.operators import op_func_dict_by_ary_list
-from soap.expression.variable import Variable
-from soap.label.base import Label
+from soap.lattice.base import Lattice
 from soap.lattice.flat import FlatLattice
 
 
@@ -15,7 +14,7 @@ class Expression(FlatLattice, Flyweight):
 
     __slots__ = ('_op', '_args', '_hash')
 
-    def __init__(self, op=None, *args, top=False, bottom=False):
+    def __init__(self, op=None, *args, top=False, bottom=False, **kwargs):
         super().__init__(top=top, bottom=bottom)
         if top or bottom:
             return
@@ -72,6 +71,7 @@ class Expression(FlatLattice, Flyweight):
         :param kwargs: Things to extend our mapping
         :returns: Evaluation result
         """
+        from soap.expression.variable import Variable
         from soap.semantics import mpz_type, mpfr_type, mpq_type, Interval
 
         var_env = var_env.__class__(var_env, **kwargs)
@@ -161,6 +161,8 @@ class Expression(FlatLattice, Flyweight):
 
         :returns: dictionary containing the labelling scheme.
         """
+        from soap.label.base import Label
+
         def to_label(e):
             try:
                 return e.as_labels()
@@ -184,6 +186,8 @@ class Expression(FlatLattice, Flyweight):
         :returns: the truncated tree and a dictionary containing truncated
             subexpressions.
         """
+        from soap.label.base import Label
+
         def subcrop(a):
             if isinstance(a, Expression):
                 return a.crop(depth - 1)
@@ -205,6 +209,8 @@ class Expression(FlatLattice, Flyweight):
         :type env: dict
         :returns: new expression tree.
         """
+        from soap.label.base import Label
+
         def substitch(a):
             if isinstance(a, Expression):
                 return a.stitch(env)
@@ -225,9 +231,12 @@ class Expression(FlatLattice, Flyweight):
         return iter([self.op] + list(self.args))
 
     def _args_to_str(self):
-        return [(
-            '({})' if isinstance(a, Expression) and a.args else '{}').format(a)
-            for a in self.args]
+        def is_compound_expression(expr):
+            if isinstance(expr, Lattice) and expr.is_bottom():
+                return False
+            return is_expression(expr) and expr.args
+        return [('({})' if is_compound_expression(a) else '{}').format(a)
+                for a in self.args]
 
     def __repr__(self):
         args = ', '.join('a{}={!r}'.format(i + 1, a)
@@ -264,8 +273,8 @@ class UnaryExpression(Expression):
 
     __slots__ = ()
 
-    def __init__(self, op=None, a=None, top=False, bottom=False):
-        super().__init__(op, a, top=top, bottom=bottom)
+    def __init__(self, op=None, a=None, top=False, bottom=False, **kwargs):
+        super().__init__(op, a, top=top, bottom=bottom, **kwargs)
 
     @property
     def a(self):
@@ -280,8 +289,9 @@ class BinaryExpression(Expression):
 
     __slots__ = ()
 
-    def __init__(self, op=None, a1=None, a2=None, top=False, bottom=False):
-        super().__init__(op, a1, a2, top=top, bottom=bottom)
+    def __init__(self, op=None, a1=None, a2=None, top=False, bottom=False,
+                 **kwargs):
+        super().__init__(op, a1, a2, top=top, bottom=bottom, **kwargs)
 
     def __str__(self):
         a1, a2 = self._args_to_str()
@@ -294,5 +304,5 @@ class TernaryExpression(Expression):
     __slots__ = ()
 
     def __init__(self, op=None, a1=None, a2=None, a3=None,
-                 top=False, bottom=False):
-        super().__init__(op, a1, a2, a3, top=top, bottom=bottom)
+                 top=False, bottom=False, **kwargs):
+        super().__init__(op, a1, a2, a3, top=top, bottom=bottom, **kwargs)

@@ -3,15 +3,18 @@ import soap
 from soap import (
     context, IntegerInterval, FloatInterval, FractionInterval, ErrorSemantics,
     mpz, mpq, mpfr, mpz_type, mpq_type, mpfr_type, inf, ulp, cast, BoxState,
-    expr, flow, closure, expand, reduce, parsings, martel_trace, greedy_trace,
-    frontier_trace, logger
+    MetaState, expr, flow, closure, expand, reduce, parsings, martel_trace,
+    greedy_trace, frontier_trace, logger
 )
 
 
 def pr(*args):
     with soap.logger.info_context():
         soap.logger.info(*args)
-ps = lambda *args: pr(*[str(a) for a in args])
+
+
+def ps(*args):
+    pr(*[str(a) for a in args])
 
 
 class __IntervalShortcut(object):
@@ -22,31 +25,46 @@ class __IntervalShortcut(object):
         return self.cls(key)
 
 
-class __StateShortcut(object):
-    def __init__(self, cls):
-        self.cls = cls
-
-    def __getitem__(self, key):
-        if not isinstance(key, slice):
-            raise TypeError(
-                'State shortcut accepts keys in the form of variable:value.')
-        s = self.cls()
-        s[key.start] = key.stop
-        return s
-
-
 I = Int = IntegerInterval
 F = Float = FloatInterval
 E = Error = ErrorSemantics
 S = Box = BoxState
+M = Meta = MetaState
 i = __IntervalShortcut(IntegerInterval)
 f = __IntervalShortcut(FloatInterval)
 e = __IntervalShortcut(ErrorSemantics)
-s = __StateShortcut(BoxState)
+s = BoxState()
+m = MetaState()
 ctx = context
 
 
+def debug(program):
+    print(flow(program).debug())
+
+
+def main():
+    import sys
+    args = sys.argv
+
+    def run_and_exit(program):
+        debug(program)
+        sys.exit(0)
+
+    if len(args) == 1:
+        from soap.shell import shell, trace
+        shell()
+        return
+    if len(args) == 2:
+        if args[1] == '-':
+            run_and_exit(sys.stdin.read())
+        with open(args[1]) as f:
+            run_and_exit(f.read())
+    if len(args) == 3:
+        if args[1] == '-c':
+            run_and_exit(args[2])
+    logger.error('Malformed arguments: {}'.format(args))
+
+
 if __name__ == '__main__':
-    from soap.shell import Shell, trace
     with logger.info_context():
-        Shell()()
+        main()

@@ -21,16 +21,6 @@ def arith_eval(state, expr):
     raise TypeError('Do not know how to evaluate {!r}'.format(expr))
 
 
-_negate_dict = {
-    LESS_OP: GREATER_EQUAL_OP,
-    LESS_EQUAL_OP: GREATER_OP,
-    GREATER_OP: LESS_EQUAL_OP,
-    GREATER_EQUAL_OP: LESS_OP,
-    EQUAL_OP: NOT_EQUAL_OP,
-    NOT_EQUAL_OP: EQUAL_OP,
-}
-
-
 def _rhs_eval(state, expr):
     bound = arith_eval(state, expr)
     if isinstance(bound, (int, mpz_type)):
@@ -59,6 +49,16 @@ def _contract(op, bound):
     else:
         raise TypeError
     return bmin, bmax
+
+
+_negate_dict = {
+    LESS_OP: GREATER_EQUAL_OP,
+    LESS_EQUAL_OP: GREATER_OP,
+    GREATER_OP: LESS_EQUAL_OP,
+    GREATER_EQUAL_OP: LESS_OP,
+    EQUAL_OP: NOT_EQUAL_OP,
+    NOT_EQUAL_OP: EQUAL_OP,
+}
 
 
 def _constraint(op, cond, bound):

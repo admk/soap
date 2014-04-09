@@ -5,12 +5,9 @@ import pickle
 
 import codegen
 
-from soap import logger
-from soap.program.parser import ast_to_flow
-from soap.semantics import cast, IdentifierBoxState, ErrorSemantics, Interval
-
 
 def __cast(v):
+    from soap.semantics import cast
     try:
         return cast(v)
     except Exception:
@@ -19,6 +16,7 @@ builtins.__cast = __cast
 
 
 def __print(v, n):
+    from soap import logger
     with logger.debug_context():
         logger.debug('{} := {!r}'.format(n, v))
     return v
@@ -48,9 +46,8 @@ def __flow(flow, vars):
             continue
         k = k.variable.name
         locs[k] = new_vars[k]
-    logger.info('-' * 75)
-    with logger.local_context(color=False):
-        logger.info(debug_str)
+    print('-' * 75)
+    print(debug_str)
 builtins.__flow = __flow
 
 
@@ -132,6 +129,7 @@ class FlowTransformer(IPythonNodeTransformer):
             self.locals = _local_variables()
 
         def visit_Name(self, node):
+            from soap.semantics import Interval, ErrorSemantics
             v = self.locals.get(node.id, None)
             if self.magics_only:
                 if not isinstance(v, (Interval, ErrorSemantics)):
@@ -145,6 +143,8 @@ class FlowTransformer(IPythonNodeTransformer):
             return self.vars
 
     def _transform_node_to_flow(self, node):
+        from soap.program.parser import ast_to_flow
+        from soap.semantics import IdentifierBoxState
         vars = {}
         for n in node:
             vars.update(self.VariableVisitor(magics_only=False).visit(n))

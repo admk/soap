@@ -8,12 +8,13 @@ from soap.context import context as _global_context
 
 
 class levels():
-    pass
+    name = {}
 levels = levels()
 
 
 for i, l in enumerate(['debug', 'info', 'warning', 'error', 'off']):
     levels.__dict__[l] = i
+    levels.name[i] = l
 
 
 with _global_context.no_invalidate_cache():
@@ -22,7 +23,7 @@ with _global_context.no_invalidate_cache():
         'pause_level': levels.off,
         'color': True,
         'file': None,
-        'persistent': {},
+        '_persistent': {},
     }
     context = _global_context.logger
 
@@ -35,19 +36,25 @@ def get_context():
     return context
 
 
-def color(s, l=levels.info):
-    colors = {
-        levels.debug: '\033[90m',
-        levels.info: '\033[92m',
-        levels.warning: '\033[93m',
-        levels.error: '\033[91m',
-    }
-    colors_end = '\033[0m'
-    if not 'color' in os.environ['TERM']:
-        return s
-    if not get_context()['color']:
-        return s
-    return colors[l] + s + colors_end
+_colors = {
+    levels.debug: '\033[100m',
+    levels.info: '\033[44m',
+    levels.warning: '\033[43m',
+    levels.error: '\033[41m',
+}
+_colors_end = '\033[0m'
+
+
+def header(s, l=levels.info):
+    color = _colors[l] + '\033[97m '
+    colors_end = ' ' + _colors_end
+    if 'color' not in os.environ['TERM'] or not get_context()['color']:
+        color = '['
+        colors_end = ']'
+    name = levels.name[l]
+    name = ' ' * (7 - len(name)) + name
+    return '{color}{level}{colors_end} {s}'.format(
+        color=color, level=name, colors_end=colors_end, s=s)
 
 
 def format(*args):
@@ -59,7 +66,8 @@ def log(*args, **kwargs):
     if l < get_context()['level']:
         return
     f = get_context()['file'] or sys.stdout
-    print(color(format(*args), l), end='', file=f)
+    begin = kwargs.get('begin', '')
+    print(begin + header(format(*args), l), end='', file=f)
     while l >= get_context()['pause_level']:
         r = input('Continue [Return], Stack trace [t], Abort [q]: ')
         if not r:
@@ -73,38 +81,36 @@ def log(*args, **kwargs):
 
 def line(*args, **kwargs):
     l = kwargs.get('l', levels.info)
-    args += ('\n', )
-    log(*args, l=l)
+    log(*args, begin='\n', l=l)
 
 
 def rewrite(*args, **kwargs):
     l = kwargs.get('l', levels.info)
-    args += ('\r', )
-    log(*args, l=l)
+    log(*args, begin='\r', l=l)
 
 
 def persistent(name, *args, **kwargs):
     l = kwargs.get('l', levels.info)
-    prev = get_context()['persistent'].get(name)
+    prev = get_context()['_persistent'].get(name)
     curr = args + (l, )
     if prev == curr:
         return
-    get_context()['persistent'][name] = curr
+    get_context()['_persistent'][name] = curr
     s = []
-    for k, v in get_context()['persistent'].items():
+    for k, v in get_context()['_persistent'].items():
         v = list(v)
         l = v.pop()
         s.append(k + ': ' + format(*v))
     s = '; '.join(s)
-    s += ' ' * (78 - len(s))
-    s = s[:80]
+    s += ' ' * (68 - len(s))
+    s = s[:70]
     rewrite(s, l=l)
 
 
 def unpersistent(*args):
-    p = get_context()['persistent']
+    p = get_context()['_persistent']
     for n in args:
-        if not n in p:
+        if n not in p:
             continue
         del p[n]
 

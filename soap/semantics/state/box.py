@@ -1,10 +1,8 @@
-from soap import logger
 from soap.expression.variable import Variable
-from soap.label import Label, Identifier
+from soap.label import Identifier
 from soap.lattice.map import map
 from soap.semantics.error import cast, ErrorSemantics, IntegerInterval
 from soap.semantics.state.base import BaseState
-from soap.semantics.state.functions import arith_eval
 from soap.semantics.state.identifier import IdentifierBaseState
 
 
@@ -81,16 +79,17 @@ class IdentifierBoxState(IdentifierBaseState, BoxState):
         return value
 
     def _annotated_transition(self, annotation):
-        state = self.copy()
+        mapping = dict(self)
         for k, v in self.items():
             if not k.annotation.is_bottom():
                 continue
-            state[Identifier(k.variable, annotation=annotation)] |= v
-        return state
+            annotated_key = Identifier(k.variable, annotation=annotation)
+            v |= mapping.get(annotated_key, self._cast_value(bottom=True))
+            mapping[annotated_key] = v
+        return self.__class__(mapping)
 
     def visit_AssignFlow(self, flow):
-        state = self.copy()
-        state[flow.var] = self._cast_value(arith_eval(self, flow.expr))
+        state = super().visit_AssignFlow(flow)
         return state._annotated_transition(flow.annotation)
 
     def visit_IfFlow(self, flow):
@@ -98,29 +97,44 @@ class IdentifierBoxState(IdentifierBaseState, BoxState):
         false_annotation = flow.annotation.attributed_false()
         exit_annotation = flow.annotation.attributed_exit()
 
+        # for each split, annotate respective changes to values
         true_state, false_state = self._split_states(flow)
         true_state = true_state._annotated_transition(true_annotation)
         false_state = false_state._annotated_transition(false_annotation)
         true_state = true_state.transition(flow.true_flow)
         false_state = false_state.transition(flow.false_flow)
 
+        # join transitioned states together, annotate joined values
         state = true_state | false_state
         return state._annotated_transition(exit_annotation)
 
     def visit_WhileFlow(self, flow):
+        # use super()'s method to compute fixpoint for us.
         fixpoint = self._solve_fixpoint(flow)
 
-        last_entry = fixpoint['last_entry'].filter(label=Label(bottom=True))
-        if not last_entry.is_bottom():
-            logger.warning(
-                'While loop "{flow}" may never terminate with state {state},'
-                'analysis assumes it always terminates'.format(
-                    flow=flow, state=fixpoint['last_entry']))
+        # check if we've given up of computing an unrolled fixpoint, and
+        # if there is still potential non-terminating condition after the
+        # loop kernel; if non-termination is possible, last_entry (without
+        # annotations for program statements, which is not relevant to our
+        # analysis), should not be tested bottom.
+        last_entry_predicate = lambda k: k.label.is_bottom()
+        last_entry = fixpoint['last_entry'].filter(last_entry_predicate)
+        last_entry._warn_non_termination(flow)
 
         entry_annotation = flow.annotation.attributed_entry()
         exit_annotation = flow.annotation.attributed_exit()
 
-        join_state = fixpoint['entry']._annotated_transition(entry_annotation)
-        state = fixpoint['exit'] | join_state
+        # we need to get the annotated joined value mapping from all entries to
+        # the loop, so to produce a complete mapping due to the effects of loop
+        # statements for loop exit.
+        entry = fixpoint['entry']._annotated_transition(entry_annotation)
+        # we should not include any current values into this as these values
+        # are not relevant after the loop, all relevant loop execution effects
+        # are recorded with annotations.
+        entry = entry.filter(lambda k: not k.label.is_bottom())
 
-        return state._annotated_transition(exit_annotation)
+        # annotate loop exit values.
+        exit = fixpoint['exit']._annotated_transition(exit_annotation)
+
+        # stitch all things together, without introducing extraneous lubs.
+        return entry | exit

@@ -24,3 +24,6 @@ class Shell(IPython.terminal.embed.InteractiveShellEmbed):
                  store_history=False, silent=False, shell_futures=True):
         self.raw_cell = raw_cell
         super().run_cell(raw_cell, store_history, silent, shell_futures)
+
+
+shell = Shell()

@@ -25,19 +25,9 @@ class IdentifierBaseState(BaseState):
             'Do not know how to convert key {!r} into an identifier.'
             .format(key))
 
-    def filter(self, variable=None, label=None, iteration=None):
-        kwargs = {
-            'variable': variable,
-            'label': label,
-            'iteration': iteration,
-        }
+    def filter(self, predicate):
         items = {}
         for identifier, value in self.items():
-            for attr, attr_val in kwargs.items():
-                if attr_val is None:
-                    continue
-                if getattr(identifier, attr) != attr_val:
-                    break
-            else:
+            if predicate(identifier):
                 items[identifier] = value
         return self.__class__(items)
