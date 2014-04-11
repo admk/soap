@@ -124,3 +124,18 @@ def expand_expr(meta_state, expr):
     raise TypeError(
         'Do not know how to expand the expression {expr} with expression '
         'state {state}.'.format(expr=expr, state=meta_state))
+
+
+def _eval_meta_state_with_func(eval_func, state, meta_state):
+    mapping = {k: eval_func(state, v) for k, v in meta_state.items()}
+    return state.__class__(mapping)
+
+
+def expand_meta_state(state, meta_state):
+    """Expand meta_state with state."""
+    return _eval_meta_state_with_func(expand_expr, state, meta_state)
+
+
+def arith_eval_meta_state(state, meta_state):
+    """Perform arithmetic evaluation on meta_state with state."""
+    return _eval_meta_state_with_func(arith_eval, state, meta_state)

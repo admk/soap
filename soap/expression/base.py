@@ -62,8 +62,14 @@ class Expression(FlatLattice, Flyweight):
         return self.is_n_ary(3)
 
     def _eval_args(self, state):
+        from soap.semantics.common import is_numeral
         for a in self.args:
-            yield a.eval(state) if isinstance(a, Expression) else a
+            if isinstance(a, Expression):
+                yield a.eval(state)
+            elif is_numeral(a):
+                yield a
+            else:
+                raise TypeError('Do not know how to evaluate {!r}'.format(a))
 
     @cached
     def eval(self, state):
