@@ -2,6 +2,7 @@
 .. module:: soap.expression.boolean
     :synopsis: The class of boolean expressions.
 """
+from soap.common.cache import cached
 from soap.expression import operators
 from soap.expression.base import (
     Expression, UnaryExpression, BinaryExpression, TernaryExpression
@@ -46,6 +47,22 @@ class BinaryBoolExpr(BinaryExpression, BoolExpr):
     """Binary boolean expressions."""
 
     __slots__ = ()
+    _operator_function_dictionary = {
+        operators.LESS_OP: lambda x, y: x < y,
+        operators.LESS_EQUAL_OP: lambda x, y: x <= y,
+        operators.EQUAL_OP: lambda x, y: x == y,
+        operators.GREATER_EQUAL_OP: lambda x, y: x >= y,
+        operators.GREATER_OP: lambda x, y: x > y,
+    }
+
+    @cached
+    def eval(self, state):
+        a1, a2 = self._eval_args(state)
+        try:
+            op = self._operator_function_dictionary[self.op]
+        except KeyError:
+            raise KeyError('Unrecognized operator type {!r}'.format(self.op))
+        return op(a1, a2)
 
 
 class TernaryBoolExpr(TernaryExpression, BoolExpr):

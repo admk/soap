@@ -371,8 +371,11 @@ class FloatInterval(Interval):
         super().__init__(v, top=top, bottom=bottom)
         if top or bottom:
             return
-        self.min = mpfr(self.min)
-        self.max = mpfr(self.max)
+        try:
+            self.min = mpfr(self.min)
+            self.max = mpfr(self.max)
+        except AttributeError:
+            'The interval is a top or bottom.'
 
     def __str__(self):
         min_val = '-∞' if self.min == -inf else '{:.5g}'.format(self.min)
@@ -542,7 +545,7 @@ def cast(v=None):
         if v.isdigit():
             return IntegerInterval(v)
         return ErrorSemantics(v)
-    if isinstance(v, (IntegerInterval, ErrorSemantics)):
+    if isinstance(v, (Interval, ErrorSemantics)):
         return v
     try:
         v_min, v_max = v

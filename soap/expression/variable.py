@@ -26,6 +26,9 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
     def vars(self):
         return {self}
 
+    def eval(self, state):
+        return state[self]
+
     def __str__(self):
         return str(self.name)
 
@@ -47,7 +50,7 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
 
 class FreeFlowVar(Variable):
     """A free variable, must be substituted before evaluating for its value."""
-    __slots__ = ('expr')
+    __slots__ = ()
 
     def __init__(self, name=None, flow=None, top=False, bottom=False):
         name = '{name}{label}'.format(name=name, label=flow.label.label_value)

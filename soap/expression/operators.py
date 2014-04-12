@@ -36,6 +36,9 @@ ARITHMETIC_OPERATORS = [
     ADD_OP, SUBTRACT_OP, UNARY_SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP,
     TERNARY_SELECT_OP, LINK_OP, FIXPOINT_OP,
 ]
+SPECIAL_OPERATORS = [
+    TERNARY_SELECT_OP, FIXPOINT_OP, LINK_OP,
+]
 
 OPERATORS = BOOLEAN_OPERATORS + ARITHMETIC_OPERATORS
 
@@ -60,21 +63,3 @@ LEFT_DISTRIBUTIVITY_OPERATORS, LEFT_DISTRIBUTION_OVER_OPERATORS = \
     list(zip(*LEFT_DISTRIBUTIVITY_OPERATOR_PAIRS))
 RIGHT_DISTRIBUTIVITY_OPERATORS, RIGHT_DISTRIBUTION_OVER_OPERATORS = \
     list(zip(*RIGHT_DISTRIBUTIVITY_OPERATOR_PAIRS))
-
-
-op_func_dict_by_ary_list = [
-    {
-        UNARY_SUBTRACT_OP: lambda x, _: -x,
-    },
-    {
-        ADD_OP: lambda x, y: x + y,
-        SUBTRACT_OP: lambda x, y: x - y,
-        MULTIPLY_OP: lambda x, y: x * y,
-        DIVIDE_OP: lambda x, y: x / y,
-        LESS_OP: lambda x, y: x < y,
-        LESS_EQUAL_OP: lambda x, y: x <= y,
-        EQUAL_OP: lambda x, y: x == y,
-        GREATER_EQUAL_OP: lambda x, y: x >= y,
-        GREATER_OP: lambda x, y: x > y,
-    }
-]

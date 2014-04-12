@@ -4,7 +4,6 @@
 """
 from soap.common import Flyweight, cached
 from soap.expression.common import expression_factory, is_expression
-from soap.expression.operators import op_func_dict_by_ary_list
 from soap.lattice.base import Lattice
 from soap.lattice.flat import FlatLattice
 
@@ -62,32 +61,25 @@ class Expression(FlatLattice, Flyweight):
     def is_ternary(self):
         return self.is_n_ary(3)
 
+    def _eval_args(self, state):
+        from soap.semantics.common import is_numeral
+        for a in self.args:
+            if isinstance(a, Expression):
+                yield a.eval(state)
+            elif is_numeral(a):
+                yield a
+            else:
+                raise TypeError('Do not know how to evaluate {!r}'.format(a))
+
     @cached
-    def eval(self, var_env=None, **kwargs):
+    def eval(self, state):
         """Recursively evaluates expression using var_env.
 
-        :param var_env: Mapping from variables to values
-        :type var_env: Mapping from variables to arbitrary value instances
-        :param kwargs: Things to extend our mapping
+        :param state: Mapping from variables to values
+        :type state: Mapping from variables to arbitrary value instances
         :returns: Evaluation result
         """
-        from soap.expression.variable import Variable
-        from soap.semantics import mpz_type, mpfr_type, mpq_type, Interval
-
-        var_env = var_env.__class__(var_env, **kwargs)
-
-        def eval_arg(a):
-            if isinstance(a, Variable):
-                return var_env[a]
-            if isinstance(a, Expression):
-                return a.eval(var_env)
-            if isinstance(a, (mpz_type, mpfr_type, mpq_type, Interval)):
-                return a
-            raise TypeError('Do not know how to evaluate {}'.format(a))
-
-        op_func = op_func_dict_by_ary_list[self.ary - 1][self.op]
-        args = list(eval_arg(a) for a in self.args)
-        return op_func(*args)
+        raise NotImplementedError
 
     def exponent_width(self, var_env, prec):
         """Computes the exponent width required for its evaluation so that no

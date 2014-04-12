@@ -2,6 +2,7 @@
 .. module:: soap.expression.arithmetic
     :synopsis: The class of expressions.
 """
+from soap.common.cache import cached
 from soap.expression.operators import (
     ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP,
     TERNARY_SELECT_OP, ARITHMETIC_OPERATORS, COMMUTATIVITY_OPERATORS
@@ -51,12 +52,39 @@ class UnaryArithExpr(UnaryExpression, ArithExpr):
     """Unary arithmetic expressions."""
 
     __slots__ = ()
+    _operator_function_dictionary = {
+        UNARY_SUBTRACT_OP: lambda x, _: -x,
+    }
+
+    @cached
+    def eval(self, state):
+        a, = self._eval_args(state)
+        try:
+            op = self._operator_function_dictionary[self.op]
+        except KeyError:
+            raise KeyError('Unrecognized operator type {!r}'.format(self.op))
+        return op(a)
 
 
 class BinaryArithExpr(BinaryExpression, ArithExpr):
     """Binary arithmetic expressions."""
 
     __slots__ = ()
+    _operator_function_dictionary = {
+        ADD_OP: lambda x, y: x + y,
+        SUBTRACT_OP: lambda x, y: x - y,
+        MULTIPLY_OP: lambda x, y: x * y,
+        DIVIDE_OP: lambda x, y: x / y,
+    }
+
+    @cached
+    def eval(self, state):
+        a1, a2 = self._eval_args(state)
+        try:
+            op = self._operator_function_dictionary[self.op]
+        except KeyError:
+            raise KeyError('Unrecognized operator type {!r}'.format(self.op))
+        return op(a1, a2)
 
     def _attr(self):
         if self.op in COMMUTATIVITY_OPERATORS:
@@ -71,7 +99,37 @@ class TernaryArithExpr(TernaryExpression, ArithExpr):
 
     __slots__ = ()
 
+
+class SelectExpr(TernaryArithExpr):
+    """Ternary expression with TERNARY_SELECT_OP operator."""
+
+    __slots__ = ()
+
+    def __init__(self, a1=None, a2=None, a3=None, top=False, bottom=False):
+        super().__init__(
+            op=TERNARY_SELECT_OP, a1=a1, a2=a2, a3=a3, top=top, bottom=bottom)
+
+    @property
+    def bool_expr(self):
+        return self.a1
+
+    @property
+    def true_expr(self):
+        return self.a2
+
+    @property
+    def false_expr(self):
+        return self.a3
+
+    @cached
+    def eval(self, state):
+        def eval_split(expr, state):
+            return expr.eval(state) if isinstance(expr, Expression) else expr
+        from soap.semantics.state.functions import bool_eval
+        true_state, false_state = bool_eval(state, self.bool_expr)
+        true_value = eval_split(self.true_expr, true_state)
+        false_value = eval_split(self.false_expr, false_state)
+        return true_value | false_value
+
     def __str__(self):
-        if self.op == TERNARY_SELECT_OP:
-            return '{} ? {} : {}'.format(*self._args_to_str())
-        return super().__str__()
+        return '{} ? {} : {}'.format(*self._args_to_str())

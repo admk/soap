@@ -4,6 +4,9 @@ from soap.lattice.map import map
 from soap.semantics.error import cast, ErrorSemantics, IntegerInterval
 from soap.semantics.state.base import BaseState
 from soap.semantics.state.identifier import IdentifierBaseState
+from soap.semantics.state.functions import (
+    bool_eval, to_meta_state, fixpoint_eval
+)
 
 
 class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
@@ -98,7 +101,7 @@ class IdentifierBoxState(IdentifierBaseState, BoxState):
         exit_annotation = flow.annotation.attributed_exit()
 
         # for each split, annotate respective changes to values
-        true_state, false_state = self._split_states(flow)
+        true_state, false_state = bool_eval(self, flow.conditional_expr)
         true_state = true_state._annotated_transition(true_annotation)
         false_state = false_state._annotated_transition(false_annotation)
         true_state = true_state.transition(flow.true_flow)
@@ -110,7 +113,8 @@ class IdentifierBoxState(IdentifierBaseState, BoxState):
 
     def visit_WhileFlow(self, flow):
         # use super()'s method to compute fixpoint for us.
-        fixpoint = self._solve_fixpoint(flow)
+        fixpoint = fixpoint_eval(
+            self, flow.conditional_expr, loop_flow=flow.loop_flow)
 
         # check if we've given up of computing an unrolled fixpoint, and
         # if there is still potential non-terminating condition after the

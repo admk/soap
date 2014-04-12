@@ -55,15 +55,15 @@ class MetaState(BaseState, map(None, Expression)):
         false_state = self.transition(flow.false_flow)
         var_list = set(self.keys())
         var_list |= set(true_state.keys()) | set(false_state.keys())
-        state = self.empty()
+        mapping = dict(self)
         for var in var_list:
             if true_state[var] == false_state[var]:
                 value = true_state[var]
             else:
                 value = _if_then_else(
                     bool_expr, true_state[var], false_state[var])
-            state[var] = value
-        return state
+            mapping[var] = value
+        return self.__class__(mapping)
 
     def visit_WhileFlow(self, flow):
         bool_expr = flow.conditional_expr

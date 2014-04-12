@@ -2,6 +2,8 @@
 .. module:: soap.semantics.common
     :synopsis: Common definitions for semantics.
 """
+import functools
+
 import gmpy2
 
 
