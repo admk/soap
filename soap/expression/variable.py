@@ -23,6 +23,9 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
     def _cast_value(self, value, top=False, bottom=False):
         return value
 
+    def vars(self):
+        return {self}
+
     def __str__(self):
         return str(self.name)
 

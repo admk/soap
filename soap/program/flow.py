@@ -35,11 +35,12 @@ class Flow(object):
         if isinstance(self, IdentityFlow):
             return set()
         if isinstance(self, AssignFlow):
-            return {self.var}
+            return {self.var} | self.expr.vars()
         if isinstance(self, IfFlow):
-            return self.true_flow.vars() | self.false_flow.vars()
+            vars = self.conditional_expr.vars()
+            vars |= self.true_flow.vars() | self.false_flow.vars()
         if isinstance(self, WhileFlow):
-            return self.loop_flow.vars()
+            return self.conditional_expr.vars() | self.loop_flow.vars()
         if isinstance(self, CompositionalFlow):
             vars = set()
             for f in self.flows:

@@ -222,21 +222,35 @@ class Expression(FlatLattice, Flyweight):
     def tree(self):
         """Produces a tuple tree for the expression."""
         def to_tuple(a):
-            if isinstance(a, Expression):
+            if is_expression(a):
                 return a.tree()
             return a
         return tuple([self.op] + [to_tuple(a) for a in self.args])
+
+    def vars(self):
+        vars = set()
+        for a in self.args:
+            if isinstance(a, Expression):
+                vars |= a.vars()
+        return vars
 
     def __iter__(self):
         return iter([self.op] + list(self.args))
 
     def _args_to_str(self):
-        def is_compound_expression(expr):
+        from soap.expression.fixpoint import FixExpr
+
+        def format(expr):
             if isinstance(expr, Lattice) and expr.is_bottom():
-                return False
-            return is_expression(expr) and expr.args
-        return [('({})' if is_compound_expression(a) else '{}').format(a)
-                for a in self.args]
+                brackets = False
+            elif isinstance(expr, FixExpr):
+                brackets = False
+            else:
+                brackets = is_expression(expr) and expr.args
+            text = '({})' if brackets else '{}'
+            return text.format(expr)
+
+        return [format(a) for a in self.args]
 
     def __repr__(self):
         args = ', '.join('a{}={!r}'.format(i + 1, a)
