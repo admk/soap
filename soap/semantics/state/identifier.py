@@ -1,5 +1,5 @@
 from soap.expression import Variable
-from soap.label import Annotation, Identifier
+from soap.label import Identifier
 from soap.semantics.state.base import BaseState
 
 
@@ -18,9 +18,9 @@ class IdentifierBaseState(BaseState):
         if isinstance(key, Identifier):
             return key
         if isinstance(key, Variable):
-            return Identifier(key, annotation=Annotation(bottom=True))
+            return Identifier(key)
         if isinstance(key, str):
-            return self._cast_key(Variable(key))
+            return Identifier(Variable(key))
         raise TypeError(
             'Do not know how to convert key {!r} into an identifier.'
             .format(key))

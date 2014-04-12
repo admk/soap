@@ -34,7 +34,7 @@ def __flow(flow, vars):
     debug_str = flow.format(new_vars)
     # update changes to input variables
     for k in vars:
-        if not k.annotation.is_bottom():
+        if not k.label.is_bottom():
             continue
         k = k.variable.name
         locs[k] = new_vars[k]
@@ -42,7 +42,7 @@ def __flow(flow, vars):
     for k in new_vars:
         if k in vars:
             continue
-        if not k.annotation.is_bottom():
+        if not k.label.is_bottom():
             continue
         k = k.variable.name
         locs[k] = new_vars[k]

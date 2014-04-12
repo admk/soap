@@ -6,7 +6,7 @@ from akpytemp import Template
 from akpytemp.utils import code_gobble
 
 from soap.common.formatting import superscript
-from soap.label import Annotation, Label
+from soap.label import Label
 
 
 def _code_gobble(s):
@@ -70,10 +70,6 @@ class Flow(object):
     def label(self):
         return Label(statement=self)
 
-    @property
-    def annotation(self):
-        return Annotation(self.label)
-
     def __eq__(self, other):
         return type(self) is type(other)
 
@@ -87,8 +83,7 @@ class Flow(object):
 class IdentityFlow(Flow):
     """Identity flow, does nothing."""
     def format(self, state=None):
-        return '(skip){annotation}; '.format(
-            annotation=superscript(self.annotation))
+        return '(skip){label}; '.format(label=superscript(self.label))
 
     def __bool__(self):
         return False
@@ -109,9 +104,8 @@ class AssignFlow(Flow):
         self.expr = expr
 
     def format(self, state=None):
-        s = '({var} ≔ {expr}){annotation}; '.format(
-            var=self.var, expr=self.expr,
-            annotation=superscript(self.annotation))
+        s = '({var} ≔ {expr}){label}; '.format(
+            var=self.var, expr=self.expr, label=superscript(self.label))
         if state:
             s += '\n' + _state_with_label(state, self.label)
         return s
@@ -141,7 +135,7 @@ class IfFlow(Flow):
         render_kwargs = {
             'flow': self,
             'state': state,
-            'annotation': superscript(self.annotation),
+            'label': superscript(self.label),
         }
         branch_template = Template(_code_gobble("""
             {% if state %}{# split_format #}
@@ -167,7 +161,7 @@ class IfFlow(Flow):
             join_format = None
 
         template = Template(_code_gobble("""
-            if ({# flow.conditional_expr #}){# annotation #} (
+            if ({# flow.conditional_expr #}){# label #} (
             {# true_format #}){% if flow.false_flow %} (
             {# false_format #});{% end %}{% if state %}
             {# join_format #}{% end %}
@@ -212,14 +206,14 @@ class WhileFlow(Flow):
             'state': state,
             'entry_format': _state_with_label(state, entry_label),
             'exit_format': _state_with_label(state, exit_label),
-            'annotation': superscript(self.annotation),
+            'label': superscript(self.label),
         }
         loop_format = _indent(Template(_code_gobble("""
             {% if state %}{# entry_format #}
             {% end %}{# flow.loop_flow.format(state) #}
             """)).render(render_kwargs))
         template = Template(_code_gobble("""
-            while ({# flow.conditional_expr #}){# annotation #} (
+            while ({# flow.conditional_expr #}){# label #} (
             {# loop_format #});{% if state %}
             {# exit_format #}{% end %}"""))
         return template.render(render_kwargs, loop_format=loop_format)

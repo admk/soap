@@ -42,7 +42,7 @@ class Label(flat(tuple), Flyweight):
         self.attribute = attribute
         self.description = description
         value = (self.label_value, self.attribute)
-        super().__init__(top=top, bottom=bottom, value=value)
+        super().__init__(value=value, top=top, bottom=bottom)
 
     def attributed(self, attribute):
         if self.is_top() or self.is_bottom():
