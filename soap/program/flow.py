@@ -32,6 +32,7 @@ class Flow(object):
     the definition of the state.
     """
     def vars(self):
+        """Finds all variables in the flow."""
         if isinstance(self, IdentityFlow):
             return set()
         if isinstance(self, AssignFlow):
@@ -49,9 +50,11 @@ class Flow(object):
         raise TypeError('Unrecognized self object {}'.format(self))
 
     def flow(self, state):
+        """Evaluates the flow with state."""
         return state.transition(self)
 
     def debug(self, state=None):
+        """Debug flow transitions at each step."""
         from soap.semantics.state import (
             IdentifierBaseState, IdentifierBoxState
         )
