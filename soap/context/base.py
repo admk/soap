@@ -4,6 +4,10 @@ from contextlib import contextmanager
 from soap.common.cache import invalidate_cache
 
 
+class ConfigError(ValueError):
+    """Malformed configuration value.  """
+
+
 class RestoreSnapshotError(Exception):
     """Cannot restore snapshot.  """
 

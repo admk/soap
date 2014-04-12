@@ -5,7 +5,7 @@ import gmpy2
 gmpy2.set_context(gmpy2.ieee(64))
 
 import soap
-from soap.context.base import _Context
+from soap.context.base import _Context, ConfigError
 from soap.shell import shell
 
 
@@ -41,8 +41,11 @@ class SoapContext(_Context):
         return value
 
     def xmode_hook(self, value):
-        if value not in ['plain', 'verbose', 'context']:
-            raise
+        allowed = ['plain', 'verbose', 'context']
+        if value not in allowed:
+            raise ConfigError(
+                'Config xmode must take values in {allowed}'
+                .format(allowed=allowed))
         shell.run_line_magic('xmode', value)
         return value
 
