@@ -49,57 +49,20 @@ class FixExpr(BinaryArithExpr):
         return self.a2
 
     def _fixpoint(self, state):
-        """
-        Fixpoint computation, evaluates the expression.
-
-        Because of the recursion nature of fixpoint expression, the code
-        was expected to use tail recursion.  However note that it has been
-        optimized into a loop.
-        """
-        from soap.semantics.error import Interval
-        from soap.semantics.state.functions import (
-            bool_eval, arith_eval_meta_state
-        )
+        from soap.semantics.state.functions import fixpoint_eval
 
         fix_expr = self.fix_expr
         bool_expr = fix_expr.bool_expr
         loop_meta_state = fix_expr.true_expr.meta_state
-        var = fix_expr.false_expr
 
-        false_join_value = Interval(bottom=True)
-        true_join_split = state.empty()
-        true_state = state
-        prev_true_state = None
-
-        while true_state != prev_true_state:
-
-            # split state into true and false splits
-            true_split, false_split = bool_eval(true_state, bool_expr)
-            # join true_split values observed, could be used for optimization
-            # passes.
-            true_join_split |= true_split
-
-            # true_state gets executed with loop_meta_state, this computes a
-            # new numerical state. this state is also intened for our next
-            # iteration.
-            # true_state = loop_meta_state * true_split
-            prev_true_state = true_state
-            true_state = arith_eval_meta_state(true_split, loop_meta_state)
-
-            # get the value of the variable on evaluated to false
-            # false_value = false_split[variable]
-            false_join_value |= false_split[var]
-
-        true_state._warn_non_termination(self)
-
-        return {
-            'eval_value': false_join_value,
-            'true_join_split': true_join_split,
-        }
+        fixpoint = fixpoint_eval(
+            state, bool_expr, loop_meta_state=loop_meta_state)
+        fixpoint['last_entry']._warn_non_termination(self)
+        return fixpoint
 
     @cached
     def eval(self, state):
-        return self._fixpoint(state)['eval_value']
+        return self._fixpoint(state)['exit'][self.fix_expr.false_expr]
 
     def __str__(self):
         return '{op}[{a1} ↦ {a2}]'.format(op=self.op, a1=self.a1, a2=self.a2)
