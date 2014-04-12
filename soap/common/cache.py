@@ -71,6 +71,7 @@ def cached(f):
     d = functools.wraps(f)(decorated)
     d.cache_info = cache_info
     d.cache_clear = cache_clear
+    d.wrapped_func = f
 
     global _cached_funcs
     _cached_funcs.append(d)
