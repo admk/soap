@@ -1,13 +1,20 @@
 from soap.common.cache import cached
 from soap.expression import operators
-from soap.expression.arithmetic import BinaryArithExpr
+from soap.expression.common import expression_factory
+from soap.expression.arithmetic import BinaryArithExpr, TernaryArithExpr
 
 
-class LinkExpr(BinaryArithExpr):
+class LinkExpr(TernaryArithExpr):
     __slots__ = ()
 
-    def __init__(self, a1=None, a2=None, top=False, bottom=False):
-        super().__init__(operators.LINK_OP, a1, a2, top=top, bottom=bottom)
+    def __init__(self, a1=None, a2=None, a3=None, top=False, bottom=False):
+        """
+        Args:
+            a1: target expression
+            a2: metastate object for the target expression expansion
+            a3: label for identification throughout transformations
+        """
+        super().__init__(operators.LINK_OP, a1, a2, a3, top=top, bottom=bottom)
 
     @property
     def target_expr(self):
@@ -17,6 +24,10 @@ class LinkExpr(BinaryArithExpr):
     def meta_state(self):
         return self.a2
 
+    @property
+    def label_of_equivalence(self):
+        return self.a3
+
     @cached
     def eval(self, state):
         from soap.semantics.state.functions import (
@@ -25,8 +36,34 @@ class LinkExpr(BinaryArithExpr):
         state = arith_eval_meta_state(state, self.meta_state)
         return arith_eval(state, self.target_expr)
 
+    @cached
+    def label(self):
+        from soap.label.base import Label
+        from soap.semantics.label import LabelSemantics
+
+        target_label, target_env = self.target_expr.label()
+
+        meta_state = self.meta_state
+        meta_label = Label(meta_state)
+        meta_env = {}
+        for var, expr in meta_state.items():
+            expr_label, expr_env = expr.label()
+            meta_env.update(expr_env)
+            meta_env[var] = expr_label
+
+        expr = expression_factory(
+            self.op, target_label, meta_label, self.label_of_equivalence)
+
+        label = Label(expr)
+        env = {
+            label: expr,
+            target_label: target_env,
+            meta_label: meta_env,
+        }
+        return LabelSemantics(label, env)
+
     def __str__(self):
-        expr, state = self._args_to_str()
+        expr, state, eq_label = self._args_to_str()
         return '{expr} % {state}'.format(expr=expr, state=state)
 
     def __repr__(self):

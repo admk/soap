@@ -77,7 +77,7 @@ class Label(flat(tuple), Flyweight):
         return 'p_{}'.format(s)
 
     def __str__(self):
-        s = '{}'.format(self.label_value)
+        s = 'l{}'.format(self.label_value)
         if self.attribute:
             s += '{}'.format(self.attribute)
         if self.description:

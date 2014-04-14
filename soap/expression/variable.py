@@ -29,6 +29,13 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
     def eval(self, state):
         return state[self]
 
+    def label(self):
+        from soap.label.base import Label
+        from soap.semantics.label import LabelSemantics
+        label = Label(self)
+        env = {label: self}
+        return LabelSemantics(label, env)
+
     def __str__(self):
         return str(self.name)
 

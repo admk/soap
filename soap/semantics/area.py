@@ -5,79 +5,7 @@
 import pickle
 import itertools
 
-import soap.expression
 import soap.logger as logger
-from soap.common import Comparable
-from soap.semantics import flopoco
-
-
-class AreaSemantics(Comparable):
-    """The semantics that captures the area of an expression."""
-    def __init__(self, e, v, p):
-        """Initialisation.
-
-        :param e: The expression.
-        :type e: class:`soap.expression.Expr`
-        :param v: The ranges of input variables.
-        :type v: dictionary containing mappings from variables to
-            :class:`soap.semantics.error.Interval`
-        :param p: Precision used to evaluate the expression, defaults to
-            single precision.
-        :type p: int
-
-        Get the area estimation result with the property `area`.
-        """
-        self.e = e
-        self.v = v
-        self.p = p
-        self.l, self.s = e.as_labels()
-        self.area = self._area()
-        super().__init__()
-
-    def _op_counts(self):
-        mult, add = 0, 0
-        for _, e in self.s.items():
-            try:
-                if e.op == soap.expression.MULTIPLY_OP:
-                    mult += 1
-                if e.op == soap.expression.ADD_OP:
-                    add += 1
-            except AttributeError:
-                pass
-        return mult, add
-
-    def _area(self):
-        wf = self.p
-        we = self.e.exponent_width(self.v, wf)
-        mult, add = self._op_counts()
-        return flopoco.adder(we, wf) * add + flopoco.multiplier(we, wf) * mult
-
-    def __add__(self, other):
-        return AreaSemantics(self.e + other.e, self.v)
-
-    def __sub__(self, other):
-        return AreaSemantics(self.e - other.e, self.v)
-
-    def __mul__(self, other):
-        return AreaSemantics(self.e * other.e, self.v)
-
-    def __lt__(self, other):
-        if not isinstance(other, AreaSemantics):
-            return False
-        return self.area < other.area
-
-    def __eq__(self, other):
-        if not isinstance(other, AreaSemantics):
-            return False
-        if self.area != other.area:
-            return False
-        return True
-
-    def __str__(self):
-        return str(self.area)
-
-    def __repr__(self):
-        return 'AreaSemantics(%s)' % repr(self.e)
 
 
 def _para_area(i_n_e_v_p):
@@ -139,7 +67,7 @@ class AreaEstimateValidator(object):
         s = [(i, n, e, v, p)
              for i, (e, p) in enumerate(itertools.product(self.e, self.p))]
         self.points = pool().imap_unordered(_para_area, s)
-        self.points = [p for p in self.points if not p is None]
+        self.points = [p for p in self.points if p is not None]
         return self.points
 
     def _plot(self):
