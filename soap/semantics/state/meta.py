@@ -1,10 +1,13 @@
+from soap.common.cache import cached
 from soap.expression import (
-    Expression, LinkExpr, FixExpr, expression_factory,
+    Expression, StateGetterExpr, LinkExpr, FixExpr, expression_factory,
     operators, parse, Variable, FreeFlowVar
 )
+from soap.label.base import Label
 from soap.lattice.map import map
 from soap.semantics.error import cast
 from soap.semantics.common import is_numeral
+from soap.semantics.label import LabelSemantics
 from soap.semantics.state.base import BaseState
 from soap.semantics.state.functions import expand_expr
 
@@ -14,13 +17,73 @@ def _if_then_else(bool_expr, true_expr, false_expr):
         operators.TERNARY_SELECT_OP, bool_expr, true_expr, false_expr)
 
 
+def _merge(env):
+    # transform mapping var -> target_expr * meta_state into the form
+    # meta_state -> var -> target_expr
+    new_env = dict(env)
+    meta_state_var_target = {}
+    for var, expr in env.items():
+        if not isinstance(expr, LinkExpr):
+            continue
+
+        # get existing var -> target_expr labelling env, if not exist, get {}
+        var_target = meta_state_var_target.setdefault(expr.meta_state, {})
+
+        # let variable maps to the target_expr label
+        var_target[var] = expr.target_expr
+
+        # update var_target with the labelling of target_expr
+        var_target.update(env[expr.target_expr])
+
+        # remove references to labelling of expr.target_expr in new_env
+        del new_env[expr.target_expr]
+
+    # change env values where variable maps to a LinkExpr with shared
+    # .meta_state, such that .target_expr could also share subexpressions
+    for var, expr in env.items():
+        # variable does not map to a LinkExpr
+        if not isinstance(expr, LinkExpr):
+            continue
+
+        meta_state = expr.meta_state
+
+        # get shared env constructed previously
+        var_target = meta_state_var_target.get(meta_state)
+
+        # crazy, should recursively merge shared expressions, since merging
+        # creates new opportunities for further subexpression state merging
+        var_target = _merge(var_target)
+
+        # variable maps to a LinkExpr, subexpression sharing updates
+        # labelling for variable
+        if isinstance(var, Label):
+            var_label = var
+        else:
+            var_label, var_label_env = var.label()
+            new_env.update(var_label_env)
+
+        # labelling for var_target
+        var_target_label = Label(MetaState(var_target))
+        new_env[var_target_label] = var_target
+
+        # labelling for state getter expression
+        getter_expr = StateGetterExpr(var_target_label, var_label)
+        getter_label = Label(getter_expr)
+        new_env[getter_label] = getter_expr
+
+        # labelling for LinkExpr
+        new_env[var] = LinkExpr(getter_label, meta_state)
+
+    return new_env
+
+
 class MetaState(BaseState, map(None, Expression)):
     __slots__ = ()
 
     def _cast_key(self, key):
         if isinstance(key, str):
             return Variable(key)
-        if isinstance(key, Variable):
+        if isinstance(key, (Variable, Label)):
             return key
         raise TypeError(
             'Do not know how to convert {!r} into a variable'.format(key))
@@ -30,10 +93,12 @@ class MetaState(BaseState, map(None, Expression)):
             return Expression(top=top, bottom=bottom)
         if isinstance(value, str):
             return parse(value)
-        if isinstance(value, Expression):
+        if isinstance(value, (Label, Expression)):
             return value
         if isinstance(value, (int, float)) or is_numeral(value):
             return cast(value)
+        if isinstance(value, dict):
+            return self.__class__(value)
         raise TypeError(
             'Do not know how to convert {!r} into an expression'.format(value))
 
@@ -83,3 +148,15 @@ class MetaState(BaseState, map(None, Expression)):
         for k in var_list:
             mapping[k] = LinkExpr(fix_var(k), self)
         return self.__class__(mapping)
+
+    @cached
+    def label(self):
+        label = Label(self)
+
+        env = {}
+        for var, expr in self.items():
+            expr_label, expr_env = expr.label()
+            env.update(expr_env)
+            env[var] = expr_label
+
+        return LabelSemantics(label, _merge(env))

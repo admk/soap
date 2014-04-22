@@ -1,15 +1,14 @@
+from collections import namedtuple
+
 from soap.common import Flyweight, Comparable
 from soap.expression.common import is_expression
 
 
-class LabelSemantics(Flyweight, Comparable):
-    """The semantics that captures the area of an expression."""
-    def __init__(self, label, env):
-        """The labelling semantics.  """
-        super().__init__()
-        self.label = label
-        self.env = env
+_label_semantics_tuple_type = namedtuple('LabelSemantics', ['label', 'env'])
 
+
+class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
+    """The semantics that captures the area of an expression."""
     @property
     def luts(self, state, prec):
         try:
@@ -42,7 +41,3 @@ class LabelSemantics(Flyweight, Comparable):
         env = ', '.join('{} ↦ {}'.format(k, v) for k, v in self.env.items())
         env = '[{}]'.format(env)
         return '({label}, {env})'.format(label=self.label, env=env)
-
-    def __repr__(self):
-        return '{cls}({label!r}, {env!r})'.format(
-            cls=self.__class__.__name__, label=self.label, env=self.env)

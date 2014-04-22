@@ -4,6 +4,31 @@ from soap.expression.common import expression_factory
 from soap.expression.arithmetic import BinaryArithExpr, TernaryArithExpr
 
 
+class StateGetterExpr(BinaryArithExpr):
+    __slots__ = ()
+
+    def __init__(self, a1=None, a2=None, top=False, bottom=False):
+        super().__init__(
+            operators.STATE_GETTER_OP, a1, a2, top=top, bottom=bottom)
+
+    @property
+    def meta_state(self):
+        return self.a1
+
+    @property
+    def key(self):
+        return self.a2
+
+    @cached
+    def eval(self, state):
+        from soap.semantics.state.functions import arith_eval
+        return arith_eval(state, self.a1[self.a2])
+
+    def __str__(self):
+        return '{meta_state}[{key}]'.format(
+            meta_state=self.meta_state, key=self.key)
+
+
 class LinkExpr(TernaryArithExpr):
     __slots__ = ()
 
@@ -42,18 +67,10 @@ class LinkExpr(TernaryArithExpr):
         from soap.semantics.label import LabelSemantics
 
         target_label, target_env = self.target_expr.label()
-
-        meta_state = self.meta_state
-        meta_label = Label(meta_state)
-        meta_env = {}
-        for var, expr in meta_state.items():
-            expr_label, expr_env = expr.label()
-            meta_env.update(expr_env)
-            meta_env[var] = expr_label
+        meta_label, meta_env = self.meta_state.label()
 
         expr = expression_factory(
             self.op, target_label, meta_label, self.label_of_equivalence)
-
         label = Label(expr)
         env = {
             label: expr,
@@ -65,10 +82,6 @@ class LinkExpr(TernaryArithExpr):
     def __str__(self):
         expr, state, eq_label = self._args_to_str()
         return '{expr} % {state}'.format(expr=expr, state=state)
-
-    def __repr__(self):
-        return '{cls}({a1!r}, {a2!r})'.format(
-            cls=self.__class__.__name__, a1=self.a1, a2=self.a2)
 
 
 class FixExpr(BinaryArithExpr):

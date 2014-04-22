@@ -19,7 +19,7 @@ from soap.expression.arithmetic import (
 from soap.expression.boolean import (
     BoolExpr, UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr
 )
-from soap.expression.fixpoint import LinkExpr, FixExpr
+from soap.expression.fixpoint import StateGetterExpr, LinkExpr, FixExpr
 from soap.expression.parser import parse
 
 
