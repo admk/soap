@@ -16,13 +16,13 @@ class FlatLattice(Lattice):
          ...  \ \ | / / ...
                   ⊥
     """
-    __slots__ = ('v', )
+    __slots__ = ('value', )
 
     def __init__(self, value=None, top=False, bottom=False):
         super().__init__(top=top, bottom=bottom)
         if top or bottom:
             return
-        self.v = self._cast_value(value)
+        self.value = self._cast_value(value)
 
     def _cast_value(self, value, top=False, bottom=False):
         raise NotImplementedError
@@ -44,16 +44,16 @@ class FlatLattice(Lattice):
         return self
 
     def le(self, other):
-        return self.v == other.v
+        return self.value == other.value
 
     def __hash__(self):
-        return hash((self.__class__, self.v))
+        return hash((self.__class__, self.value))
 
     def __str__(self):
-        return str(self.v)
+        return str(self.value)
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.v)
+        return '%s(%r)' % (self.__class__.__name__, self.value)
 
 
 class Denotational(object):
@@ -73,15 +73,15 @@ class Denotational(object):
         except AttributeError:
             pass
         if other is None:
-            v = op(self.v)
+            value = op(self.value)
         else:
             try:
-                v = op(self.v, other.v)
+                value = op(self.value, other.value)
             except AttributeError:
-                v = op(self.v, other)
-        if type(v) is bool:
-            return v
-        return self.__class__(v)
+                value = op(self.value, other)
+        if type(value) is bool:
+            return value
+        return self.__class__(value)
 
     def __add__(self, other):
         return self._op(lambda x, y: x + y, other)
@@ -101,16 +101,16 @@ class Denotational(object):
         return self
 
     def __neg__(self):
-        return self._op(lambda v: -v)
+        return self._op(lambda value: -value)
 
     def __abs__(self):
-        return self._op(lambda v: abs(v))
+        return self._op(lambda value: abs(value))
 
     def __int__(self):
-        return int(self.v)
+        return int(self.value)
 
     def __float__(self):
-        return float(self.v)
+        return float(self.value)
 
     def __le__(self, other):
         return self._op(lambda x, y: x <= y, other)

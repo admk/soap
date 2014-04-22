@@ -146,34 +146,37 @@ class Expression(FlatLattice, Flyweight):
         from soap.semantics.flopoco import eval_expr
         return eval_expr(self, var_env, prec)
 
-    def _args_to_label(self):
+    def _args_to_label(self, context=None):
+        from soap.label.base import LabelContext
         from soap.semantics.label import LabelSemantics
         from soap.semantics.common import is_numeral
-        from soap.label.base import Label
+
+        context = context or LabelContext(self)
 
         for a in self.args:
             if isinstance(a, Expression):
-                yield a.label()
+                yield a.label(context)
             elif is_numeral(a):
-                label = Label(a)
+                label = context.Label(a)
                 yield LabelSemantics(label, {label: a})
             else:
                 raise TypeError(
                     'Do not know how to convert {!r} to label'.format(a))
 
-    @cached
-    def label(self):
+    def label(self, context=None):
         """Performs labelling analysis on the expression.
 
         :returns: dictionary containing the labelling scheme.
         """
-        from soap.label.base import Label
+        from soap.label.base import LabelContext
         from soap.semantics.label import LabelSemantics
 
-        semantics_list = tuple(self._args_to_label())
+        context = context or LabelContext(self)
+
+        semantics_list = tuple(self._args_to_label(context))
         arg_label_list, arg_env_list = zip(*semantics_list)
         expr = expression_factory(self.op, *arg_label_list)
-        label = Label(expr)
+        label = context.Label(expr)
         label_env = {label: expr}
         for env in arg_env_list:
             label_env.update(env)

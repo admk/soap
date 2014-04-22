@@ -61,17 +61,18 @@ class LinkExpr(TernaryArithExpr):
         state = arith_eval_meta_state(state, self.meta_state)
         return arith_eval(state, self.target_expr)
 
-    @cached
-    def label(self):
-        from soap.label.base import Label
+    def label(self, context=None):
+        from soap.label.base import LabelContext
         from soap.semantics.label import LabelSemantics
 
-        target_label, target_env = self.target_expr.label()
-        meta_label, meta_env = self.meta_state.label()
+        context = context or LabelContext(self)
+
+        target_label, target_env = self.target_expr.label(context)
+        meta_label, meta_env = self.meta_state.label(context)
 
         expr = expression_factory(
             self.op, target_label, meta_label, self.label_of_equivalence)
-        label = Label(expr)
+        label = context.Label(expr)
         env = {
             label: expr,
             target_label: target_env,

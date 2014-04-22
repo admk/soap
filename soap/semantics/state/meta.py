@@ -1,9 +1,8 @@
-from soap.common.cache import cached
 from soap.expression import (
     Expression, StateGetterExpr, LinkExpr, FixExpr, expression_factory,
     operators, parse, Variable, FreeFlowVar
 )
-from soap.label.base import Label
+from soap.label.base import Label, LabelContext
 from soap.lattice.map import map
 from soap.semantics.error import cast
 from soap.semantics.common import is_numeral
@@ -17,11 +16,12 @@ def _if_then_else(bool_expr, true_expr, false_expr):
         operators.TERNARY_SELECT_OP, bool_expr, true_expr, false_expr)
 
 
-def _merge(env):
-    # transform mapping var -> target_expr * meta_state into the form
-    # meta_state -> var -> target_expr
+def _label_merge(env, context):
+    # Transforms mapping: var -> target_expr * meta_state
+    # into the form: meta_state -> var -> target_expr
     new_env = dict(env)
     meta_state_var_target = {}
+
     for var, expr in env.items():
         if not isinstance(expr, LinkExpr):
             continue
@@ -52,23 +52,23 @@ def _merge(env):
 
         # crazy, should recursively merge shared expressions, since merging
         # creates new opportunities for further subexpression state merging
-        var_target = _merge(var_target)
+        var_target = _label_merge(var_target, context)
 
         # variable maps to a LinkExpr, subexpression sharing updates
         # labelling for variable
         if isinstance(var, Label):
             var_label = var
         else:
-            var_label, var_label_env = var.label()
+            var_label, var_label_env = var.label(context)
             new_env.update(var_label_env)
 
         # labelling for var_target
-        var_target_label = Label(MetaState(var_target))
+        var_target_label = context.Label(MetaState(var_target))
         new_env[var_target_label] = var_target
 
         # labelling for state getter expression
         getter_expr = StateGetterExpr(var_target_label, var_label)
-        getter_label = Label(getter_expr)
+        getter_label = context.Label(getter_expr)
         new_env[getter_label] = getter_expr
 
         # labelling for LinkExpr
@@ -149,14 +149,15 @@ class MetaState(BaseState, map(None, Expression)):
             mapping[k] = LinkExpr(fix_var(k), self)
         return self.__class__(mapping)
 
-    @cached
-    def label(self):
-        label = Label(self)
+    def label(self, context=None):
+        context = context or LabelContext(self)
 
         env = {}
         for var, expr in self.items():
-            expr_label, expr_env = expr.label()
+            expr_label, expr_env = expr.label(context)
             env.update(expr_env)
             env[var] = expr_label
+        env = _label_merge(env, context)
+        label = context.Label(MetaState(env))
 
-        return LabelSemantics(label, _merge(env))
+        return LabelSemantics(label, env)
