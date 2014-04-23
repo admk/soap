@@ -7,6 +7,7 @@ from akpytemp.utils import code_gobble
 
 from soap.common.formatting import superscript
 from soap.label import Label
+from soap.semantics import is_numeral
 
 
 def _code_gobble(s):
@@ -36,10 +37,12 @@ class Flow(object):
         if isinstance(self, IdentityFlow):
             return set()
         if isinstance(self, AssignFlow):
-            return {self.var} | self.expr.vars()
+            vars = set() if is_numeral(self.expr) else self.expr.vars()
+            return {self.var} | vars
         if isinstance(self, IfFlow):
             vars = self.conditional_expr.vars()
             vars |= self.true_flow.vars() | self.false_flow.vars()
+            return vars
         if isinstance(self, WhileFlow):
             return self.conditional_expr.vars() | self.loop_flow.vars()
         if isinstance(self, CompositionalFlow):
@@ -47,7 +50,8 @@ class Flow(object):
             for f in self.flows:
                 vars |= f.vars()
             return vars
-        raise TypeError('Unrecognized self object {}'.format(self))
+        raise TypeError(
+            'Do not know how to find variables in {!r}'.format(self))
 
     def flow(self, state):
         """Evaluates the flow with state."""

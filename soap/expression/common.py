@@ -51,12 +51,11 @@ def expression_factory(op, *args):
     from soap.expression import operators
     from soap.expression.variable import Variable
     from soap.expression.arithmetic import (
-        UnaryArithExpr, BinaryArithExpr, TernaryArithExpr, SelectExpr
+        UnaryArithExpr, BinaryArithExpr, TernaryArithExpr
     )
     from soap.expression.boolean import (
         UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr
     )
-    from soap.expression.fixpoint import LinkExpr, FixExpr
     if not args:
         if isinstance(op, Variable):
             return op
@@ -64,12 +63,6 @@ def expression_factory(op, *args):
             return Variable(op)
         raise ValueError(
             'Do not know how to construct expression from {!r}'.format(op))
-    if op == operators.FIXPOINT_OP:
-        return FixExpr(*args)
-    if op == operators.LINK_OP:
-        return LinkExpr(*args)
-    if op == operators.TERNARY_SELECT_OP:
-        return SelectExpr(*args)
     if op in operators.ARITHMETIC_OPERATORS:
         class_list = [UnaryArithExpr, BinaryArithExpr, TernaryArithExpr]
     elif op in operators.BOOLEAN_OPERATORS:

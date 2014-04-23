@@ -43,6 +43,7 @@ def raise_parser_error(desc, text, token):
 
 
 def ast_to_expr(t, s):
+    from soap.expression.arithmetic import SelectExpr
     from soap.expression.common import expression_factory
     from soap.semantics.common import is_constant
     from soap.semantics.error import cast, mpz, mpfr
@@ -68,7 +69,7 @@ def ast_to_expr(t, s):
         return expression_factory(op, a1, a2)
     if isinstance(t, ast.IfExp):
         args = (ast_to_expr(a, s) for a in (t.test, t.body, t.orelse))
-        return expression_factory(TERNARY_SELECT_OP, *args)
+        return SelectExpr(*args)
     op = OPERATOR_MAP[t.op.__class__]
     if isinstance(t, ast.BoolOp):
         args = (ast_to_expr(a, s) for a in t.values)

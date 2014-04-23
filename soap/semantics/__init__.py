@@ -6,5 +6,5 @@ from soap.semantics.error import (
 )
 from soap.semantics.label import LabelSemantics
 from soap.semantics.state import (
-    BoxState, IdentifierBoxState, MetaState
+    BoxState, IdentifierBoxState, MetaState, flow_to_meta_state
 )
