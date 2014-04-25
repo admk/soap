@@ -7,6 +7,7 @@ from akpytemp.utils import code_gobble
 
 from soap.common.formatting import superscript
 from soap.label import Label
+from soap.semantics import is_numeral
 
 
 def _code_gobble(s):
@@ -31,23 +32,33 @@ class Flow(object):
     *effect* of the computation associated with the flow, which is specified in
     the definition of the state.
     """
-    def vars(self):
+    def vars(self, input=True, output=True):
         """Finds all variables in the flow."""
         if isinstance(self, IdentityFlow):
             return set()
         if isinstance(self, AssignFlow):
-            return {self.var} | self.expr.vars()
+            in_vars = out_vars = set()
+            if input and not is_numeral(self.expr):
+                in_vars = self.expr.vars()
+            if output:
+                out_vars = {self.var}
+            return in_vars | out_vars
         if isinstance(self, IfFlow):
-            vars = self.conditional_expr.vars()
-            vars |= self.true_flow.vars() | self.false_flow.vars()
+            in_vars = self.conditional_expr.vars() if input else set()
+            flow_vars = self.true_flow.vars(input=input, output=output)
+            flow_vars |= self.false_flow.vars(input=input, output=output)
+            return in_vars | flow_vars
         if isinstance(self, WhileFlow):
-            return self.conditional_expr.vars() | self.loop_flow.vars()
+            in_vars = self.conditional_expr.vars() if input else set()
+            flow_vars = self.loop_flow.vars(input=input, output=output)
+            return in_vars | flow_vars
         if isinstance(self, CompositionalFlow):
             vars = set()
             for f in self.flows:
-                vars |= f.vars()
+                vars |= f.vars(input=input, output=output)
             return vars
-        raise TypeError('Unrecognized self object {}'.format(self))
+        raise TypeError(
+            'Do not know how to find variables in {!r}'.format(self))
 
     def flow(self, state):
         """Evaluates the flow with state."""

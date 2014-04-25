@@ -81,6 +81,21 @@ class Expression(FlatLattice, Flyweight):
         """
         raise NotImplementedError
 
+    @cached
+    def error(self, var_env, prec):
+        """Computes the error bound of its evaulation.
+
+        :param var_env: The ranges of input variables.
+        :type var_env: dictionary containing mappings from variables to
+            :class:`soap.semantics.error.Interval`
+        :param prec: Precision used to evaluate the expression, defaults to
+            single precision.
+        :type prec: int
+        """
+        from soap.semantics import precision_context, BoxState, ErrorSemantics
+        with precision_context(prec):
+            return ErrorSemantics(self.eval(BoxState(var_env)))
+
     def exponent_width(self, var_env, prec):
         """Computes the exponent width required for its evaluation so that no
         overflow could occur.
@@ -104,7 +119,7 @@ class Expression(FlatLattice, Flyweight):
         return max(we, we_min)
 
     @cached
-    def area(self, var_env, prec):
+    def luts(self, var_env, prec):
         """Computes the area estimation of its evaulation.
 
         :param var_env: The ranges of input variables.
@@ -114,8 +129,10 @@ class Expression(FlatLattice, Flyweight):
             single precision.
         :type prec: int
         """
-        from soap.semantics import AreaSemantics
-        return AreaSemantics(self, var_env, prec)
+        return self.label().luts()
+
+    def operator_luts(self, exponent, mantissa):
+        raise NotImplementedError
 
     @cached
     def real_area(self, var_env, prec):
@@ -132,43 +149,41 @@ class Expression(FlatLattice, Flyweight):
         from soap.semantics.flopoco import eval_expr
         return eval_expr(self, var_env, prec)
 
-    @cached
-    def error(self, var_env, prec):
-        """Computes the error bound of its evaulation.
+    def _args_to_label(self, context=None):
+        from soap.label.base import LabelContext
+        from soap.semantics.label import LabelSemantics
+        from soap.semantics.common import is_numeral
 
-        :param var_env: The ranges of input variables.
-        :type var_env: dictionary containing mappings from variables to
-            :class:`soap.semantics.error.Interval`
-        :param prec: Precision used to evaluate the expression, defaults to
-            single precision.
-        :type prec: int
-        """
-        from soap.semantics import precision_context, BoxState, ErrorSemantics
-        with precision_context(prec):
-            return ErrorSemantics(self.eval(BoxState(var_env)))
+        context = context or LabelContext(self)
 
-    @cached
-    def as_labels(self):
+        for a in self.args:
+            if isinstance(a, Expression):
+                yield a.label(context)
+            elif is_numeral(a):
+                label = context.Label(a)
+                yield LabelSemantics(label, {label: a})
+            else:
+                raise TypeError(
+                    'Do not know how to convert {!r} to label'.format(a))
+
+    def label(self, context=None):
         """Performs labelling analysis on the expression.
 
         :returns: dictionary containing the labelling scheme.
         """
-        from soap.label.base import Label
+        from soap.label.base import LabelContext
+        from soap.semantics.label import LabelSemantics
 
-        def to_label(e):
-            try:
-                return e.as_labels()
-            except AttributeError:
-                l = Label(e)
-                return l, {l: e}
+        context = context or LabelContext(self)
 
-        args_label, args_env = zip(*(to_label(a) for a in self.args))
-        expression = expression_factory(self.op, *args_label)
-        label = Label(expression)
-        label_env = {label: expression}
-        for e in args_env:
-            label_env.update(e)
-        return label, label_env
+        semantics_list = tuple(self._args_to_label(context))
+        arg_label_list, arg_env_list = zip(*semantics_list)
+        expr = expression_factory(self.op, *arg_label_list)
+        label = context.Label(expr)
+        label_env = {label: expr}
+        for env in arg_env_list:
+            label_env.update(env)
+        return LabelSemantics(label, label_env)
 
     def crop(self, depth):
         """Truncate the tree at a certain depth.
@@ -263,6 +278,9 @@ class Expression(FlatLattice, Flyweight):
                          for i, a in enumerate(self.args))
         return "{name}(op={op!r}, {args})".format(
             name=self.__class__.__name__, op=self.op, args=args)
+
+    def __str__(self):
+        raise NotImplementedError
 
     def _attr(self):
         return (self.op, tuple(self.args))
