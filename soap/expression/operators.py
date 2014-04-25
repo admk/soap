@@ -6,7 +6,7 @@
 ADD_OP = '+'
 SUBTRACT_OP = '-'
 UNARY_SUBTRACT_OP = '_'
-MULTIPLY_OP = '*'
+MULTIPLY_OP = '⨯'
 DIVIDE_OP = '/'
 
 # boolean operators
@@ -23,7 +23,7 @@ OR_OP = '|'
 # special operators
 TERNARY_SELECT_OP = '?'
 FIXPOINT_OP = 'fix'
-LINK_OP = '.'
+LINK_OP = '%'
 STATE_GETTER_OP = '[]'
 
 BARRIER_OP = '//'

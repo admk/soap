@@ -131,6 +131,9 @@ class Expression(FlatLattice, Flyweight):
         """
         return self.label().luts()
 
+    def operator_luts(self, exponent, mantissa):
+        raise NotImplementedError
+
     @cached
     def real_area(self, var_env, prec):
         """Computes the actual area by synthesising it using XST with flopoco
@@ -275,6 +278,9 @@ class Expression(FlatLattice, Flyweight):
                          for i, a in enumerate(self.args))
         return "{name}(op={op!r}, {args})".format(
             name=self.__class__.__name__, op=self.op, args=args)
+
+    def __str__(self):
+        raise NotImplementedError
 
     def _attr(self):
         return (self.op, tuple(self.args))

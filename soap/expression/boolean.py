@@ -42,6 +42,11 @@ class UnaryBoolExpr(UnaryExpression, BoolExpr):
 
     __slots__ = ()
 
+    def operator_luts(self, exponent, mantissa):
+        from soap import logger
+        logger.warning('TODO: UnaryBoolExpr not yet has a LUTs count')
+        return 0
+
 
 class BinaryBoolExpr(BinaryExpression, BoolExpr):
     """Binary boolean expressions."""
@@ -63,6 +68,11 @@ class BinaryBoolExpr(BinaryExpression, BoolExpr):
         except KeyError:
             raise KeyError('Unrecognized operator type {!r}'.format(self.op))
         return op(a1, a2)
+
+    def operator_luts(self, exponent, mantissa):
+        from soap import logger
+        logger.warning('TODO: BinaryBoolExpr not yet has a LUTs count')
+        return 0
 
 
 class TernaryBoolExpr(TernaryExpression, BoolExpr):

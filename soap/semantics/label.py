@@ -9,18 +9,24 @@ _label_semantics_tuple_type = namedtuple('LabelSemantics', ['label', 'env'])
 
 class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
     """The semantics that captures the area of an expression."""
-    @property
-    def luts(self, state, prec):
+
+    def luts(self, exponent, mantissa):
         try:
             return self._area
         except AttributeError:
             pass
-        area = 0
-        for v in self.env.values():
-            if is_expression(v):
-                area += v.operator_area(state, prec)
-        self._area = area
-        return area
+
+        def accumulate_luts_count(env):
+            luts = 0
+            for v in env.values():
+                if is_expression(v):
+                    luts += v.operator_luts(exponent, mantissa)
+                if isinstance(v, dict):
+                    luts += accumulate_luts_count(v)
+            return luts
+
+        self._luts = accumulate_luts_count(self.env)
+        return self._luts
 
     def __iter__(self):
         return iter((self.label, self.env))

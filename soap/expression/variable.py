@@ -59,7 +59,7 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
         return hash((self.name, self.__class__))
 
 
-class FreeFlowVar(Variable):
+class FreeVariable(Variable):
     """A free variable, must be substituted before evaluating for its value."""
     __slots__ = ()
 

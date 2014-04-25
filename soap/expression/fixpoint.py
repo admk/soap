@@ -1,6 +1,5 @@
 from soap.common.cache import cached
 from soap.expression import operators
-from soap.expression.common import expression_factory
 from soap.expression.arithmetic import BinaryArithExpr
 
 
@@ -23,6 +22,9 @@ class StateGetterExpr(BinaryArithExpr):
     def eval(self, state):
         from soap.semantics.state.functions import arith_eval
         return arith_eval(state, self.a1[self.a2])
+
+    def operator_luts(self, exponent, mantissa):
+        return 0
 
     def __str__(self):
         return '{meta_state}[{key}]'.format(
@@ -65,7 +67,7 @@ class LinkExpr(BinaryArithExpr):
         target_label, target_env = self.target_expr.label(context)
         meta_label, meta_env = self.meta_state.label(context)
 
-        expr = expression_factory(self.op, target_label, meta_label)
+        expr = self.__class__(target_label, meta_label)
         label = context.Label(expr)
         env = {
             label: expr,
@@ -73,6 +75,9 @@ class LinkExpr(BinaryArithExpr):
             meta_label: meta_env,
         }
         return LabelSemantics(label, env)
+
+    def operator_luts(self, exponent, mantissa):
+        return 0
 
     def __str__(self):
         expr, state = self._args_to_str()
@@ -109,5 +114,22 @@ class FixExpr(BinaryArithExpr):
     def eval(self, state):
         return self._fixpoint(state)['exit'][self.fix_expr.false_expr]
 
+    def label(self, context=None):
+        from soap.label.base import LabelContext
+        from soap.semantics.label import LabelSemantics
+
+        context = context or LabelContext(self)
+
+        fix_expr_label, env = self.a2.label(context)
+
+        expr = self.__class__(self.a1, fix_expr_label)
+        label = context.Label(expr)
+        env[label] = expr
+
+        return LabelSemantics(label, env)
+
+    def operator_luts(self, exponent, mantissa):
+        return 0
+
     def __str__(self):
-        return '{op}[{a1} ↦ {a2}]'.format(op=self.op, a1=self.a1, a2=self.a2)
+        return '{op}(λ{a1} . {a2})'.format(op=self.op, a1=self.a1, a2=self.a2)

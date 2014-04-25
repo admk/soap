@@ -84,7 +84,7 @@ class Label(flat(tuple), Flyweight):
 
     @recursive_repr()
     def __repr__(self):
-        return '{cls}({label!r}, {attribute!r}, {context!r})'.format(
+        return '{cls}({label!r})'.format(
             cls=self.__class__.__name__, label=self.label_value,
             attribute=self.attribute, context=self.context_id)
 

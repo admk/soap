@@ -12,7 +12,7 @@ from soap.expression.common import (
 from soap.expression.base import (
     Expression, UnaryExpression, BinaryExpression, TernaryExpression
 )
-from soap.expression.variable import Variable, FreeFlowVar
+from soap.expression.variable import Variable, FreeVariable
 from soap.expression.arithmetic import (
     ArithExpr, UnaryArithExpr, BinaryArithExpr, TernaryArithExpr, SelectExpr
 )

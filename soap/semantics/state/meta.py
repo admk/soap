@@ -1,6 +1,6 @@
 from soap.expression import (
     Expression, SelectExpr, StateGetterExpr, LinkExpr, FixExpr, Variable,
-    FreeFlowVar, parse
+    FreeVariable, parse
 )
 from soap.label.base import Label, LabelContext
 from soap.lattice.map import map
@@ -8,7 +8,7 @@ from soap.semantics.error import cast
 from soap.semantics.common import is_numeral
 from soap.semantics.label import LabelSemantics
 from soap.semantics.state.base import BaseState
-from soap.semantics.state.functions import expand_expr
+from soap.semantics.state.functions import expand_expr, to_meta_state
 
 
 def _label_merge(env, context):
@@ -128,10 +128,10 @@ class MetaState(BaseState, map(None, Expression)):
     def visit_WhileFlow(self, flow):
         bool_expr = flow.conditional_expr
         loop_flow = flow.loop_flow
-        var_list = loop_flow.vars()
+        var_list = loop_flow.vars(output=False)
 
         def fix_var(var):
-            free_var = FreeFlowVar(name=var.name, flow=flow)
+            free_var = FreeVariable(name=var.name, flow=flow)
             id_state = self.__class__({k: k for k in var_list})
             loop_state = id_state.transition(loop_flow)
             true_expr = LinkExpr(free_var, loop_state)
@@ -162,6 +162,4 @@ def flow_to_meta_state(flow):
     if isinstance(flow, str):
         from soap.program.parser import parse
         flow = parse(flow)
-
-    id_state = MetaState({k: k for k in flow.vars()})
-    return id_state.transition(flow)
+    return to_meta_state(flow)

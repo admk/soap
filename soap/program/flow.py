@@ -32,23 +32,30 @@ class Flow(object):
     *effect* of the computation associated with the flow, which is specified in
     the definition of the state.
     """
-    def vars(self):
+    def vars(self, input=True, output=True):
         """Finds all variables in the flow."""
         if isinstance(self, IdentityFlow):
             return set()
         if isinstance(self, AssignFlow):
-            vars = set() if is_numeral(self.expr) else self.expr.vars()
-            return {self.var} | vars
+            in_vars = out_vars = set()
+            if input and not is_numeral(self.expr):
+                in_vars = self.expr.vars()
+            if output:
+                out_vars = {self.var}
+            return in_vars | out_vars
         if isinstance(self, IfFlow):
-            vars = self.conditional_expr.vars()
-            vars |= self.true_flow.vars() | self.false_flow.vars()
-            return vars
+            in_vars = self.conditional_expr.vars() if input else set()
+            flow_vars = self.true_flow.vars(input=input, output=output)
+            flow_vars |= self.false_flow.vars(input=input, output=output)
+            return in_vars | flow_vars
         if isinstance(self, WhileFlow):
-            return self.conditional_expr.vars() | self.loop_flow.vars()
+            in_vars = self.conditional_expr.vars() if input else set()
+            flow_vars = self.loop_flow.vars(input=input, output=output)
+            return in_vars | flow_vars
         if isinstance(self, CompositionalFlow):
             vars = set()
             for f in self.flows:
-                vars |= f.vars()
+                vars |= f.vars(input=input, output=output)
             return vars
         raise TypeError(
             'Do not know how to find variables in {!r}'.format(self))

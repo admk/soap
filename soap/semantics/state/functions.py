@@ -123,7 +123,7 @@ def bool_eval(state, expr):
 
 def to_meta_state(flow):
     from soap.semantics.state.meta import MetaState
-    id_state = MetaState({v: v for v in flow.vars()})
+    id_state = MetaState({v: v for v in flow.vars(output=False)})
     return id_state.transition(flow)
 
 
