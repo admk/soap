@@ -86,15 +86,6 @@ class BinaryArithExpr(BinaryExpression, ArithExpr):
             raise KeyError('Unrecognized operator type {!r}'.format(self.op))
         return op(a1, a2)
 
-    def operator_luts(self, exponent, mantissa):
-        from soap.semantics.flopoco import adder, multiplier
-        luts_func_dict = {
-            ADD_OP: adder,
-            SUBTRACT_OP: adder,
-            MULTIPLY_OP: multiplier,
-        }
-        return luts_func_dict[self.op](exponent, mantissa)
-
     def _attr(self):
         if self.op in COMMUTATIVITY_OPERATORS:
             args = frozenset(self.args)
@@ -139,11 +130,6 @@ class SelectExpr(TernaryArithExpr):
         true_value = eval_split(self.true_expr, true_state)
         false_value = eval_split(self.false_expr, false_state)
         return true_value | false_value
-
-    def operator_luts(self, exponent, mantissa):
-        from soap import logger
-        logger.warning('TODO: SelectExpr not yet has a LUTs count')
-        return 0
 
     def __str__(self):
         return '{} ? {} : {}'.format(*self._args_to_str())

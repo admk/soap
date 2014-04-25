@@ -108,7 +108,7 @@ class Expression(FlatLattice, Flyweight):
         :type prec: int
         """
         import math
-        from soap.semantics.flopoco import we_min
+        from soap.flopoco.common import we_min
         b = self.error(var_env, prec).v
         bmax = max(abs(b.min), abs(b.max))
         expmax = math.floor(math.log(bmax, 2))
@@ -131,9 +131,6 @@ class Expression(FlatLattice, Flyweight):
         """
         return self.label().luts()
 
-    def operator_luts(self, exponent, mantissa):
-        raise NotImplementedError
-
     @cached
     def real_area(self, var_env, prec):
         """Computes the actual area by synthesising it using XST with flopoco
@@ -146,7 +143,7 @@ class Expression(FlatLattice, Flyweight):
             single precision.
         :type prec: int
         """
-        from soap.semantics.flopoco import eval_expr
+        from soap.flopoco.actual import eval_expr
         return eval_expr(self, var_env, prec)
 
     def _args_to_label(self, context=None):

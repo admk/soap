@@ -23,9 +23,6 @@ class StateGetterExpr(BinaryArithExpr):
         from soap.semantics.state.functions import arith_eval
         return arith_eval(state, self.a1[self.a2])
 
-    def operator_luts(self, exponent, mantissa):
-        return 0
-
     def __str__(self):
         return '{meta_state}[{key}]'.format(
             meta_state=self.meta_state, key=self.key)
@@ -76,9 +73,6 @@ class LinkExpr(BinaryArithExpr):
         }
         return LabelSemantics(label, env)
 
-    def operator_luts(self, exponent, mantissa):
-        return 0
-
     def __str__(self):
         expr, state = self._args_to_str()
         return '{expr} {op} {state}'.format(expr=expr, op=self.op, state=state)
@@ -127,9 +121,6 @@ class FixExpr(BinaryArithExpr):
         env[label] = expr
 
         return LabelSemantics(label, env)
-
-    def operator_luts(self, exponent, mantissa):
-        return 0
 
     def __str__(self):
         return '{op}(λ{a1} . {a2})'.format(op=self.op, a1=self.a1, a2=self.a2)

@@ -1,11 +1,101 @@
-"""
-.. module:: soap.semantics.area
-    :synopsis: The area semantics.
-"""
-import pickle
 import itertools
+import pickle
+import shutil
+import tempfile
 
-import soap.logger as logger
+from soap import logger
+from soap.flopoco.common import cd, template_file, flopoco, xilinx
+
+
+class _RTLGenerator(object):
+
+    def __init__(self, expr, var_env, prec, file_name=None, dir=None):
+        from soap.expression import Expr
+        self.expr = Expr(expr)
+        self.var_env = var_env
+        self.wf = prec
+        self.we = self.expr.exponent_width(var_env, prec)
+        self.dir = dir or tempfile.mktemp(suffix='/')
+        with cd(self.dir):
+            self.f = file_name or tempfile.mktemp(suffix='.vhdl', dir=dir)
+
+    def generate(self):
+        from akpytemp import Template
+
+        ops = set()
+        in_ports = set()
+        out_port, ls = self.expr.as_labels()
+        wires = set()
+        signals = set()
+
+        def wire(op, in1, in2, out):
+            def wire_name(i):
+                if i in signals:
+                    return i.signal_name()
+                if i in in_ports:
+                    return i.port_name()
+                if i == out_port:
+                    return 'p_out'
+            for i in [in1, in2, out]:
+                # a variable represented as a string is a port
+                if isinstance(i.e, str):
+                    in_ports.add(i)
+                    continue
+                # a number is a port
+                try:
+                    float(i.e)
+                    in_ports.add(i)
+                    continue
+                except (TypeError, ValueError):
+                    pass
+                # a range is a port
+                try:
+                    a, b = i.e
+                    float(a), float(b)
+                    in_ports.add(i)
+                    continue
+                except (TypeError, ValueError):
+                    pass
+                # an expression, need a signal for its output
+                try:
+                    i.e.op
+                    if i != out_port:
+                        signals.add(i)
+                except AttributeError:
+                    pass
+            wires.add((op, wire_name(in1), wire_name(in2), wire_name(out)))
+
+        for out, e in ls.items():
+            try:
+                op, in1, in2 = e.op, e.a1, e.a2
+                wire(op, in1, in2, out)
+                ops.add(e.op)
+            except AttributeError:
+                pass
+        in_ports = [i.port_name() for i in in_ports]
+        out_port = 'p_out'
+        signals = [i.signal_name() for i in signals]
+        logger.debug(in_ports, signals, wires)
+        Template(path=template_file).save(
+            path=self.f, directory=self.dir, flopoco=flopoco,
+            ops=ops, e=self.expr,
+            we=self.we, wf=self.wf,
+            in_ports=in_ports, out_port=out_port,
+            signals=signals, wires=wires)
+        return self.f
+
+
+def actual_luts(expr, var_env, prec):
+    import sh
+    dir = tempfile.mktemp(suffix='/')
+    f = _RTLGenerator(expr, var_env, prec, dir=dir).generate()
+    logger.debug('Synthesising', str(expr), 'with precision', prec, 'in', f)
+    try:
+        return xilinx(f, dir=dir)
+    except (sh.ErrorReturnCode, KeyboardInterrupt):
+        raise
+    finally:
+        shutil.rmtree(dir)
 
 
 def _para_area(i_n_e_v_p):
@@ -121,9 +211,9 @@ class AreaEstimateValidator(object):
             pickle.dump(p, f)
 
 
-if __name__ == '__main__':
+def actual_vs_estimate():
     from soap.transformer.utils import greedy_trace
-    from soap.semantics.flopoco import wf_range
+    from soap.flopoco.common import wf_range
     logger.set_context(level=logger.levels.info)
     try:
         a = AreaEstimateValidator.load_points('area.pkl')
