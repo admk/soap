@@ -32,18 +32,13 @@ class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
         return iter((self.label, self.env))
 
     def __lt__(self, other):
-        if not isinstance(other, LabelSemantics):
+        if not isinstance(other, self.__class__):
             return False
         return self.area < other.area
 
     def __eq__(self, other):
-        if not isinstance(other, LabelSemantics):
+        if not isinstance(other, self.__class__):
             return False
         if self.area != other.area:
             return False
         return True
-
-    def __str__(self):
-        env = ', '.join('{} ↦ {}'.format(k, v) for k, v in self.env.items())
-        env = '[{}]'.format(env)
-        return '({label}, {env})'.format(label=self.label, env=env)
