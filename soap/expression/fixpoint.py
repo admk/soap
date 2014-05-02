@@ -123,4 +123,4 @@ class FixExpr(BinaryArithExpr):
         return LabelSemantics(label, env)
 
     def __str__(self):
-        return '{op}(λ{a1} . {a2})'.format(op=self.op, a1=self.a1, a2=self.a2)
+        return '{op}(λ {a1} . {a2})'.format(op=self.op, a1=self.a1, a2=self.a2)

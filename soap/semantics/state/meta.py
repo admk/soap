@@ -16,13 +16,40 @@ def _label_merge(env, context):
     # into the form: meta_state -> var -> target_expr
     new_env = dict(env)
     meta_state_var_target = {}
+    meta_state_link_meta_state = {}
+    shared_meta_state = {}
 
     for var, expr in env.items():
         if not isinstance(expr, LinkExpr):
             continue
 
+        # note that meta_state here is a label
+        meta_state = expr.meta_state
+
+        # update shared_meta_state by merging meta_state with it, and create
+        # new meta_state by linking expressions from shared_meta_state
+        link_meta_state = {}
+        for meta_state_var, meta_state_expr in env[meta_state].items():
+            if isinstance(meta_state_var, Variable):
+                # var is a variable, don't add in shared_meta_state, but add in
+                # link_meta_state
+                link_meta_state[meta_state_var] = meta_state_expr
+            elif isinstance(meta_state_var, Label):
+                # var is a label, meaning it belongs to shared_meta_state
+                shared_meta_state[meta_state_var] = meta_state_expr
+            else:
+                raise TypeError('Unrecognized type of key in meta_state.')
+        meta_state_link_meta_state[meta_state] = link_meta_state
+
+        # remove references to meta_state in new_env, since it will be taken
+        # care of by shared_meta_state
+        try:
+            del new_env[meta_state]
+        except KeyError:
+            pass
+
         # get existing var -> target_expr labelling env, if not exist, get {}
-        var_target = meta_state_var_target.setdefault(expr.meta_state, {})
+        var_target = meta_state_var_target.setdefault(meta_state, {})
 
         # let variable maps to the target_expr label
         var_target[var] = expr.target_expr
@@ -33,17 +60,39 @@ def _label_merge(env, context):
         # remove references to labelling of expr.target_expr in new_env
         del new_env[expr.target_expr]
 
+    # add shared_meta_state to new_env
+    shared_meta_state_label = context.Label(MetaState(shared_meta_state))
+    if shared_meta_state:
+        # only add shared_meta_state to env if it contains something
+        new_env[shared_meta_state_label] = shared_meta_state
+
     # change env values where variable maps to a LinkExpr with shared
     # .meta_state, such that .target_expr could also share subexpressions
     for var, expr in env.items():
         # variable does not map to a LinkExpr
         if not isinstance(expr, LinkExpr):
+            if isinstance(expr, Expression):
+                # if expr is an expression, get its label
+                label = context.Label(expr)
+            elif isinstance(expr, Label):
+                label = expr
+            elif is_numeral(expr) or isinstance(expr, dict):
+                continue
+            else:
+                raise TypeError('Unrecognized expression type.')
+            if label in shared_meta_state:
+                # found our label in shared_meta_state, reuse it
+                new_env[var] = label
+                # replace references in new_env about label, effectively remove
+                # references in new_env about the expression being shared
+                new_env[label] = StateGetterExpr(
+                    shared_meta_state_label, label)
             continue
 
         meta_state = expr.meta_state
 
         # get shared env constructed previously
-        var_target = meta_state_var_target.get(meta_state)
+        var_target = meta_state_var_target[meta_state]
 
         # crazy, should recursively merge shared expressions, since merging
         # creates new opportunities for further subexpression state merging
@@ -66,8 +115,19 @@ def _label_merge(env, context):
         getter_label = context.Label(getter_expr)
         new_env[getter_label] = getter_expr
 
+        # labelling for link_meta_state
+        link_meta_state = meta_state_link_meta_state[meta_state]
+        link_meta_state_label = context.Label(MetaState(link_meta_state))
+        new_env[link_meta_state_label] = link_meta_state
+
+        # labelling for link_meta_state * shared_meta_state
+        new_meta_state = LinkExpr(
+            link_meta_state_label, shared_meta_state_label)
+        new_meta_state_label = context.Label(new_meta_state)
+        new_env[new_meta_state_label] = new_meta_state
+
         # labelling for LinkExpr
-        new_env[var] = LinkExpr(getter_label, meta_state)
+        new_env[var] = LinkExpr(getter_label, new_meta_state_label)
 
     return new_env
 
@@ -139,9 +199,11 @@ class MetaState(BaseState, map(None, Expression)):
             fix_expr = SelectExpr(bool_expr, true_expr, var)
             return FixExpr(free_var, fix_expr)
 
+        meta_state = self.__class__(
+            {k: v for k, v in self.items() if k in var_list})
         mapping = dict(self)
         for k in var_list:
-            mapping[k] = LinkExpr(fix_var(k), self)
+            mapping[k] = LinkExpr(fix_var(k), meta_state)
         return self.__class__(mapping)
 
     def label(self, context=None):
