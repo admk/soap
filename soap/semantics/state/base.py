@@ -12,7 +12,13 @@ class BaseState(object):
         return self.__class__(bottom=True)
 
     def transition(self, flow):
-        return getattr(self, 'visit_' + flow.__class__.__name__)(flow)
+        name = 'visit_' + flow.__class__.__name__
+
+        def not_implemented_visit(_):
+            raise NotImplementedError(
+                'Requested method {} is not implemented.'.format(name))
+
+        return getattr(self, name, not_implemented_visit)(flow)
 
     def visit_IdentityFlow(self, flow):
         return self
