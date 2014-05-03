@@ -233,6 +233,7 @@ class Expression(FlatLattice, Flyweight):
 
     def vars(self):
         """Finds all input variables in the expression."""
+        from soap.label.base import Label
         from soap.semantics import is_numeral, MetaState
         vars = set()
         for a in self.args:
@@ -245,6 +246,8 @@ class Expression(FlatLattice, Flyweight):
                     else:
                         local_vars = set()
                     vars |= {k} | local_vars
+            elif isinstance(a, Label):
+                vars |= {a}
             elif is_numeral(a):
                 pass
             else:
