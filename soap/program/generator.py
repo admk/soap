@@ -74,6 +74,7 @@ def _dependency_order(deps):
         yield {x, y}
     """
     deps = copy.deepcopy(deps)
+
     # find independent variables
     indeps = set()
     for var, dep in deps.items():
@@ -81,6 +82,7 @@ def _dependency_order(deps):
             continue
         indeps.add(var)
     yield indeps
+
     # remove refences of [variables in indeps] in deps, and repeat
     for var in indeps:
         del deps[var]
