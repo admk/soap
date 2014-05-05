@@ -59,6 +59,15 @@ def _decorate(cls):
     return cls
 
 
+def _compare(func):
+    def wrapped_func(self, other):
+        try:
+            return func(self, other)
+        except AttributeError:
+            return False
+    return wrapped_func
+
+
 class Lattice(Flyweight, metaclass=LatticeMeta):
     """Common lattice structure.
 
@@ -119,12 +128,13 @@ class Lattice(Flyweight, metaclass=LatticeMeta):
     __and__ = lambda self, other: self.meet(other)
     __rand__ = lambda self, other: self.meet(other)
 
-    __le__ = lambda self, other: self.le(other)
-    __eq__ = lambda self, other: self.le(other) and other.le(self)
-    __ne__ = lambda self, other: not self.le(other) or not other.le(self)
-    __ge__ = lambda self, other: other.le(self)
-    __lt__ = lambda self, other: not other.le(self)
-    __gt__ = lambda self, other: not self.le(other)
+    __le__ = _compare(lambda self, other: self.le(other))
+    __eq__ = _compare(lambda self, other: self.le(other) and other.le(self))
+    __ne__ = _compare(
+        lambda self, other: not self.le(other) or not other.le(self))
+    __ge__ = _compare(lambda self, other: other.le(self))
+    __lt__ = _compare(lambda self, other: not other.le(self))
+    __gt__ = _compare(lambda self, other: not self.le(other))
 
     def __hash__(self):
         if self.is_top() or self.is_bottom():
