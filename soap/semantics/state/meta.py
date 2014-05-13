@@ -11,7 +11,7 @@ from soap.semantics.state.base import BaseState
 from soap.semantics.state.functions import expand_expr, to_meta_state
 
 
-def _label_merge(env, context):
+def link_label_merge(env, context):
     # Transforms mapping: var -> target_expr * meta_state
     # into the form: meta_state -> var -> target_expr
     new_env = dict(env)
@@ -96,7 +96,7 @@ def _label_merge(env, context):
 
         # crazy, should recursively merge shared expressions, since merging
         # creates new opportunities for further subexpression state merging
-        var_target = _label_merge(var_target, context)
+        var_target = link_label_merge(var_target, context)
 
         # variable maps to a LinkExpr, subexpression sharing updates
         # labelling for variable
@@ -170,6 +170,11 @@ class MetaState(BaseState, map(None, Expression)):
         return self[flow.var:expand_expr(self, flow.expr)]
 
     def visit_IfFlow(self, flow):
+        def get(state, var):
+            expr = state[var]
+            if expr.is_bottom():
+                return var
+            return expr
         bool_expr = expand_expr(self, flow.conditional_expr)
         true_state = self.transition(flow.true_flow)
         false_state = self.transition(flow.false_flow)
@@ -177,11 +182,12 @@ class MetaState(BaseState, map(None, Expression)):
         var_list |= set(true_state.keys()) | set(false_state.keys())
         mapping = dict(self)
         for var in var_list:
-            if true_state[var] == false_state[var]:
-                value = true_state[var]
+            true_expr = get(true_state, var)
+            false_expr = get(false_state, var)
+            if true_expr == false_expr:
+                value = true_expr
             else:
-                value = SelectExpr(
-                    bool_expr, true_state[var], false_state[var])
+                value = SelectExpr(bool_expr, true_expr, false_expr)
             mapping[var] = value
         return self.__class__(mapping)
 
@@ -214,7 +220,7 @@ class MetaState(BaseState, map(None, Expression)):
             expr_label, expr_env = expr.label(context)
             env.update(expr_env)
             env[var] = expr_label
-        env = _label_merge(env, context)
+        env = link_label_merge(env, context)
         label = context.Label(MetaState(env))
 
         return LabelSemantics(label, env)

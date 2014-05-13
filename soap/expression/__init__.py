@@ -14,7 +14,8 @@ from soap.expression.base import (
 )
 from soap.expression.variable import Variable, FreeVariable
 from soap.expression.arithmetic import (
-    ArithExpr, UnaryArithExpr, BinaryArithExpr, TernaryArithExpr, SelectExpr
+    ArithExpr, UnaryArithExpr, BinaryArithExpr, TernaryArithExpr, SelectExpr,
+    BranchMetaExpr
 )
 from soap.expression.boolean import (
     BoolExpr, UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr

@@ -18,10 +18,13 @@ class StateGetterExpr(BinaryArithExpr):
     def key(self):
         return self.a2
 
-    @cached
     def eval(self, state):
-        from soap.semantics.state.functions import arith_eval
-        return arith_eval(state, self.a1[self.a2])
+        raise NotImplementedError(
+            'Why would you want to evaluate this expression?')
+
+    def label(self, context=None):
+        raise NotImplementedError(
+            'Why do you need to find labelling for this expression?')
 
     def __str__(self):
         return '{meta_state}[{key}]'.format(
