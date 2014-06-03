@@ -143,8 +143,8 @@ class Expression(FlatLattice, Flyweight):
             single precision.
         :type prec: int
         """
-        from soap.flopoco.actual import eval_expr
-        return eval_expr(self, var_env, prec)
+        from soap.flopoco.actual import actual_luts
+        return actual_luts(self, var_env, prec)
 
     def _args_to_label(self, context=None):
         from soap.label.base import LabelContext
@@ -240,16 +240,20 @@ class Expression(FlatLattice, Flyweight):
             if isinstance(a, Expression):
                 vars |= a.vars()
             elif isinstance(a, MetaState):
-                for k, v in a.items():
+                for v in a.values():
                     if isinstance(v, Expression):
                         local_vars = v.vars()
+                    elif isinstance(v, Label):
+                        local_vars = {v}
                     else:
                         local_vars = set()
-                    vars |= {k} | local_vars
+                    vars |= local_vars
             elif isinstance(a, Label):
                 vars |= {a}
             elif is_numeral(a):
                 pass
+            elif isinstance(a, tuple):
+                vars |= set(a)
             else:
                 raise TypeError(
                     'Do not know how to check variables in {}'.format(a))

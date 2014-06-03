@@ -1,98 +1,37 @@
+from pprint import pprint
 import collections
 
 from soap.expression import (
     is_variable, is_expression, expression_factory,
-    Variable, SelectExpr, StateGetterExpr, BranchMetaExpr
+    Variable, InputVariableTuple, OutputVariableTuple,
+    SelectExpr
 )
 from soap.label import Label
 from soap.program.flow import (
     IdentityFlow, AssignFlow, IfFlow, CompositionalFlow
 )
+from soap.program.graph import (
+    expression_dependencies, DependencyGraph, HierarchicalDependencyGraph,
+    CyclicGraphException
+)
 from soap.semantics import is_numeral, MetaState
 
 
-def dataflow(env, vars):
-    """Extract dataflow from env.  """
-
-    def expression_dependencies(expr):
-        # find dependent variables for the corresponding expression
-        if not expr:
-            # can't find expression for var or var is an input variable, so
-            # there are no dependencies for it
-            return set()
-        if isinstance(expr, StateGetterExpr):
-            raise NotImplementedError(
-                'TODO special treatment for this, because of the labelling '
-                'behaviour.')
-        if is_expression(expr):
-            # dependent variables in the expression
-            return expr.vars()
-        if isinstance(expr, Label) or is_variable(expr) or is_numeral(expr):
-            # is a label/variable/constant, dependency is itself
-            return {expr}
-        raise TypeError(
-            'Do not know how to find dependencies in expression {!r}'
-            .format(expr))
-
-    flow_dict = {}
-
-    for var in vars:
-        expr = env.get(var)
-        expr_deps = expression_dependencies(expr)
-
-        # each dependency assigns the data flow direction to var
-        for dep_var in expr_deps:
-            dep_flow = flow_dict.setdefault(dep_var, set())
-            dep_flow.add(var)
-
-        # finds the flow_dict of dependent variables, except input variables
-        expr_deps = {var for var in expr_deps if not is_variable(var)}
-        flowflow_dict = dataflow(env, expr_deps)
-
-        # merge update dep_deps into deps
-        for each_var in set(flow_dict) | set(flowflow_dict):
-            each_flow = flow_dict.setdefault(each_var, set())
-            each_flow |= flowflow_dict.get(each_var, set())
-
-    return flow_dict
-
-
-def beneath(dataflow_dict, var):
-    beneath_set = set()
-    to_vars = dataflow_dict.get(var, set())
-    for to_var in to_vars:
-        if is_variable(to_var):
-            # is output variable, do nothing
-            continue
-        beneath_set |= beneath(dataflow_dict, to_var)
-    return beneath_set | to_vars
-
-
-def flatten_compositional_flow(flows):
-    new_flows = []
-    for f in flows:
-        if isinstance(f, CompositionalFlow):
-            new_flows += flatten_compositional_flow(f.flows)
-        else:
-            new_flows.append(f)
-    return new_flows
-
-
-def branch_merge(env, out_vars, label_context):
+def branch_merge(env, out_vars):
 
     def sorted_args(expr, count_env=True):
         if not expr or is_variable(expr) or is_numeral(expr):
             return []
-        if isinstance(expr, Label):
+        if isinstance(expr, (Label, OutputVariableTuple)):
             return [expr]
+        if isinstance(expr, InputVariableTuple):
+            return list(expr.args)
         if is_expression(expr):
-            if isinstance(expr, StateGetterExpr):
-                return [expr.meta_state]
             args = []
             for a in expr.args:
                 args += sorted_args(a, count_env)
             return args
-        if isinstance(expr, dict):
+        if isinstance(expr, MetaState):
             if not count_env:
                 return []
             args = []
@@ -101,25 +40,7 @@ def branch_merge(env, out_vars, label_context):
             return args
         raise TypeError('Do not know how to find args of {}'.format(expr))
 
-    def is_acyclic(env):
-        class CyclicGraphException(Exception):
-            pass
-
-        def walk(env, var, found_vars):
-            expr = env.get(var)
-            for dep_var in sorted_args(expr):
-                if dep_var in found_vars:
-                    raise CyclicGraphException
-                walk(env, dep_var, found_vars | {var})
-
-        try:
-            for var in env:
-                walk(env, var, set())
-        except CyclicGraphException:
-            return False
-        return True
-
-    def merge(env, var, label_context):
+    def merge(env, var):
         expr = env.get(var)
         dep_vars = sorted_args(expr, False)
 
@@ -128,6 +49,8 @@ def branch_merge(env, out_vars, label_context):
             return env, dep_vars
 
         # discover things to collect
+        # possible FIXME: greedy collection, possibly making other things
+        # unable to collect if done greedily
         bool_expr = expr.bool_expr
         true_env = {}
         false_env = {}
@@ -135,6 +58,9 @@ def branch_merge(env, out_vars, label_context):
             if not isinstance(each_expr, SelectExpr):
                 continue
             if each_expr.bool_expr != bool_expr:
+                continue
+            if isinstance(each_var, OutputVariableTuple):
+                # merged, no further merging necessary
                 continue
             # same bool_expr, merge together
             true_env[each_var] = each_expr.true_expr
@@ -147,17 +73,15 @@ def branch_merge(env, out_vars, label_context):
         new_env = dict(env)
 
         # branch expression labelling
-        true_label = label_context.Label(MetaState(true_env))
-        false_label = label_context.Label(MetaState(false_env))
-        branch_expr = BranchMetaExpr(bool_expr, true_label, false_label)
-        branch_expr_label = label_context.Label(branch_expr)
-        new_env[true_label] = true_env
-        new_env[false_label] = false_env
-        new_env[branch_expr_label] = branch_expr
+        keys = OutputVariableTuple(sorted(true_env, key=str))
+        true_values = InputVariableTuple(list(true_env[k] for k in keys))
+        false_values = InputVariableTuple(list(false_env[k] for k in keys))
+        branch_expr = SelectExpr(bool_expr, true_values, false_values)
+        new_env[keys] = branch_expr
 
         # collected variables labelling
         for each_var in true_env:
-            new_env[each_var] = StateGetterExpr(branch_expr_label, each_var)
+            new_env[each_var] = keys
 
         return new_env, dep_vars
 
@@ -165,78 +89,193 @@ def branch_merge(env, out_vars, label_context):
         raise TypeError('Output variables out_vars must be a sequence.')
 
     for var in out_vars:
-        new_env, dep_vars = merge(env, var, label_context)
-        if is_acyclic(new_env):
-            env = new_env
+        new_env, dep_vars = merge(env, var)
+        if env != new_env:
+            try:
+                DependencyGraph(new_env, out_vars)
+            except CyclicGraphException:
+                pass
+            else:
+                env = new_env
         # depth-first recursively merge branches
-        env = branch_merge(env, dep_vars, label_context)
+        env = branch_merge(env, dep_vars)
 
     return env
 
 
-def generate_unified(env, dataflow_dict, out_vars, beneath_vars=None):
+def _generate_unified(graph, out_vars):
 
-    def getter_expr_label(state_label, var):
-        return Variable('__imd_{}_{}'.format(state_label, var))
-
-    def generate_expression(env, dataflow_dict, expr, beneath_vars=None):
+    def generate_expression(graph, expr, prev_locals):
         """
         Generate expression by expanding it as far as possible, until some
         shared variables used some where else.
         """
+        def next_vars_add(next_vars, new_next_vars):
+            for n in new_next_vars:
+                if n in next_vars:
+                    continue
+                next_vars.append(n)
+            return next_vars
+
         if is_variable(expr) or is_numeral(expr):
-            return expr, []
+            return expr, [], []
 
-        beneath_vars = beneath_vars or set()
+        if isinstance(expr, (Label, OutputVariableTuple)):
+            expanded_expr = env[expr]
 
-        if isinstance(expr, Label):
-            to_vars_len = len(dataflow_dict[expr])
-            if to_vars_len == 0:
-                raise ValueError('Label is not used anywhere')
-            if to_vars_len == 1:
+            # must look ahead for statement generation...
+            if isinstance(expanded_expr, OutputVariableTuple):
+                if beneath(None, expanded_expr) <= beneath_vars:
+                    # multiply shared, but only used in the labels beneath it
+                    stmt, next_vars = generate_statement(graph, expanded_expr)
+                    return expr, [stmt], next_vars
+                # multiply shared, also used somewhere else
+                return expr, [], [expanded_expr]
+
+            if isinstance(expanded_expr, SelectExpr):
+                bool_expr = expanded_expr.bool_expr
+                true_expr = expanded_expr.true_expr
+                false_expr = expanded_expr.false_expr
+                flows = []
+                next_vars = []
+                for br_expr in true_expr, false_expr:
+                    bn_vars = beneath_vars | {br_expr}
+                    br_expr, br_stmt, br_next_vars = \
+                        generate_expression(graph, br_expr)
+
+                    if isinstance(br_expr, tuple):
+                        var_tup = expr
+                        expr_tup = br_expr
+                    else:
+                        var_tup = [expr]
+                        expr_tup = [br_expr]
+                    flow = br_stmt
+                    flow += [
+                        AssignFlow(var, expr)
+                        for var, expr in zip(var_tup, expr_tup)]
+                    flow = CompositionalFlow(flow)
+
+                    flows.append(flow)
+                    next_vars = next_vars_add(next_vars, br_next_vars)
+
+                true_flow, false_flow = flows
+
+                bool_expr, bool_stmt, bool_next_vars = generate_expression(
+                    env, dataflow_dict, bool_expr, beneath_vars | {bool_expr})
+                next_vars = next_vars_add(next_vars, bool_next_vars)
+
+                flow = bool_stmt
+                flow.append(IfFlow(bool_expr, true_flow, false_flow))
+                return expr, flow, next_vars
+
+            if not graph.is_multiply_shared(expr):
+                return generate_expression(graph, expanded_expr)
+            # multiply shared, but only used locally
+            if graph.locals(expr):
                 return generate_expression(
-                    env, dataflow_dict, env[expr], beneath_vars | {expr})
-            # to_vars_len > 1
-            if beneath(dataflow_dict, expr) <= beneath_vars:
-                # multiply shared, but only used in the labels beneath it
-                return generate_expression(
-                    env, dataflow_dict, env[expr], beneath_vars | {expr})
-            return expr, [expr]
+                    env, dataflow_dict, expanded_expr, beneath_vars | {expr})
+            # multiply shared, used globally
+            return expr, [], [expr]
 
-        if isinstance(expr, StateGetterExpr):
-            state_label, var = expr.meta_state, expr.key
-            return getter_expr_label(state_label, var), [state_label]
+        if isinstance(expr, InputVariableTuple):
+            # FIXME temporary hack
+            expr_list = []
+            next_vars = []
+            stmt_list = []
+            for arg in expr:
+                arg_expr, stmt, arg_next_vars = generate_expression(
+                    env, dataflow_dict, arg, beneath_vars | {arg})
+                expr_list.append(arg_expr)
+                next_vars = next_vars_add(next_vars, arg_next_vars)
+                stmt_list += stmt
+            return tuple(expr_list), stmt_list, next_vars
 
         if is_expression(expr):
             args = []
             next_vars = []
+            stmt_list = []
             for arg in expr.args:
-                arg, arg_vars = generate_expression(
-                    env, dataflow_dict, arg, beneath_vars | {arg})
+                arg, stmt, arg_vars = generate_expression(graph, arg)
                 args.append(arg)
-                next_vars += arg_vars
-            return expression_factory(expr.op, *args), next_vars
+                next_vars = next_vars_add(next_vars, arg_vars)
+                stmt_list += stmt
+            return expression_factory(expr.op, *args), stmt_list, next_vars
 
         raise TypeError('Do not know how to expand {}'.format(expr))
 
-    def generate_statement(env, dataflow_dict, gen_var):
-        expr = env[gen_var]
-        if is_variable(gen_var) or isinstance(gen_var, Label):
-            expr_gen_var = expr
-        else:
-            expr_gen_var = gen_var
-        if isinstance(expr, BranchMetaExpr):
-            ...
-            return
-        expr, next_vars = generate_expression(env, dataflow_dict, expr_gen_var)
-        return AssignFlow(gen_var, expr), next_vars
+    def remove_duplicates(l):
+        n = []
+        for e in l:
+            if e in n:
+                continue
+            n.append(e)
+        return n
 
-    def resolve_dataflow_order(dataflow_dict, out_vars):
+    def generate_statement(graph, gen_var):
+        # FIXME hack for output variables
+        expr = graph.env.get(gen_var)
+        if not expr:
+            return [], []
+
+        if isinstance(expr, Variable):
+            expr = graph.env[expr]
+
+        local_deps = graph.locals(gen_var)
+
+        statements = []
+        next_vars = []
+
+        if isinstance(expr, SelectExpr):
+            bool_statements, bool_next_vars = generate_statement(
+                graph, expr.bool_expr)
+            next_vars += bool_next_vars
+
+            true_vars, false_vars = expr.true_expr, expr.false_expr
+            both_statements = []
+            for branch_vars in true_vars, false_vars:
+                if not isinstance(branch_vars, collections.Sequence):
+                    branch_vars = [branch_vars]
+                branch_statements = []
+                for v in branch_vars:
+                    if v in local_deps:
+                        statements, local_next_vars = generate_statement(
+                            graph, v)
+                    else:
+                        statements, local_next_vars = [], [v]
+                    branch_statements += statements
+                    next_vars += local_next_vars
+                both_statements.append(branch_statements)
+            true_statements, false_statements = both_statements
+
+            statements.append(bool_statements)
+            statements.append(
+                IfFlow(expr.bool_expr, true_statements, false_statements))
+
+        if gen_var != expr:
+            statements.append(AssignFlow(gen_var, expr))
+            next_vars += expression_dependencies(expr)
+
+        new_next_vars = []
+        while next_vars:
+            next_vars = graph.order_by_dependencies(
+                remove_duplicates(next_vars))
+            var, *next_vars = next_vars
+            if var not in local_deps:
+                new_next_vars.append(var)
+            else:
+                next_statements, next_next_vars = generate_statement(
+                    graph, var)
+                statements = next_statements + statements
+                next_vars += next_next_vars
+
+        return statements, new_next_vars
+
+    def resolve_dataflow_order(graph, out_vars):
+        out_vars_set = set(out_vars)
         gen_vars = []
         next_vars = []
         for var in out_vars:
-            beneath_vars = beneath(dataflow_dict, var)
-            if beneath_vars and any(v in beneath_vars for v in gen_vars):
+            if graph.dataflows(var) & out_vars_set:
                 # some variable to be generated depends on it,
                 # generate it later
                 next_vars.append(var)
@@ -244,27 +283,79 @@ def generate_unified(env, dataflow_dict, out_vars, beneath_vars=None):
                 gen_vars.append(var)
         return gen_vars, next_vars
 
-    gen_vars, next_vars = resolve_dataflow_order(dataflow_dict, out_vars)
-    beneath_vars = beneath_vars or set()
+    gen_vars, next_vars = resolve_dataflow_order(graph, out_vars)
 
     statements = []
     for var in gen_vars:
-        if var in beneath_vars:
-            continue
-        statement, nvars = generate_statement(env, dataflow_dict, var)
+        statement, nvars = generate_statement(graph, var)
         statements.append(statement)
         for v in nvars:
-            if v not in next_vars:
+            if v not in next_vars and v not in gen_vars:
                 next_vars.append(v)
 
     if next_vars:
-        next_statements = generate_unified(
-            env, dataflow_dict, next_vars, beneath_vars | set(gen_vars))
+        next_statements = generate_unified(graph, next_vars)
         statements = next_statements + statements
     return statements
 
 
+def generate_graph(graph):
+    if not graph:
+        return []
+    next_vars = graph.out_vars
+    while next_vars:
+        var, *next_vars = graph.order_by_dependencies(next_vars)
+        generate_graph(graph.subgraph(var))
+
+
+class CodeGenerator(object):
+    def __init__(self, graph=None, env=None, out_vars=None):
+        super().__init__()
+        self.graph = graph or HierarchicalDependencyGraph(env, out_vars)
+        pprint(self.graph.edges)
+
+    def _flatten(self, flows):
+        if flows is None:
+            return []
+        if not isinstance(flows, collections.Sequence):
+            return [flows]
+        if isinstance(flows, CompositionalFlow):
+            flows = flows.flows
+
+        new_flows = []
+        for f in flows:
+            new_flows += self._flatten(f)
+
+        return new_flows
+
+    def generate(self):
+        order = self.graph.local_order()
+        env = self.graph.env
+        flows = []
+        while order:
+            var = order.pop()
+            expr = env.get(var)
+            if not expr:
+                if isinstance(var, HierarchicalDependencyGraph):
+                    expr = var
+            emit_func_name = 'emit_{}'.format(expr.__class__.__name__)
+            emit = getattr(self, emit_func_name, self.generic_emit)
+            flows.append(emit(var, expr, order))
+        return CompositionalFlow(self._flatten(flows))
+
+    def emit_HierarchicalDependencyGraph(self, var, expr, order):
+        return
+        return self.__class__(var).generate()
+
+    @staticmethod
+    def generic_emit(var, expr, order):
+        if not expr:
+            if isinstance(var, InputVariableTuple):
+                return
+            raise ValueError(
+                'Node {} has no expression, cannot generate.'.format(var))
+        return AssignFlow(var, expr)
+
+
 def generate(env, out_vars):
-    dataflow_dict = dataflow(env, out_vars)
-    statements = generate_unified(env, dataflow_dict, out_vars)
-    return CompositionalFlow(flatten_compositional_flow(statements))
+    return CodeGenerator(env, out_vars).generate()

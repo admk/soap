@@ -5,7 +5,7 @@
 from soap.common.cache import cached
 from soap.expression.operators import (
     ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP,
-    TERNARY_SELECT_OP, BRANCH_OP, ARITHMETIC_OPERATORS, COMMUTATIVITY_OPERATORS
+    TERNARY_SELECT_OP, ARITHMETIC_OPERATORS, COMMUTATIVITY_OPERATORS
 )
 from soap.expression.base import (
     Expression, UnaryExpression, BinaryExpression, TernaryExpression
@@ -123,6 +123,7 @@ class SelectExpr(TernaryArithExpr):
 
     @cached
     def eval(self, state):
+        # pylint: disable=W0632
         def eval_split(expr, state):
             return expr.eval(state) if isinstance(expr, Expression) else expr
         from soap.semantics.state.functions import bool_eval
@@ -133,35 +134,3 @@ class SelectExpr(TernaryArithExpr):
 
     def __str__(self):
         return '{} ? {} : {}'.format(*self._args_to_str())
-
-
-class BranchMetaExpr(TernaryArithExpr):
-
-    def __init__(self, a1=None, a2=None, a3=None, top=False, bottom=False):
-        super().__init__(BRANCH_OP, a1, a2, a3, top=top, bottom=bottom)
-
-    @property
-    def bool_expr(self):
-        return self.a1
-
-    @property
-    def true_meta_state(self):
-        return self.a2
-
-    @property
-    def false_meta_state(self):
-        return self.a3
-
-    def eval(self, state):
-        raise NotImplementedError(
-            'Why would you want to evaluate this expression?')
-
-    def label(self, context=None):
-        raise NotImplementedError(
-            'Why do you need to find labelling for this expression?')
-
-    def __str__(self):
-        return '{bool_expr} ?? {true_meta_state} :: {false_meta_state}'.format(
-            bool_expr=self.bool_expr,
-            true_meta_state=self.true_meta_state,
-            false_meta_state=self.false_meta_state)
