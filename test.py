@@ -17,11 +17,6 @@ i = e + f
 h = f + 7
 """
 v = [Variable('i'), Variable('j'), Variable('h'), Variable('m')]
-d = """
-a = d + c
-b = c + e
-"""
-v = [Variable('a'), Variable('b')]
 e = flow_to_meta_state(d).label()[1]
 pprint(d)
 pprint(e)

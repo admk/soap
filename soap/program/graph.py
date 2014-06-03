@@ -1,4 +1,3 @@
-from pprint import pprint
 import collections
 
 from soap.label import Label
@@ -187,14 +186,15 @@ class DependencyGraph(object):
         return self.dep_dict.get(x, set())
 
     def order_by_dependencies(self, variables):
-        ordered = []
-        while variables:
-            var, *variables = variables
-            if self.dependencies(var) & set(variables):
-                variables.append(var)
-            else:
-                ordered.append(var)
-        return ordered
+        if not variables:
+            return []
+        variables = list(variables)
+        for idx, var in enumerate(variables):
+            if not (self.dependencies(var) & set(variables)):
+                # independent on some other
+                break
+        unordered = variables[:idx] + variables[idx + 1:]
+        return [var] + self.order_by_dependencies(unordered)
 
     def depends_on(self, x, y):
         return y in self.dep_dict.get(x, set())
@@ -232,7 +232,7 @@ class HierarchicalDependencyGraph(DependencyGraph):
         super().__init__(env, out_var)
         self._parent_nodes = _parent_nodes
         self._flat_edges = self.edges
-        self._edges, self._subgraphs = self._partition({}, self.out_var)
+        self.edges, self._subgraphs = self._partition({}, self.out_var)
 
     @property
     def flat_edges(self):
@@ -270,32 +270,40 @@ class HierarchicalDependencyGraph(DependencyGraph):
 
         for var in out_vars:
             var_locals = local_nodes(var)
-            if var_locals:
+
+            if var == self.out_var:
+                # root node is not considered for partitioning, since the
+                # hierarchy itself is the partitioning of it.
+                subgraph = var
+                subgraph_deps = self.next(var)
+            elif var_locals:
                 # if has local hierarchy, treat locals as a subgraph, and
                 # construct its dependencies
+                var_locals.add(var)
                 subgraph = subgraphs.get(var)
                 if not subgraph:
                     local_env = {}
-                    local_deps = set()
                     for k, v in self.env.items():
-                        if k in var_locals or k == var:
+                        if k in var_locals:
                             local_env[k] = v
                     subgraph = HierarchicalDependencyGraph(
                         local_env, var, _parent_nodes=var_locals)
                     subgraphs[var] = subgraph
                 subgraph_deps = subgraph.graph_dependencies()
             else:
-                # TODO
+                # no local hierarchy, standalone node
+                subgraph = var
+                subgraph_deps = self.next(var)
 
+            # recursively find subgraphs in dependencies
             for dep in subgraph_deps:
                 dep_edges, subgraphs = self._partition(subgraphs, dep)
                 edges |= dep_edges
 
+            # connect subgraph to its dependencies
             for dep in subgraph_deps:
                 dep = subgraphs.get(dep, dep)
                 edges.add((subgraph, dep))
-
-            edges.add((out_var, subgraph))
 
         return edges, subgraphs
 
