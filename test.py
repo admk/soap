@@ -3,26 +3,6 @@ from soap import *
 from soap.program.generator import *
 from soap.program.graph import *
 
-d = """
-a = l + 1
-k = l + 2
-b = a + 3
-c = a + k
-m = k + 4
-d = b + c
-e = d + 5
-f = d + g
-j = e + 6
-i = e + f
-h = f + 7
-"""
-v = [Variable('i'), Variable('j'), Variable('h'), Variable('m')]
-e = flow_to_meta_state(d).label()[1]
-pprint(d)
-pprint(e)
-print(CodeGenerator(env=e, out_vars=v).generate().format())
-import sys; sys.exit()
-
 p = """
 if a < 0:
     if b < 0:
