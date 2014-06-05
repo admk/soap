@@ -6,9 +6,9 @@ from soap.program.graph import *
 p = """
 if a < 0:
     if b < 0:
-        x = 1
+        x = x + 1
     else:
-        x = 2
+        x = x + 2
 if b < 0:
     if a < 0:
         y = 4

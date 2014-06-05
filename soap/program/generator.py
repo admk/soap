@@ -3,15 +3,14 @@ import collections
 
 from soap.expression import (
     is_variable, is_expression, expression_factory,
-    Variable, InputVariableTuple, OutputVariableTuple,
-    SelectExpr
+    InputVariableTuple, OutputVariableTuple, SelectExpr
 )
 from soap.label import Label
 from soap.program.flow import (
     IdentityFlow, AssignFlow, IfFlow, CompositionalFlow
 )
 from soap.program.graph import (
-    expression_dependencies, DependencyGraph, HierarchicalDependencyGraph,
+    DependencyGraph, HierarchicalDependencyGraph,
     CyclicGraphException
 )
 from soap.semantics import is_numeral, MetaState
@@ -67,7 +66,7 @@ def branch_merge(env, out_vars):
             false_env[each_var] = each_expr.false_expr
 
         # did not generate collection
-        if not true_env:
+        if len(true_env) <= 1:
             return env, dep_vars
 
         new_env = dict(env)
@@ -126,9 +125,9 @@ class CodeGenerator(object):
         order = self.graph.local_order()
         flows = []
         while order:
-            var, *order = order
+            var = order.pop()
             flows.append(self.emit_dispatcher(var, order))
-        return CompositionalFlow(self._flatten(flows))
+        return CompositionalFlow(self._flatten(list(reversed(flows))))
 
     def emit_dispatcher(self, var, order):
         env = self.graph.env
@@ -141,7 +140,7 @@ class CodeGenerator(object):
         return self._flatten(emit(var, expr, order))
 
     def generic_emit(self, var, expr, order):
-        if not expr:
+        if expr is None:
             if var == self.graph.out_var:
                 if isinstance(var, InputVariableTuple):
                     return
@@ -156,10 +155,10 @@ class CodeGenerator(object):
         return
 
     def emit_SelectExpr(self, var, expr, order):
-        subgraphs = self.graph.subgraphs
-        local_nodes = subgraphs.get(var, set())
+        graph = self.graph
+        subgraphs = graph.subgraphs
 
-        def branch_outputs(label):
+        def generate_branch_output_interface(label):
             if not isinstance(var, OutputVariableTuple):
                 return AssignFlow(var, label)
             return CompositionalFlow(
@@ -167,15 +166,31 @@ class CodeGenerator(object):
                 for var_in, var_out in zip(var, label))
 
         def generate_branch_locals(label):
+            if isinstance(label, InputVariableTuple):
+                # it can be proved there are no dependencies between each local
+                # label
+                flows = CompositionalFlow()
+                for each in label:
+                    flows += generate_branch_locals(each)
+                return flows
             subgraph = subgraphs.get(label, label)
-            if subgraph not in local_nodes:
-                return branch_outputs(label)
+            if not isinstance(subgraph, HierarchicalDependencyGraph):
+                return CompositionalFlow()
+            if graph.is_multiply_shared(subgraph):
+                # subgraph is not only used by this branch, so don't generate
+                # the subgraph
+                return CompositionalFlow()
             flows = self.__class__(subgraph).generate()
             del order[order.index(subgraph)]
-            return flows + branch_outputs(label)
+            return flows
 
-        true_flow = generate_branch_locals(expr.true_expr)
-        false_flow = generate_branch_locals(expr.false_expr)
+        branch_flows = []
+        for label in expr.true_expr, expr.false_expr:
+            flow = generate_branch_locals(label)
+            flow += generate_branch_output_interface(label)
+            branch_flows.append(flow)
+
+        true_flow, false_flow = branch_flows
         return IfFlow(expr.bool_expr, true_flow, false_flow)
 
 

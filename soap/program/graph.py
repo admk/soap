@@ -18,7 +18,7 @@ class OutputVariable(Variable):
 
 def expression_dependencies(expr):
     # find dependent variables for the corresponding expression
-    if not expr:
+    if expr is None:
         # can't find expression for var or var is an input variable, so
         # there are no dependencies for it
         return []
