@@ -1,13 +1,12 @@
-from pprint import pprint
 import collections
 
 from soap.expression import (
-    is_variable, is_expression, expression_factory,
+    is_variable, is_expression,
     InputVariableTuple, OutputVariableTuple, SelectExpr
 )
 from soap.label import Label
 from soap.program.flow import (
-    IdentityFlow, AssignFlow, IfFlow, CompositionalFlow
+    AssignFlow, IfFlow, CompositionalFlow
 )
 from soap.program.graph import (
     DependencyGraph, HierarchicalDependencyGraph,
