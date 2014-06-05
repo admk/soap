@@ -1,5 +1,6 @@
 from pprint import *
 from soap import *
+from soap.semantics.state.fusion import *
 from soap.program.generator import *
 from soap.program.graph import *
 
@@ -27,7 +28,7 @@ pprint(m)
 
 v = [expr('x'), expr('y')]
 
-n = branch_merge(m, v)
+n = fusion(m, v)
 pprint('merge')
 pprint(n)
 

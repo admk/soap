@@ -1,104 +1,8 @@
 import collections
 
-from soap.expression import (
-    is_variable, is_expression,
-    InputVariableTuple, OutputVariableTuple, SelectExpr
-)
-from soap.label import Label
-from soap.program.flow import (
-    AssignFlow, IfFlow, CompositionalFlow
-)
-from soap.program.graph import (
-    DependencyGraph, HierarchicalDependencyGraph,
-    CyclicGraphException
-)
-from soap.semantics import is_numeral, MetaState
-
-
-def branch_merge(env, out_vars):
-
-    def sorted_args(expr, count_env=True):
-        if not expr or is_variable(expr) or is_numeral(expr):
-            return []
-        if isinstance(expr, (Label, OutputVariableTuple)):
-            return [expr]
-        if isinstance(expr, InputVariableTuple):
-            return list(expr.args)
-        if is_expression(expr):
-            args = []
-            for a in expr.args:
-                args += sorted_args(a, count_env)
-            return args
-        if isinstance(expr, MetaState):
-            if not count_env:
-                return []
-            args = []
-            for a in expr.values():
-                args += sorted_args(a, count_env)
-            return args
-        raise TypeError('Do not know how to find args of {}'.format(expr))
-
-    def merge(env, var):
-        expr = env.get(var)
-        dep_vars = sorted_args(expr, False)
-
-        # not if-then-else
-        if not isinstance(expr, SelectExpr):
-            return env, dep_vars
-
-        # discover things to collect
-        # possible FIXME: greedy collection, possibly making other things
-        # unable to collect if done greedily
-        bool_expr = expr.bool_expr
-        true_env = {}
-        false_env = {}
-        for each_var, each_expr in env.items():
-            if not isinstance(each_expr, SelectExpr):
-                continue
-            if each_expr.bool_expr != bool_expr:
-                continue
-            if isinstance(each_var, OutputVariableTuple):
-                # merged, no further merging necessary
-                continue
-            # same bool_expr, merge together
-            true_env[each_var] = each_expr.true_expr
-            false_env[each_var] = each_expr.false_expr
-
-        # did not generate collection
-        if len(true_env) <= 1:
-            return env, dep_vars
-
-        new_env = dict(env)
-
-        # branch expression labelling
-        keys = OutputVariableTuple(sorted(true_env, key=str))
-        true_values = InputVariableTuple(list(true_env[k] for k in keys))
-        false_values = InputVariableTuple(list(false_env[k] for k in keys))
-        branch_expr = SelectExpr(bool_expr, true_values, false_values)
-        new_env[keys] = branch_expr
-
-        # collected variables labelling
-        for each_var in true_env:
-            new_env[each_var] = keys
-
-        return new_env, dep_vars
-
-    if not isinstance(out_vars, collections.Sequence):
-        raise TypeError('Output variables out_vars must be a sequence.')
-
-    for var in out_vars:
-        new_env, dep_vars = merge(env, var)
-        if env != new_env:
-            try:
-                DependencyGraph(new_env, out_vars)
-            except CyclicGraphException:
-                pass
-            else:
-                env = new_env
-        # depth-first recursively merge branches
-        env = branch_merge(env, dep_vars)
-
-    return env
+from soap.expression import InputVariableTuple, OutputVariableTuple
+from soap.program.flow import AssignFlow, IfFlow, CompositionalFlow
+from soap.program.graph import HierarchicalDependencyGraph
 
 
 class CodeGenerator(object):
@@ -183,13 +87,13 @@ class CodeGenerator(object):
             del order[order.index(subgraph)]
             return flows
 
-        branch_flows = []
-        for label in expr.true_expr, expr.false_expr:
+        def generate_branch(label):
             flow = generate_branch_locals(label)
             flow += generate_branch_output_interface(label)
-            branch_flows.append(flow)
+            return flow
 
-        true_flow, false_flow = branch_flows
+        true_flow = generate_branch(expr.true_expr)
+        false_flow = generate_branch(expr.false_expr)
         return IfFlow(expr.bool_expr, true_flow, false_flow)
 
 

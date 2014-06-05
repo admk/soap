@@ -39,8 +39,8 @@ def expression_dependencies(expr):
         return [expr]
     if isinstance(expr, StateGetterExpr):
         raise NotImplementedError
-    if isinstance(expr, MetaState):
-        raise NotImplementedError
+    if isinstance(expr, (dict, MetaState)):
+        return [expr]
     raise TypeError(
         'Do not know how to find dependencies in expression {!r}'
         .format(expr))
@@ -330,4 +330,5 @@ class HierarchicalDependencyGraph(DependencyGraph):
         return hash(tuple(self.env.items()))
 
     def __repr__(self):
-        return '{{{}}}'.format(', '.join(str(n) for n in self.local_nodes))
+        return '{cls}({nodes})'.format(
+            cls=self.__class__.__name__, nodes=self.local_nodes)

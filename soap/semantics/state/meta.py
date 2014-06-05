@@ -158,10 +158,10 @@ class MetaState(BaseState, map(None, Expression)):
             'Do not know how to convert {!r} into an expression'.format(value))
 
     def is_fixpoint(self, other):
-        raise NotImplementedError('Should not be called.')
+        raise RuntimeError('Should not be called.')
 
     def widen(self, other):
-        raise NotImplementedError('Should not be called.')
+        raise RuntimeError('Should not be called.')
 
     def visit_IdentityFlow(self, flow):
         return self
@@ -216,7 +216,8 @@ class MetaState(BaseState, map(None, Expression)):
         context = context or LabelContext(self)
 
         env = {}
-        for var, expr in self.items():
+        # FIXME nondeterminism in labelling
+        for var, expr in sorted(self.items()):
             expr_label, expr_env = expr.label(context)
             env.update(expr_env)
             env[var] = expr_label
@@ -228,6 +229,6 @@ class MetaState(BaseState, map(None, Expression)):
 
 def flow_to_meta_state(flow):
     if isinstance(flow, str):
-        from soap.program.parser import parse
-        flow = parse(flow)
+        from soap.program import parser
+        flow = parser.parse(flow)
     return to_meta_state(flow)
