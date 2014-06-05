@@ -1,6 +1,6 @@
 from soap.common.cache import cached
 from soap.expression import operators
-from soap.expression.arithmetic import BinaryArithExpr
+from soap.expression.arithmetic import BinaryArithExpr, TernaryArithExpr
 
 
 class StateGetterExpr(BinaryArithExpr):
@@ -81,35 +81,36 @@ class LinkExpr(BinaryArithExpr):
         return '{expr} {op} {state}'.format(expr=expr, op=self.op, state=state)
 
 
-class FixExpr(BinaryArithExpr):
+class FixExpr(TernaryArithExpr):
     """Fixpoint expression."""
 
-    def __init__(self, a1=None, a2=None, top=False, bottom=False):
-        super().__init__(operators.FIXPOINT_OP, a1, a2, top=top, bottom=bottom)
+    def __init__(self, a1=None, a2=None, a3=None, top=False, bottom=False):
+        super().__init__(
+                operators.FIXPOINT_OP, a1, a2, a3, top=top, bottom=bottom)
 
     @property
-    def fix_var(self):
+    def bool_expr(self):
         return self.a1
 
     @property
-    def fix_expr(self):
+    def meta_state(self):
         return self.a2
+
+    @property
+    def loop_var(self):
+        return self.a3
 
     def _fixpoint(self, state):
         from soap.semantics.state.functions import fixpoint_eval
 
-        fix_expr = self.fix_expr
-        bool_expr = fix_expr.bool_expr
-        loop_meta_state = fix_expr.true_expr.meta_state
-
         fixpoint = fixpoint_eval(
-            state, bool_expr, loop_meta_state=loop_meta_state)
+            state, self.bool_expr, loop_meta_state=self.meta_state)
         fixpoint['last_entry']._warn_non_termination(self)
         return fixpoint
 
     @cached
     def eval(self, state):
-        return self._fixpoint(state)['exit'][self.fix_expr.false_expr]
+        return self._fixpoint(state)['exit'][self.loop_var]
 
     def label(self, context=None):
         from soap.label.base import LabelContext
@@ -126,4 +127,8 @@ class FixExpr(BinaryArithExpr):
         return LabelSemantics(label, env)
 
     def __str__(self):
-        return '{op}(λ {a1} . {a2})'.format(op=self.op, a1=self.a1, a2=self.a2)
+        return '{op}(λe.({bool_expr} ? e % {loop_state} : {var}))'.format(
+            op=self.op, bool_expr=self.a1, loop_state=self.a2, var=self.a3)
+        return '{op}({a1}, {a2}, {a3})'.format(
+            op=self.op, a1=self.bool_expr, a2=self.meta_state,
+            a3=self.loop_var)

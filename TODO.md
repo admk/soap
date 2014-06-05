@@ -5,7 +5,7 @@
     - [X] lazy execution of if statement branches
 * [ ] Fusion
     - [X] ~~Move fusion stuff to `soap.semantics.state.fusion`~~
-    - [ ] Restructure `FixExpr` to use `bool_expr`, `meta_state` and `var`
+    - [X] Restructure `FixExpr` to use `bool_expr`, `meta_state` and `var`
     - [ ] Dependency graph `LinkExpr` special casing, since there is a data
           dependency between its arguments
     - [ ] `loop_fusion`

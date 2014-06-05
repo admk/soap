@@ -197,13 +197,9 @@ class MetaState(BaseState, map(None, Expression)):
         var_list = loop_flow.vars(output=False)
 
         def fix_var(var):
-            free_var = FreeVariable(name=var.name, flow=flow)
             id_state = self.__class__({k: k for k in var_list})
             loop_state = id_state.transition(loop_flow)
-            true_expr = LinkExpr(free_var, loop_state)
-
-            fix_expr = SelectExpr(bool_expr, true_expr, var)
-            return FixExpr(free_var, fix_expr)
+            return FixExpr(bool_expr, loop_state, var)
 
         meta_state = self.__class__(
             {k: v for k, v in self.items() if k in var_list})
