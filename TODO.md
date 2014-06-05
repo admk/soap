@@ -4,7 +4,7 @@
     - [X] SSA code generation
     - [X] lazy execution of if statement branches
 * [ ] Add dependency ordering utility function
-    - [ ] Use this for code generation node ordering, kill nondeterminism
+    - [ ] ~~Use this for code generation node ordering, kill nondeterminism~~
     - [ ] For killing nondeterminism in labelling and code generation
     - [ ] For loop merging
 * [ ] Restructure `FixExpr` to use `bool_expr`, `meta_state` and `var`
