@@ -13,8 +13,7 @@ from soap.expression.base import (
     Expression, UnaryExpression, BinaryExpression, TernaryExpression
 )
 from soap.expression.variable import (
-    Variable, FreeVariable,
-    VariableTuple, InputVariableTuple, OutputVariableTuple
+    Variable, VariableTuple, InputVariableTuple, OutputVariableTuple
 )
 from soap.expression.arithmetic import (
     ArithExpr, UnaryArithExpr, BinaryArithExpr, TernaryArithExpr, SelectExpr

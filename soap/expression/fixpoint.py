@@ -1,4 +1,6 @@
 from soap.common.cache import cached
+from soap.common.formatting import underline
+
 from soap.expression import operators
 from soap.expression.arithmetic import BinaryArithExpr, TernaryArithExpr
 
@@ -19,11 +21,10 @@ class StateGetterExpr(BinaryArithExpr):
         return self.a2
 
     def eval(self, state):
-        raise NotImplementedError(
-            'Why would you want to evaluate this expression?')
+        raise RuntimeError('Why would you want to evaluate this expression?')
 
     def label(self, context=None):
-        raise NotImplementedError(
+        raise RuntimeError(
             'Why do you need to find labelling for this expression?')
 
     def __str__(self):
@@ -127,8 +128,8 @@ class FixExpr(TernaryArithExpr):
         return LabelSemantics(label, env)
 
     def __str__(self):
-        return '{op}(λe.({bool_expr} ? e % {loop_state} : {var}))'.format(
-            op=self.op, bool_expr=self.a1, loop_state=self.a2, var=self.a3)
-        return '{op}({a1}, {a2}, {a3})'.format(
-            op=self.op, a1=self.bool_expr, a2=self.meta_state,
-            a3=self.loop_var)
+        fixpoint_var = underline('e')
+        s = '{op}(λ{fvar}.({bool_expr} ? {fvar} % {loop_state} : {var}))'
+        return s.format(
+            fvar=fixpoint_var, op=self.op, bool_expr=self.a1,
+            loop_state=self.a2, var=self.a3)

@@ -4,7 +4,6 @@
 """
 import collections
 
-from soap.common.formatting import underline
 from soap.expression.base import Expression, UnaryExpression
 from soap.expression.arithmetic import ArithmeticMixin
 from soap.expression.boolean import BooleanMixin
@@ -56,18 +55,6 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
 
     def __hash__(self):
         return hash((self.name, self.__class__))
-
-
-class FreeVariable(Variable):
-    """A free variable, must be substituted before evaluating for its value."""
-    __slots__ = ()
-
-    def __init__(self, name=None, flow=None, top=False, bottom=False):
-        name = '{name}{label}'.format(name=name, label=flow.label.label_value)
-        super().__init__(name=name, top=top, bottom=bottom)
-
-    def __str__(self):
-        return underline('{}'.format(self.name))
 
 
 class VariableTuple(ArithmeticMixin, BooleanMixin, Expression):

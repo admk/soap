@@ -1,6 +1,6 @@
 from soap.expression import (
     Expression, SelectExpr, StateGetterExpr, LinkExpr, FixExpr, Variable,
-    FreeVariable, parse
+    parse
 )
 from soap.label.base import Label, LabelContext
 from soap.lattice.map import map
