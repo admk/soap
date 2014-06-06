@@ -6,6 +6,10 @@
 * [ ] Fusion
     - [X] ~~Move fusion stuff to `soap.semantics.state.fusion`~~
     - [X] Restructure `FixExpr` to use `bool_expr`, `meta_state` and `var`
+    - [ ] Consider how to deal with duplicates. Example:
+            Program `n := n + 1; while (x < n) (x := x + 1)` gives
+            [x ↦ fix(λe̲.(x < n ? e̲ % [x ↦ x + 1] : x)) % [x ↦ x, n ↦ n + 1],
+             n ↦ n + 1]
     - [ ] Dependency graph `LinkExpr` special casing, since there is a data
           dependency between its arguments
     - [ ] `loop_fusion`
