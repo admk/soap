@@ -1,5 +1,6 @@
 from pprint import *
 from soap import *
+from soap.label import *
 from soap.semantics.state.fusion import *
 from soap.program.generator import *
 from soap.program.graph import *
@@ -16,21 +17,18 @@ if b < 0:
     else:
         y = 5
 """
+v = [expr('x'), expr('y')]
+
 print(flow(p).format())
 
 s = flow_to_meta_state(p)
 pprint('metasemantics')
 pprint(s)
 
-m = s.label()[1]
+c = LabelContext('1', out_vars=v)
+m = s.label(c)[1]
 pprint('label')
 pprint(m)
 
-v = [expr('x'), expr('y')]
-
-n = fusion(m, v)
-pprint('merge')
-pprint(n)
-
 pprint('generate')
-print(generate(n, v).format())
+print(generate(m, v).format())

@@ -8,7 +8,8 @@ from soap.expression.operators import (
     TERNARY_SELECT_OP, ARITHMETIC_OPERATORS, COMMUTATIVITY_OPERATORS
 )
 from soap.expression.base import (
-    Expression, UnaryExpression, BinaryExpression, TernaryExpression
+    Expression, UnaryExpression, BinaryExpression, TernaryExpression,
+    QuaternaryExpression
 )
 
 
@@ -96,6 +97,11 @@ class BinaryArithExpr(BinaryExpression, ArithExpr):
 
 class TernaryArithExpr(TernaryExpression, ArithExpr):
     """Ternary arithmetic expressions."""
+
+    __slots__ = ()
+
+
+class QuaternaryArithExpr(QuaternaryExpression, ArithExpr):
 
     __slots__ = ()
 

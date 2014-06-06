@@ -11,6 +11,10 @@ _label_semantics_tuple_type = namedtuple('LabelSemantics', ['label', 'env'])
 class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
     """The semantics that captures the area of an expression."""
 
+    def __new__(cls, label, env):
+        from soap.semantics.state import MetaState
+        return super().__new__(cls, label, MetaState(env))
+
     def luts(self, exponent, mantissa):
         try:
             return self._area
@@ -43,3 +47,9 @@ class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
         if self.area != other.area:
             return False
         return True
+
+    def __hash__(self):
+        return hash((self.__class__, self.label, self.env))
+
+    def __str__(self):
+        return '({}, {})'.format(self.label, self.env)

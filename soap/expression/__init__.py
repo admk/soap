@@ -10,18 +10,21 @@ from soap.expression.common import (
     expression_factory, is_expression, is_variable
 )
 from soap.expression.base import (
-    Expression, UnaryExpression, BinaryExpression, TernaryExpression
+    Expression, UnaryExpression, BinaryExpression, TernaryExpression,
+    QuaternaryExpression
 )
 from soap.expression.variable import (
-    Variable, VariableTuple, InputVariableTuple, OutputVariableTuple
+    Variable, InputVariable, OutputVariable,
+    VariableTuple, InputVariableTuple, OutputVariableTuple
 )
 from soap.expression.arithmetic import (
-    ArithExpr, UnaryArithExpr, BinaryArithExpr, TernaryArithExpr, SelectExpr
+    ArithExpr, UnaryArithExpr, BinaryArithExpr, TernaryArithExpr,
+    QuaternaryArithExpr, SelectExpr
 )
 from soap.expression.boolean import (
     BoolExpr, UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr
 )
-from soap.expression.fixpoint import StateGetterExpr, LinkExpr, FixExpr
+from soap.expression.fixpoint import FixExpr
 from soap.expression.parser import parse
 
 

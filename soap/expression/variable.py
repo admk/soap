@@ -57,6 +57,14 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
         return hash((self.name, self.__class__))
 
 
+class InputVariable(Variable):
+    pass
+
+
+class OutputVariable(Variable):
+    pass
+
+
 class VariableTuple(ArithmeticMixin, BooleanMixin, Expression):
     """Tuple of variables. """
 

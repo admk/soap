@@ -90,10 +90,11 @@ class Label(flat(tuple), Flyweight):
 
 
 class LabelContext(object):
-    def __init__(self, description):
+    def __init__(self, description, out_vars=None):
         if not isinstance(description, str):
             description = Label(description)
         self.description = description
+        self.out_vars = out_vars
         self.lmap = {}
 
     def Label(self, statement=None, attribute=None, top=False, bottom=False):

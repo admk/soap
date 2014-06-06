@@ -150,11 +150,12 @@ class Expression(FlatLattice, Flyweight):
         from soap.label.base import LabelContext
         from soap.semantics.label import LabelSemantics
         from soap.semantics.common import is_numeral
+        from soap.semantics.state import MetaState
 
         context = context or LabelContext(self)
 
         for a in self.args:
-            if isinstance(a, Expression):
+            if isinstance(a, (Expression, MetaState)):
                 yield a.label(context)
             elif is_numeral(a):
                 label = context.Label(a)
@@ -263,18 +264,13 @@ class Expression(FlatLattice, Flyweight):
         return iter([self.op] + list(self.args))
 
     def _args_to_str(self):
-        from soap.expression.fixpoint import FixExpr
-
         def format(expr):
             if isinstance(expr, Lattice) and expr.is_bottom():
-                brackets = False
-            elif isinstance(expr, FixExpr):
                 brackets = False
             else:
                 brackets = is_expression(expr) and expr.args
             text = '({})' if brackets else '{}'
             return text.format(expr)
-
         return [format(a) for a in self.args]
 
     def __repr__(self):
@@ -348,3 +344,13 @@ class TernaryExpression(Expression):
     def __init__(self, op=None, a1=None, a2=None, a3=None,
                  top=False, bottom=False, **kwargs):
         super().__init__(op, a1, a2, a3, top=top, bottom=bottom, **kwargs)
+
+
+class QuaternaryExpression(Expression):
+    """A quaternary expression class. Instance has four arguments."""
+
+    __slots__ = ()
+
+    def __init__(self, op=None, a1=None, a2=None, a3=None, a4=None,
+                 top=False, bottom=False, **kwargs):
+        super().__init__(op, a1, a2, a3, a4, top=top, bottom=bottom, **kwargs)

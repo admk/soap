@@ -1,14 +1,15 @@
 import collections
 
+from soap import logger
 from soap.expression import (
     is_variable, is_expression,
-    InputVariableTuple, OutputVariableTuple, SelectExpr, StateGetterExpr
+    InputVariableTuple, OutputVariableTuple, SelectExpr, FixExpr
 )
 from soap.label import Label
 from soap.program.graph import (
     DependencyGraph, CyclicGraphException
 )
-from soap.semantics import is_numeral, MetaState
+from soap.semantics import is_numeral, MetaState, LabelSemantics
 
 
 def sorted_args(expr):
@@ -18,8 +19,6 @@ def sorted_args(expr):
         return [expr]
     if isinstance(expr, InputVariableTuple):
         return list(expr.args)
-    if isinstance(expr, StateGetterExpr):
-        return [expr.meta_state]
     if is_expression(expr):
         return list(expr.args)
     if isinstance(expr, (dict, MetaState)):
@@ -72,11 +71,14 @@ def branch_fusion(env, expr):
 
 
 def loop_fusion(env, expr):
+    # not if-then-else
+    if not isinstance(expr, FixExpr):
+        return env
+
     return env
 
 
-def fusion(env, out_vars):
-
+def recursive_fusion(env, out_vars):
     def acyclic_assign(fusion_func, env, expr):
         new_env = fusion_func(env, expr)
         if env == new_env:
@@ -87,14 +89,39 @@ def fusion(env, out_vars):
             return env
         return new_env
 
-    if not isinstance(out_vars, collections.Sequence):
-        raise TypeError('Output variables out_vars must be a sequence.')
-
     for var in out_vars:
         expr = env.get(var)
         env = acyclic_assign(branch_fusion, env, expr)
         env = acyclic_assign(loop_fusion, env, expr)
-        # depth-first recursively merge branches
-        env = fusion(env, sorted_args(expr))
+        if isinstance(expr, FixExpr):
+            # is FixExpr, fuse stuff in environments
+            ori_loop_var = loop_var = expr.loop_var
+            if not isinstance(loop_var, collections.Sequence):
+                loop_var = [loop_var]
+            loop_state = recursive_fusion(expr.loop_state, loop_var)
+            init_state = recursive_fusion(expr.init_state, loop_var)
+            # update env with new expr, no dependency cycles created
+            expr = FixExpr(
+                expr.bool_expr, loop_state, ori_loop_var, init_state)
+            env[var] = expr
+        else:
+            # depth-first recursively merge branches
+            env = recursive_fusion(env, sorted_args(expr))
 
     return env
+
+
+def fusion(env, context):
+    out_vars = context.out_vars
+
+    if not out_vars:
+        logger.error(
+            'Expect out_vars to be provided, using env.keys() instead, '
+            'may introduce nondeterminism in fusion.')
+        out_vars = env.keys()
+    elif not isinstance(out_vars, collections.Sequence):
+        logger.error(
+            'Expect out_vars to be a sequence, '
+            'may introduce nondeterminism in fusion.')
+
+    return recursive_fusion(env, out_vars)

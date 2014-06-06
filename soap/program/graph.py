@@ -3,17 +3,10 @@ import collections
 from soap.label import Label
 from soap.expression import (
     is_variable, is_expression,
-    Variable, InputVariableTuple, OutputVariableTuple, StateGetterExpr
+    Variable, InputVariable, OutputVariable,
+    InputVariableTuple, OutputVariableTuple
 )
 from soap.semantics import is_numeral, MetaState
-
-
-class InputVariable(Variable):
-    pass
-
-
-class OutputVariable(Variable):
-    pass
 
 
 def expression_dependencies(expr):
@@ -37,8 +30,6 @@ def expression_dependencies(expr):
         return list(expr)
     if isinstance(expr, OutputVariableTuple):
         return [expr]
-    if isinstance(expr, StateGetterExpr):
-        raise NotImplementedError
     if isinstance(expr, (dict, MetaState)):
         return [expr]
     raise TypeError(
@@ -54,6 +45,7 @@ class DependencyGraph(object):
     """Discovers the graph of dependencies"""
     def __init__(self, env, out_var):
         super().__init__()
+        env = dict(env)
         self._detect_acyclic(env, out_var)
         if isinstance(out_var, collections.Sequence):
             out_var = InputVariableTuple(out_var)
