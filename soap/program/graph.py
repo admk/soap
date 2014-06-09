@@ -16,11 +16,7 @@ def expression_dependencies(expr):
         # there are no dependencies for it
         return []
     if is_expression(expr):
-        # dependent variables in the expression
-        deps = []
-        for arg in expr.args:
-            deps += expression_dependencies(arg)
-        return deps
+        return expr.args
     if isinstance(expr, Label) or is_numeral(expr):
         # is a label/constant, dependency is itself
         return [expr]
@@ -68,7 +64,10 @@ class DependencyGraph(object):
             edges = set()
             deps = set()
             for var in var_set:
-                expr = self.env.get(var, None)
+                if isinstance(var, InputVariableTuple):
+                    expr = var
+                else:
+                    expr = self.env.get(var)
                 local_deps = expression_dependencies(expr)
                 deps |= set(local_deps)
                 edges |= {(var, dep_var) for dep_var in local_deps}
@@ -211,7 +210,12 @@ class DependencyGraph(object):
     @staticmethod
     def _detect_acyclic(env, out_var):
         def walk(var, found_vars):
-            for dep_var in expression_dependencies(env.get(var, None)):
+            if isinstance(var, InputVariableTuple):
+                expr = var
+            else:
+                expr = env.get(var)
+            dep_vars = expression_dependencies(expr)
+            for dep_var in dep_vars:
                 if dep_var in found_vars:
                     raise CyclicGraphException(
                         'Cycle detected: {}'.format(found_vars + [dep_var]))

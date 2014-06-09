@@ -26,7 +26,6 @@ def sorted_args(expr):
 
 
 def branch_fusion(env, expr):
-
     # not if-then-else
     if not isinstance(expr, SelectExpr):
         return env
