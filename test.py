@@ -4,6 +4,7 @@ from soap.label import *
 from soap.semantics.state.fusion import *
 from soap.program.generator import *
 from soap.program.graph import *
+logger.set_context(level=logger.levels.info)
 
 p = """
 if a < 0:
@@ -16,8 +17,6 @@ if b < 0:
         y = 4
     else:
         y = 5
-"""
-q = """
 n = n + 1
 while x < n:
     x = x + 1
@@ -33,8 +32,9 @@ pprint(dict(s))
 
 c = LabelContext('1', out_vars=v)
 m = s.label(c)[1]
+m = fusion(m, c.out_vars)
 pprint('label')
 pprint(dict(m))
 
-pprint('generate')
-print(generate(m, v).format())
+# pprint('generate')
+# print(generate(m, v).format())

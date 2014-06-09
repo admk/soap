@@ -101,8 +101,6 @@ class MetaState(BaseState, map(None, Expression)):
         return self.__class__(mapping)
 
     def label(self, context=None):
-        from soap.semantics.state.fusion import fusion
-
         context = context or LabelContext(self)
 
         env = {}
@@ -112,7 +110,6 @@ class MetaState(BaseState, map(None, Expression)):
             expr_label, expr_env = expr.label(context)
             env.update(expr_env)
             env[var] = expr_label
-        env = fusion(env, context.out_vars)
         label = context.Label(MetaState(env))
 
         return LabelSemantics(label, env)

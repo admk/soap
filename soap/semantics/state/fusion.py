@@ -71,20 +71,6 @@ def branch_fusion(env, expr):
     return new_env
 
 
-def inner_fusion(env, bool_expr, loop_state, loop_vars, init_state, out_vars):
-    # is FixExpr, fuse stuff in environments
-    ori_loop_vars = loop_vars
-    if not isinstance(loop_vars, OutputVariableTuple):
-        loop_vars = [loop_vars]
-    loop_state = recursive_fusion(loop_state, loop_vars)
-    init_state = recursive_fusion(init_state, loop_vars)
-    # update env with new expr, no dependency cycles created
-    expr = FixExpr(
-        bool_expr, loop_state, ori_loop_vars, init_state)
-    env[out_vars] = expr
-    return env
-
-
 def loop_fusion(env, expr):
     # not fixpoint expression
     if not isinstance(expr, FixExpr):
@@ -113,21 +99,17 @@ def loop_fusion(env, expr):
         if not isinstance(merge_expr, FixExpr):
             # not fixpoint expression
             return False
-
         merge_expr_bool_expr = expr.bool_expr
         if merge_expr_bool_expr != bool_expr:
             # bool_expr is different
             return False
-
         if init_bool_state != state_filter(merge_expr.init_state):
             # input values for bool_expr is different
             return False
-
         if loop_bool_state != state_filter(merge_expr.loop_state):
             # output values from loop exit for next iteration's bool_expr is
             # different
             return False
-
         return True
 
     fused_loop_state = MetaState.empty()
@@ -190,6 +172,8 @@ def recursive_fusion(env, out_vars):
         if expr is None:
             continue
 
+        logger.debug('Node fusion: {}, for expr: {}'.format(var, expr))
+
         # fusion kernel
         env = acyclic_assign(branch_fusion, env, expr)
         env = acyclic_assign(loop_fusion, env, expr)
@@ -213,8 +197,8 @@ def recursive_fusion(env, out_vars):
         ori_loop_var = loop_var = expr.loop_var
         if not isinstance(loop_var, OutputVariableTuple):
             loop_var = [loop_var]
-        loop_state = recursive_fusion(expr.loop_state, loop_var)
-        init_state = recursive_fusion(expr.init_state, loop_var)
+        loop_state = MetaState(recursive_fusion(expr.loop_state, loop_var))
+        init_state = MetaState(recursive_fusion(expr.init_state, loop_var))
         # update env with new expr, no dependency cycles created
         expr = FixExpr(
             expr.bool_expr, loop_state, ori_loop_var, init_state)
@@ -233,4 +217,4 @@ def fusion(env, out_vars):
         logger.error(
             'Expect out_vars to be a sequence, '
             'may introduce nondeterminism in fusion.')
-    return recursive_fusion(env, out_vars)
+    return MetaState(recursive_fusion(env, out_vars))

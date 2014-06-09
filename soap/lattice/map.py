@@ -98,7 +98,7 @@ class MapLattice(Lattice, Mapping):
 
     def __str__(self):
         return '[{}]'.format(', '.join(
-            '{key} ↦ {value}'.format(key=k, value=v)
+            '{key}: {value}'.format(key=k, value=v)
             for k, v in sorted(self.items(), key=str)))
 
     def __repr__(self):
