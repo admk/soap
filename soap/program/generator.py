@@ -1,5 +1,6 @@
 import collections
 
+from soap import logger
 from soap.expression import InputVariableTuple, OutputVariableTuple
 from soap.program.flow import AssignFlow, IfFlow, CompositionalFlow
 from soap.program.graph import HierarchicalDependencyGraph
@@ -9,6 +10,7 @@ class CodeGenerator(object):
     def __init__(self, graph=None, env=None, out_vars=None):
         super().__init__()
         self.graph = graph or HierarchicalDependencyGraph(env, out_vars)
+        import pprint; pprint.pprint(self.graph.edges)
 
     def _flatten(self, flows):
         if flows is None:
@@ -38,6 +40,7 @@ class CodeGenerator(object):
         if not expr:
             if isinstance(var, HierarchicalDependencyGraph):
                 expr = var
+        logger.debug('Generating var: {!r}, expr: {!r}'.format(var, expr))
         emit_func_name = 'emit_{}'.format(expr.__class__.__name__)
         emit = getattr(self, emit_func_name, self.generic_emit)
         return self._flatten(emit(var, expr, order))

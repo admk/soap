@@ -3,7 +3,8 @@ import collections
 from soap.label import Label
 from soap.expression import (
     is_variable, is_expression,
-    Variable, InputVariable, InputVariableTuple, OutputVariableTuple
+    Variable, InputVariable, VariableTuple,
+    InputVariableTuple, OutputVariableTuple
 )
 from soap.semantics import is_numeral, MetaState, LabelSemantics
 
@@ -49,7 +50,8 @@ class DependencyGraph(object):
         env = dict(env)
         self._detect_acyclic(env, out_var)
         if isinstance(out_var, collections.Sequence):
-            out_var = InputVariableTuple(out_var)
+            if not isinstance(out_var, VariableTuple):
+                out_var = InputVariableTuple(out_var)
         self.env = dict(env)
         self.out_var = out_var
         self._edges = None
@@ -214,8 +216,9 @@ class DependencyGraph(object):
                     raise CyclicGraphException(
                         'Cycle detected: {}'.format(found_vars + [dep_var]))
                 walk(dep_var, found_vars + [var])
-        if not isinstance(out_var, collections.Sequence):
-            out_var = [out_var]
+        if not isinstance(out_var, VariableTuple):
+            if not isinstance(out_var, collections.Sequence):
+                out_var = [out_var]
         for var in out_var:
             walk(var, [])
 
