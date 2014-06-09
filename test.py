@@ -17,18 +17,24 @@ if b < 0:
     else:
         y = 5
 """
+q = """
+n = n + 1
+while x < n:
+    x = x + 1
+    y = y * x
+"""
 v = [expr('x'), expr('y')]
 
 print(flow(p).format())
 
 s = flow_to_meta_state(p)
 pprint('metasemantics')
-pprint(s)
+pprint(dict(s))
 
 c = LabelContext('1', out_vars=v)
 m = s.label(c)[1]
 pprint('label')
-pprint(m)
+pprint(dict(m))
 
 pprint('generate')
 print(generate(m, v).format())

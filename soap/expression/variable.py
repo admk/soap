@@ -65,7 +65,8 @@ class OutputVariable(Variable):
     pass
 
 
-class VariableTuple(ArithmeticMixin, BooleanMixin, Expression):
+class VariableTuple(
+        collections.Sequence, ArithmeticMixin, BooleanMixin, Expression):
     """Tuple of variables. """
 
     def __init__(self, *args, top=False, bottom=False):
@@ -91,8 +92,11 @@ class VariableTuple(ArithmeticMixin, BooleanMixin, Expression):
     def label(self, context=None):
         raise RuntimeError('Not suitable for labelling.')
 
-    def __iter__(self):
-        return iter(self.args)
+    def __getitem__(self, index):
+        return self.args[index]
+
+    def __len__(self):
+        return len(self.args)
 
     def __str__(self):
         var_list = ','.join(str(v) for v in self.args)

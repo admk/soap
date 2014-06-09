@@ -8,8 +8,9 @@ class BaseState(object):
     """Base state for all program states."""
     __slots__ = ()
 
-    def empty(self):
-        return self.__class__(bottom=True)
+    @classmethod
+    def empty(cls):
+        return cls(bottom=True)
 
     def transition(self, flow):
         return getattr(self, 'visit_' + flow.__class__.__name__)(flow)

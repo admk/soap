@@ -3,10 +3,9 @@ import collections
 from soap.label import Label
 from soap.expression import (
     is_variable, is_expression,
-    Variable, InputVariable, OutputVariable,
-    InputVariableTuple, OutputVariableTuple
+    Variable, InputVariable, InputVariableTuple, OutputVariableTuple
 )
-from soap.semantics import is_numeral, MetaState
+from soap.semantics import is_numeral, MetaState, LabelSemantics
 
 
 def expression_dependencies(expr):
@@ -31,6 +30,8 @@ def expression_dependencies(expr):
     if isinstance(expr, OutputVariableTuple):
         return [expr]
     if isinstance(expr, (dict, MetaState)):
+        return [expr]
+    if isinstance(expr, LabelSemantics):
         return [expr]
     raise TypeError(
         'Do not know how to find dependencies in expression {!r}'

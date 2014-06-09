@@ -72,18 +72,32 @@ class MetaState(BaseState, map(None, Expression)):
     def visit_WhileFlow(self, flow):
         bool_expr = flow.conditional_expr
         loop_flow = flow.loop_flow
-        loop_var_list = loop_flow.vars(output=True)
-        dep_var_list = loop_var_list | bool_expr.vars()
 
-        init_state = self.__class__(
-            {k: v for k, v in self.items() if k in dep_var_list})
+        bool_expr_vars = bool_expr.vars()
+        # variables changed in loop
+        loop_vars = loop_flow.vars(input=False)
+        # input variables
+        init_vars = flow.vars(output=False)
+        # variables required by loop to iterate
+        iter_vars = bool_expr_vars & loop_vars
 
-        id_state = self.__class__({k: k for k in loop_var_list})
+        # loop_state for all output variables
+        id_state = self.__class__({k: k for k in loop_vars})
         loop_state = id_state.transition(loop_flow)
 
         mapping = dict(self)
-        for var in loop_var_list:
-            mapping[var] = FixExpr(bool_expr, loop_state, var, init_state)
+        for var in loop_vars:
+            # local loop/init variables
+            local_loop_vars = iter_vars | {var}
+            local_init_vars = bool_expr_vars | local_loop_vars
+            # local loop/init states
+            local_loop_state = self.__class__(
+                {k: v for k, v in loop_state.items() if k in local_loop_vars})
+            local_init_state = self.__class__(
+                {k: v for k, v in self.items() if k in local_init_vars})
+            # fixpoint expression
+            mapping[var] = FixExpr(
+                bool_expr, local_loop_state, var, local_init_state)
         return self.__class__(mapping)
 
     def label(self, context=None):
@@ -92,12 +106,13 @@ class MetaState(BaseState, map(None, Expression)):
         context = context or LabelContext(self)
 
         env = {}
-        # FIXME nondeterminism in labelling
-        for var, expr in sorted(self.items()):
+        # FIXME better determinism in labelling, currently uses str-based
+        # sorting, could use context.out_vars to traverse trees
+        for var, expr in sorted(self.items(), key=str):
             expr_label, expr_env = expr.label(context)
             env.update(expr_env)
             env[var] = expr_label
-        env = fusion(env, context)
+        env = fusion(env, context.out_vars)
         label = context.Label(MetaState(env))
 
         return LabelSemantics(label, env)

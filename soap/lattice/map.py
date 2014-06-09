@@ -41,7 +41,7 @@ class MapLattice(Lattice, Mapping):
         join_dict = dict(self)
         for k in other:
             if k in self:
-                join_dict[k] = self[k] | other[k]
+                join_dict[k] = self[k].join(other[k])
             else:
                 join_dict[k] = other[k]
         return self.__class__(join_dict)
@@ -51,7 +51,7 @@ class MapLattice(Lattice, Mapping):
         for k in list(self) + list(other):
             if k not in self or k not in other:
                 continue
-            v = self[k] & other[k]
+            v = self[k].meet(other[k])
             if not v.is_bottom():
                 meet_dict[k] = v
         return self.__class__(meet_dict)
@@ -98,7 +98,8 @@ class MapLattice(Lattice, Mapping):
 
     def __str__(self):
         return '[{}]'.format(', '.join(
-            '{key} ↦ {value}'.format(key=k, value=v) for k, v in self.items()))
+            '{key} ↦ {value}'.format(key=k, value=v)
+            for k, v in sorted(self.items(), key=str)))
 
     def __repr__(self):
         return '{cls}({items!r})'.format(
