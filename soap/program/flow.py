@@ -5,6 +5,7 @@
 from akpytemp import Template
 from akpytemp.utils import code_gobble
 
+from soap import logger
 from soap.common.formatting import superscript
 from soap.label import Label
 from soap.semantics import is_numeral
@@ -21,7 +22,10 @@ def _indent(code):
 def _state_with_label(state, label):
     if state is None:
         return
-    return str(state.filter(lambda k: k.label == label))
+    try:
+        return str(state.filter(lambda k: k.label == label))
+    except AttributeError:
+        return str(state)
 
 
 class Flow(object):
@@ -71,7 +75,7 @@ class Flow(object):
         )
         state = state or IdentifierBoxState()
         if not isinstance(state, IdentifierBaseState):
-            raise TypeError('state object type is not IdentifierBaseState.')
+            logger.warning('state object type is not IdentifierBaseState.')
         return self.format(self.flow(state))
 
     def format(self, state=None):

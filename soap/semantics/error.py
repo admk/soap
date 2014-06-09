@@ -531,7 +531,7 @@ class ErrorSemantics(Lattice):
         return '{value}{error}'.format(value=self.v, error=self.e)
 
     def __repr__(self):
-        return '{cls}({value!}, {error!r})'.format(
+        return '{cls}({value!r}, {error!r})'.format(
             cls=self.__class__.__name__, value=self.v, error=self.e)
 
     def __hash__(self):

@@ -108,14 +108,23 @@ class TestExampleFlow(unittest.TestCase):
                 x = x / 2 + 1 / x
             """)
 
+    def test_simple_if(self):
+        env = BoxState(bottom=True)
+        flow_env = flow(self.simple_if).flow(env)
+        expect_env = BoxState(x=1)
+        self.assertEqual(flow_env, expect_env)
+
+    def test_simple_while(self):
+        env = BoxState(bottom=True)
+        flow_env = flow(self.simple_while).flow(env)
+        expect_env = BoxState(x=5)
+        self.assertEqual(flow_env, expect_env)
+
     def test_interval_flow(self):
         env = BoxState(x=[0, 5], y=[0, 2])
         flow_env = flow(self.factorial).flow(env)
         less_env = BoxState(x=[4, 5], y=[0, 12])
         self.assertLessEqual(less_env, flow_env)
-    
-    def test_simple_if(self):
-        ...
 
     def test_factorial_error_flow(self):
         print(flow(self.factorial).debug(BoxState(x=1, y='1.2')))

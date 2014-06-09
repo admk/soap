@@ -83,10 +83,9 @@ class TestContext(unittest.TestCase):
                 super().__init__(*args, **kwargs)
                 hook_self.reached = False
 
-            def b_hook(hook_self, key, value):
-                self.assertEqual(key, 'b')
+            def b_hook(hook_self, value):
                 hook_self.reached = True
-                return key, value
+                return value
 
         context = HookContext()
         self.assertFalse(context.reached)
