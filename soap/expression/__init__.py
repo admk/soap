@@ -14,7 +14,7 @@ from soap.expression.base import (
     QuaternaryExpression
 )
 from soap.expression.variable import (
-    Variable, InputVariable, OutputVariable,
+    Variable, InputVariable, OutputVariable, External,
     VariableTuple, InputVariableTuple, OutputVariableTuple
 )
 from soap.expression.arithmetic import (

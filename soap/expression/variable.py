@@ -65,8 +65,34 @@ class OutputVariable(Variable):
     pass
 
 
+class _MagicalMixin(object):
+
+    def vars(self):
+        raise RuntimeError(
+            '_MagicalMixin expressions has no local dependencies.')
+
+    def eval(self, state):
+        raise RuntimeError('Not suitable for arithmetic evaluation.')
+
+    def label(self, context=None):
+        raise RuntimeError('Not suitable for labelling.')
+
+
+class External(_MagicalMixin, ArithmeticMixin, BooleanMixin, Expression):
+    def __init__(self, var, top=False, bottom=False):
+        super().__init__(None, var, top=top, bottom=bottom)
+
+    @property
+    def var(self):
+        return self.args[0]
+
+    def __str__(self):
+        return 'ext({})'.format(self.var)
+
+
 class VariableTuple(
-        collections.Sequence, ArithmeticMixin, BooleanMixin, Expression):
+        _MagicalMixin, collections.Sequence, ArithmeticMixin, BooleanMixin,
+        Expression):
     """Tuple of variables. """
 
     def __init__(self, *args, top=False, bottom=False):
@@ -82,15 +108,6 @@ class VariableTuple(
             else:
                 flat_args.append(v)
         super().__init__(None, *flat_args, top=top, bottom=bottom)
-
-    def vars(self):
-        return {self}
-
-    def eval(self, state):
-        raise RuntimeError('Not suitable for arithmetic evaluation.')
-
-    def label(self, context=None):
-        raise RuntimeError('Not suitable for labelling.')
 
     def __getitem__(self, index):
         return self.args[index]

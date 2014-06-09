@@ -10,7 +10,6 @@ class CodeGenerator(object):
     def __init__(self, graph=None, env=None, out_vars=None):
         super().__init__()
         self.graph = graph or HierarchicalDependencyGraph(env, out_vars)
-        import pprint; pprint.pprint(self.graph.edges)
 
     def _flatten(self, flows):
         if flows is None:

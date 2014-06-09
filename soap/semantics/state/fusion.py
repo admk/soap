@@ -3,18 +3,16 @@ import collections
 from soap import logger
 from soap.expression import (
     is_variable, is_expression,
-    InputVariableTuple, OutputVariableTuple, SelectExpr, FixExpr
+    External, InputVariableTuple, OutputVariableTuple, SelectExpr, FixExpr
 )
 from soap.label import Label
-from soap.program.graph import (
-    DependencyGraph, CyclicGraphException
-)
-from soap.semantics.common import is_numeral
-from soap.semantics.state.meta import MetaState
+from soap.program.graph import DependencyGraph, CyclicGraphException
+from soap.semantics import is_numeral, MetaState
 
 
 def sorted_args(expr):
-    if not expr or is_variable(expr) or is_numeral(expr):
+    if any((expr is None, is_variable(expr),
+            is_numeral(expr), isinstance(expr, External))):
         return []
     if isinstance(expr, (Label, OutputVariableTuple)):
         return [expr]
@@ -151,6 +149,83 @@ def loop_fusion(env, expr):
     return new_env
 
 
+def _ensure_fix_expr(env, var):
+    if env.get(var) is None:
+        raise ValueError(
+            'Should not perform fusion for variable without an expression in '
+            'environment.')
+    expr = env.get(var)
+    if isinstance(expr, OutputVariableTuple):
+        # if already fused, get fused fixpoint expression
+        var = expr
+        expr = env.get(expr)
+
+    if not isinstance(expr, FixExpr):
+        raise TypeError(
+            'FixExpr expected for fusion of variable {}.'.format(var))
+
+    return var, expr
+
+
+def inner_meta_fusion(env, var):
+    var, expr = _ensure_fix_expr(env, var)
+
+    # recursively fuse inner meta_state objects
+    ori_loop_var = loop_var = expr.loop_var
+    if not isinstance(loop_var, OutputVariableTuple):
+        loop_var = [loop_var]
+    loop_state = MetaState(recursive_fusion(expr.loop_state, loop_var))
+    init_state = MetaState(recursive_fusion(expr.init_state, loop_var))
+
+    # update env with new expr, no dependency cycles created
+    expr = FixExpr(
+        expr.bool_expr, loop_state, ori_loop_var, init_state)
+    env[var] = expr
+    return env
+
+
+def outer_scope_fusion(env, var):
+    var, expr = _ensure_fix_expr(env, var)
+
+    init_state = dict(expr.init_state)
+
+    # assign external scope variables
+    for init_var, init_expr in init_state.items():
+        if not env.get(init_var):
+            continue
+        init_state[init_var] = External(init_var)
+
+    # filter unused pairs because some dependencies are no long needed
+    # filter variable set =
+    #   bool_expr.in_vars | loop_state.in_vars | init_state.in_vars
+    filter_vars = set()
+
+    # get dependencies to filter in init_state
+    for init_var, init_expr in init_state.items():
+        if isinstance(init_expr, Label):
+            filter_vars.add(init_expr)
+        if not isinstance(init_expr, External) and is_expression(init_expr):
+            filter_vars |= {
+                l for l in init_expr.args if isinstance(l, Label)}
+
+    # dependencies in bool_expr and loop_state
+    input_vars = lambda state: {v for v in state.values() if is_variable(v)}
+    loop_state = expr.loop_state
+    _, bool_state = expr.bool_expr
+    filter_vars |= input_vars(loop_state)
+    filter_vars |= input_vars(bool_state)
+
+    # prune dependencies by filtering init_state with filter_vars
+    init_state = MetaState(
+        {v: e for v, e in init_state.items() if v in filter_vars})
+
+    # update expr in env, no dependency cycle created
+    env[var] = FixExpr(
+        expr.bool_expr, expr.loop_state, expr.loop_var, init_state)
+
+    return env
+
+
 def recursive_fusion(env, out_vars):
     def acyclic_assign(fusion_func, env, expr):
         new_env = fusion_func(env, expr)
@@ -181,28 +256,10 @@ def recursive_fusion(env, out_vars):
         if not isinstance(expr, FixExpr):
             # depth-first recursively merge branches
             env = recursive_fusion(env, sorted_args(expr))
-            continue
-
-        # is fixpoint expression, fuse stuff in local environments
-        expr = env.get(var)
-        if isinstance(expr, OutputVariableTuple):
-            # if already fused, get fused fixpoint expression
-            var = expr
-            expr = env.get(expr)
-            if not isinstance(expr, FixExpr):
-                raise TypeError(
-                    'FixExpr expected for OutputVariableTuple of variable {}.'
-                    .format(var))
-
-        ori_loop_var = loop_var = expr.loop_var
-        if not isinstance(loop_var, OutputVariableTuple):
-            loop_var = [loop_var]
-        loop_state = MetaState(recursive_fusion(expr.loop_state, loop_var))
-        init_state = MetaState(recursive_fusion(expr.init_state, loop_var))
-        # update env with new expr, no dependency cycles created
-        expr = FixExpr(
-            expr.bool_expr, loop_state, ori_loop_var, init_state)
-        env[var] = expr
+        else:
+            # is fixpoint expression, fuse stuff in local environments
+            env = inner_meta_fusion(env, var)
+            env = outer_scope_fusion(env, var)
 
     return env
 

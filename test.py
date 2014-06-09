@@ -36,5 +36,5 @@ m = fusion(m, c.out_vars)
 pprint('label')
 pprint(dict(m))
 
-# pprint('generate')
-# print(generate(m, v).format())
+pprint('generate')
+print(generate(m, v).format())
