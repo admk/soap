@@ -20,6 +20,9 @@ def expression_dependencies(expr):
         # is fixpoint expression, find external dependencies in init_state
         return [v.var for v in expr.init_state.values()
                 if isinstance(v, External)]
+    if isinstance(expr, External):
+        # external dependencies taken care of by FixExpr dependencies
+        return []
     if is_expression(expr):
         deps = []
         for arg in expr.args:
@@ -42,6 +45,39 @@ def expression_dependencies(expr):
     raise TypeError(
         'Do not know how to find dependencies in expression {!r}'
         .format(expr))
+
+
+def unique(bag_list):
+    new_list = []
+    for each in bag_list:
+        if each not in new_list:
+            new_list.append(each)
+    return new_list
+
+
+def sorted_vars(env, out_vars):
+    # TODO.possible sorted dependent input variables, if do get a chance to
+    # create determinism for graph dependency resolution, this may no longer be
+    # necessary, because it can be replaced by a method in DependencyGraph
+    def sort(env, out_vars):
+        if isinstance(out_vars, InputVariable):
+            return [Variable(out_vars.name)]
+        if is_numeral(out_vars):
+            return []
+
+        is_seq = (isinstance(out_vars, collections.Sequence) and
+                  not isinstance(out_vars, OutputVariableTuple))
+        if not is_seq:
+            out_vars = [out_vars]
+
+        deps = []
+        for var in out_vars:
+            expr = env.get(var)
+            for dep in expression_dependencies(expr):
+                deps += sort(env, dep)
+        return deps
+
+    return unique(sort(env, out_vars))
 
 
 class CyclicGraphException(Exception):

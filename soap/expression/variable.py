@@ -19,7 +19,7 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
 
     @property
     def name(self):
-        return self.a
+        return self.args[0]
 
     def vars(self):
         return {self}
