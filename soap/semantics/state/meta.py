@@ -76,8 +76,6 @@ class MetaState(BaseState, map(None, Expression)):
         bool_expr_vars = bool_expr.vars()
         # variables changed in loop
         loop_vars = loop_flow.vars(input=False)
-        # input variables
-        init_vars = flow.vars(output=False)
         # variables required by loop to iterate
         iter_vars = bool_expr_vars & loop_vars
 

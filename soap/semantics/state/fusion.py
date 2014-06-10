@@ -190,22 +190,27 @@ def outer_scope_fusion(env, var):
 
     # assign external scope variables
     for init_var, init_expr in init_state.items():
-        if not env.get(init_var):
+        extn_expr = env.get(init_var)
+        if extn_expr != init_expr:
             continue
-        init_state[init_var] = External(init_var)
+        extn_label = extn_expr if is_variable(init_var) else init_var
+        init_state[init_var] = External(extn_label)
 
     # filter unused pairs because some dependencies are no long needed
     # filter variable set =
     #   bool_expr.in_vars | loop_state.in_vars | init_state.in_vars
     filter_vars = set()
 
-    # get dependencies to filter in init_state
+    # get dependencies to keep in init_state
     for init_var, init_expr in init_state.items():
-        if isinstance(init_expr, Label):
+        if isinstance(init_expr, (Label, OutputVariableTuple)):
             filter_vars.add(init_expr)
         if not isinstance(init_expr, External) and is_expression(init_expr):
-            filter_vars |= {
-                l for l in init_expr.args if isinstance(l, Label)}
+            for arg in init_expr.args:
+                if isinstance(arg, Label):
+                    filter_vars.add(arg)
+                if isinstance(arg, InputVariableTuple):
+                    filter_vars |= set(arg)
 
     # dependencies in bool_expr and loop_state
     input_vars = lambda state: {v for v in state.values() if is_variable(v)}
@@ -243,8 +248,8 @@ def recursive_fusion(env, out_vars):
             continue
 
         expr = env.get(var)
-        if expr is None:
-            continue
+        if expr.is_bottom():
+            raise ValueError('Node {} has no expression'.format(var))
 
         logger.debug('Node fusion: {}, for expr: {}'.format(var, expr))
 

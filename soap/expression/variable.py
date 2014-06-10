@@ -80,6 +80,9 @@ class _MagicalMixin(object):
 
 class External(_MagicalMixin, ArithmeticMixin, BooleanMixin, Expression):
     def __init__(self, var, top=False, bottom=False):
+        if isinstance(var, Variable):
+            # because a label is always unique, and a variable could change
+            raise TypeError('External must take a label, not a variable')
         super().__init__(None, var, top=top, bottom=bottom)
 
     @property
@@ -87,7 +90,7 @@ class External(_MagicalMixin, ArithmeticMixin, BooleanMixin, Expression):
         return self.args[0]
 
     def __str__(self):
-        return 'ext({})'.format(self.var)
+        return '^{}'.format(self.var)
 
 
 class VariableTuple(

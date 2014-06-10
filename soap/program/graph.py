@@ -3,8 +3,9 @@ import collections
 from soap.label import Label
 from soap.expression import (
     is_variable, is_expression,
-    Variable, InputVariable, VariableTuple,
-    InputVariableTuple, OutputVariableTuple
+    Variable, InputVariable, External,
+    VariableTuple, InputVariableTuple, OutputVariableTuple,
+    FixExpr
 )
 from soap.semantics import is_numeral, MetaState, LabelSemantics
 
@@ -15,6 +16,10 @@ def expression_dependencies(expr):
         # can't find expression for var or var is an input variable, so
         # there are no dependencies for it
         return []
+    if isinstance(expr, FixExpr):
+        # is fixpoint expression, find external dependencies in init_state
+        return [v.var for v in expr.init_state.values()
+                if isinstance(v, External)]
     if is_expression(expr):
         return expr.args
     if isinstance(expr, Label) or is_numeral(expr):
