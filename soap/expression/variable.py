@@ -2,8 +2,9 @@
 .. module:: soap.expression.variable
     :synopsis: The class of variables.
 """
-from soap.common.formatting import underline
-from soap.expression.base import UnaryExpression
+import collections
+
+from soap.expression.base import Expression, UnaryExpression
 from soap.expression.arithmetic import ArithmeticMixin
 from soap.expression.boolean import BooleanMixin
 
@@ -18,10 +19,7 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
 
     @property
     def name(self):
-        return self.a
-
-    def _cast_value(self, value, top=False, bottom=False):
-        return value
+        return self.args[0]
 
     def vars(self):
         return {self}
@@ -59,13 +57,90 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
         return hash((self.name, self.__class__))
 
 
-class FreeVariable(Variable):
-    """A free variable, must be substituted before evaluating for its value."""
-    __slots__ = ()
+class InputVariable(Variable):
+    pass
 
-    def __init__(self, name=None, flow=None, top=False, bottom=False):
-        name = '{name}{label}'.format(name=name, label=flow.label.label_value)
-        super().__init__(name=name, top=top, bottom=bottom)
+
+class OutputVariable(Variable):
+    pass
+
+
+class _MagicalMixin(object):
+
+    def vars(self):
+        raise RuntimeError(
+            '_MagicalMixin expressions has no local dependencies.')
+
+    def eval(self, state):
+        raise RuntimeError('Not suitable for arithmetic evaluation.')
+
+    def label(self, context=None):
+        raise RuntimeError('Not suitable for labelling.')
+
+
+class External(_MagicalMixin, ArithmeticMixin, BooleanMixin, Expression):
+    def __init__(self, var, top=False, bottom=False):
+        if isinstance(var, Variable):
+            # because a label is always unique, and a variable could change
+            raise TypeError('External must take a label, not a variable')
+        super().__init__(None, var, top=top, bottom=bottom)
+
+    @property
+    def var(self):
+        return self.args[0]
 
     def __str__(self):
-        return underline('{}'.format(self.name))
+        return '^{}'.format(self.var)
+
+
+class VariableTuple(
+        _MagicalMixin, collections.Sequence, ArithmeticMixin, BooleanMixin,
+        Expression):
+    """Tuple of variables. """
+
+    def __init__(self, *args, top=False, bottom=False):
+        if len(args) == 1:
+            args0 = args[0]
+            if isinstance(args0, collections.Iterable):
+                args = args0
+        # flatten variable tuples
+        flat_args = []
+        for v in args:
+            if isinstance(v, self.__class__):
+                flat_args += v
+            else:
+                flat_args.append(v)
+        super().__init__(None, *flat_args, top=top, bottom=bottom)
+
+    def __getitem__(self, index):
+        return self.args[index]
+
+    def __len__(self):
+        return len(self.args)
+
+    def __str__(self):
+        var_list = ','.join(str(v) for v in self.args)
+        return '({})'.format(var_list)
+
+    def __repr__(self):
+        return '{cls}({name!r})'.format(
+            cls=self.__class__.__name__, name=self.args)
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.args == other.args
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __hash__(self):
+        return hash((self.args, self.__class__))
+
+
+class InputVariableTuple(VariableTuple):
+    pass
+
+
+class OutputVariableTuple(VariableTuple):
+    pass

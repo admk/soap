@@ -8,7 +8,8 @@ from soap.expression.operators import (
     TERNARY_SELECT_OP, ARITHMETIC_OPERATORS, COMMUTATIVITY_OPERATORS
 )
 from soap.expression.base import (
-    Expression, UnaryExpression, BinaryExpression, TernaryExpression
+    Expression, UnaryExpression, BinaryExpression, TernaryExpression,
+    QuaternaryExpression
 )
 
 
@@ -100,6 +101,11 @@ class TernaryArithExpr(TernaryExpression, ArithExpr):
     __slots__ = ()
 
 
+class QuaternaryArithExpr(QuaternaryExpression, ArithExpr):
+
+    __slots__ = ()
+
+
 class SelectExpr(TernaryArithExpr):
     """Ternary expression with TERNARY_SELECT_OP operator."""
 
@@ -123,6 +129,7 @@ class SelectExpr(TernaryArithExpr):
 
     @cached
     def eval(self, state):
+        # pylint: disable=W0632
         def eval_split(expr, state):
             return expr.eval(state) if isinstance(expr, Expression) else expr
         from soap.semantics.state.functions import bool_eval

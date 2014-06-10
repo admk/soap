@@ -10,10 +10,21 @@ def is_variable(e):
     return isinstance(e, Variable)
 
 
+def is_variable_tuple(e):
+    from soap.expression.variable import VariableTuple
+    return isinstance(e, VariableTuple)
+
+
 def is_expression(e):
     from soap.expression.base import Expression
-    from soap.expression.variable import Variable
-    return isinstance(e, Expression) and not isinstance(e, Variable)
+    from soap.expression.variable import Variable, VariableTuple
+    if not isinstance(e, Expression):
+        return False
+    if isinstance(e, Variable):
+        return False
+    if isinstance(e, VariableTuple):
+        return False
+    return True
 
 
 def is_arith_expr(e):

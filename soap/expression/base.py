@@ -143,18 +143,19 @@ class Expression(FlatLattice, Flyweight):
             single precision.
         :type prec: int
         """
-        from soap.flopoco.actual import eval_expr
-        return eval_expr(self, var_env, prec)
+        from soap.flopoco.actual import actual_luts
+        return actual_luts(self, var_env, prec)
 
     def _args_to_label(self, context=None):
         from soap.label.base import LabelContext
         from soap.semantics.label import LabelSemantics
         from soap.semantics.common import is_numeral
+        from soap.semantics.state import MetaState
 
         context = context or LabelContext(self)
 
         for a in self.args:
-            if isinstance(a, Expression):
+            if isinstance(a, (Expression, MetaState)):
                 yield a.label(context)
             elif is_numeral(a):
                 label = context.Label(a)
@@ -233,20 +234,27 @@ class Expression(FlatLattice, Flyweight):
 
     def vars(self):
         """Finds all input variables in the expression."""
+        from soap.label.base import Label
         from soap.semantics import is_numeral, MetaState
         vars = set()
         for a in self.args:
             if isinstance(a, Expression):
                 vars |= a.vars()
             elif isinstance(a, MetaState):
-                for k, v in a.items():
+                for v in a.values():
                     if isinstance(v, Expression):
                         local_vars = v.vars()
+                    elif isinstance(v, Label):
+                        local_vars = {v}
                     else:
                         local_vars = set()
-                    vars |= {k} | local_vars
+                    vars |= local_vars
+            elif isinstance(a, Label):
+                vars |= {a}
             elif is_numeral(a):
                 pass
+            elif isinstance(a, tuple):
+                vars |= set(a)
             else:
                 raise TypeError(
                     'Do not know how to check variables in {}'.format(a))
@@ -256,18 +264,13 @@ class Expression(FlatLattice, Flyweight):
         return iter([self.op] + list(self.args))
 
     def _args_to_str(self):
-        from soap.expression.fixpoint import FixExpr
-
         def format(expr):
             if isinstance(expr, Lattice) and expr.is_bottom():
-                brackets = False
-            elif isinstance(expr, FixExpr):
                 brackets = False
             else:
                 brackets = is_expression(expr) and expr.args
             text = '({})' if brackets else '{}'
             return text.format(expr)
-
         return [format(a) for a in self.args]
 
     def __repr__(self):
@@ -341,3 +344,13 @@ class TernaryExpression(Expression):
     def __init__(self, op=None, a1=None, a2=None, a3=None,
                  top=False, bottom=False, **kwargs):
         super().__init__(op, a1, a2, a3, top=top, bottom=bottom, **kwargs)
+
+
+class QuaternaryExpression(Expression):
+    """A quaternary expression class. Instance has four arguments."""
+
+    __slots__ = ()
+
+    def __init__(self, op=None, a1=None, a2=None, a3=None, a4=None,
+                 top=False, bottom=False, **kwargs):
+        super().__init__(op, a1, a2, a3, a4, top=top, bottom=bottom, **kwargs)
