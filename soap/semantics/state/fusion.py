@@ -179,6 +179,8 @@ def inner_meta_fusion(env, var):
     # update env with new expr, no dependency cycles created
     expr = FixExpr(
         expr.bool_expr, loop_state, ori_loop_var, init_state)
+
+    env = dict(env)
     env[var] = expr
     return env
 
@@ -223,6 +225,8 @@ def outer_scope_fusion(env, var):
     init_state = MetaState(
         {v: e for v, e in init_state.items() if v in filter_vars})
 
+    env = dict(env)
+
     # update expr in env, no dependency cycle created
     env[var] = FixExpr(
         expr.bool_expr, expr.loop_state, expr.loop_var, init_state)
@@ -248,7 +252,7 @@ def recursive_fusion(env, out_vars):
             continue
 
         expr = env.get(var)
-        if expr.is_bottom():
+        if expr.is_bottom() or expr is None:
             raise ValueError('Node {} has no expression'.format(var))
 
         logger.debug('Node fusion: {}, for expr: {}'.format(var, expr))
