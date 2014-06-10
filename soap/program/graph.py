@@ -21,14 +21,18 @@ def expression_dependencies(expr):
         return [v.var for v in expr.init_state.values()
                 if isinstance(v, External)]
     if is_expression(expr):
-        return expr.args
+        deps = []
+        for arg in expr.args:
+            if isinstance(arg, InputVariableTuple):
+                deps += list(arg)
+            else:
+                deps.append(arg)
+        return deps
     if isinstance(expr, Label) or is_numeral(expr):
         # is a label/constant, dependency is itself
         return [expr]
     if isinstance(expr, Variable):
         return [InputVariable(expr.name)]
-    if isinstance(expr, InputVariableTuple):
-        return list(expr)
     if isinstance(expr, OutputVariableTuple):
         return [expr]
     if isinstance(expr, (dict, MetaState)):
@@ -69,10 +73,7 @@ class DependencyGraph(object):
             edges = set()
             deps = set()
             for var in var_set:
-                if isinstance(var, InputVariableTuple):
-                    expr = var
-                else:
-                    expr = self.env.get(var)
+                expr = self.env.get(var)
                 local_deps = expression_dependencies(expr)
                 deps |= set(local_deps)
                 edges |= {(var, dep_var) for dep_var in local_deps}
@@ -215,10 +216,7 @@ class DependencyGraph(object):
     @staticmethod
     def _detect_acyclic(env, out_var):
         def walk(var, found_vars):
-            if isinstance(var, InputVariableTuple):
-                expr = var
-            else:
-                expr = env.get(var)
+            expr = env.get(var)
             dep_vars = expression_dependencies(expr)
             for dep_var in dep_vars:
                 if dep_var in found_vars:
@@ -333,6 +331,9 @@ class HierarchicalDependencyGraph(DependencyGraph):
 
     def __hash__(self):
         return hash(tuple(self.env.items()))
+
+    def __str__(self):
+        return '{{{}}}'.format(', '.join(str(n) for n in self.local_nodes))
 
     def __repr__(self):
         return '{cls}({nodes})'.format(
