@@ -215,7 +215,14 @@ def outer_scope_fusion(env, var):
                     filter_vars |= set(arg)
 
     # dependencies in bool_expr and loop_state
-    input_vars = lambda state: {v for v in state.values() if is_variable(v)}
+    def input_vars(state):
+        var_set = set()
+        for v in state.values():
+            if is_variable(v):
+                var_set.add(v)
+            if isinstance(v, FixExpr):
+                var_set |= input_vars(v.init_state)
+        return var_set
     loop_state = expr.loop_state
     _, bool_state = expr.bool_expr
     filter_vars |= input_vars(loop_state)
