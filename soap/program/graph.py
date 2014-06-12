@@ -357,7 +357,24 @@ class HierarchicalDependencyGraph(DependencyGraph):
         return {node for node, _ in self.edges}
 
     def local_order(self):
-        return self.order_by_dependencies(self.local_nodes)
+        local_nodes = self.local_nodes
+        out_vars = self.out_var
+        if not isinstance(out_vars, InputVariableTuple):
+            out_vars = [out_vars]
+        for var in out_vars:
+            if not self.flat_contains(var):
+                local_nodes.add(var)
+        return self.order_by_dependencies(local_nodes)
+
+    def flat_contains(self, node):
+        nodes = self.local_nodes
+        for each_node in nodes:
+            if isinstance(each_node, HierarchicalDependencyGraph):
+                if each_node.flat_contains(node):
+                    return True
+            elif node == each_node:
+                return True
+        return False
 
     def __eq__(self, other):
         try:

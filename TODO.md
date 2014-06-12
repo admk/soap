@@ -1,5 +1,6 @@
 # Ultra Short Term TODOs -- Transforms
 
+* [ ] Fix nested loop code generation generating incorrect variable names
 * [ ] Equivalent expression relations for the following expressions/operators:
     - [ ] `SelectExpr`
     - [ ] `FixExpr`

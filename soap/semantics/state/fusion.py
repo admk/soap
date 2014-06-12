@@ -259,8 +259,8 @@ def recursive_fusion(env, out_vars):
             continue
 
         expr = env.get(var)
-        if expr.is_bottom() or expr is None:
-            raise ValueError('Node {} has no expression'.format(var))
+        if expr is None or expr.is_bottom():
+            raise KeyError('Node {} has no expression'.format(var))
 
         logger.debug('Node fusion: {}, for expr: {}'.format(var, expr))
 

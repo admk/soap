@@ -12,10 +12,11 @@ from soap.semantics import is_numeral
 
 
 class CodeGenerator(object):
-    def __init__(self, graph=None, env=None, out_vars=None,
+    def __init__(self, graph=None, env=None, out_vars=None, parent=None,
                  label_infix=None, in_var_infix=None, out_var_infix=None):
         super().__init__()
         self.graph = graph or HierarchicalDependencyGraph(env, out_vars)
+        self.parent = parent
         self.label_infix = label_infix
         self.in_var_infix = in_var_infix
         self.out_var_infix = out_var_infix
@@ -34,7 +35,7 @@ class CodeGenerator(object):
 
         return new_flows
 
-    def _with_infix(self, expr, var_infix):
+    def _with_infix(self, expr, var_infix, label_infix=None):
         if is_expression(expr):
             args = tuple(self._with_infix(a, var_infix) for a in expr.args)
             return expression_factory(expr.op, *args)
@@ -43,7 +44,7 @@ class CodeGenerator(object):
 
         if isinstance(expr, Label):
             name = '_t{}'.format(expr.label_value)
-            infix = self.label_infix
+            infix = label_infix or self.label_infix
         elif is_variable(expr):
             name = expr.name
             infix = var_infix
@@ -149,6 +150,12 @@ class CodeGenerator(object):
         false_flow = generate_branch(expr.false_expr)
         return IfFlow(bool_expr, true_flow, false_flow)
 
+    def emit_External(self, var, expr, order):
+        return AssignFlow(
+            self._with_infix(var, self.out_var_infix),
+            self._with_infix(
+                expr.var, None, label_infix=self.parent.label_infix))
+
     def emit_FixExpr(self, var, expr, order):
         def expand_simple_expression(env, label):
             expr = env[label]
@@ -178,25 +185,27 @@ class CodeGenerator(object):
         init_vars = sorted_vars(bool_env, bool_label)
         init_vars += sorted_vars(loop_state, loop_vars)
         init_vars = unique(init_vars)
-        init_flow = generator_class(
-            env=init_state, out_vars=init_vars, out_var_infix=var).generate()
+        init_flow_generator = generator_class(
+            env=init_state, out_vars=init_vars, parent=self,
+            out_var_infix=var)
+        init_flow = init_flow_generator.generate()
 
         # while loop generation
         bool_expr = self._with_infix(bool_expr, infix)
         loop_flow_generator = generator_class(
-            env=loop_state, out_vars=loop_vars,
+            env=loop_state, out_vars=loop_vars, parent=self,
             label_infix=infix, in_var_infix=infix, out_var_infix=infix)
         loop_flow = loop_flow_generator.generate()
         loop_flow = WhileFlow(bool_expr, loop_flow)
 
         # loop_vars interface
-        flows = [init_flow, loop_flow]
+        exit_flow = CompositionalFlow()
         for out_var, loop_var in zip(out_vars, loop_vars):
-            flow = AssignFlow(
+            exit_flow += AssignFlow(
                 self._with_infix(out_var, self.out_var_infix),
                 self._with_infix(loop_var, infix))
-            flows.append(flow)
 
+        flows = [init_flow, loop_flow, exit_flow]
         return flows
 
 
