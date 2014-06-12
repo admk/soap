@@ -77,6 +77,7 @@ test_programs = {
         'program': code_gobble(
             """
             while x < n:
+                x = x + 1
                 while y < x:
                     y = y + 1
                 x = x + y

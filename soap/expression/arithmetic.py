@@ -129,7 +129,6 @@ class SelectExpr(TernaryArithExpr):
 
     @cached
     def eval(self, state):
-        # pylint: disable=W0632
         def eval_split(expr, state):
             return expr.eval(state) if isinstance(expr, Expression) else expr
         from soap.semantics.state.functions import bool_eval

@@ -72,6 +72,9 @@ class ComponentWiseLattice(object):
             return
         self._components = components
 
+    def __iter__(self):
+        return iter(self.components)
+
     @property
     def components(self):
         if self.top or self.bottom:

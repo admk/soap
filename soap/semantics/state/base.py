@@ -28,7 +28,8 @@ class BaseState(object):
         return self[flow.var:arith_eval(self, flow.expr)]
 
     def visit_IfFlow(self, flow):
-        true_split, false_split = bool_eval(self, flow.conditional_expr)
+        bool_expr = flow.conditional_expr
+        true_split, false_split = bool_eval(self, bool_expr)
         true_split = true_split.transition(flow.true_flow)
         false_split = false_split.transition(flow.false_flow)
         return true_split | false_split
