@@ -1,6 +1,6 @@
 from soap import logger
 from soap.semantics.state.functions import (
-    arith_eval, bool_eval, to_meta_state, fixpoint_eval
+    arith_eval, bool_eval, fixpoint_eval
 )
 
 
