@@ -1,6 +1,6 @@
 # Ultra Short Term TODOs -- Transforms
 
-* [ ] Fix nested loop code generation generating incorrect variable names
+* [X] Fix nested loop code generation generating incorrect variable names
 * [ ] Equivalent expression relations for the following expressions/operators:
     - [ ] `SelectExpr`
     - [ ] `FixExpr`
@@ -20,6 +20,8 @@
 
 # Ugliness, fix if have the time to
 
+* [ ] Generated code has boolean expressions assigned to variables, consider
+  other approaches to analysing conditionals because of this.
 * [ ] {Possible} Better code generation by expanding expressions with locals
     - [ ] Instead of sets of edges, consider using bags of edges to model
       dependency graph.
