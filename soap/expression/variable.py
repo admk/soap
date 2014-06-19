@@ -21,9 +21,6 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
     def name(self):
         return self.args[0]
 
-    def vars(self):
-        return {self}
-
     def __str__(self):
         return str(self.name)
 
@@ -44,10 +41,7 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
 
 
 class _MagicalMixin(object):
-
-    def vars(self):
-        raise RuntimeError(
-            '_MagicalMixin expressions has no local dependencies.')
+    pass
 
 
 class InputVariable(_MagicalMixin, Variable):

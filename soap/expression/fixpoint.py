@@ -1,4 +1,3 @@
-from soap.common.cache import cached
 from soap.common.formatting import underline
 
 from soap.expression.operators import FIXPOINT_OP

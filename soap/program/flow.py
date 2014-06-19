@@ -9,6 +9,7 @@ from soap import logger
 from soap.common.formatting import superscript
 from soap.label import Label
 from soap.semantics import is_numeral
+from soap.semantics.functions import expression_variables
 
 
 def _code_gobble(s):
@@ -43,17 +44,23 @@ class Flow(object):
         if isinstance(self, AssignFlow):
             in_vars = out_vars = set()
             if input and not is_numeral(self.expr):
-                in_vars = self.expr.vars()
+                in_vars = expression_variables(self.expr)
             if output:
                 out_vars = {self.var}
             return in_vars | out_vars
         if isinstance(self, IfFlow):
-            in_vars = self.conditional_expr.vars() if input else set()
+            if input:
+                in_vars = expression_variables(self.conditional_expr)
+            else:
+                in_vars = set()
             flow_vars = self.true_flow.vars(input=input, output=output)
             flow_vars |= self.false_flow.vars(input=input, output=output)
             return in_vars | flow_vars
         if isinstance(self, WhileFlow):
-            in_vars = self.conditional_expr.vars() if input else set()
+            if input:
+                in_vars = expression_variables(self.conditional_expr)
+            else:
+                in_vars = set()
             flow_vars = self.loop_flow.vars(input=input, output=output)
             return in_vars | flow_vars
         if isinstance(self, CompositionalFlow):

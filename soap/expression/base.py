@@ -160,34 +160,6 @@ class Expression(FlatLattice, Flyweight):
             return a
         return tuple([self.op] + [to_tuple(a) for a in self.args])
 
-    def vars(self):
-        """Finds all input variables in the expression."""
-        from soap.label.base import Label
-        from soap.semantics import is_numeral, MetaState
-        vars = set()
-        for a in self.args:
-            if isinstance(a, Expression):
-                vars |= a.vars()
-            elif isinstance(a, MetaState):
-                for v in a.values():
-                    if isinstance(v, Expression):
-                        local_vars = v.vars()
-                    elif isinstance(v, Label):
-                        local_vars = {v}
-                    else:
-                        local_vars = set()
-                    vars |= local_vars
-            elif isinstance(a, Label):
-                vars |= {a}
-            elif is_numeral(a):
-                pass
-            elif isinstance(a, tuple):
-                vars |= set(a)
-            else:
-                raise TypeError(
-                    'Do not know how to check variables in {}'.format(a))
-        return vars
-
     def __iter__(self):
         return iter([self.op] + list(self.args))
 

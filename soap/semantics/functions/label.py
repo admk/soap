@@ -2,7 +2,6 @@ from soap.expression import expression_factory
 from soap.label import LabelContext
 from soap.semantics.functions.dispatcher import BaseDispatcher
 from soap.semantics.label import LabelSemantics
-from soap.semantics.state.meta import MetaState
 
 
 class LabelGenerator(BaseDispatcher):
@@ -41,7 +40,7 @@ class LabelGenerator(BaseDispatcher):
         return self._execute_expression(expr, context)
 
     def execute_FixExpr(self, expr, context):
-        bool_expr_labsem = expr.bool_expr.label(context)
+        bool_expr_labsem = self(expr.bool_expr, context)
         bool_expr_label, _ = bool_expr_labsem
 
         loop_state_label, loop_state_env = self(expr.loop_state, context)
@@ -57,6 +56,7 @@ class LabelGenerator(BaseDispatcher):
         return LabelSemantics(label, env)
 
     def execute_MetaState(self, expr, context):
+        from soap.semantics.state.meta import MetaState
         env = {}
         # FIXME better determinism in labelling, currently uses str-based
         # sorting, could use context.out_vars to traverse trees
