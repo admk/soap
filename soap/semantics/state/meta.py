@@ -1,11 +1,10 @@
 from soap.expression import (
     Expression, SelectExpr, FixExpr, Variable, OutputVariableTuple, parse
 )
-from soap.label.base import Label, LabelContext
+from soap.label.base import Label
 from soap.lattice.map import map
 from soap.semantics.error import cast
 from soap.semantics.common import is_numeral
-from soap.semantics.label import LabelSemantics
 from soap.semantics.state.base import BaseState
 from soap.semantics.functions import expand_expr, to_meta_state
 
@@ -97,20 +96,6 @@ class MetaState(BaseState, map(None, Expression)):
             mapping[var] = FixExpr(
                 bool_expr, local_loop_state, var, local_init_state)
         return self.__class__(mapping)
-
-    def label(self, context=None):
-        context = context or LabelContext(self)
-
-        env = {}
-        # FIXME better determinism in labelling, currently uses str-based
-        # sorting, could use context.out_vars to traverse trees
-        for var, expr in sorted(self.items(), key=str):
-            expr_label, expr_env = expr.label(context)
-            env.update(expr_env)
-            env[var] = expr_label
-        label = context.Label(MetaState(env))
-
-        return LabelSemantics(label, env)
 
 
 def flow_to_meta_state(flow):

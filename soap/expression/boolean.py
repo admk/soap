@@ -41,21 +41,11 @@ class UnaryBoolExpr(UnaryExpression, BoolExpr):
 
     __slots__ = ()
 
-    def operator_luts(self, exponent, mantissa):
-        from soap import logger
-        logger.warning('TODO: UnaryBoolExpr not yet has a LUTs count')
-        return 0
-
 
 class BinaryBoolExpr(BinaryExpression, BoolExpr):
     """Binary boolean expressions."""
 
     __slots__ = ()
-
-    def operator_luts(self, exponent, mantissa):
-        from soap import logger
-        logger.warning('TODO: BinaryBoolExpr not yet has a LUTs count')
-        return 0
 
 
 class TernaryBoolExpr(TernaryExpression, BoolExpr):

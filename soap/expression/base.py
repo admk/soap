@@ -111,43 +111,6 @@ class Expression(FlatLattice, Flyweight):
         from soap.flopoco.actual import actual_luts
         return actual_luts(self, var_env, prec)
 
-    def _args_to_label(self, context=None):
-        from soap.label.base import LabelContext
-        from soap.semantics.label import LabelSemantics
-        from soap.semantics.common import is_numeral
-        from soap.semantics.state import MetaState
-
-        context = context or LabelContext(self)
-
-        for a in self.args:
-            if isinstance(a, (Expression, MetaState)):
-                yield a.label(context)
-            elif is_numeral(a):
-                label = context.Label(a)
-                yield LabelSemantics(label, {label: a})
-            else:
-                raise TypeError(
-                    'Do not know how to convert {!r} to label'.format(a))
-
-    def label(self, context=None):
-        """Performs labelling analysis on the expression.
-
-        :returns: dictionary containing the labelling scheme.
-        """
-        from soap.label.base import LabelContext
-        from soap.semantics.label import LabelSemantics
-
-        context = context or LabelContext(self)
-
-        semantics_list = tuple(self._args_to_label(context))
-        arg_label_list, arg_env_list = zip(*semantics_list)
-        expr = expression_factory(self.op, *arg_label_list)
-        label = context.Label(expr)
-        label_env = {label: expr}
-        for env in arg_env_list:
-            label_env.update(env)
-        return LabelSemantics(label, label_env)
-
     def crop(self, depth):
         """Truncate the tree at a certain depth.
 
