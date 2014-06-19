@@ -7,7 +7,7 @@ from soap.semantics.error import cast
 from soap.semantics.common import is_numeral
 from soap.semantics.label import LabelSemantics
 from soap.semantics.state.base import BaseState
-from soap.semantics.state.functions import expand_expr, to_meta_state
+from soap.semantics.functions import expand_expr, to_meta_state
 
 
 class MetaState(BaseState, map(None, Expression)):
@@ -45,7 +45,7 @@ class MetaState(BaseState, map(None, Expression)):
         return self
 
     def visit_AssignFlow(self, flow):
-        return self[flow.var:expand_expr(self, flow.expr)]
+        return self[flow.var:expand_expr(flow.expr, self)]
 
     def visit_IfFlow(self, flow):
         def get(state, var):
@@ -53,7 +53,7 @@ class MetaState(BaseState, map(None, Expression)):
             if expr.is_bottom():
                 return var
             return expr
-        bool_expr = expand_expr(self, flow.conditional_expr)
+        bool_expr = expand_expr(flow.conditional_expr, self)
         true_state = self.transition(flow.true_flow)
         false_state = self.transition(flow.false_flow)
         var_list = set(self.keys())

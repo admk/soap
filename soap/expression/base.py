@@ -61,41 +61,6 @@ class Expression(FlatLattice, Flyweight):
     def is_ternary(self):
         return self.is_n_ary(3)
 
-    def _eval_args(self, state):
-        from soap.semantics.common import is_numeral
-        for a in self.args:
-            if isinstance(a, Expression):
-                yield a.eval(state)
-            elif is_numeral(a):
-                yield a
-            else:
-                raise TypeError('Do not know how to evaluate {!r}'.format(a))
-
-    @cached
-    def eval(self, state):
-        """Recursively evaluates expression using var_env.
-
-        :param state: Mapping from variables to values
-        :type state: Mapping from variables to arbitrary value instances
-        :returns: Evaluation result
-        """
-        raise NotImplementedError
-
-    @cached
-    def error(self, var_env, prec):
-        """Computes the error bound of its evaulation.
-
-        :param var_env: The ranges of input variables.
-        :type var_env: dictionary containing mappings from variables to
-            :class:`soap.semantics.error.Interval`
-        :param prec: Precision used to evaluate the expression, defaults to
-            single precision.
-        :type prec: int
-        """
-        from soap.semantics import precision_context, BoxState, ErrorSemantics
-        with precision_context(prec):
-            return ErrorSemantics(self.eval(BoxState(var_env)))
-
     def exponent_width(self, var_env, prec):
         """Computes the exponent width required for its evaluation so that no
         overflow could occur.

@@ -1,7 +1,5 @@
 from soap import logger
-from soap.semantics.state.functions import (
-    arith_eval, bool_eval, fixpoint_eval
-)
+from soap.semantics.functions import arith_eval, bool_eval, fixpoint_eval
 
 
 class BaseState(object):

@@ -24,9 +24,6 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
     def vars(self):
         return {self}
 
-    def eval(self, state):
-        return state[self]
-
     def label(self, context=None):
         from soap.label.base import LabelContext
         from soap.semantics.label import LabelSemantics
@@ -70,9 +67,6 @@ class _MagicalMixin(object):
     def vars(self):
         raise RuntimeError(
             '_MagicalMixin expressions has no local dependencies.')
-
-    def eval(self, state):
-        raise RuntimeError('Not suitable for arithmetic evaluation.')
 
     def label(self, context=None):
         raise RuntimeError('Not suitable for labelling.')
