@@ -3,9 +3,6 @@ import builtins
 import inspect
 import pickle
 
-import codegen
-
-
 def __cast(v):
     from soap.semantics import cast
     try:
@@ -78,6 +75,7 @@ class TraceExprTransformer(IPythonNodeTransformer):
             return node
         if isinstance(node, (ast.Num, ast.Str)):
             return node
+        import codegen
         source_node = ast.Str(codegen.to_source(node))
         return ast.copy_location(ast.Call(
             func=ast.Name(id='__print', ctx=ast.Load()),
