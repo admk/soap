@@ -10,6 +10,9 @@ from soap.expression import (
 from soap.semantics import is_numeral, MetaState, LabelSemantics
 
 
+_LEAF = object()
+
+
 def expression_dependencies(expr):
     # find dependent variables for the corresponding expression
     if expr is None:
@@ -18,10 +21,17 @@ def expression_dependencies(expr):
         return []
     if isinstance(expr, FixExpr):
         # is fixpoint expression, find external dependencies in init_state
-        return [v.var for v in expr.init_state.values()
-                if isinstance(v, External)]
+        deps = []
+        for v in expr.init_state.values():
+            if not isinstance(v, External):
+                continue
+            deps.append(v.var)
+        return deps
+    # DIRTY dummy leaf is to make sure it gets generated
     if isinstance(expr, External):
-        # external dependencies taken care of by FixExpr dependencies
+        # external dependencies taken care of by FixExpr dependencies.
+        return [_LEAF]
+    if expr == _LEAF:
         return []
     if is_expression(expr):
         deps = []
@@ -272,6 +282,7 @@ class HierarchicalDependencyGraph(DependencyGraph):
         self._parent_nodes = _parent_nodes
         self._flat_edges = self.edges
         self.edges, self._subgraphs = self._partition({}, self.out_var)
+        self._local_nodes = None
 
     @property
     def flat_edges(self):
@@ -354,10 +365,15 @@ class HierarchicalDependencyGraph(DependencyGraph):
 
     @property
     def local_nodes(self):
-        return {node for node, _ in self.edges}
+        nodes = self._local_nodes
+        if nodes:
+            return nodes
+        self._local_nodes = {node for node, _ in self.edges}
+        return self._local_nodes
 
     def local_order(self):
         local_nodes = self.local_nodes
+        # sometimes out_vars are not generated because not in edges?
         out_vars = self.out_var
         if not isinstance(out_vars, InputVariableTuple):
             out_vars = [out_vars]

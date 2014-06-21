@@ -1,25 +1,15 @@
 from soap import logger
-from soap.semantics.state.functions import (
-    arith_eval, bool_eval, to_meta_state, fixpoint_eval
-)
+from soap.common import base_dispatcher
+from soap.semantics.functions import arith_eval, bool_eval, fixpoint_eval
 
 
-class BaseState(object):
+class BaseState(base_dispatcher('visit', 'transition')):
     """Base state for all program states."""
     __slots__ = ()
 
     @classmethod
     def empty(cls):
         return cls(bottom=True)
-
-    def transition(self, flow):
-        name = 'visit_' + flow.__class__.__name__
-
-        def not_implemented_visit(_):
-            raise NotImplementedError(
-                'Requested method {} is not implemented.'.format(name))
-
-        return getattr(self, name, not_implemented_visit)(flow)
 
     def visit_IdentityFlow(self, flow):
         return self
@@ -28,7 +18,8 @@ class BaseState(object):
         return self[flow.var:arith_eval(self, flow.expr)]
 
     def visit_IfFlow(self, flow):
-        true_split, false_split = bool_eval(self, flow.conditional_expr)
+        bool_expr = flow.conditional_expr
+        true_split, false_split = bool_eval(self, bool_expr)
         true_split = true_split.transition(flow.true_flow)
         false_split = false_split.transition(flow.false_flow)
         return true_split | false_split

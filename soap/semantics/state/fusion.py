@@ -188,12 +188,20 @@ def inner_meta_fusion(env, var):
 def outer_scope_fusion(env, var):
     var, expr = _ensure_fix_expr(env, var)
 
+    env = dict(env)
     init_state = dict(expr.init_state)
 
     # assign external scope variables
     for init_var, init_expr in init_state.items():
         extn_expr = env.get(init_var)
+        if extn_expr is None and is_variable(init_expr):
+            # init_expr is a variable, but cannot find extn_expr for it, and
+            # add the variable to external
+            init_state[init_var] = External(init_var)
+            env[init_var] = init_expr
+            continue
         if extn_expr != init_expr:
+            # do not fuse when cannot find matching expr in env
             continue
         extn_label = extn_expr if is_variable(init_var) else init_var
         init_state[init_var] = External(extn_label)
@@ -218,9 +226,11 @@ def outer_scope_fusion(env, var):
     def input_vars(state):
         var_set = set()
         for v in state.values():
+            if isinstance(v, External):
+                v = v.var
             if is_variable(v):
                 var_set.add(v)
-            if isinstance(v, FixExpr):
+            elif isinstance(v, FixExpr):
                 var_set |= input_vars(v.init_state)
         return var_set
     loop_state = expr.loop_state
@@ -231,8 +241,6 @@ def outer_scope_fusion(env, var):
     # prune dependencies by filtering init_state with filter_vars
     init_state = MetaState(
         {v: e for v, e in init_state.items() if v in filter_vars})
-
-    env = dict(env)
 
     # update expr in env, no dependency cycle created
     env[var] = FixExpr(
@@ -260,6 +268,7 @@ def recursive_fusion(env, out_vars):
 
         expr = env.get(var)
         if expr is None or expr.is_bottom():
+            import ipdb; ipdb.set_trace()
             raise KeyError('Node {} has no expression'.format(var))
 
         logger.debug('Node fusion: {}, for expr: {}'.format(var, expr))

@@ -2,7 +2,7 @@
 .. module:: soap.expression.base
     :synopsis: The base classes of expressions.
 """
-from soap.common import Flyweight, cached
+from soap.common import Flyweight, cached, base_dispatcher
 from soap.expression.common import expression_factory, is_expression
 from soap.lattice.base import Lattice
 from soap.lattice.flat import FlatLattice
@@ -61,41 +61,6 @@ class Expression(FlatLattice, Flyweight):
     def is_ternary(self):
         return self.is_n_ary(3)
 
-    def _eval_args(self, state):
-        from soap.semantics.common import is_numeral
-        for a in self.args:
-            if isinstance(a, Expression):
-                yield a.eval(state)
-            elif is_numeral(a):
-                yield a
-            else:
-                raise TypeError('Do not know how to evaluate {!r}'.format(a))
-
-    @cached
-    def eval(self, state):
-        """Recursively evaluates expression using var_env.
-
-        :param state: Mapping from variables to values
-        :type state: Mapping from variables to arbitrary value instances
-        :returns: Evaluation result
-        """
-        raise NotImplementedError
-
-    @cached
-    def error(self, var_env, prec):
-        """Computes the error bound of its evaulation.
-
-        :param var_env: The ranges of input variables.
-        :type var_env: dictionary containing mappings from variables to
-            :class:`soap.semantics.error.Interval`
-        :param prec: Precision used to evaluate the expression, defaults to
-            single precision.
-        :type prec: int
-        """
-        from soap.semantics import precision_context, BoxState, ErrorSemantics
-        with precision_context(prec):
-            return ErrorSemantics(self.eval(BoxState(var_env)))
-
     def exponent_width(self, var_env, prec):
         """Computes the exponent width required for its evaluation so that no
         overflow could occur.
@@ -117,6 +82,9 @@ class Expression(FlatLattice, Flyweight):
         except ValueError:
             we = 1
         return max(we, we_min)
+
+    def vars(self):
+        return expression_variables(self)
 
     @cached
     def luts(self, var_env, prec):
@@ -145,43 +113,6 @@ class Expression(FlatLattice, Flyweight):
         """
         from soap.flopoco.actual import actual_luts
         return actual_luts(self, var_env, prec)
-
-    def _args_to_label(self, context=None):
-        from soap.label.base import LabelContext
-        from soap.semantics.label import LabelSemantics
-        from soap.semantics.common import is_numeral
-        from soap.semantics.state import MetaState
-
-        context = context or LabelContext(self)
-
-        for a in self.args:
-            if isinstance(a, (Expression, MetaState)):
-                yield a.label(context)
-            elif is_numeral(a):
-                label = context.Label(a)
-                yield LabelSemantics(label, {label: a})
-            else:
-                raise TypeError(
-                    'Do not know how to convert {!r} to label'.format(a))
-
-    def label(self, context=None):
-        """Performs labelling analysis on the expression.
-
-        :returns: dictionary containing the labelling scheme.
-        """
-        from soap.label.base import LabelContext
-        from soap.semantics.label import LabelSemantics
-
-        context = context or LabelContext(self)
-
-        semantics_list = tuple(self._args_to_label(context))
-        arg_label_list, arg_env_list = zip(*semantics_list)
-        expr = expression_factory(self.op, *arg_label_list)
-        label = context.Label(expr)
-        label_env = {label: expr}
-        for env in arg_env_list:
-            label_env.update(env)
-        return LabelSemantics(label, label_env)
 
     def crop(self, depth):
         """Truncate the tree at a certain depth.
@@ -231,34 +162,6 @@ class Expression(FlatLattice, Flyweight):
                 return a.tree()
             return a
         return tuple([self.op] + [to_tuple(a) for a in self.args])
-
-    def vars(self):
-        """Finds all input variables in the expression."""
-        from soap.label.base import Label
-        from soap.semantics import is_numeral, MetaState
-        vars = set()
-        for a in self.args:
-            if isinstance(a, Expression):
-                vars |= a.vars()
-            elif isinstance(a, MetaState):
-                for v in a.values():
-                    if isinstance(v, Expression):
-                        local_vars = v.vars()
-                    elif isinstance(v, Label):
-                        local_vars = {v}
-                    else:
-                        local_vars = set()
-                    vars |= local_vars
-            elif isinstance(a, Label):
-                vars |= {a}
-            elif is_numeral(a):
-                pass
-            elif isinstance(a, tuple):
-                vars |= set(a)
-            else:
-                raise TypeError(
-                    'Do not know how to check variables in {}'.format(a))
-        return vars
 
     def __iter__(self):
         return iter([self.op] + list(self.args))
@@ -354,3 +257,43 @@ class QuaternaryExpression(Expression):
     def __init__(self, op=None, a1=None, a2=None, a3=None, a4=None,
                  top=False, bottom=False, **kwargs):
         super().__init__(op, a1, a2, a3, a4, top=top, bottom=bottom, **kwargs)
+
+
+class VariableSetGenerator(base_dispatcher()):
+
+    def generic_execute(self, expr):
+        raise TypeError(
+            'Do not know how to find input variables for {!r}'.format(expr))
+
+    def _execute_atom(self, expr):
+        return {expr}
+
+    def _execute_expression(self, expr):
+        input_vars = set()
+        for arg in expr.args:
+            input_vars |= self(arg)
+        return input_vars
+
+    def execute_tuple(self, expr):
+        return set(expr)
+
+    def execute_numeral(self, expr):
+        return set()
+
+    def execute_Label(self, expr):
+        return self._execute_atom(expr)
+
+    def execute_Variable(self, expr):
+        return self._execute_atom(expr)
+
+    def execute_BinaryArithExpr(self, expr):
+        return self._execute_expression(expr)
+
+    def execute_BinaryBoolExpr(self, expr):
+        return self._execute_expression(expr)
+
+    def execute_SelectExpr(self, expr):
+        return self._execute_expression(expr)
+
+
+expression_variables = VariableSetGenerator()

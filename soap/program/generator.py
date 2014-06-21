@@ -35,16 +35,20 @@ class CodeGenerator(object):
 
         return new_flows
 
-    def _with_infix(self, expr, var_infix, label_infix=None):
+    def _with_infix(self, expr, var_infix, label_infix='__magic__'):
         if is_expression(expr):
-            args = tuple(self._with_infix(a, var_infix) for a in expr.args)
+            args = tuple(self._with_infix(a, var_infix, label_infix)
+                         for a in expr.args)
             return expression_factory(expr.op, *args)
         if is_numeral(expr):
             return expr
 
         if isinstance(expr, Label):
             name = '_t{}'.format(expr.label_value)
-            infix = label_infix or self.label_infix
+            if label_infix == '__magic__':
+                infix = self.label_infix
+            else:
+                infix = label_infix
         elif is_variable(expr):
             name = expr.name
             infix = var_infix
@@ -92,7 +96,7 @@ class CodeGenerator(object):
 
     def emit_HierarchicalDependencyGraph(self, var, expr, order):
         return self.__class__(
-            var,
+            var, parent=self.parent,
             label_infix=self.label_infix,
             in_var_infix=self.in_var_infix,
             out_var_infix=self.out_var_infix).generate()
@@ -132,7 +136,7 @@ class CodeGenerator(object):
                 # the subgraph
                 return CompositionalFlow()
             generator = self.__class__(
-                subgraph,
+                subgraph, parent=self.parent,
                 label_infix=self.label_infix,
                 in_var_infix=self.in_var_infix,
                 out_var_infix=self.out_var_infix)
@@ -152,12 +156,15 @@ class CodeGenerator(object):
 
     def emit_External(self, var, expr, order):
         return AssignFlow(
-            self._with_infix(var, self.out_var_infix),
+            self._with_infix(var, var_infix=self.out_var_infix),
             self._with_infix(
-                expr.var, None, label_infix=self.parent.label_infix))
+                expr.var, var_infix=self.parent.out_var_infix,
+                label_infix=self.parent.label_infix))
 
     def emit_FixExpr(self, var, expr, order):
         def expand_simple_expression(env, label):
+            if is_numeral(label):
+                return label
             expr = env[label]
             if is_variable(expr):
                 return expr
@@ -187,7 +194,7 @@ class CodeGenerator(object):
         init_vars = unique(init_vars)
         init_flow_generator = generator_class(
             env=init_state, out_vars=init_vars, parent=self,
-            out_var_infix=var)
+            label_infix=infix, out_var_infix=infix)
         init_flow = init_flow_generator.generate()
 
         # while loop generation

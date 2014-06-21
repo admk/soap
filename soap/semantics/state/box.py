@@ -4,7 +4,7 @@ from soap.lattice.map import map
 from soap.semantics.error import cast, ErrorSemantics, IntegerInterval
 from soap.semantics.state.base import BaseState
 from soap.semantics.state.identifier import IdentifierBaseState
-from soap.semantics.state.functions import bool_eval, fixpoint_eval
+from soap.semantics.functions import bool_eval, fixpoint_eval
 
 
 class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):

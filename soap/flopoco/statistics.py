@@ -89,8 +89,6 @@ def _statistics_dictionaries():
             operators.SUBTRACT_OP: _add,
             operators.MULTIPLY_OP: _mul,
             operators.FIXPOINT_OP: 0,
-            operators.LINK_OP: 0,
-            operators.STATE_GETTER_OP: 0,
         }
         return dictionaries
 

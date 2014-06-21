@@ -21,23 +21,6 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
     def name(self):
         return self.args[0]
 
-    def vars(self):
-        return {self}
-
-    def eval(self, state):
-        return state[self]
-
-    def label(self, context=None):
-        from soap.label.base import LabelContext
-        from soap.semantics.label import LabelSemantics
-
-        context = context or LabelContext(self)
-
-        label = context.Label(self)
-        env = {label: self}
-
-        return LabelSemantics(label, env)
-
     def __str__(self):
         return str(self.name)
 
@@ -57,32 +40,20 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
         return hash((self.name, self.__class__))
 
 
-class InputVariable(Variable):
-    pass
-
-
-class OutputVariable(Variable):
-    pass
-
-
 class _MagicalMixin(object):
+    pass
 
-    def vars(self):
-        raise RuntimeError(
-            '_MagicalMixin expressions has no local dependencies.')
 
-    def eval(self, state):
-        raise RuntimeError('Not suitable for arithmetic evaluation.')
+class InputVariable(_MagicalMixin, Variable):
+    pass
 
-    def label(self, context=None):
-        raise RuntimeError('Not suitable for labelling.')
+
+class OutputVariable(_MagicalMixin, Variable):
+    pass
 
 
 class External(_MagicalMixin, ArithmeticMixin, BooleanMixin, Expression):
     def __init__(self, var, top=False, bottom=False):
-        if isinstance(var, Variable):
-            # because a label is always unique, and a variable could change
-            raise TypeError('External must take a label, not a variable')
         super().__init__(None, var, top=top, bottom=bottom)
 
     @property

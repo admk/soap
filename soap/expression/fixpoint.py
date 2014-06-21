@@ -1,4 +1,3 @@
-from soap.common.cache import cached
 from soap.common.formatting import underline
 
 from soap.expression.operators import FIXPOINT_OP
@@ -27,41 +26,6 @@ class FixExpr(QuaternaryArithExpr):
     @property
     def init_state(self):
         return self.a4
-
-    def _fixpoint(self, state):
-        from soap.semantics.state.functions import (
-            fixpoint_eval, arith_eval_meta_state
-        )
-        state = arith_eval_meta_state(state, self.init_state)
-        fixpoint = fixpoint_eval(
-            state, self.bool_expr, loop_meta_state=self.loop_state)
-        fixpoint['last_entry']._warn_non_termination(self)
-        return fixpoint
-
-    @cached
-    def eval(self, state):
-        return self._fixpoint(state)['exit'][self.loop_var]
-
-    def label(self, context=None):
-        from soap.label.base import LabelContext
-        from soap.semantics.label import LabelSemantics
-
-        context = context or LabelContext(self)
-
-        bool_expr_labsem = self.bool_expr.label(context)
-        bool_expr_label, _ = bool_expr_labsem
-
-        loop_state_label, loop_state_env = self.loop_state.label(context)
-        init_state_label, init_state_env = self.init_state.label(context)
-
-        label_expr = self.__class__(
-            bool_expr_label, loop_state_label, self.loop_var, init_state_label)
-        label = context.Label(label_expr)
-
-        expr = self.__class__(
-            bool_expr_labsem, loop_state_env, self.loop_var, init_state_env)
-        env = {label: expr}
-        return LabelSemantics(label, env)
 
     def __str__(self):
         fixpoint_var = underline('e')
