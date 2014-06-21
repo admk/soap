@@ -35,3 +35,36 @@ class Comparable(object):
 
     def __le__(self, other):
         return not self.__gt__(other)
+
+
+class BaseDispatcher(object):
+
+    def _dispatch(self, obj_type):
+        from soap.semantics.error import (
+            mpz_type, mpfr_type, Interval, ErrorSemantics
+        )
+        numeral_types = (mpz_type, mpfr_type, Interval, ErrorSemantics)
+        base_name = self.dispatch_name
+        if obj_type in numeral_types:
+            func_name = base_name + '_numeral'
+        else:
+            func_name = base_name + '_' + obj_type.__name__
+        try:
+            return getattr(self, func_name)
+        except AttributeError:
+            return getattr(self, 'generic_' + base_name)
+
+    def _execute(self, obj, *args, **kwargs):
+        func = self._dispatch(type(obj))
+        return func(obj, *args, **kwargs)
+
+    def __call__(self, obj, *args, **kwargs):
+        return self.execute(obj, *args, **kwargs)
+
+
+def base_dispatcher(dispatch_name='execute', execute_name='execute'):
+    class Dispatcher(BaseDispatcher):
+        pass
+    setattr(Dispatcher, execute_name, Dispatcher._execute)
+    Dispatcher.dispatch_name = dispatch_name
+    return Dispatcher

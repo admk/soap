@@ -1,23 +1,15 @@
 from soap import logger
+from soap.common import base_dispatcher
 from soap.semantics.functions import arith_eval, bool_eval, fixpoint_eval
 
 
-class BaseState(object):
+class BaseState(base_dispatcher('visit', 'transition')):
     """Base state for all program states."""
     __slots__ = ()
 
     @classmethod
     def empty(cls):
         return cls(bottom=True)
-
-    def transition(self, flow):
-        name = 'visit_' + flow.__class__.__name__
-
-        def not_implemented_visit(_):
-            raise NotImplementedError(
-                'Requested method {} is not implemented.'.format(name))
-
-        return getattr(self, name, not_implemented_visit)(flow)
 
     def visit_IdentityFlow(self, flow):
         return self

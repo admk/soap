@@ -2,7 +2,7 @@
 .. module:: soap.expression.base
     :synopsis: The base classes of expressions.
 """
-from soap.common import Flyweight, cached
+from soap.common import Flyweight, cached, base_dispatcher
 from soap.expression.common import expression_factory, is_expression
 from soap.lattice.base import Lattice
 from soap.lattice.flat import FlatLattice
@@ -82,6 +82,9 @@ class Expression(FlatLattice, Flyweight):
         except ValueError:
             we = 1
         return max(we, we_min)
+
+    def vars(self):
+        return expression_variables(self)
 
     @cached
     def luts(self, var_env, prec):
@@ -254,3 +257,43 @@ class QuaternaryExpression(Expression):
     def __init__(self, op=None, a1=None, a2=None, a3=None, a4=None,
                  top=False, bottom=False, **kwargs):
         super().__init__(op, a1, a2, a3, a4, top=top, bottom=bottom, **kwargs)
+
+
+class VariableSetGenerator(base_dispatcher()):
+
+    def generic_execute(self, expr):
+        raise TypeError(
+            'Do not know how to find input variables for {!r}'.format(expr))
+
+    def _execute_atom(self, expr):
+        return {expr}
+
+    def _execute_expression(self, expr):
+        input_vars = set()
+        for arg in expr.args:
+            input_vars |= self(arg)
+        return input_vars
+
+    def execute_tuple(self, expr):
+        return set(expr)
+
+    def execute_numeral(self, expr):
+        return set()
+
+    def execute_Label(self, expr):
+        return self._execute_atom(expr)
+
+    def execute_Variable(self, expr):
+        return self._execute_atom(expr)
+
+    def execute_BinaryArithExpr(self, expr):
+        return self._execute_expression(expr)
+
+    def execute_BinaryBoolExpr(self, expr):
+        return self._execute_expression(expr)
+
+    def execute_SelectExpr(self, expr):
+        return self._execute_expression(expr)
+
+
+expression_variables = VariableSetGenerator()

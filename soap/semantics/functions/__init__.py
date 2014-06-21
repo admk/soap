@@ -5,4 +5,3 @@ from soap.semantics.functions.label import label, luts
 from soap.semantics.functions.meta import (
     to_meta_state, expand_expr, expand_meta_state, arith_eval_meta_state
 )
-from soap.semantics.functions.variables import expression_variables

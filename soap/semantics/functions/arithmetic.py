@@ -1,8 +1,8 @@
-from soap.semantics.functions.dispatcher import BaseDispatcher
+from soap.common import base_dispatcher
 from soap.expression import operators
 
 
-class ArithmeticEvaluator(BaseDispatcher):
+class ArithmeticEvaluator(base_dispatcher()):
 
     _unary_operator_function_dictionary = {
         operators.UNARY_SUBTRACT_OP: lambda x, _: -x,

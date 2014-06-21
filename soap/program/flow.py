@@ -6,10 +6,9 @@ from akpytemp import Template
 from akpytemp.utils import code_gobble
 
 from soap import logger
-from soap.common.formatting import superscript
+from soap.common import base_dispatcher, superscript
 from soap.label import Label
 from soap.semantics import is_numeral
-from soap.semantics.functions import expression_variables
 
 
 def _code_gobble(s):
@@ -38,38 +37,7 @@ class Flow(object):
     the definition of the state.
     """
     def vars(self, input=True, output=True):
-        """Finds all variables in the flow."""
-        if isinstance(self, IdentityFlow):
-            return set()
-        if isinstance(self, AssignFlow):
-            in_vars = out_vars = set()
-            if input and not is_numeral(self.expr):
-                in_vars = expression_variables(self.expr)
-            if output:
-                out_vars = {self.var}
-            return in_vars | out_vars
-        if isinstance(self, IfFlow):
-            if input:
-                in_vars = expression_variables(self.conditional_expr)
-            else:
-                in_vars = set()
-            flow_vars = self.true_flow.vars(input=input, output=output)
-            flow_vars |= self.false_flow.vars(input=input, output=output)
-            return in_vars | flow_vars
-        if isinstance(self, WhileFlow):
-            if input:
-                in_vars = expression_variables(self.conditional_expr)
-            else:
-                in_vars = set()
-            flow_vars = self.loop_flow.vars(input=input, output=output)
-            return in_vars | flow_vars
-        if isinstance(self, CompositionalFlow):
-            vars = set()
-            for f in self.flows:
-                vars |= f.vars(input=input, output=output)
-            return vars
-        raise TypeError(
-            'Do not know how to find variables in {!r}'.format(self))
+        return flow_variables(self, input, output)
 
     def flow(self, state):
         """Evaluates the flow with state."""
@@ -291,3 +259,51 @@ class CompositionalFlow(Flow):
 
     def __hash__(self):
         return hash((self.__class__, self.flows))
+
+
+class VariableSetGenerator(base_dispatcher()):
+
+    def generic_execute(self, flow, input, output):
+        raise TypeError(
+            'Do not know how to find variables in {!r}'.format(flow))
+
+    def execute_IdentityFlow(self, flow, input, output):
+        return set()
+
+    def execute_AssignFlow(self, flow, input, output):
+        in_vars = out_vars = set()
+        expr = flow.expr
+        if input and not is_numeral(expr):
+            in_vars = expr.vars()
+        if output:
+            out_vars = {flow.var}
+        return in_vars | out_vars
+
+    def execute_IfFlow(self, flow, input, output):
+        if input:
+            in_vars = flow.conditional_expr.vars()
+        else:
+            in_vars = set()
+        flow_vars = self(flow.true_flow, input, output)
+        flow_vars |= self(flow.false_flow, input, output)
+        return in_vars | flow_vars
+
+    def execute_WhileFlow(self, flow, input, output):
+        if input:
+            in_vars = flow.conditional_expr.vars()
+        else:
+            in_vars = set()
+        flow_vars = self(flow.loop_flow, input, output)
+        return in_vars | flow_vars
+
+    def execute_CompositionalFlow(self, flow, input, output):
+        var_set = set()
+        for f in flow.flows:
+            var_set |= self(f, input, output)
+        return var_set
+
+    def execute(self, flow, input=True, output=True):
+        return super()._execute(flow, input, output)
+
+
+flow_variables = VariableSetGenerator()

@@ -6,9 +6,7 @@ from soap.lattice.map import map
 from soap.semantics.error import cast
 from soap.semantics.common import is_numeral
 from soap.semantics.state.base import BaseState
-from soap.semantics.functions import (
-    expand_expr, to_meta_state, expression_variables
-)
+from soap.semantics.functions import expand_expr, to_meta_state
 
 
 class MetaState(BaseState, map(None, Expression)):
@@ -74,7 +72,7 @@ class MetaState(BaseState, map(None, Expression)):
         bool_expr = flow.conditional_expr
         loop_flow = flow.loop_flow
 
-        bool_expr_vars = expression_variables(bool_expr)
+        bool_expr_vars = bool_expr.vars()
         # variables changed in loop
         loop_vars = loop_flow.vars(input=False)
         # variables required by loop to iterate

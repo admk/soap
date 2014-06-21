@@ -1,10 +1,10 @@
+from soap.common import base_dispatcher
 from soap.expression import expression_factory
 from soap.label import LabelContext
-from soap.semantics.functions.dispatcher import BaseDispatcher
 from soap.semantics.label import LabelSemantics
 
 
-class LabelGenerator(BaseDispatcher):
+class LabelGenerator(base_dispatcher()):
 
     def generic_execute(self, expr, context):
         raise TypeError('Do not know how to label {!r}'.format(expr))
