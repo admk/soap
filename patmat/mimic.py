@@ -12,9 +12,12 @@ class _Mimic(object):
             value_match = mimic._match(value, sub_env)
             if not value_match:
                 return False
-        elif mimic != value:
+            env.update(sub_env)
+            return True
+        if not (mimic == value):
+            # FIXME Why mimic != value fails? And only fails when used with
+            # multiprocessing.
             return False
-        env.update(sub_env)
         return True
 
     def _match(self, other, env):

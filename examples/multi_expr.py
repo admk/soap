@@ -16,9 +16,9 @@ e = """
 # e_y = '(1 + b + c) * (a + 1 + c) * (a + b + 1)'
 # e += ' | ' + e_y
 v = {
-    'a': ['1', '2'],
-    'b': ['10', '20'],
-    'c': ['100', '200'],
+    'a': ['1.0', '2.0'],
+    'b': ['10.0', '20.0'],
+    'c': ['100.0', '200.0'],
 }
 t = [
     (False, 2, frontier, 'x', '-'),
@@ -33,7 +33,7 @@ if vary_width:
 else:
     ss = 5
     w = 2.0
-p = Plot(var_env=v, precs=(wf_range if vary_width else None), log=False)
+p = Plot(var_env=v, precs=(wf_range if vary_width else None))
 for s, d, f, m, l in t:
     if vary_width:
         m = '.'
@@ -49,6 +49,5 @@ for s, d, f, m, l in t:
                    legend=f.__name__, legend_time=t, legend_depth=True)
 p.add_analysis(e, legend='original',
                marker='o', s=ss * 100, linewidth=w, facecolors='none')
-print(p.result_list)
 p.save('multi_expr_%s.pdf' % ('vary_width' if vary_width else '32'))
 p.show()
