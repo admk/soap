@@ -4,13 +4,14 @@
 """
 import itertools
 
-import soap.logger as logger
+from soap import logger
+from soap.analysis import expr_frontier
 from soap.common import base_dispatcher
+from soap.context import context as global_context
 from soap.expression import expression_factory
+from soap.semantics.state import MetaState
 from soap.transformer.martel import MartelTreeTransformer
 from soap.transformer.utils import closure, greedy_frontier_closure, reduce
-from soap.analysis import expr_frontier
-from soap.context import context as global_context
 
 
 class BaseDiscoverer(base_dispatcher('discover', 'discover')):
@@ -18,6 +19,9 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
 
     Subclasses need to override :member:`closure`.
     """
+    def filter(self, expr_set, state, context):
+        raise NotImplementedError
+
     def closure(self, expr_set, state, context):
         raise NotImplementedError
 
@@ -28,6 +32,9 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
 
     def _discover_atom(self, expr, state, context):
         return {expr}
+
+    discover_numeral = _discover_atom
+    discover_Variable = _discover_atom
 
     def _discover_expression(self, expr, state, context):
         op = expr.op
@@ -43,8 +50,22 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
 
     discover_BinaryArithExpr = _discover_expression
     discover_SelectExpr = _discover_expression
-    discover_numeral = _discover_atom
-    discover_Variable = _discover_atom
+
+    def _discover_multiple_expressions(self, var_expr_state, state, context):
+        var_list = list(var_expr_state.keys())
+        eq_expr_list = [
+            self(var_expr_state[var], state, context) for var in var_list]
+
+        state_set = set()
+        for expr_list in itertools.product(*eq_expr_list):
+            eq_state = {var: expr for var, expr in zip(var_list, expr_list)}
+            state_set.add(MetaState(eq_state))
+        state_set = self.filter(state_set, state, context)
+
+        return state_set
+
+    discover_dict = _discover_multiple_expressions
+    discover_MetaState = _discover_multiple_expressions
 
     def _execute(self, expr, state, context=None):
         context = context or global_context
@@ -53,6 +74,9 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
 
 class MartelDiscoverer(BaseDiscoverer):
     """A subclass of :class:`BaseDiscoverer` to generate Martel's results."""
+    def filter(self, expr_set, state, context):
+        return expr_set
+
     def closure(self, expr_set, state, context):
         transformer = MartelTreeTransformer(
             expr_set, depth=context.window_depth)
@@ -64,6 +88,9 @@ class GreedyDiscoverer(BaseDiscoverer):
     A subclass of :class:`BaseDiscoverer` to generate our greedy_trace
     equivalent expressions.
     """
+    def filter(self, expr_set, state, context):
+        return expr_frontier(expr_set, state, prec=context.precision)
+
     def closure(self, expr_set, state, context):
         return greedy_frontier_closure(
             expr_set, state, depth=context.window_depth,
@@ -73,6 +100,9 @@ class GreedyDiscoverer(BaseDiscoverer):
 class FrontierDiscoverer(BaseDiscoverer):
     """A subclass of :class:`BaseDiscoverer` to generate our frontier_trace
     equivalent expressions."""
+    def filter(self, expr_set, state, context):
+        return expr_frontier(expr_set, state, prec=context.precision)
+
     def closure(self, expr_set, state, context):
         expr_set = closure(expr_set, depth=context.window_depth)
         return expr_frontier(expr_set, state, prec=context.precision)

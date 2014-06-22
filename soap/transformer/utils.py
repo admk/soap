@@ -3,9 +3,11 @@
     :synopsis: Useful utility functions to simplify calls to
         ArithTreeTransformer.
 """
+import collections
+
 from soap import logger
-from soap.expression import operators
-from soap.expression.common import is_expression
+from soap.expression import operators, is_expression
+from soap.semantics import MetaState
 from soap.transformer.core import TreeTransformer
 from soap.transformer.arithmetic import (
     associativity_addition, associativity_multiplication,
@@ -82,17 +84,20 @@ def reduce(tree):
     :type tree: :class:`soap.expression.Expression` or str
     :returns: A new expression tree.
     """
-    if not is_expression(tree):
-        with logger.local_context(level=logger.levels.info):
+    if is_expression(tree):
+        t = transform(tree, ArithTreeTransformer.reduction_rules,
+                      multiprocessing=False)
+        s = set(t)
+        if len(s) > 1:
+            s.remove(tree)
+        if len(s) == 1:
+            return s.pop()
+    with logger.local_context(level=logger.levels.info):
+        if isinstance(tree, collections.Mapping):
+            return MetaState({v: reduce(e) for v, e in tree.items()})
+        if isinstance(tree, collections.Iterable):
             return {reduce(t) for t in tree}
-    t = transform(tree, ArithTreeTransformer.reduction_rules,
-                  multiprocessing=False)
-    s = set(t)
-    if len(s) > 1:
-        s.remove(tree)
-    if len(s) == 1:
-        return s.pop()
-    raise Exception
+    raise TypeError('Do not know how to reduce {!r}'.format(tree))
 
 
 def parsings(tree):

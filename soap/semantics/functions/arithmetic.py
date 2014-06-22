@@ -78,6 +78,16 @@ class ArithmeticEvaluator(base_dispatcher()):
         fixpoint['last_entry']._warn_non_termination(expr)
         return fixpoint['exit'][expr.loop_var]
 
+    def execute_MetaState(self, meta_state, state):
+        error = None
+        for expr in meta_state.values():
+            expr_error = self(expr, state)
+            if not error:
+                error = expr_error
+            else:
+                error |= expr_error
+        return error
+
 
 arith_eval = ArithmeticEvaluator()
 
