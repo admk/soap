@@ -10,6 +10,7 @@ import sys
 from soap import logger
 from soap.common import cached
 from soap.expression.common import expression_factory, is_expression
+from soap.expression.depth import crop, stitch
 from soap.expression.parser import parse
 from soap.transformer import pattern
 
@@ -30,7 +31,7 @@ class TreeFarmer(object):
         cropped = []
         for t in trees:
             try:
-                t, e = t.crop(self.depth)
+                t, e = crop(t, self.depth)
             except AttributeError:
                 t, e = t, {}
             cropped.append(t)
@@ -45,7 +46,7 @@ class TreeFarmer(object):
         seeded = set()
         for t in trees:
             try:
-                t = t.stitch(self._crop_env)
+                t = stitch(t, self._crop_env)
             except AttributeError:
                 pass
             seeded.add(t)

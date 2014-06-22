@@ -302,7 +302,7 @@ class VariableSetGenerator(base_dispatcher()):
             var_set |= self(f, input, output)
         return var_set
 
-    def execute(self, flow, input=True, output=True):
+    def _execute(self, flow, input=True, output=True):
         return super()._execute(flow, input, output)
 
 

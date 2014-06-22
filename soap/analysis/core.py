@@ -2,14 +2,14 @@
 .. module:: soap.analysis.core
     :synopsis: Analysis classes.
 """
+import math
+
 import gmpy2
 
-from soap import logger
+from soap import logger, flopoco
 from soap.context import context
 from soap.common import DynamicMethods, Flyweight
-from soap.expression import Expr
-from soap.semantics import mpfr
-import soap.semantics.flopoco as flopoco
+from soap.semantics.functions import error_eval, luts
 
 
 class Analysis(DynamicMethods, Flyweight):
@@ -31,10 +31,6 @@ class Analysis(DynamicMethods, Flyweight):
             the return value of :member:`precisions`.
         :type precs: list of integers
         """
-        try:
-            expr_set = {Expr(expr_set)}
-        except TypeError:
-            pass
         self.expr_set = expr_set
         self.var_env = var_env
         self.precs = precs if precs else self.precisions()
@@ -106,11 +102,11 @@ class ErrorAnalysis(Analysis):
     It is a subclass of :class:`Analysis`.
     """
     def error_analysis(self, t, p):
-        return t.error(self.var_env, p)
+        return error_eval(t, self.var_env, p)
 
     def error_select(self, v):
         with gmpy2.local_context(gmpy2.ieee(64), round=gmpy2.RoundAwayZero):
-            return float(mpfr(max(abs(v.e.min), abs(v.e.max))))
+            return float(max(abs(v.e.min), abs(v.e.max)))
 
 
 class AreaAnalysis(Analysis):
@@ -119,10 +115,18 @@ class AreaAnalysis(Analysis):
     It is a subclass of :class:`Analysis`.
     """
     def area_analysis(self, t, p):
-        return t.area(self.var_env, p)
+        bound = error_eval(t, self.var_env, p).v
+        bound_max = max(abs(bound.min), abs(bound.max))
+        exp_max = math.floor(math.log(bound_max, 2))
+        try:
+            we = int(math.ceil(math.log(exp_max + 1, 2) + 1))
+        except ValueError:
+            we = 1
+        we = max(we, flopoco.we_min)
+        return luts(t, we, p)
 
     def area_select(self, v):
-        return v.area
+        return v
 
 
 def pareto_frontier_2d(s, keys=None):

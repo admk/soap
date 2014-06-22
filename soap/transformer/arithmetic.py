@@ -8,6 +8,8 @@ from soap.expression import operators
 from soap.expression.common import expression_factory
 from soap.transformer import pattern
 from soap.transformer.core import TreeTransformer
+from soap.semantics.functions import arith_eval
+from soap.semantics.state import BoxState
 
 
 associativity_addition = (
@@ -138,7 +140,7 @@ one_reduction_division = (
 
 
 def _constant_reduction_func(op, args):
-    return operators.op_func_dict_by_ary_list[len(args) - 1][op](*args)
+    return arith_eval(expression_factory(op, *args), BoxState(bottom=True))
 
 constant_reduction = (
     pattern.compile(pattern.ExprConstPropMimic()),

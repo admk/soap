@@ -53,6 +53,11 @@ class UnaryArithExpr(UnaryExpression, ArithExpr):
 
     __slots__ = ()
 
+    def __str__(self):
+        if self.op == UNARY_SUBTRACT_OP:
+            return '-{}'.format(self.a)
+        return super().__str__()
+
 
 class BinaryArithExpr(BinaryExpression, ArithExpr):
     """Binary arithmetic expressions."""

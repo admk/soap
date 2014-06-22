@@ -3,7 +3,7 @@
     :synopsis: The base classes of expressions.
 """
 from soap.common import Flyweight, cached, base_dispatcher
-from soap.expression.common import expression_factory, is_expression
+from soap.expression.common import is_expression
 from soap.lattice.base import Lattice
 from soap.lattice.flat import FlatLattice
 
@@ -61,28 +61,6 @@ class Expression(FlatLattice, Flyweight):
     def is_ternary(self):
         return self.is_n_ary(3)
 
-    def exponent_width(self, var_env, prec):
-        """Computes the exponent width required for its evaluation so that no
-        overflow could occur.
-
-        :param var_env: The ranges of input variables.
-        :type var_env: dictionary containing mappings from variables to
-            :class:`soap.semantics.error.Interval`
-        :param prec: Precision used to evaluate the expression, defaults to
-            single precision.
-        :type prec: int
-        """
-        import math
-        from soap.flopoco.common import we_min
-        b = self.error(var_env, prec).v
-        bmax = max(abs(b.min), abs(b.max))
-        expmax = math.floor(math.log(bmax, 2))
-        try:
-            we = int(math.ceil(math.log(expmax + 1, 2) + 1))
-        except ValueError:
-            we = 1
-        return max(we, we_min)
-
     def vars(self):
         return expression_variables(self)
 
@@ -114,66 +92,22 @@ class Expression(FlatLattice, Flyweight):
         from soap.flopoco.actual import actual_luts
         return actual_luts(self, var_env, prec)
 
-    def crop(self, depth):
-        """Truncate the tree at a certain depth.
-
-        :param depth: the depth used to truncate the tree.
-        :type depth: int
-        :returns: the truncated tree and a dictionary containing truncated
-            subexpressions.
-        """
-        from soap.label.base import Label
-
-        def subcrop(a):
-            if isinstance(a, Expression):
-                return a.crop(depth - 1)
-            return a, {}
-        if depth > 0:
-            args_label, args_env = zip(*(subcrop(a) for a in self.args))
-            env = {}
-            for e in args_env:
-                env.update(e)
-            return expression_factory(self.op, *args_label), env
-        l = Label(self)
-        return l, {l: self}
-
-    def stitch(self, env):
-        """Undo truncation by stiching truncated subexpressions back to the
-        leaves of the expression.
-
-        :param env: the truncated expressions.
-        :type env: dict
-        :returns: new expression tree.
-        """
-        from soap.label.base import Label
-
-        def substitch(a):
-            if isinstance(a, Expression):
-                return a.stitch(env)
-            if isinstance(a, Label):
-                return env[a]
-            return a
-        return self.__class__(self.op, *(substitch(a) for a in self.args))
-
-    def tree(self):
-        """Produces a tuple tree for the expression."""
-        def to_tuple(a):
-            if is_expression(a):
-                return a.tree()
-            return a
-        return tuple([self.op] + [to_tuple(a) for a in self.args])
-
     def __iter__(self):
         return iter([self.op] + list(self.args))
 
     def _args_to_str(self):
+        from soap.expression.arithmetic import UnaryArithExpr
+
         def format(expr):
             if isinstance(expr, Lattice) and expr.is_bottom():
+                brackets = False
+            elif isinstance(expr, UnaryArithExpr):
                 brackets = False
             else:
                 brackets = is_expression(expr) and expr.args
             text = '({})' if brackets else '{}'
             return text.format(expr)
+
         return [format(a) for a in self.args]
 
     def __repr__(self):

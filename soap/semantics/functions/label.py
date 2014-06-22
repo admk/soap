@@ -68,9 +68,9 @@ class LabelGenerator(base_dispatcher()):
 
         return LabelSemantics(label, env)
 
-    def execute(self, expr, context=None):
+    def _execute(self, expr, context=None):
         context = context or LabelContext(expr)
-        return super().execute(expr, context)
+        return super()._execute(expr, context)
 
 
 label = LabelGenerator()

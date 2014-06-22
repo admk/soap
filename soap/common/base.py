@@ -59,7 +59,7 @@ class BaseDispatcher(object):
         return func(obj, *args, **kwargs)
 
     def __call__(self, obj, *args, **kwargs):
-        return self.execute(obj, *args, **kwargs)
+        return self._execute(obj, *args, **kwargs)
 
 
 def base_dispatcher(dispatch_name='execute', execute_name='execute'):
