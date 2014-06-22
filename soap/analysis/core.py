@@ -31,10 +31,10 @@ class Analysis(DynamicMethods, Flyweight):
             the return value of :member:`precisions`.
         :type precs: list of integers
         """
+        super().__init__()
         self.expr_set = expr_set
         self.var_env = var_env
         self.precs = precs if precs else self.precisions()
-        super().__init__()
 
     def precisions(self):
         """Returns the precisions being used.
@@ -116,7 +116,7 @@ class AreaAnalysis(Analysis):
     """
     def area_analysis(self, t, p):
         bound = error_eval(t, self.var_env, p).v
-        bound_max = max(abs(bound.min), abs(bound.max))
+        bound_max = max(abs(bound.min), abs(bound.max), 1)
         exp_max = math.floor(math.log(bound_max, 2))
         try:
             we = int(math.ceil(math.log(exp_max + 1, 2) + 1))
@@ -170,21 +170,3 @@ class VaryWidthAnalysis(AreaErrorAnalysis):
     def precisions(self):
         """Allow precisions to vary in the range of `flopoco.wf_range`."""
         return flopoco.wf_range
-
-
-if __name__ == '__main__':
-    from soap.transformer import ArithTreeTransformer
-    from soap.analysis.utils import plot
-    from soap.common import timed
-    logger.set_context(level=logger.levels.info)
-    e = Expr('(a + b) * (a + b)')
-    v = {
-        'a': ['5', '10'],
-        'b': ['0', '0.001'],
-    }
-    with timed('Analysis'):
-        a = VaryWidthAnalysis(ArithTreeTransformer(e).closure(), v)
-        a, f = a.analyse(), a.frontier()
-    logger.info('Results', len(a))
-    logger.info('Frontier', len(f))
-    plot(a)

@@ -5,7 +5,9 @@
 import math
 import itertools
 
-import soap.logger as logger
+from soap import logger
+from soap.context import context
+from soap.expression import parse
 
 
 def _analyser(expr_set, var_env, prec=None):
@@ -168,7 +170,7 @@ class Plot(object):
         self.var_env = var_env
         self.depth = depth
         self.precs = precs
-        if not log is None:
+        if log is not None:
             self.log_enable = log
         super().__init__()
 
@@ -177,7 +179,7 @@ class Plot(object):
                      legend_depth=False, legend_time=False, **kwargs):
         """Performs transforms, then analyses expressions and add results to
         plot.
-        
+
         :param expr: original expression to be transformed.
         :type expr: :class:`soap.expression.Expr`
         :param func: the function used to transform `expr`.
@@ -202,6 +204,8 @@ class Plot(object):
         """
         import time
         from soap.common import invalidate_cache
+        if isinstance(expr, str):
+            expr = parse(expr)
         var_env = var_env or self.var_env
         d = depth or self.depth
         precs = precs or self.precs or [None]
@@ -213,9 +217,10 @@ class Plot(object):
             if p:
                 logger.persistent('Precision', p)
             if func:
-                derived = func(expr, var_env=var_env, depth=d, prec=p)
+                with context.local(window_precision=p, window_depth=d):
+                    derived = func(expr, var_env, context)
             else:
-                derived = expr
+                derived = {expr}
             analysis_func = frontier if p else analyse
             r = analysis_func(derived, var_env, p)
             results += r

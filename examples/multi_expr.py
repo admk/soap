@@ -1,8 +1,8 @@
 import sys
 
 from soap.analysis import Plot
-from soap.transformer.utils import greedy_trace, frontier_trace, martel_trace
-from soap.semantics.flopoco import wf_range
+from soap.transformer.discover import greedy, frontier, martel
+from soap.flopoco import wf_range
 import soap.logger as logger
 
 logger.set_context(level=logger.levels.info)
@@ -13,27 +13,27 @@ e = """
     (a + a + b) * (a + b + b) * (b + b + c) *
     (b + c + c) * (c + c + a) * (c + a + a)
     """
-e_y = '(1 + b + c) * (a + 1 + c) * (a + b + 1)'
-e += ' | ' + e_y
+# e_y = '(1 + b + c) * (a + 1 + c) * (a + b + 1)'
+# e += ' | ' + e_y
 v = {
     'a': ['1', '2'],
     'b': ['10', '20'],
     'c': ['100', '200'],
 }
 t = [
-    (False, 2, frontier_trace, 'x', '-'),
-    (False, 3, greedy_trace,   '.', '--'),
-    (False, 2, greedy_trace,   '+', ':'),
-    (True,  2, martel_trace,   'o',  ''),
+    (False, 2, frontier, 'x', '-'),
+    (False, 3, greedy,   '.', '--'),
+    (False, 2, greedy,   '+', ':'),
+    (True,  2, martel,   'o',  ''),
 ]
 if vary_width:
-    t = [(False, 3, greedy_trace, '.', '-')]
+    t = [(False, 3, greedy, '.', '-')]
     ss = 0.5
     w = 1.0
 else:
     ss = 5
     w = 2.0
-p = Plot(var_env=v, precs=(wf_range if vary_width else None))
+p = Plot(var_env=v, precs=(wf_range if vary_width else None), log=False)
 for s, d, f, m, l in t:
     if vary_width:
         m = '.'
@@ -49,5 +49,6 @@ for s, d, f, m, l in t:
                    legend=f.__name__, legend_time=t, legend_depth=True)
 p.add_analysis(e, legend='original',
                marker='o', s=ss * 100, linewidth=w, facecolors='none')
+print(p.result_list)
 p.save('multi_expr_%s.pdf' % ('vary_width' if vary_width else '32'))
 p.show()

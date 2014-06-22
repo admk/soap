@@ -8,7 +8,7 @@ import soap.logger as logger
 from soap.common import base_dispatcher
 from soap.expression import expression_factory
 from soap.transformer.martel import MartelTreeTransformer
-from soap.transformer.utils import closure, greedy_frontier_closure
+from soap.transformer.utils import closure, greedy_frontier_closure, reduce
 from soap.analysis import expr_frontier
 from soap.context import context as global_context
 
@@ -78,6 +78,45 @@ class FrontierDiscoverer(BaseDiscoverer):
         return expr_frontier(expr_set, state, prec=context.precision)
 
 
-martel = MartelDiscoverer()
-greedy = GreedyDiscoverer()
-frontier = FrontierDiscoverer()
+def _discover(discoverer_class, expr, state, context):
+    expr_set = discoverer_class()(expr, state, context)
+    return reduce(expr_set)
+
+
+def greedy(expr, state, context=None):
+    """Finds our equivalent expressions using :class:`GreedyDiscoverer`.
+
+    :param expr: The original expression.
+    :type expr: :class:`soap.expression.Expression`
+    :param state: The ranges of input variables.
+    :type state: :class:`soap.semantics.state.BoxState`
+    :param context: The global context used for evaluation
+    :type context: :class:`soap.context.soap.SoapContext`
+    """
+    return _discover(GreedyDiscoverer, expr, state, context)
+
+
+def frontier(expr, state, context=None):
+    """Finds our equivalent expressions using :class:`FrontierDiscoverer`.
+
+    :param expr: The original expression.
+    :type expr: :class:`soap.expression.Expression`
+    :param state: The ranges of input variables.
+    :type state: :class:`soap.semantics.state.BoxState`
+    :param context: The global context used for evaluation
+    :type context: :class:`soap.context.soap.SoapContext`
+    """
+    return _discover(FrontierDiscoverer, expr, state, context)
+
+
+def martel(expr, state, context=None):
+    """Finds Martel's equivalent expressions.
+
+    :param expr: The original expression.
+    :type expr: :class:`soap.expression.Expression`
+    :param state: The ranges of input variables.
+    :type state: :class:`soap.semantics.state.BoxState`
+    :param context: The global context used for evaluation
+    :type context: :class:`soap.context.soap.SoapContext`
+    """
+    return _discover(MartelDiscoverer, expr, state, context)

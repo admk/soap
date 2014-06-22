@@ -6,7 +6,7 @@ from soap import (
     context, IntegerInterval, FloatInterval, FractionInterval, ErrorSemantics,
     mpz, mpq, mpfr, mpz_type, mpq_type, mpfr_type, inf, ulp, cast, BoxState,
     MetaState, flow_to_meta_state, expr, flow, closure, expand, reduce,
-    parsings, martel_trace, greedy_trace, frontier_trace, logger
+    parsings, martel, greedy, frontier, logger
 )
 
 

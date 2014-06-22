@@ -84,6 +84,14 @@ arith_eval = ArithmeticEvaluator()
 
 def error_eval(expr, state, prec=None):
     # TODO rework prec
-    from soap.semantics import precision_context, BoxState, ErrorSemantics
+    from soap.semantics import (
+        precision_context, BoxState, FloatInterval, ErrorSemantics
+    )
     with precision_context(prec):
-        return ErrorSemantics(arith_eval(expr, BoxState(state)))
+        new_state = {}
+        for key, value in state.items():
+            if isinstance(value, FloatInterval):
+                value = ErrorSemantics(value, 0)
+            new_state[key] = value
+        new_state = BoxState(new_state)
+        return ErrorSemantics(arith_eval(expr, new_state))
