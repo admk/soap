@@ -8,9 +8,10 @@ from soap import logger
 from soap.analysis import expr_frontier
 from soap.common import base_dispatcher
 from soap.context import context as global_context
-from soap.expression import expression_factory
+from soap.expression import expression_factory, SelectExpr, FixExpr
 from soap.semantics.state import MetaState
-from soap.transformer.martel import MartelTreeTransformer
+from soap.semantics.functions import arith_eval, fixpoint_eval, expand_expr
+from soap.transformer.arithmetic import MartelTreeTransformer
 from soap.transformer.utils import closure, greedy_frontier_closure, reduce
 
 
@@ -50,6 +51,68 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
 
     discover_BinaryArithExpr = _discover_expression
     discover_SelectExpr = _discover_expression
+
+    @staticmethod
+    def _equivalent_loop_meta_states(expr, depth):
+        unroll_state = loop_state = expr.loop_state
+        expanded_bool_expr = expand_expr(expr.bool_expr, loop_state)
+
+        yield unroll_state
+
+        for d in range(depth):
+            new_unroll_state = {}
+            for var, expr in unroll_state.items():
+                true_expr = expand_expr(expr, loop_state)
+                false_expr = loop_state[var]
+                if true_expr == false_expr:
+                    new_unroll_state[var] = true_expr
+                else:
+                    expr = SelectExpr(
+                        expanded_bool_expr, true_expr, false_expr)
+                    new_unroll_state[var] = expr
+            unroll_state = MetaState(new_unroll_state)
+            yield unroll_state
+
+    def discover_FixExpr(self, expr, state, context):
+        bool_expr = expr.bool_expr
+        loop_meta_state = expr.loop_state
+        loop_var = expr.loop_var
+
+        loop_meta_state_set = set(
+            self._equivalent_loop_meta_states(expr, context.unroll_depth))
+
+        init_meta_state_set = self.discover_MetaState(
+            expr.init_state, state, context)
+
+        eq_expr_set = set()
+
+        # for each discovered init_meta_state values
+        for init_meta_state in init_meta_state_set:
+            # compute loop optimizing value ranges
+            init_value_state = arith_eval(init_meta_state, state)
+            loop_value_state = fixpoint_eval(
+                init_value_state, bool_expr, loop_meta_state)['entry']
+
+            # transform bool_expr
+            transformed_bool_expr_set = self._discover_expression(
+                bool_expr, loop_value_state, context)
+
+            # transform loop_meta_state
+            for loop_meta_state in loop_meta_state_set:
+                transformed_loop_meta_state_set = \
+                    self.discover_MetaState(
+                        loop_meta_state, loop_value_state)
+
+                for transformed_bool_expr, transformed_loop_meta_state in \
+                        itertools.product(
+                            transformed_bool_expr_set,
+                            transformed_loop_meta_state_set):
+                    eq_expr = FixExpr(
+                        transformed_bool_expr, transformed_loop_meta_state,
+                        loop_var, init_meta_state)
+                    eq_expr_set.add(eq_expr)
+
+        return self.filter(eq_expr_set, state, context)
 
     def _discover_multiple_expressions(self, var_expr_state, state, context):
         var_list = list(var_expr_state.keys())

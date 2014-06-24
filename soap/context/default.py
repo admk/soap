@@ -14,7 +14,7 @@ context = dict(
     widen_factor=100,
     precision='single',
     window_depth=2,
-    program_depth=3,
+    unroll_depth=3,
 )
 
 
