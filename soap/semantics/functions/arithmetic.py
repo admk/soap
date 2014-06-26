@@ -1,5 +1,6 @@
 from soap.common import base_dispatcher
 from soap.expression import operators
+from soap.semantics.error import cast
 
 
 class ArithmeticEvaluator(base_dispatcher()):
@@ -92,8 +93,17 @@ class ArithmeticEvaluator(base_dispatcher()):
 arith_eval = ArithmeticEvaluator()
 
 
+class ErrorEvaluator(ArithmeticEvaluator):
+
+    def execute_BinaryBoolExpr(self, expr, state):
+        a1, a2 = self._execute_args(expr.args, state)
+        return cast(a1) | cast(a2)
+
+
+_error_eval = ErrorEvaluator()
+
+
 def error_eval(expr, state, prec=None):
-    # TODO rework prec
     from soap.semantics import (
         precision_context, BoxState, FloatInterval, ErrorSemantics
     )
@@ -104,4 +114,5 @@ def error_eval(expr, state, prec=None):
                 value = ErrorSemantics(value, 0)
             new_state[key] = value
         new_state = BoxState(new_state)
-        return ErrorSemantics(arith_eval(expr, new_state))
+        error = _error_eval(expr, new_state)
+        return ErrorSemantics(error)

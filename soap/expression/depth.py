@@ -4,7 +4,7 @@ from soap.label import LabelContext
 
 
 class Cropper(base_dispatcher('crop', 'crop')):
-    def generic_crop(self, expr, depth):
+    def generic_crop(self, expr, depth, context):
         raise TypeError('Do not know how to crop expression {!r}'.format(expr))
 
     def _crop_atom(self, expr, depth, context):
@@ -31,6 +31,7 @@ class Cropper(base_dispatcher('crop', 'crop')):
         return expr, env
 
     crop_BinaryArithExpr = _crop_expression
+    crop_BinaryBoolExpr = _crop_expression
     crop_SelectExpr = _crop_expression
 
     def _execute(self, expr, depth, context=None):
@@ -57,6 +58,7 @@ class Stitcher(base_dispatcher('stitch', 'stitch')):
         return expression_factory(expr.op, *args)
 
     stitch_BinaryArithExpr = _stitch_expression
+    stitch_BinaryBoolExpr = _stitch_expression
     stitch_SelectExpr = _stitch_expression
 
 

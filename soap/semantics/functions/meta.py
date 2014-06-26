@@ -24,7 +24,7 @@ def expand_expr(expr, meta_state):
         'state {state}.'.format(expr=expr, state=meta_state))
 
 
-def _eval_meta_state_with_func(eval_func, state, meta_state):
+def _eval_meta_state_with_func(eval_func, meta_state, state):
     mapping = {k: eval_func(v, state) for k, v in meta_state.items()}
     return state.__class__(mapping)
 
@@ -34,6 +34,6 @@ def expand_meta_state(meta_state, state):
     return _eval_meta_state_with_func(expand_expr, meta_state, state)
 
 
-def arith_eval_meta_state(state, meta_state):
+def arith_eval_meta_state(meta_state, state):
     """Perform arithmetic evaluation on meta_state with state."""
-    return _eval_meta_state_with_func(arith_eval, state, meta_state)
+    return _eval_meta_state_with_func(arith_eval, meta_state, state)

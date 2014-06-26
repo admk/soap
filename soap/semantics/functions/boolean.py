@@ -66,20 +66,20 @@ def _constraint(op, cond, bound):
     raise ValueError('Unknown boolean operator %s' % op)
 
 
-def _conditional(expr, state, cond):
-    bound = _rhs_eval(expr.a2, state)
-    if isinstance(state[expr.a1], (FloatInterval, ErrorSemantics)):
+def _conditional(var, op, expr, state, cond):
+    bound = _rhs_eval(expr, state)
+    if isinstance(state[var], (FloatInterval, ErrorSemantics)):
         # Comparing floats
         bound = FloatInterval(bound)
-    cstr = _constraint(expr.op, cond, bound)
+    cstr = _constraint(op, cond, bound)
     if isinstance(cstr, FloatInterval):
         cstr = ErrorSemantics(cstr, FloatInterval(top=True))
-    cstr &= state[expr.a1]
+    cstr &= state[var]
     bot = isinstance(cstr, ErrorSemantics) and cstr.v.is_bottom()
     bot = bot or cstr.is_bottom()
     if bot:
-        return expr.a1, cstr.__class__(bottom=True)
-    return expr.a1, cstr
+        return var, cstr.__class__(bottom=True)
+    return var, cstr
 
 
 @cached
@@ -95,7 +95,7 @@ def bool_eval(expr, state):
     """
     splits = []
     for cond in True, False:
-        var, cstr = _conditional(expr, state, cond)
+        var, cstr = _conditional(expr.a1, expr.op, expr.a2, state, cond)
         if cstr.is_bottom():
             split = state.empty()
         else:

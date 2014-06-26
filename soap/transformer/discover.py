@@ -10,7 +10,9 @@ from soap.common import base_dispatcher
 from soap.context import context as global_context
 from soap.expression import expression_factory, SelectExpr, FixExpr
 from soap.semantics.state import MetaState
-from soap.semantics.functions import arith_eval, fixpoint_eval, expand_expr
+from soap.semantics.functions import (
+    arith_eval_meta_state, fixpoint_eval, expand_expr
+)
 from soap.transformer.arithmetic import MartelTreeTransformer
 from soap.transformer.utils import closure, greedy_frontier_closure, reduce
 
@@ -50,6 +52,7 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
         return expr_set
 
     discover_BinaryArithExpr = _discover_expression
+    discover_BinaryBoolExpr = _discover_expression
     discover_SelectExpr = _discover_expression
 
     @staticmethod
@@ -89,7 +92,7 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
         # for each discovered init_meta_state values
         for init_meta_state in init_meta_state_set:
             # compute loop optimizing value ranges
-            init_value_state = arith_eval(init_meta_state, state)
+            init_value_state = arith_eval_meta_state(init_meta_state, state)
             loop_value_state = fixpoint_eval(
                 init_value_state, bool_expr, loop_meta_state)['entry']
 
@@ -101,7 +104,7 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
             for loop_meta_state in loop_meta_state_set:
                 transformed_loop_meta_state_set = \
                     self.discover_MetaState(
-                        loop_meta_state, loop_value_state)
+                        loop_meta_state, loop_value_state, context)
 
                 for transformed_bool_expr, transformed_loop_meta_state in \
                         itertools.product(

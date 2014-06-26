@@ -129,12 +129,14 @@ class Lattice(Flyweight, metaclass=LatticeMeta):
     __rand__ = lambda self, other: self.meet(other)
 
     __le__ = _compare(lambda self, other: self.le(other))
+    __lt__ = _compare(
+        lambda self, other: self.le(other) and not other.le(self))
+    __ge__ = _compare(lambda self, other: other.le(self))
+    __gt__ = _compare(
+        lambda self, other: other.le(self) and not self.le(other))
     __eq__ = _compare(lambda self, other: self.le(other) and other.le(self))
     __ne__ = _compare(
         lambda self, other: not self.le(other) or not other.le(self))
-    __ge__ = _compare(lambda self, other: other.le(self))
-    __lt__ = _compare(lambda self, other: not other.le(self))
-    __gt__ = _compare(lambda self, other: not self.le(other))
 
     def __hash__(self):
         if self.is_top() or self.is_bottom():

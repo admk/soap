@@ -253,7 +253,7 @@ class Interval(Lattice):
     def le(self, other, cls):
         if cls is not None:
             return cls(self).le(cls(other))
-        return self.min >= other.min and self.max <= other.max
+        return (self.min >= other.min) and (self.max <= other.max)
 
     def __iter__(self):
         return iter((self.min, self.max))
