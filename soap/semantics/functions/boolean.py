@@ -1,7 +1,7 @@
 from soap.common.cache import cached
 from soap.expression import (
     LESS_OP, GREATER_OP, LESS_EQUAL_OP, GREATER_EQUAL_OP,
-    EQUAL_OP, NOT_EQUAL_OP
+    EQUAL_OP, NOT_EQUAL_OP, is_variable
 )
 from soap.semantics.error import (
     inf, ulp, mpz_type, mpfr_type,
@@ -58,7 +58,7 @@ def _constraint(op, cond, bound):
     if op == EQUAL_OP:
         return bound
     if op == NOT_EQUAL_OP:
-        raise NotImplementedError
+        return bound.__class__([-inf, inf])
     if op in [LESS_OP, LESS_EQUAL_OP]:
         return bound.__class__([-inf, bound_max])
     if op in [GREATER_OP, GREATER_EQUAL_OP]:
@@ -66,7 +66,7 @@ def _constraint(op, cond, bound):
     raise ValueError('Unknown boolean operator %s' % op)
 
 
-def _conditional(var, op, expr, state, cond):
+def _conditional(op, var, expr, state, cond):
     bound = _rhs_eval(expr, state)
     if isinstance(state[var], (FloatInterval, ErrorSemantics)):
         # Comparing floats
@@ -82,23 +82,46 @@ def _conditional(var, op, expr, state, cond):
     return var, cstr
 
 
+_mirror_dict = {
+    LESS_OP: GREATER_OP,
+    LESS_EQUAL_OP: GREATER_EQUAL_OP,
+    GREATER_OP: LESS_OP,
+    GREATER_EQUAL_OP: LESS_EQUAL_OP,
+    EQUAL_OP: EQUAL_OP,
+    NOT_EQUAL_OP: NOT_EQUAL_OP,
+}
+
+
 @cached
 def bool_eval(expr, state):
     """
     Supports only simple boolean expressions::
         <variable> <operator> <arithmetic expression>
+    Or::
+        <arithmetic expression> <operator> <variable>
+
     For example::
         x <= 3 * y.
 
     Returns:
         Two states, respectively satisfying or dissatisfying the conditional.
     """
-    splits = []
+    op = expr.op
+    a1, a2 = expr.args
+    args_swap_list = [(op, a1, a2), (_mirror_dict[op], a2, a1)]
+    split_list = []
     for cond in True, False:
-        var, cstr = _conditional(expr.a1, expr.op, expr.a2, state, cond)
-        if cstr.is_bottom():
+        cstr_list = []
+        for cond_op, cond_var, cond_expr in args_swap_list:
+            if not is_variable(cond_var):
+                continue
+            cstr = _conditional(cond_op, cond_var, cond_expr, state, cond)
+            cstr_list.append(cstr)
+        if any(cstr.is_bottom() for _, cstr in cstr_list):
             split = state.empty()
         else:
-            split = state[var:cstr]
-        splits.append(split)
-    return splits
+            split = state
+            for var, cstr in cstr_list:
+                split = split[var:cstr]
+        split_list.append(split)
+    return split_list

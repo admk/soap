@@ -1,34 +1,41 @@
 # Ultra Short Term TODOs -- Transforms
 
 * [X] Fix nested loop code generation generating incorrect variable names
-* [ ] Equivalent expression relations for the following expressions/operators:
-    - [ ] `SelectExpr`
-    - [ ] `FixExpr`
+* [X] Equivalent expression relations for the following expressions/operators:
+    - [X] `SelectExpr`
+    - [X] `FixExpr`
+    - [X] `MetaState`
 * [ ] Resource usage statistics generation with XST for the following
   operators:
     - [ ] Comparisons
     - [ ] Branches (Multiplexer?)
-* [ ] Make use of loop invariants in optimisation
-    - [ ] Identifier-based error analysis
+    - [ ] Divisions
+* [X] Make use of loop invariants in optimisation
 * [ ] Relational domain (if possible), because currently branch constraints
   could be too restrictive to be useful, and sometimes constraints cannot
   be discovered
-* [ ] Special casing for `FixExpr` expansion, because simply expanding
+* [X] Special casing for `FixExpr` expansion, because simply expanding
   (unrolling) preserves floating-point semantics (same error) but double
   the resource usage, thus optimised away by the Pareto frontier.
 
 
+# Ultra Short Term FIXMEs
+
+* [ ] Use fusion in resource usage analysis.
+    - [ ] Add `out_vars` to discoverer and labelling arguments.
+
+
 # Ugliness, fix if have the time to
 
+* [ ] Get rid of identifier based analysis, no longer required.
 * [ ] Generated code has boolean expressions assigned to variables, consider
   other approaches to analysing conditionals because of this.
 * [ ] {Possible} Better code generation by expanding expressions with locals
     - [ ] Instead of sets of edges, consider using bags of edges to model
       dependency graph.
 * [ ] {Possible} Add dependency ordering utility function
-    - [ ] ~~Use this for code generation node ordering, kill nondeterminism~~
-    - [ ] For killing nondeterminism in labelling
-    - [ ] For code generation
+    - [ ] For labelling determinism
+    - [ ] For code generation node ordering determinism
     - [ ] For loop merging
 
 
@@ -38,7 +45,7 @@
     - [X] Metasemantics
     - [ ] Transforms
         - [ ] Extend equivalent relations
-        - [ ] Update `greedy_frontier`
+        - [X] Update `greedy_frontier`
     - [ ] Analysis
         - [X] Resource usage
         - [X] Error analysis

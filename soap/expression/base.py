@@ -214,20 +214,11 @@ class VariableSetGenerator(base_dispatcher()):
     def execute_numeral(self, expr):
         return set()
 
-    def execute_Label(self, expr):
-        return self._execute_atom(expr)
-
-    def execute_Variable(self, expr):
-        return self._execute_atom(expr)
-
-    def execute_BinaryArithExpr(self, expr):
-        return self._execute_expression(expr)
-
-    def execute_BinaryBoolExpr(self, expr):
-        return self._execute_expression(expr)
-
-    def execute_SelectExpr(self, expr):
-        return self._execute_expression(expr)
+    execute_Label = _execute_atom
+    execute_Variable = _execute_atom
+    execute_BinaryArithExpr = _execute_expression
+    execute_BinaryBoolExpr = _execute_expression
+    execute_SelectExpr = _execute_expression
 
 
 expression_variables = VariableSetGenerator()

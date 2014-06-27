@@ -39,23 +39,23 @@ class Comparable(object):
 
 class BaseDispatcher(object):
 
-    def _dispatch(self, obj_type):
+    def _dispatch(self, obj):
         from soap.semantics.error import (
             mpz_type, mpfr_type, Interval, ErrorSemantics
         )
         numeral_types = (mpz_type, mpfr_type, Interval, ErrorSemantics)
         base_name = self.dispatch_name
-        if obj_type in numeral_types:
+        if isinstance(obj, numeral_types):
             func_name = base_name + '_numeral'
         else:
-            func_name = base_name + '_' + obj_type.__name__
+            func_name = base_name + '_' + type(obj).__name__
         try:
             return getattr(self, func_name)
         except AttributeError:
             return getattr(self, 'generic_' + base_name)
 
     def _execute(self, obj, *args, **kwargs):
-        func = self._dispatch(type(obj))
+        func = self._dispatch(obj)
         return func(obj, *args, **kwargs)
 
     def __call__(self, obj, *args, **kwargs):

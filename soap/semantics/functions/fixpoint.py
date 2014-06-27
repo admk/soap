@@ -71,7 +71,7 @@ def fixpoint_eval(state, bool_expr, loop_meta_state=None, loop_flow=None):
         if loop_flow:
             loop_state = entry_state.transition(loop_flow)
         elif loop_meta_state:
-            diff_state = arith_eval_meta_state(entry_state, loop_meta_state)
+            diff_state = arith_eval_meta_state(loop_meta_state, entry_state)
             # arith_eval_meta_state only computes value changes with
             # loop_meta_state, need to use changes to update existing state
             loop_state = dict(entry_state)

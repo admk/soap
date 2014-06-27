@@ -73,7 +73,7 @@ class ArithmeticEvaluator(base_dispatcher()):
         from soap.semantics.functions.fixpoint import (
             fixpoint_eval, arith_eval_meta_state
         )
-        state = arith_eval_meta_state(state, expr.init_state)
+        state = arith_eval_meta_state(expr.init_state, state)
         fixpoint = fixpoint_eval(
             state, expr.bool_expr, loop_meta_state=expr.loop_state)
         fixpoint['last_entry']._warn_non_termination(expr)
