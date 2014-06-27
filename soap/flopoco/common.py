@@ -3,7 +3,18 @@ import tempfile
 from contextlib import contextmanager
 
 from soap import logger
+from soap.expression.operators import (
+    ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP
+)
 
+
+flopoco_operators = ['FPAdder', 'FPMultiplier', 'FPDiv']
+operators_map = {
+    ADD_OP: 'FPAdder',
+    SUBTRACT_OP: 'FPAdder',
+    MULTIPLY_OP: 'FPMultiplier',
+    DIVIDE_OP: 'FPDiv',
+}
 
 we_min, we_max = 5, 15
 wf_min, wf_max = 10, 112

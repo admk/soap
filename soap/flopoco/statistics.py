@@ -1,16 +1,21 @@
+import itertools
 import os
+import pickle
 
 from soap import logger
 from soap.common import timeit
-from soap.expression import operators
 from soap.flopoco.common import (
-    flopoco, xilinx, default_file, we_range, wf_range
+    flopoco_operators, operators_map, we_range, wf_range,
+    flopoco, xilinx, default_file
 )
+
+
+INVALID = -1
 
 
 def _eval_operator(op, we, wf, f=None, dir=None):
     dir, f = flopoco(op, we, wf, f, dir)
-    return dict(op=op, we=we, wf=wf, value=xilinx(f, dir))
+    return xilinx(f, dir)
 
 
 @timeit
@@ -19,11 +24,13 @@ def _para_synth(op_we_wf):
     op, we, wf = op_we_wf
     work_dir = 'syn_{}'.format(os.getpid())
     try:
-        item = _eval_operator(op, we, wf, f=None, dir=work_dir)
-        logger.info('Processed', item)
-        return item
+        value = _eval_operator(op, we, wf, f=None, dir=work_dir)
+        logger.info('Processed operator {}, exponent {}, mantissa {}, LUTs {}'
+                    .format(op, we, wf, value))
+        return op, we, wf, value
     except sh.ErrorReturnCode:
         logger.error('Error processing {}, {}, {}'.format(op, we, wf))
+        return op, we, wf, INVALID
 
 
 _pool_ = None
@@ -38,21 +45,24 @@ def _pool():
 
 
 @timeit
-def _batch_synth(we_range, wf_range):
-    import itertools
-    args = itertools.product(['add', 'mul'], we_range, wf_range)
-    return list(_pool().imap_unordered(_para_synth, args))
+def _batch_synth(existing_results, we_range, wf_range, overwrite=False):
+    key_list = [
+        key for key in itertools.product(flopoco_operators, we_range, wf_range)
+        if key not in existing_results]
+    results = _pool().imap_unordered(_para_synth, key_list)
+    results_dict = {}
+    for r in results:
+        op, we, wf, value = r
+        results_dict[op, we, wf] = value
+    return results_dict
 
 
 def _load(file_name):
-    import pickle
     with open(file_name, 'rb') as f:
-        return pickle.loads(f.read())
+        return pickle.load(f)
 
 
 def _save(file_name, results):
-    import pickle
-    results = [i for i in results if not i is None]
     with open(file_name, 'wb') as f:
         pickle.dump(results, f)
 
@@ -63,8 +73,9 @@ def _plot(results):
     fig = plt.figure()
     ax = Axes3D(fig)
     vl = []
-    for i in results:
-        xv, yv, zv = int(i['we']), int(i['wf']), int(i['value'])
+    for key, value in results.items():
+        op, xv, yv = key
+        zv = value
         if zv < 0:
             continue
         vl.append((xv, yv, zv))
@@ -76,54 +87,25 @@ class FlopocoMissingImplementationError(Exception):
     """Unsynthesizable operator"""
 
 
-_loaded = False
-_add = _mul = None
-
-
-def _statistics_dictionaries():
-    global _loaded, _add, _mul
-
-    if _loaded:
-        dictionaries = {
-            operators.ADD_OP: _add,
-            operators.SUBTRACT_OP: _add,
-            operators.MULTIPLY_OP: _mul,
-            operators.FIXPOINT_OP: 0,
-        }
-        return dictionaries
-
-    _add = {}
-    _mul = {}
-
-    if not os.path.isfile(default_file):
-        logger.error(
-            'No flopoco statistics available, please consider regenerate.')
-
-    for i in _load(default_file):
-        xv, yv, zv = int(i['we']), int(i['wf']), int(i['value'])
-        if i['op'] == 'add':
-            _add[xv, yv] = zv
-        elif i['op'] == 'mul':
-            _mul[xv, yv] = zv
-
-    _loaded = True
-    return _statistics_dictionaries()
+_stats = None
 
 
 def operator_luts(op, we, wf):
-    try:
-        stats = _statistics_dictionaries()[op]
-    except KeyError:
-        logger.error('No statistics exist for operator {}'.format(op))
-        return 0
+    global _stats
+    if not _stats:
+        if not os.path.isfile(default_file):
+            logger.error(
+                'No flopoco statistics available, please consider regenerate.')
+        _stats = _load(default_file)
 
-    if isinstance(stats, int):
-        return stats
-
-    value = stats.get((we, wf))
-    if value is not None:
+    op = operators_map[op]
+    value = _stats.get((op, we, wf), INVALID)
+    if value != INVALID:
         return value
 
+    if op not in flopoco_operators:
+        raise FlopocoMissingImplementationError(
+            'Operator {} has no statistics'.format(op))
     if wf not in wf_range:
         raise FlopocoMissingImplementationError(
             'Precision {} out of range'.format(wf))
@@ -135,4 +117,5 @@ def operator_luts(op, we, wf):
 
 def generate():
     logger.set_context(level=logger.levels.info)
-    _save(default_file, _batch_synth(we_range, wf_range))
+    existing_results = _load(default_file)
+    _save(default_file, _batch_synth(existing_results, we_range, wf_range))
