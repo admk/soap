@@ -45,16 +45,16 @@ def _pool():
 
 
 @timeit
-def _batch_synth(existing_results, we_range, wf_range, overwrite=False):
+def _batch_synth(we_range, wf_range, existing_results=None):
+    existing_results = existing_results or {}
     key_list = [
         key for key in itertools.product(flopoco_operators, we_range, wf_range)
         if key not in existing_results]
     results = _pool().imap_unordered(_para_synth, key_list)
-    results_dict = {}
+    results_dict = dict(existing_results)
     for r in results:
         op, we, wf, value = r
         results_dict[op, we, wf] = value
-    results_dict.update(existing_results)
     return results_dict
 
 
@@ -124,4 +124,4 @@ def operator_luts(op, we, wf):
 def generate():
     logger.set_context(level=logger.levels.info)
     existing_results = _load(default_file)
-    _save(default_file, _batch_synth(existing_results, we_range, wf_range))
+    _save(default_file, _batch_synth(we_range, wf_range, existing_results))
