@@ -8,7 +8,18 @@ from soap.expression.operators import (
 )
 
 
-flopoco_operators = ['FPAdder', 'FPMultiplier', 'FPDiv']
+flopoco_command_map = {
+    'IntAdder': ('{wi}', ),
+    'IntMultiplier': ('{wi}', '{wi}', '{wi}', '1', '1', '0'),
+    'FPAdder': ('{we}', '{wf}'),
+    'FPMultiplier': ('{we}', '{wf}', '{wf}'),
+    'FPSquarer': ('{we}', '{wf}', '{wf}'),
+    'FPDiv': ('{we}', '{wf}'),
+    'FPPow': ('{we}', '{wf}'),
+    'FPExp': ('{we}', '{wf}'),
+    'FPLog': ('{we}', '{wf}', '0'),
+}
+flopoco_operators = tuple(flopoco_command_map)
 operators_map = {
     ADD_OP: 'FPAdder',
     SUBTRACT_OP: 'FPAdder',
@@ -17,13 +28,17 @@ operators_map = {
 }
 
 we_min, we_max = 5, 15
-wf_min, wf_max = 10, 112
 we_range = list(range(we_min, we_max + 1))
+
+wf_min, wf_max = 10, 112
 wf_range = list(range(wf_min, wf_max + 1))
 
-dir_nameectory = 'soap/flopoco/'
-default_file = dir_nameectory + 'luts.pkl'
-template_file = dir_nameectory + 'template.vhdl'
+wi_min, wi_max = 1, 100
+wi_range = list(range(wi_min, wi_max + 1))
+
+directory = 'soap/flopoco/'
+default_file = directory + 'luts.pkl'
+template_file = directory + 'template.vhdl'
 
 device_name = 'Virtex6'
 device_model = 'xc6vlx760'
@@ -44,6 +59,38 @@ def cd(d):
         sh.cd(p)
 
 
+def flopoco_key(fop, we=-1, wf=-1, wi=-1):
+    try:
+        format_tuple = flopoco_command_map[fop]
+    except KeyError:
+        raise ValueError('Unrecognised operator {}'.format(fop))
+    args = [fop]
+    args += [a.format(we=we, wf=wf, wi=wi) for a in format_tuple]
+    return tuple(args)
+
+
+def flopoco(key, file_name=None, dir_name=None):
+    import sh
+
+    file_name = file_name or tempfile.mktemp(suffix='.vhdl', dir='')
+    cmd = ('-target=' + device_name, '-outputfile=' + file_name) + key
+    logger.debug('flopoco: {!r}'.format(cmd))
+
+    dir_name = dir_name or tempfile.mktemp(suffix='/')
+
+    with cd(dir_name):
+        sh.flopoco(*cmd)
+        try:
+            with open(file_name) as fh:
+                if not fh.read():
+                    raise IOError()
+        except (IOError, FileNotFoundError):
+            logger.error('Flopoco failed to generate file ' + file_name)
+            raise
+
+    return file_name, dir_name
+
+
 def get_luts(file_name):
     from bs4 import BeautifulSoup
     with open(file_name, 'r') as f:
@@ -51,48 +98,29 @@ def get_luts(file_name):
         app = f.document.application
         util = app.find('section', stringid='XST_DEVICE_UTILIZATION_SUMMARY')
         luts = util.find('item', stringid='XST_NUMBER_OF_SLICE_LUTS')
-        return int(luts.get('value'))
+        if luts:
+            return int(luts.get('value'))
+        logger.warning('{} requires no LUTs'.format(file_name))
+        return 0
 
 
-def flopoco(op, we, wf, f=None, dir_name=None):
+def xilinx(file_name, dir_name=None):
     import sh
-    flopoco_cmd = []
-    flopoco_cmd += ['-target=' + device_name]
-    dir_name = dir_name or tempfile.mktemp(suffix='/')
-    if f is None:
-        f = tempfile.mktemp(suffix='.vhdl', dir='')
-    flopoco_cmd += ['-outputfile=' + f]
-    if op == 'FPAdder':
-        flopoco_cmd += [op, we, wf]
-    elif op == 'FPMultiplier':
-        flopoco_cmd += [op, we, wf, wf]
-    elif op == 'FPDiv':
-        flopoco_cmd += [op, we, wf]
-    else:
-        raise ValueError('Unrecognised operator {}'.format(op))
-    logger.debug('Flopoco: {}'.format(flopoco_cmd))
-    with cd(dir_name):
-        sh.flopoco(*flopoco_cmd)
-        try:
-            with open(f) as fh:
-                if not fh.read():
-                    raise IOError()
-        except (IOError, FileNotFoundError):
-            logger.error('Flopoco failed to generate file ' + f)
-            raise
-    return f, dir_name
 
-
-def xilinx(f, dir_name=None):
-    import sh
-    file_base = os.path.split(f)[1]
+    file_base = os.path.split(file_name)[1]
     file_base = os.path.splitext(file_base)[0]
-    g = file_base + '.ngc'
+    synth_name = file_base + '.ngc'
+
     cmd = ['run', '-p', device_model]
-    cmd += ['-ifn', f, '-ifmt', 'VHDL']
-    cmd += ['-ofn', g, '-ofmt', 'NGC']
+    cmd += ['-ifn', file_name, '-ifmt', 'VHDL']
+    cmd += ['-ofn', synth_name, '-ofmt', 'NGC']
+    logger.debug('xst: {!r}'.format(cmd))
+
     dir_name = dir_name or tempfile.mktemp(suffix='/')
     with cd(dir_name):
-        logger.debug('Xilinx', repr(cmd))
-        sh.xst(sh.echo(*cmd), _out='out.log', _err='err.log')
+        out_file_name = file_base + '.out.log'
+        err_file_name = file_base + '.err.log'
+
+        sh.xst(sh.echo(*cmd), _out=out_file_name, _err=err_file_name)
+
         return get_luts(file_base + '.ngc_xst.xrpt')

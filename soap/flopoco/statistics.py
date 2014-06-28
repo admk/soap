@@ -5,32 +5,30 @@ import pickle
 from soap import logger
 from soap.common import timeit
 from soap.flopoco.common import (
-    flopoco_operators, operators_map, we_range, wf_range,
-    flopoco, xilinx, default_file
+    flopoco_operators, operators_map, we_range, wf_range, wi_range,
+    flopoco_key, flopoco, xilinx, default_file
 )
 
 
 INVALID = -1
 
 
-def _eval_operator(op, we, wf, f=None, dir_name=None):
-    f, dir_name = flopoco(op, we, wf, f, dir_name)
-    return xilinx(f, dir_name)
+def _eval_operator(key, dir_name=None):
+    file_name, dir_name = flopoco(key)
+    return xilinx(file_name, dir_name)
 
 
 @timeit
-def _para_synth(op_we_wf):
+def _para_synth(key):
     import sh
-    op, we, wf = op_we_wf
     work_dir_name = 'syn_{}'.format(os.getpid())
     try:
-        value = _eval_operator(op, we, wf, f=None, dir_name=work_dir_name)
-        logger.info('Processed operator {}, exponent {}, mantissa {}, LUTs {}'
-                    .format(op, we, wf, value))
-        return op, we, wf, value
+        value = _eval_operator(key, dir_name=work_dir_name)
+        logger.info('Processed {}, LUTs {}'.format(key, value))
+        return key, value
     except sh.ErrorReturnCode:
-        logger.error('Error processing {}, {}, {}'.format(op, we, wf))
-        return op, we, wf, INVALID
+        logger.error('Error processing {}'.format(key))
+        return key, INVALID
 
 
 _pool_ = None
@@ -47,14 +45,27 @@ def _pool():
 @timeit
 def _batch_synth(we_range, wf_range, existing_results=None):
     existing_results = existing_results or {}
-    key_list = [
-        key for key in itertools.product(flopoco_operators, we_range, wf_range)
-        if key not in existing_results]
+
+    logger.info('Generating synthesis schedule...')
+    iterator = itertools.product(
+        flopoco_operators, we_range, wf_range, wi_range)
+    key_list = []
+    for key in iterator:
+        key = flopoco_key(*key)
+        if key in existing_results:
+            continue
+        if key in key_list:
+            continue
+        key_list.append(key)
+
+    logger.info('Synthesizing...')
     results = _pool().imap_unordered(_para_synth, key_list)
     results_dict = dict(existing_results)
     for r in results:
-        op, we, wf, value = r
-        results_dict[op, we, wf] = value
+        key, value = r
+        results_dict[key] = value
+
+    logger.info('Synthesis complete')
     return results_dict
 
 
@@ -91,7 +102,7 @@ class FlopocoMissingImplementationError(Exception):
 _stats = None
 
 
-def operator_luts(op, we, wf):
+def operator_luts(op, we=None, wf=None, wi=None):
     global _stats
     if not _stats:
         if not os.path.isfile(default_file):
@@ -100,7 +111,7 @@ def operator_luts(op, we, wf):
         _stats = _load(default_file)
 
     fop = operators_map.get(op)
-    value = _stats.get((fop, we, wf), INVALID)
+    value = _stats.get(flopoco_key(fop, we, wf, wi), INVALID)
     if value != INVALID:
         return value
 

@@ -9,7 +9,11 @@
   operators:
     - [ ] Comparisons
     - [ ] Branches (Multiplexer?)
-    - [ ] Divisions
+    - [X] Divisions
+    - [X] Squarer
+    - [X] Power
+    - [X] Exponentiation
+    - [X] Logarithm
 * [X] Make use of loop invariants in optimisation
 * [ ] Relational domain (if possible), because currently branch constraints
   could be too restrictive to be useful, and sometimes constraints cannot
