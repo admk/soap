@@ -13,18 +13,18 @@ from soap.flopoco.common import (
 INVALID = -1
 
 
-def _eval_operator(op, we, wf, f=None, dir=None):
-    dir, f = flopoco(op, we, wf, f, dir)
-    return xilinx(f, dir)
+def _eval_operator(op, we, wf, f=None, dir_name=None):
+    f, dir_name = flopoco(op, we, wf, f, dir_name)
+    return xilinx(f, dir_name)
 
 
 @timeit
 def _para_synth(op_we_wf):
     import sh
     op, we, wf = op_we_wf
-    work_dir = 'syn_{}'.format(os.getpid())
+    work_dir_name = 'syn_{}'.format(os.getpid())
     try:
-        value = _eval_operator(op, we, wf, f=None, dir=work_dir)
+        value = _eval_operator(op, we, wf, f=None, dir_name=work_dir_name)
         logger.info('Processed operator {}, exponent {}, mantissa {}, LUTs {}'
                     .format(op, we, wf, value))
         return op, we, wf, value
@@ -54,6 +54,7 @@ def _batch_synth(existing_results, we_range, wf_range, overwrite=False):
     for r in results:
         op, we, wf, value = r
         results_dict[op, we, wf] = value
+    results_dict.update(existing_results)
     return results_dict
 
 
@@ -98,21 +99,26 @@ def operator_luts(op, we, wf):
                 'No flopoco statistics available, please consider regenerate.')
         _stats = _load(default_file)
 
-    op = operators_map[op]
-    value = _stats.get((op, we, wf), INVALID)
+    fop = operators_map.get(op)
+    value = _stats.get((fop, we, wf), INVALID)
     if value != INVALID:
         return value
 
-    if op not in flopoco_operators:
+    if fop not in flopoco_operators:
         raise FlopocoMissingImplementationError(
             'Operator {} has no statistics'.format(op))
     if wf not in wf_range:
         raise FlopocoMissingImplementationError(
             'Precision {} out of range'.format(wf))
-    if we not in we_range:
+    if we > max(we_range):
         raise FlopocoMissingImplementationError(
             'Exponent width {} out of range'.format(we))
-    return operator_luts(op, we + 1, wf)
+    try:
+        return operator_luts(op, we + 1, wf)
+    except FlopocoMissingImplementationError:
+        raise FlopocoMissingImplementationError(
+            'Failed to get statistics for operator {} with exponent and '
+            'mantissa widths {}, {}'.format(op, we, wf))
 
 
 def generate():
