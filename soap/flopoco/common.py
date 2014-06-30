@@ -3,9 +3,7 @@ import tempfile
 from contextlib import contextmanager
 
 from soap import logger
-from soap.expression.operators import (
-    ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP
-)
+from soap.expression import operators
 
 
 flopoco_command_map = {
@@ -21,10 +19,18 @@ flopoco_command_map = {
 }
 flopoco_operators = tuple(flopoco_command_map)
 operators_map = {
-    ADD_OP: 'FPAdder',
-    SUBTRACT_OP: 'FPAdder',
-    MULTIPLY_OP: 'FPMultiplier',
-    DIVIDE_OP: 'FPDiv',
+    operators.ADD_OP: 'FPAdder',
+    operators.SUBTRACT_OP: 'FPAdder',
+    operators.MULTIPLY_OP: 'FPMultiplier',
+    operators.DIVIDE_OP: 'FPDiv',
+    operators.LESS_OP: 'FPAdder',
+    operators.LESS_EQUAL_OP: 'FPAdder',
+    operators.GREATER_OP: 'FPAdder',
+    operators.GREATER_EQUAL_OP: 'FPAdder',
+    operators.EQUAL_OP: 'FPAdder',
+    operators.NOT_EQUAL_OP: 'FPAdder',
+    operators.TERNARY_SELECT_OP: 'Multiplexer',
+    operators.FIXPOINT_OP: 'Null',
 }
 
 we_min, we_max = 5, 15

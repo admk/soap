@@ -110,7 +110,13 @@ def operator_luts(op, we=None, wf=None, wi=None):
                 'No flopoco statistics available, please consider regenerate.')
         _stats = _load(default_file)
 
-    fop = operators_map.get(op)
+    fop = operators_map[op]
+
+    if fop == 'Multiplexer':
+        return (we or 0) + (wf or 0) + (wi or 0)
+    if fop == 'Null':
+        return 0
+
     value = _stats.get(flopoco_key(fop, we, wf, wi), INVALID)
     if value != INVALID:
         return value
@@ -127,9 +133,14 @@ def operator_luts(op, we=None, wf=None, wi=None):
     try:
         return operator_luts(op, we + 1, wf)
     except FlopocoMissingImplementationError:
-        raise FlopocoMissingImplementationError(
-            'Failed to get statistics for operator {} with exponent and '
-            'mantissa widths {}, {}'.format(op, we, wf))
+        pass
+    try:
+        return operator_luts(op, we, wf + 1)
+    except FlopocoMissingImplementationError:
+        pass
+    raise FlopocoMissingImplementationError(
+        'Failed to get statistics for operator {} with exponent and mantissa '
+        'widths {}, {}'.format(op, we, wf))
 
 
 def generate():

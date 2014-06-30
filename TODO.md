@@ -5,10 +5,10 @@
     - [X] `SelectExpr`
     - [X] `FixExpr`
     - [X] `MetaState`
-* [ ] Resource usage statistics generation with XST for the following
+* [X] Resource usage statistics generation with XST for the following
   operators:
-    - [ ] Comparisons
-    - [ ] Branches (Multiplexer?)
+    - [X] Comparisons
+    - [X] Branches (Multiplexer?)
     - [X] Divisions
     - [X] Squarer
     - [X] Power
