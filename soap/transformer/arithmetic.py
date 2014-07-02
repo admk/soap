@@ -4,8 +4,7 @@
 """
 from patmat.mimic import Val
 
-from soap.expression import operators
-from soap.expression.common import expression_factory
+from soap.expression import expression_factory, operators, SelectExpr
 from soap.transformer import pattern
 from soap.transformer.core import TreeTransformer
 from soap.semantics.functions import arith_eval
@@ -39,13 +38,41 @@ def distributivity_distribute_subtraction_func(op, args):
     args = [expression_factory(operators.UNARY_SUBTRACT_OP, a) for a in args]
     return expression_factory(op, *args)
 
-distributivity_distribute_subtraction = (
-    pattern.compile(pattern.ExprMimic(
-        op=operators.UNARY_SUBTRACT_OP,
-        args=[pattern.ExprMimic(op=Val('op'), args=Val('args'))])),
-    pattern.compile(distributivity_distribute_subtraction_func),
-    'distributivity_distribute_subtraction'
+
+def distributivity_distribute_select_func(op, args, da):
+    bool_expr, true_expr, false_expr = args
+    return SelectExpr(
+        bool_expr,
+        expression_factory(op, true_expr, da),
+        expression_factory(op, false_expr, da))
+
+
+distributivity_distribute_unary_subtraction_addition = (
+    pattern.compile('-(a + b)'),
+    pattern.compile('-a - b'),
+    'distributivity_distribute_unary_subtraction_addition'
 )
+distributivity_distribute_unary_subtraction_subtraction = (
+    pattern.compile('-(a - b)'),
+    pattern.compile('-a + b'),
+    'distributivity_distribute_unary_subtraction_addition'
+)
+distributivity_distribute_unary_subtraction_multiplication = (
+    pattern.compile('-(a * b)'),
+    pattern.compile('-a * b', 'a * -b'),
+    'distributivity_distribute_unary_subtraction_multiplication'
+)
+distributivity_distribute_unary_subtraction_division = (
+    pattern.compile('-(a / b)'),
+    pattern.compile('-a / b', 'a / -b'),
+    'distributivity_distribute_unary_subtraction_division'
+)
+distributivity_distribute_unary_subtraction_select = (
+    pattern.compile('-(b if c else d)'),
+    pattern.compile('-b if c else -d'),
+    'distributivity_distribute_unary_subtraction_select'
+)
+
 distributivity_distribute_multiplication = (
     pattern.compile('(a + b) * c'),
     pattern.compile('a * c + b * c'),
@@ -55,6 +82,15 @@ distributivity_distribute_division = (
     pattern.compile('(a + b) / c'),
     pattern.compile('a / c + b / c'),
     'distributivity_distribute_division'
+)
+distributivity_distribute_select = (
+    pattern.compile(pattern.ExprMimic(
+        op=Val('op'), args=[
+            pattern.ExprMimic(
+                op=operators.TERNARY_SELECT_OP, args=Val('args')),
+            Val('da')])),
+    pattern.compile(distributivity_distribute_select_func),
+    'distributivity_distribute_select'
 )
 
 distributivity_collect_multiplication = (
@@ -86,6 +122,36 @@ distributivity_collect_division_2 = (
     pattern.compile('a / c + b / d'),
     pattern.compile('(a * d + b * c) / (c * d)'),
     'distributivity_collect_division_2'
+)
+distributivity_collect_select_addition = (
+    pattern.compile('(a + d) if b else (c + d)'),
+    pattern.compile('(a if b else c) + d'),
+    'distributivity_collect_select_addition'
+)
+distributivity_collect_select_subtraction_1 = (
+    pattern.compile('(a - d) if b else (c - d)'),
+    pattern.compile('(a if b else c) - d'),
+    'distributivity_collect_select_subtraction_1'
+)
+distributivity_collect_select_subtraction_2 = (
+    pattern.compile('(d - a) if b else (d - c)'),
+    pattern.compile('d - (a if b else c)'),
+    'distributivity_collect_select_subtraction_2'
+)
+distributivity_collect_select_multiplication = (
+    pattern.compile('(a * d) if b else (c * d)'),
+    pattern.compile('(a if b else c) * d'),
+    'distributivity_collect_select_multiplication'
+)
+distributivity_collect_select_division_1 = (
+    pattern.compile('(a / d) if b else (c / d)'),
+    pattern.compile('(a if b else c) / d'),
+    'distributivity_collect_select_division_1'
+)
+distributivity_collect_select_division_2 = (
+    pattern.compile('(d / a) if b else (d / c)'),
+    pattern.compile('d / (a if b else c)'),
+    'distributivity_collect_select_division_2'
 )
 
 inversive_division = (
@@ -164,23 +230,38 @@ class ArithTreeTransformer(TreeTransformer):
             distributivity_collect_division,
             distributivity_collect_division_1,
             distributivity_collect_division_2,
+            distributivity_distribute_select,
         ],
         operators.SUBTRACT_OP: [
             negation,
-            distributivity_distribute_subtraction,
+            distributivity_distribute_select,
         ],
         operators.MULTIPLY_OP: [
             associativity_multiplication,
             distributivity_distribute_multiplication,
+            distributivity_distribute_select,
         ],
         operators.DIVIDE_OP: [
             associativity_division,
             distributivity_distribute_division,
+            distributivity_distribute_select,
             inversive_division,
         ],
         operators.UNARY_SUBTRACT_OP: [
-            distributivity_distribute_subtraction,
-        ]
+            distributivity_distribute_unary_subtraction_addition,
+            distributivity_distribute_unary_subtraction_subtraction,
+            distributivity_distribute_unary_subtraction_multiplication,
+            distributivity_distribute_unary_subtraction_division,
+            distributivity_distribute_unary_subtraction_select,
+        ],
+        operators.TERNARY_SELECT_OP: [
+            distributivity_collect_select_addition,
+            distributivity_collect_select_subtraction_1,
+            distributivity_collect_select_subtraction_2,
+            distributivity_collect_select_multiplication,
+            distributivity_collect_select_division_1,
+            distributivity_collect_select_division_2,
+        ],
     }
     reduction_rules = {
         operators.ADD_OP: [
@@ -204,7 +285,7 @@ class ArithTreeTransformer(TreeTransformer):
         operators.UNARY_SUBTRACT_OP: [
             double_negation_reduction,
             zero_reduction_subtraction,
-        ]
+        ],
     }
 
 

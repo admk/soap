@@ -54,8 +54,9 @@ class UnaryArithExpr(UnaryExpression, ArithExpr):
     __slots__ = ()
 
     def __str__(self):
+        arg, = self._args_to_str()
         if self.op == UNARY_SUBTRACT_OP:
-            return '-{}'.format(self.a)
+            return '-{}'.format(arg)
         return super().__str__()
 
 
