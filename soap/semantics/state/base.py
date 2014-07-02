@@ -15,7 +15,7 @@ class BaseState(base_dispatcher('visit', 'transition')):
         return self
 
     def visit_AssignFlow(self, flow):
-        return self[flow.var:arith_eval(self, flow.expr)]
+        return self[flow.var:arith_eval(flow.expr, self)]
 
     def visit_IfFlow(self, flow):
         bool_expr = flow.conditional_expr

@@ -1,3 +1,5 @@
+import collections
+
 from soap.expression import (
     Expression, SelectExpr, FixExpr, Variable, OutputVariableTuple, parse
 )
@@ -68,24 +70,34 @@ class MetaState(BaseState, map(None, Expression)):
             mapping[var] = value
         return self.__class__(mapping)
 
+    @staticmethod
+    def _input_vars(meta_state, var):
+        in_vars = set()
+        next_vars = {var}
+        while next_vars:
+            var = next_vars.pop()
+            expr = meta_state.get(var)
+            if expr is None:
+                continue
+            expr_vars = expr.vars()
+            next_vars |= expr_vars - in_vars
+            in_vars |= expr_vars
+        return in_vars
+
     def visit_WhileFlow(self, flow):
         bool_expr = flow.conditional_expr
         loop_flow = flow.loop_flow
-
         bool_expr_vars = bool_expr.vars()
-        # variables changed in loop
-        loop_vars = loop_flow.vars(input=False)
-        # variables required by loop to iterate
-        iter_vars = bool_expr_vars & loop_vars
 
         # loop_state for all output variables
+        loop_vars = loop_flow.vars(input=False)
         id_state = self.__class__({k: k for k in loop_vars})
         loop_state = id_state.transition(loop_flow)
 
         mapping = dict(self)
         for var in loop_vars:
             # local loop/init variables
-            local_loop_vars = iter_vars | {var}
+            local_loop_vars = self._input_vars(loop_state, var)
             local_init_vars = bool_expr_vars | local_loop_vars
             # local loop/init states
             local_loop_state = self.__class__(
@@ -95,6 +107,7 @@ class MetaState(BaseState, map(None, Expression)):
             # fixpoint expression
             mapping[var] = FixExpr(
                 bool_expr, local_loop_state, var, local_init_state)
+
         return self.__class__(mapping)
 
 
