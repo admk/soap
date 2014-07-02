@@ -1,10 +1,9 @@
 # Ultra Short Term TODOs -- Transforms
 
-* [ ] Resource usage statistics generation with XST for the following
-  operators:
-    - [ ] Comparisons
-    - [ ] Branches (Multiplexer?)
-    - [ ] Divisions
+* [ ] Equivalence rules for the following operator/expression types
+    - [ ] `SelectExpr`
+        - [ ] Distributivity
+        - [ ] Commutativity?
 * [ ] Relational domain (if possible), because currently branch constraints
   could be too restrictive to be useful, and sometimes constraints cannot
   be discovered
@@ -37,19 +36,14 @@
 
 # Future Considerations
 
-* [ ] General program transform
-    - [X] Metasemantics
-    - [ ] Transforms
-        - [ ] Extend equivalent relations
-        - [X] Update `greedy_frontier`
-    - [ ] Analysis
-        - [X] Resource usage
-        - [X] Error analysis
-        - [ ] Latency
-    - [X] Code generation
+* [ ] Latency analysis
 * [ ] Multiple mantissa widths
 * [ ] Fixed point format
 * [ ] Fix and write more test cases
+* [ ] More operators, needs parsing, transform rules, metasemantics analysis,
+  numerical analysis, resource usage analysis
+    - [ ] Comparisons?
+    - [ ] Power, exponentiation, logarithm
 
 
 # Reminders
@@ -87,3 +81,12 @@
   (unrolling) preserves floating-point semantics (same error) but double
   the resource usage, thus optimised away by the Pareto frontier.
 * [X] Make use of loop invariants in optimisation
+* [X] Resource usage statistics generation with XST for the following
+  operators:
+    - [X] Comparisons
+    - [X] Branches (Multiplexer?)
+    - [X] Divisions
+    - [X] Squarer
+    - [X] Power
+    - [X] Exponentiation
+    - [X] Logarithm
