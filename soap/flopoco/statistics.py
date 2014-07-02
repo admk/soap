@@ -114,6 +114,8 @@ def operator_luts(op, we=None, wf=None, wi=None):
 
     if fop == 'Multiplexer':
         return (we or 0) + (wf or 0) + (wi or 0)
+    if fop == 'OneLUT':
+        return 1
     if fop == 'Null':
         return 0
 

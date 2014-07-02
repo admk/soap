@@ -1,9 +1,10 @@
 # Ultra Short Term TODOs -- Transforms
 
-* [ ] Equivalence rules for the following operator/expression types
-    - [ ] `SelectExpr`
-        - [ ] Distributivity
-        - [ ] Commutativity?
+* [X] Equivalence rules for the following operator/expression types
+    - [X] `SelectExpr`
+        - [X] Distributivity
+        - [X] Commutativity?
+* [ ] Integer types resource usage estimation
 * [ ] Relational domain (if possible), because currently branch constraints
   could be too restrictive to be useful, and sometimes constraints cannot
   be discovered

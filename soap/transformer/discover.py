@@ -10,6 +10,7 @@ from soap.common import base_dispatcher
 from soap.context import context as global_context
 from soap.expression import expression_factory, SelectExpr, FixExpr
 from soap.semantics.state import MetaState
+from soap.semantics.state.fusion import fusion
 from soap.semantics.functions import (
     arith_eval_meta_state, fixpoint_eval, expand_expr
 )
@@ -125,7 +126,7 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
         state_set = set()
         for expr_list in itertools.product(*eq_expr_list):
             eq_state = {var: expr for var, expr in zip(var_list, expr_list)}
-            state_set.add(MetaState(eq_state))
+            state_set.add(fusion(eq_state, out_vars))
         state_set = self.filter(state_set, state, context)
 
         return state_set

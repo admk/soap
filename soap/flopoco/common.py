@@ -31,6 +31,7 @@ operators_map = {
     operators.NOT_EQUAL_OP: 'FPAdder',
     operators.TERNARY_SELECT_OP: 'Multiplexer',
     operators.FIXPOINT_OP: 'Null',
+    operators.UNARY_SUBTRACT_OP: 'OneLUT',
 }
 
 we_min, we_max = 5, 15
