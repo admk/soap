@@ -1,0 +1,46 @@
+statement = (_ single_statement _ statement) / _
+single_statement =
+    skip_statement / assign_statement / if_statement / while_statement
+
+skip_statement = 'skip' _ ';'
+
+assign_statement =
+    variable _ ':=' _ arithmetic_expression _ ';'
+
+if_statement =
+    ('if' _ '(' _ boolean_expression _ ')' _
+     '(' _ statement _ ')' _ '(' _ statement _ ')' _ ';') /
+    ('if' _ '(' _ boolean_expression _ ')' _
+     '(' _ statement _ ')' _ ';')
+
+while_statement =
+    'while' _ '(' _ boolean_expression _ ')' _
+    '(' _ statement _ ')' _ ';'
+
+boolean_expression =
+    arithmetic_expression _
+    ('<' / '<=' / '==' / '>=' / '>' / '!=') _
+    arithmetic_expression
+
+arithmetic_expression =
+    factor _ ((add_expr / sub_expr) _)*
+
+factor =
+    primary _ ((pow_expr / mul_expr / div_expr) _)*
+
+primary =
+    ('(' _ arithmetic_expression _ ')') /
+    unary_sub_expr / number / variable
+
+unary_sub_expr = '-' _ primary
+
+add_expr = '+' _ factor
+sub_expr = '-' _ factor
+pow_expr = '^' _ factor
+mul_expr = '*' _ factor
+div_expr = '/' _ factor
+
+number = ~'[0-9]+'
+variable = ~'[a-zA-Z0-9]+'
+
+_ = ~'\s*'m
