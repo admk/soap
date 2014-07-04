@@ -22,8 +22,8 @@ import gmpy2
 
 from soap.context import context
 from soap.analysis import analyse, frontier, Plot, plot, analyse_and_plot
-from soap.expression import expr
-from soap.program import flow, Flow
+from soap.parser import pyexpr, pyflow, parse
+from soap.program import Flow
 from soap.semantics import (
     IntegerInterval, FloatInterval, FractionInterval, ErrorSemantics,
     BoxState, IdentifierBoxState, MetaState, flow_to_meta_state,
