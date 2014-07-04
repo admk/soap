@@ -30,9 +30,6 @@ class _VisitorParser(nodes.NodeVisitor):
         _1, value, _2 = children
         return value
 
-    def _lift_literal(self, node, children):
-        return super()._lift_middle(node, children).literal
-
     def _lift_text(self, node, _):
         return node.text
 
@@ -61,14 +58,14 @@ class _VisitorParser(nodes.NodeVisitor):
         return IdentityFlow()
 
     def visit_assign_statement(self, node, children):
-        var, assign_literal, expr, semicolon = children
+        var, assign, expr, semicolon = children
         return AssignFlow(var, expr)
 
     visit_if_statement = _lift_first
     visit_if_block = _lift_child
 
     def visit_if_then_block(self, node, children):
-        if_literal, bool_expr, true_flow = children
+        if_lit, bool_expr, true_flow = children
         return IfFlow(bool_expr, true_flow, IdentityFlow())
 
     def visit_if_else_block(self, node, children):
@@ -78,7 +75,7 @@ class _VisitorParser(nodes.NodeVisitor):
         return IfFlow(bool_expr, true_flow, false_flow)
 
     def visit_while_statement(self, node, children):
-        while_literal, bool_expr, loop_flow, semicolon = children
+        while_lit, bool_expr, loop_flow, semicolon = children
         return WhileFlow(bool_expr, loop_flow)
 
     visit_boolean_block = visit_code_block = _lift_middle
@@ -94,15 +91,22 @@ class _VisitorParser(nodes.NodeVisitor):
             expr = expression_factory(each_op, expr, each_factor)
         return expr
 
-    visit_arithmetic_expression = visit_factor = _visit_concat_expr
-    visit_primary = _lift_child
+    visit_arithmetic_expression = _lift_child
+
+    def visit_select(self, node, children):
+        bool_expr, q_lit, true_expr, c_lit, false_expr = children
+        return expression_factory(
+            operators.TERNARY_SELECT_OP, bool_expr, true_expr, false_expr)
+
+    visit_term = visit_factor = _visit_concat_expr
+    visit_atom = _lift_child
     visit_parened = _lift_middle
 
     def visit_unary_expr(self, node, children):
-        op, primary = children
+        op, atom = children
         if op == operators.SUBTRACT_OP:
             op = operators.UNARY_SUBTRACT_OP
-        return expression_factory(op, primary)
+        return expression_factory(op, atom)
 
     def _visit_maybe_list(self, node, children):
         expr_list = self._lift_child(node, children)
@@ -118,40 +122,41 @@ class _VisitorParser(nodes.NodeVisitor):
     visit_sum_list = visit_prod_list = _visit_list
     visit_sum_expr = visit_prod_expr = _lift_children
 
-    visit_skip_literal = visit_assign_literal = _lift_dontcare
-    visit_if_literal = visit_while_literal = _lift_dontcare
-    visit_left_paren = visit_right_paren = _lift_dontcare
-    visit_semicolon = _lift_dontcare
+    visit_skip = visit_assign = visit_if = visit_while = _lift_dontcare
+    visit_left_paren = visit_right_paren = visit_semicolon = _lift_dontcare
+    visit_question = visit_colon = _lift_dontcare
 
     visit_boolean_operator = _lift_child
-    visit_sum_operator = visit_prod_operator = _lift_child
 
-    _operator_literal_map = {
-        'add_literal': operators.ADD_OP,
-        'sub_literal': operators.SUBTRACT_OP,
-        'mul_literal': operators.MULTIPLY_OP,
-        'div_literal': operators.DIVIDE_OP,
-        'pow_literal': NotImplemented,
-        'lt_literal': operators.LESS_OP,
-        'le_literal': operators.LESS_EQUAL_OP,
-        'ge_literal': operators.GREATER_EQUAL_OP,
-        'gt_literal': operators.GREATER_OP,
-        'eq_literal': operators.EQUAL_OP,
-        'ne_literal': operators.NOT_EQUAL_OP,
+    _operator_map = {
+        'add': operators.ADD_OP,
+        'sub': operators.SUBTRACT_OP,
+        'mul': operators.MULTIPLY_OP,
+        'div': operators.DIVIDE_OP,
+        'pow': NotImplemented,
+        'lt': operators.LESS_OP,
+        'le': operators.LESS_EQUAL_OP,
+        'ge': operators.GREATER_EQUAL_OP,
+        'gt': operators.GREATER_OP,
+        'eq': operators.EQUAL_OP,
+        'ne': operators.NOT_EQUAL_OP,
     }
 
-    def _visit_operator_literal(self, node, children):
-        return self._operator_literal_map[node.expr_name]
+    def _visit_operator(self, node, children):
+        return self._operator_map[node.expr_name]
 
-    visit_add_literal = visit_sub_literal = _visit_operator_literal
-    visit_mul_literal = visit_div_literal = _visit_operator_literal
-    visit_pow_literal = _visit_operator_literal
+    visit_lt = visit_le = visit_ge = visit_gt = _visit_operator
+    visit_eq = visit_ne = _visit_operator
 
-    visit_lt_literal = visit_le_literal = _visit_operator_literal
-    visit_ge_literal = visit_gt_literal = _visit_operator_literal
-    visit_eq_literal = visit_ne_literal = _visit_operator_literal
+    visit_sum_operator = visit_prod_operator = _lift_child
 
-    visit_number = visit_variable = _lift_middle
+    visit_add = visit_sub = visit_mul = visit_div = visit_pow = _visit_operator
+
+    def visit_variable(self, node, children):
+        name = self._lift_middle(node, children)
+        return expression_factory(name)
+
+    visit_number = _lift_middle
     visit_number_regex = visit_variable_regex = _lift_text
     visit__ = _lift_dontcare
 
