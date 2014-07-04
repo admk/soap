@@ -1,5 +1,6 @@
-# program
-# =======
+# =========
+#  program
+# =========
 
 statement =
     compound_statement /
@@ -26,8 +27,9 @@ boolean_block = left_paren boolean_expression right_paren
 code_block = left_paren statement right_paren
 
 
-# expressions
-# ===========
+# =============
+#  expressions 
+# =============
 
 boolean_expression =
     arithmetic_expression boolean_operator arithmetic_expression
@@ -42,8 +44,9 @@ sum_expr = sum_operator factor
 prod_expr = prod_operator primary
 
 
-# literals
-# ========
+# ==========
+#  literals
+# ==========
 
 skip_literal   = _ 'skip' _
 assign_literal = _ ':=' _
@@ -73,8 +76,9 @@ div_literal = _ '/' _
 pow_literal = _ '^' _
 
 
-# regexes
-# =======
+# =========
+#  regexes
+# =========
 
 number = _ number_regex _
 variable = _ variable_regex _
