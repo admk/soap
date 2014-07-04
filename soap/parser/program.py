@@ -41,7 +41,7 @@ class _VisitorParser(nodes.NodeVisitor):
 
     def generic_visit(self, node, children):
         if not node.expr_name:
-            return children
+            return
         raise TypeError('Do not recognize node {!r}'.format(node))
 
     visit_statement = visit_single_statement = _lift_child
@@ -97,13 +97,26 @@ class _VisitorParser(nodes.NodeVisitor):
     visit_arithmetic_expression = visit_factor = _visit_concat_expr
     visit_primary = _lift_child
     visit_parened = _lift_middle
-    visit_sum_expr = visit_prod_expr = _lift_children
 
     def visit_unary_expr(self, node, children):
         op, primary = children
         if op == operators.SUBTRACT_OP:
             op = operators.UNARY_SUBTRACT_OP
         return expression_factory(op, primary)
+
+    def _visit_maybe_list(self, node, children):
+        expr_list = self._lift_child(node, children)
+        if expr_list is None:
+            return []
+        return expr_list
+
+    def _visit_list(self, node, children):
+        expr, expr_list = children
+        return [expr] + expr_list
+
+    visit_maybe_sum_list = visit_maybe_prod_list = _visit_maybe_list
+    visit_sum_list = visit_prod_list = _visit_list
+    visit_sum_expr = visit_prod_expr = _lift_children
 
     visit_skip_literal = visit_assign_literal = _lift_dontcare
     visit_if_literal = visit_while_literal = _lift_dontcare

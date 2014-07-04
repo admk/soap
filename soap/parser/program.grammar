@@ -31,17 +31,21 @@ code_block = left_paren statement right_paren
 #  expressions 
 # =============
 
-boolean_expression =
+boolean_expression    =
     arithmetic_expression boolean_operator arithmetic_expression
+arithmetic_expression = factor maybe_sum_list
 
-arithmetic_expression = factor sum_expr*
-factor = primary prod_expr*
+factor  = primary maybe_prod_list
 primary = parened / unary_expr / number / variable
 parened = left_paren arithmetic_expression right_paren
 
-unary_expr = sub_literal primary
-sum_expr = sum_operator factor
-prod_expr = prod_operator primary
+unary_expr      = sub_literal primary
+maybe_sum_list  = sum_list / _
+sum_list        = sum_expr maybe_sum_list
+sum_expr        = sum_operator factor
+maybe_prod_list = prod_list / _
+prod_list       = prod_expr maybe_prod_list
+prod_expr       = prod_operator primary
 
 
 # ==========
