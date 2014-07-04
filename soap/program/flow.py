@@ -152,7 +152,7 @@ class IfFlow(Flow):
         template = Template(_code_gobble("""
             if ({# flow.conditional_expr #}) (
             {# true_format #}){% if flow.false_flow %} (
-            {# false_format #});{% end %}{% if state %}
+            {# false_format #}){% end %}; {% if state %}
             {# join_format #}{% end %}
             """))
         return template.render(
@@ -203,7 +203,7 @@ class WhileFlow(Flow):
             """)).render(render_kwargs))
         template = Template(_code_gobble("""
             while ({# flow.conditional_expr #}) (
-            {# loop_format #});{% if state %}
+            {# loop_format #}); {% if state %}
             {# exit_format #}{% end %}"""))
         return template.render(render_kwargs, loop_format=loop_format)
 
