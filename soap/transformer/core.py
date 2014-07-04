@@ -11,7 +11,7 @@ from soap import logger
 from soap.common import cached
 from soap.expression.common import expression_factory, is_expression
 from soap.expression.depth import crop, stitch
-from soap.expression.parser import parse
+from soap.parser import parse
 from soap.transformer import pattern
 
 

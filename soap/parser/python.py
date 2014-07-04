@@ -1,13 +1,12 @@
-"""
-.. module:: soap.expression.parser
-    :synopsis: Parser for class:`soap.expression.Expr`.
-"""
 import ast
 
 from soap.expression.operators import (
     ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP,
     EQUAL_OP, NOT_EQUAL_OP, GREATER_OP, LESS_OP, GREATER_EQUAL_OP,
     LESS_EQUAL_OP, UNARY_NEGATION_OP, AND_OP, OR_OP, TERNARY_SELECT_OP,
+)
+from soap.program.flow import (
+    IdentityFlow, AssignFlow, CompositionalFlow, IfFlow, WhileFlow
 )
 
 
@@ -87,7 +86,33 @@ def ast_to_expr(t, s):
     raise_parser_error('Unknown token %s' % t, s, t)
 
 
-def parse(s):
+def ast_to_flow(prog_ast, prog_str):
+    """Converts abstract syntax trees into program flow :class:`Flow`
+    instances."""
+    flow = CompositionalFlow()
+    for stmt in prog_ast:
+        if isinstance(stmt, ast.Assign):
+            flow += AssignFlow(
+                ast_to_expr(stmt.targets.pop(), prog_str),
+                ast_to_expr(stmt.value, prog_str))
+        elif isinstance(stmt, ast.If):
+            flow += IfFlow(
+                ast_to_expr(stmt.test, prog_str),
+                ast_to_flow(stmt.body, prog_str),
+                ast_to_flow(stmt.orelse, prog_str))
+        elif isinstance(stmt, ast.While):
+            flow += WhileFlow(
+                ast_to_expr(stmt.test, prog_str),
+                ast_to_flow(stmt.body, prog_str))
+        elif isinstance(stmt, ast.Pass):
+            flow += IdentityFlow()
+        else:
+            raise_parser_error(
+                'Unknown statement {}'.format(stmt), prog_str, stmt)
+    return flow or IdentityFlow()
+
+
+def pyexpr(s):
     """Parses a string into an instance of class `cls`.
 
     :param s: a string with valid syntax.
@@ -101,3 +126,7 @@ def parse(s):
         if type(e) is not ParserSyntaxError:
             raise ParserSyntaxError(e)
         raise e
+
+
+def pyflow(prog_str):
+    return ast_to_flow(ast.parse(prog_str).body, prog_str)

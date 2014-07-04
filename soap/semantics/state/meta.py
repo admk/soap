@@ -1,7 +1,5 @@
-import collections
-
 from soap.expression import (
-    Expression, SelectExpr, FixExpr, Variable, OutputVariableTuple, parse
+    Expression, SelectExpr, FixExpr, Variable, OutputVariableTuple
 )
 from soap.label.base import Label
 from soap.lattice.map import map
@@ -26,6 +24,7 @@ class MetaState(BaseState, map(None, Expression)):
         if top or bottom:
             return Expression(top=top, bottom=bottom)
         if isinstance(value, str):
+            from soap.parser import parse
             return parse(value)
         if isinstance(value, (Label, Expression)):
             return value
@@ -113,6 +112,6 @@ class MetaState(BaseState, map(None, Expression)):
 
 def flow_to_meta_state(flow):
     if isinstance(flow, str):
-        from soap.program import parser
-        flow = parser.parse(flow)
+        from soap.parser import pyflow
+        flow = pyflow(flow)
     return to_meta_state(flow)

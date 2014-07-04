@@ -8,7 +8,7 @@ from soap.expression.common import (
     is_expression, is_variable, expression_factory
 )
 from soap.expression.operators import ASSOCIATIVITY_OPERATORS
-from soap.expression.parser import parse
+from soap.parser import pyexpr
 from soap.semantics.common import is_constant
 
 
@@ -72,7 +72,7 @@ class ExprConstPropMimic(ExprMimic):
 def compile(*expressions):
     def _compile(expression):
         if isinstance(expression, str):
-            return _compile(parse(expression))
+            return _compile(pyexpr(expression))
         if is_expression(expression):
             return ExprMimic(
                 expression.op, [_compile(a) for a in expression.args])

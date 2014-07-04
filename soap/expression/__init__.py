@@ -25,7 +25,3 @@ from soap.expression.boolean import (
     BoolExpr, UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr
 )
 from soap.expression.fixpoint import FixExpr
-from soap.expression.parser import parse
-
-
-expr = parse

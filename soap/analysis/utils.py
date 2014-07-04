@@ -7,7 +7,6 @@ import itertools
 
 from soap import logger
 from soap.context import context
-from soap.expression import parse
 
 
 def _analyser(expr_set, var_env, prec=None):
@@ -204,8 +203,6 @@ class Plot(object):
         """
         import time
         from soap.common import invalidate_cache
-        if isinstance(expr, str):
-            expr = parse(expr)
         var_env = var_env or self.var_env
         d = depth or self.depth
         precs = precs or self.precs or [None]
