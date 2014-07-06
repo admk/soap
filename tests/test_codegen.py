@@ -1,9 +1,10 @@
 import unittest
 
-from soap.expression import parse, OutputVariableTuple
-from soap.program import generate, flow
-from soap.semantics import BoxState, IdentifierBoxState, flow_to_meta_state
+from soap.parser import pyflow
+from soap.program import generate
+from soap.semantics import flow_to_meta_state
 from soap.semantics.state.fusion import fusion
+from soap.semantics.functions import label
 
 from examples import test_programs
 
@@ -11,14 +12,14 @@ from examples import test_programs
 class TestCodeGenerator(unittest.TestCase):
 
     def check(self, case):
-        program = flow(case['program'])
+        program = pyflow(case['program'])
 
         print('Original:')
         print(program.format())
 
         state = flow_to_meta_state(program)
         out_vars = case['out_vars']
-        env = fusion(state.label()[1], out_vars)
+        env = fusion(label(state)[1], out_vars)
         code = generate(env, out_vars)
 
         print('Transformed:')

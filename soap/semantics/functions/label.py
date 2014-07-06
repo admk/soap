@@ -1,5 +1,5 @@
 from soap.common import base_dispatcher
-from soap.expression import expression_factory
+from soap.expression import is_expression, expression_factory
 from soap.label import LabelContext
 from soap.semantics.label import LabelSemantics
 
@@ -79,5 +79,6 @@ label = LabelGenerator()
 def luts(expr, out_vars, exponent, mantissa):
     from soap.semantics.state.fusion import fusion
     lab, env = label(expr)
-    env = fusion(env, out_vars)
+    if not is_expression(expr):
+        env = fusion(env, out_vars)
     return LabelSemantics(lab, env).luts(exponent, mantissa)

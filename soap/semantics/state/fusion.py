@@ -268,7 +268,6 @@ def recursive_fusion(env, out_vars):
 
         expr = env.get(var)
         if expr is None or expr.is_bottom():
-            import ipdb; ipdb.set_trace()
             raise KeyError('Node {} has no expression'.format(var))
 
         logger.debug('Node fusion: {}, for expr: {}'.format(var, expr))

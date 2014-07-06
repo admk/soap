@@ -9,13 +9,13 @@ from soap import logger
 from soap.context import context
 
 
-def _analyser(expr_set, var_env, prec=None):
+def _analyser(expr_set, var_env, out_vars, prec):
     from soap.analysis.core import AreaErrorAnalysis
     precs = [prec] if prec else None
-    return AreaErrorAnalysis(expr_set, var_env, precs)
+    return AreaErrorAnalysis(expr_set, var_env, out_vars, precs)
 
 
-def analyse(expr_set, var_env, prec=None, vary_width=False):
+def analyse(expr_set, var_env, out_vars=None, prec=None, vary_width=False):
     """Provides area and error analysis of expressions with input ranges
     and precisions.
 
@@ -24,14 +24,16 @@ def analyse(expr_set, var_env, prec=None, vary_width=False):
     :param var_env: The ranges of input variables.
     :type var_env: dictionary containing mappings from variables to
         :class:`soap.semantics.error.Interval`
+    :param out_vars: The output variables of the metastate
+    :type out_vars: :class:`collections.Sequence`
     :param precs: Precisions used to evaluate the expressions, defaults to
         single precision.
     :type precs: int or a list of int
     """
-    return _analyser(expr_set, var_env, prec).analyse()
+    return _analyser(expr_set, var_env, out_vars, prec).analyse()
 
 
-def frontier(expr_set, var_env, prec=None, vary_width=None):
+def frontier(expr_set, var_env, out_vars, prec=None, vary_width=None):
     """Provides the Pareto frontier of the area and error analysis of
     expressions with input ranges and precisions.
 
@@ -40,11 +42,13 @@ def frontier(expr_set, var_env, prec=None, vary_width=None):
     :param var_env: The ranges of input variables.
     :type var_env: dictionary containing mappings from variables to
         :class:`soap.semantics.error.Interval`
+    :param out_vars: The output variables of the metastate
+    :type out_vars: :class:`collections.Sequence`
     :param precs: Precisions used to evaluate the expressions, defaults to
         single precision.
     :type precs: int or a list of int
     """
-    return _analyser(expr_set, var_env, prec).frontier()
+    return _analyser(expr_set, var_env, out_vars, prec).frontier()
 
 
 def list_from_keys(result, keys=None):
@@ -85,8 +89,8 @@ def min_error(result):
     return _min_objective(result, 'error')
 
 
-def expr_frontier(expr_set, var_env, prec=None):
-    return expr_list(frontier(expr_set, var_env, prec))
+def expr_frontier(expr_set, var_env, out_vars=None, prec=None):
+    return expr_list(frontier(expr_set, var_env, out_vars, prec))
 
 
 _ZIGZAG_MARGIN = 1000.0

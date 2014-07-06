@@ -214,6 +214,12 @@ class VariableSetGenerator(base_dispatcher()):
     def execute_numeral(self, expr):
         return set()
 
+    def execute_FixExpr(self, expr):
+        input_vars = set()
+        for expr in expr.init_state.values():
+            input_vars |= self(expr)
+        return input_vars
+
     execute_Label = _execute_atom
     execute_Variable = _execute_atom
     execute_BinaryArithExpr = _execute_expression

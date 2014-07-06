@@ -8,14 +8,15 @@ from soap import logger
 from soap.analysis import expr_frontier
 from soap.common import base_dispatcher
 from soap.context import context as global_context
-from soap.expression import expression_factory, SelectExpr, FixExpr
+from soap.expression import (
+    is_variable, expression_factory, SelectExpr, FixExpr
+)
 from soap.semantics.state import MetaState
-from soap.semantics.state.fusion import fusion
 from soap.semantics.functions import (
     arith_eval_meta_state, fixpoint_eval, expand_expr
 )
 from soap.transformer.arithmetic import MartelTreeTransformer
-from soap.transformer.utils import closure, greedy_frontier_closure, reduce
+from soap.transformer.utils import closure, greedy_frontier_closure
 
 
 class BaseDiscoverer(base_dispatcher('discover', 'discover')):
@@ -23,31 +24,32 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
 
     Subclasses need to override :member:`closure`.
     """
-    def filter(self, expr_set, state, context):
+    def filter(self, expr_set, state, out_vars, context):
         raise NotImplementedError
 
-    def closure(self, expr_set, state, context):
+    def closure(self, expr_set, state, out_vars, context):
         raise NotImplementedError
 
-    def generic_discover(self, expr, state, context):
+    def generic_discover(self, expr, state, out_vars, context):
         raise TypeError(
             'Do not know how to discover equivalent expressions of {!r}'
             .format(expr))
 
-    def _discover_atom(self, expr, state, context):
+    def _discover_atom(self, expr, state, out_vars, context):
         return {expr}
 
     discover_numeral = _discover_atom
     discover_Variable = _discover_atom
 
-    def _discover_expression(self, expr, state, context):
+    def _discover_expression(self, expr, state, out_vars, context):
         op = expr.op
-        eq_args_list = tuple(self(arg, state, context) for arg in expr.args)
+        eq_args_list = tuple(
+            self(arg, state, out_vars, context) for arg in expr.args)
         expr_set = {
             expression_factory(op, *args)
             for args in itertools.product(*eq_args_list)
         }
-        expr_set = self.closure(expr_set, state, context)
+        expr_set = self.closure(expr_set, state, out_vars, context)
         logger.debug(
             'Discover: {}, Equivalent: {}'.format(expr, len(expr_set)))
         return expr_set
@@ -77,7 +79,7 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
             unroll_state = MetaState(new_unroll_state)
             yield unroll_state
 
-    def discover_FixExpr(self, expr, state, context):
+    def discover_FixExpr(self, expr, state, out_vars, context):
         bool_expr = expr.bool_expr
         loop_meta_state = expr.loop_state
         loop_var = expr.loop_var
@@ -86,7 +88,7 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
             self._equivalent_loop_meta_states(expr, context.unroll_depth))
 
         init_meta_state_set = self.discover_MetaState(
-            expr.init_state, state, context)
+            expr.init_state, state, [loop_var], context)
 
         eq_expr_set = set()
 
@@ -99,13 +101,13 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
 
             # transform bool_expr
             transformed_bool_expr_set = self._discover_expression(
-                bool_expr, loop_value_state, context)
+                bool_expr, loop_value_state, None, context)
 
             # transform loop_meta_state
             for loop_meta_state in loop_meta_state_set:
                 transformed_loop_meta_state_set = \
                     self.discover_MetaState(
-                        loop_meta_state, loop_value_state, context)
+                        loop_meta_state, loop_value_state, [loop_var], context)
 
                 for transformed_bool_expr, transformed_loop_meta_state in \
                         itertools.product(
@@ -116,104 +118,116 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
                         loop_var, init_meta_state)
                     eq_expr_set.add(eq_expr)
 
-        return self.filter(eq_expr_set, state, context)
+        return self.filter(eq_expr_set, state, out_vars, context)
 
-    def _discover_multiple_expressions(self, var_expr_state, state, context):
+    def _discover_multiple_expressions(
+            self, var_expr_state, state, out_vars, context):
         var_list = list(var_expr_state.keys())
         eq_expr_list = [
-            self(var_expr_state[var], state, context) for var in var_list]
+            self(var_expr_state[var], state, out_vars, context)
+            for var in var_list]
 
         state_set = set()
         for expr_list in itertools.product(*eq_expr_list):
             eq_state = {var: expr for var, expr in zip(var_list, expr_list)}
-            state_set.add(fusion(eq_state, out_vars))
-        state_set = self.filter(state_set, state, context)
+            state_set.add(MetaState(eq_state))
+        state_set = self.filter(state_set, state, out_vars, context)
 
         return state_set
 
     discover_dict = _discover_multiple_expressions
     discover_MetaState = _discover_multiple_expressions
 
-    def _execute(self, expr, state, context=None):
+    def _execute(self, expr, state, out_vars, context=None):
         context = context or global_context
-        return super()._execute(expr, state, context)
+        return super()._execute(expr, state, out_vars, context)
 
 
 class MartelDiscoverer(BaseDiscoverer):
     """A subclass of :class:`BaseDiscoverer` to generate Martel's results."""
-    def filter(self, expr_set, state, context):
+    def filter(self, expr_set, state, out_vars, context):
         return expr_set
 
-    def closure(self, expr_set, state, context):
+    def closure(self, expr_set, state, out_vars, context):
         transformer = MartelTreeTransformer(
             expr_set, depth=context.window_depth)
         return transformer.closure()
 
 
-class GreedyDiscoverer(BaseDiscoverer):
+class _FrontierFilter(BaseDiscoverer):
+    def filter(self, expr_set, state, out_vars, context):
+        return expr_frontier(expr_set, state, out_vars, context.precision)
+
+
+class GreedyDiscoverer(_FrontierFilter):
     """
     A subclass of :class:`BaseDiscoverer` to generate our greedy_trace
     equivalent expressions.
     """
-    def filter(self, expr_set, state, context):
-        return expr_frontier(expr_set, state, prec=context.precision)
-
-    def closure(self, expr_set, state, context):
+    def closure(self, expr_set, state, out_vars, context):
         return greedy_frontier_closure(
-            expr_set, state, depth=context.window_depth,
-            prec=context.precision)
+            expr_set, state, out_vars, context.precision,
+            depth=context.window_depth)
 
 
-class FrontierDiscoverer(BaseDiscoverer):
+class FrontierDiscoverer(_FrontierFilter):
     """A subclass of :class:`BaseDiscoverer` to generate our frontier_trace
     equivalent expressions."""
-    def filter(self, expr_set, state, context):
-        return expr_frontier(expr_set, state, prec=context.precision)
-
-    def closure(self, expr_set, state, context):
+    def closure(self, expr_set, state, out_vars, context):
         expr_set = closure(expr_set, depth=context.window_depth)
-        return expr_frontier(expr_set, state, prec=context.precision)
+        return self.filter(expr_set, state, out_vars, context)
 
 
-def _discover(discoverer_class, expr, state, context):
-    expr_set = discoverer_class()(expr, state, context)
-    return reduce(expr_set)
+def _discover(discoverer_class, expr, state, out_vars, context):
+    return discoverer_class()(expr, state, out_vars, context)
 
 
-def greedy(expr, state, context=None):
+def greedy(expr, state, out_vars=None, context=None):
     """Finds our equivalent expressions using :class:`GreedyDiscoverer`.
 
-    :param expr: The original expression.
-    :type expr: :class:`soap.expression.Expression`
+    :param expr: An expression or a variable-expression mapping
+    :type expr:
+        :class:`soap.expression.Expression` or
+        :class:`soap.semantics.state.MetaState`
     :param state: The ranges of input variables.
     :type state: :class:`soap.semantics.state.BoxState`
+    :param out_vars: The output variables of the metastate
+    :type out_vars: :class:`collections.Sequence`
     :param context: The global context used for evaluation
     :type context: :class:`soap.context.soap.SoapContext`
     """
-    return _discover(GreedyDiscoverer, expr, state, context)
+    return _discover(GreedyDiscoverer, expr, state, out_vars, context)
 
 
-def frontier(expr, state, context=None):
+def frontier(expr, state, out_vars=None, context=None):
     """Finds our equivalent expressions using :class:`FrontierDiscoverer`.
 
-    :param expr: The original expression.
-    :type expr: :class:`soap.expression.Expression`
+    :param expr: An expression or a variable-expression mapping
+    :type expr:
+        :class:`soap.expression.Expression` or
+        :class:`soap.semantics.state.MetaState`
     :param state: The ranges of input variables.
     :type state: :class:`soap.semantics.state.BoxState`
+    :param out_vars: The output variables of the metastate
+    :type out_vars: :class:`collections.Sequence`
     :param context: The global context used for evaluation
     :type context: :class:`soap.context.soap.SoapContext`
     """
-    return _discover(FrontierDiscoverer, expr, state, context)
+    return _discover(FrontierDiscoverer, expr, state, out_vars, context)
 
 
-def martel(expr, state, context=None):
+def martel(expr, state, out_vars=None, context=None):
     """Finds Martel's equivalent expressions.
 
-    :param expr: The original expression.
-    :type expr: :class:`soap.expression.Expression`
+    :param expr: An expression or a variable-expression mapping
+    :type expr:
+        :class:`soap.expression.Expression` or
+        :class:`soap.semantics.state.MetaState`
     :param state: The ranges of input variables.
     :type state: :class:`soap.semantics.state.BoxState`
+    :param out_vars: The output variables of the metastate
+    :type out_vars: :class:`collections.Sequence`
     :param context: The global context used for evaluation
     :type context: :class:`soap.context.soap.SoapContext`
     """
-    return _discover(MartelDiscoverer, expr, state, context)
+    return _discover(MartelDiscoverer, expr, state, out_vars, context)

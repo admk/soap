@@ -2,6 +2,7 @@
 .. module:: soap.analysis.core
     :synopsis: Analysis classes.
 """
+import collections
 import math
 
 import gmpy2
@@ -19,7 +20,7 @@ class Analysis(DynamicMethods, Flyweight):
     with methods to provide proper analysis.
     """
 
-    def __init__(self, expr_set, var_env, precs=None):
+    def __init__(self, expr_set, var_env, out_vars=None, precs=None):
         """Analysis class initialisation.
 
         :param expr_set: A set of expressions or a single expression.
@@ -34,6 +35,7 @@ class Analysis(DynamicMethods, Flyweight):
         super().__init__()
         self.expr_set = expr_set
         self.var_env = var_env
+        self.out_vars = out_vars
         self.precs = precs if precs else self.precisions()
 
     def precisions(self):
@@ -54,28 +56,34 @@ class Analysis(DynamicMethods, Flyweight):
             return self.result
         except AttributeError:
             pass
+
         analysis_names, analysis_methods, select_methods = self.methods()
+
         logger.debug('Analysing results.')
+
         result = []
         i = 0
-        n = len(self.expr_set) * len(self.precs)
-        for p in self.precs:
-            for t in self.expr_set:
+        total = len(self.expr_set) * len(self.precs)
+        for prec in self.precs:
+            for expr in self.expr_set:
                 i += 1
-                logger.persistent('Analysing', '%d/%d' % (i, n),
+                logger.persistent('Analysing', '%d/%d' % (i, total),
                                   l=logger.levels.debug)
-                analysis_dict = {'expression': t}
+                analysis_dict = {'expression': expr}
                 for name, func in zip(analysis_names, analysis_methods):
-                    analysis_dict[name] = func(t, p)
+                    analysis_dict[name] = func(expr, prec)
                 result.append(analysis_dict)
+
         logger.unpersistent('Analysing')
-        result = sorted(
-            result, key=lambda k: tuple(k[n] for n in analysis_names))
+
+        key_func = lambda k: tuple(k[name] for name in analysis_names)
+        result = sorted(result, key=key_func)
         for analysis_dict in result:
-            for n, f in zip(analysis_names, select_methods):
-                analysis_dict[n] = f(analysis_dict[n])
+            for name, func in zip(analysis_names, select_methods):
+                analysis_dict[name] = func(analysis_dict[name])
+
         self.result = result
-        return self.result
+        return result
 
     @classmethod
     def names(cls):
@@ -101,8 +109,8 @@ class ErrorAnalysis(Analysis):
 
     It is a subclass of :class:`Analysis`.
     """
-    def error_analysis(self, t, p):
-        return error_eval(t, self.var_env, p)
+    def error_analysis(self, expr, prec):
+        return error_eval(expr, self.var_env, prec)
 
     def error_select(self, v):
         with gmpy2.local_context(gmpy2.ieee(64), round=gmpy2.RoundAwayZero):
@@ -114,16 +122,16 @@ class AreaAnalysis(Analysis):
 
     It is a subclass of :class:`Analysis`.
     """
-    def area_analysis(self, t, p):
-        bound = error_eval(t, self.var_env, p).v
+    def area_analysis(self, expr, prec):
+        bound = error_eval(expr, self.var_env, prec).v
         bound_max = max(abs(bound.min), abs(bound.max), 1)
         exp_max = math.floor(math.log(bound_max, 2))
         try:
-            we = int(math.ceil(math.log(exp_max + 1, 2) + 1))
+            exponent = int(math.ceil(math.log(exp_max + 1, 2) + 1))
         except ValueError:
-            we = 1
-        we = max(we, flopoco.we_min)
-        return luts(t, we, p)
+            exponent = 1
+        exponent = max(exponent, flopoco.we_min)
+        return luts(expr, self.out_vars, exponent, prec)
 
     def area_select(self, v):
         return v
