@@ -1,9 +1,5 @@
 # Ultra Short Term TODOs -- Transforms
 
-* [X] Equivalence rules for the following operator/expression types
-    - [X] `SelectExpr`
-        - [X] Distributivity
-        - [X] Commutativity?
 * [ ] Integer types resource usage estimation
 * [ ] Relational domain (if possible), because currently branch constraints
   could be too restrictive to be useful, and sometimes constraints cannot
@@ -13,8 +9,6 @@
 
 # Ultra Short Term FIXMEs
 
-* [ ] Check why short Pareto frontier on unrolling, since there should always
-  be trade-offs between unroll levels.
 * [ ] Fix numerical analysis bugs in corner cases.
     - [ ] Infinite bounds
     - [ ] Bottoms and tops
@@ -100,5 +94,11 @@
     - [X] Power
     - [X] Exponentiation
     - [X] Logarithm
+* [X] Equivalence rules for the following operator/expression types
+    - [X] `SelectExpr`
+        - [X] Distributivity
+        - [X] Commutativity?
 * [X] Use fusion in resource usage analysis.
     - [X] Add `out_vars` to discoverer and labelling arguments.
+* [X] Check why short Pareto frontier on unrolling, since there should always
+  be trade-offs between unroll levels. Turns out to be a bug in LUTs counting

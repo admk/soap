@@ -5,8 +5,9 @@ import soap
 from soap import (
     context, IntegerInterval, FloatInterval, FractionInterval, ErrorSemantics,
     mpz, mpq, mpfr, mpz_type, mpq_type, mpfr_type, inf, ulp, cast, BoxState,
-    MetaState, flow_to_meta_state, pyexpr, pyflow, parse, closure, expand,
-    reduce, parsings, martel, greedy, frontier, logger
+    MetaState, flow_to_meta_state, arith_eval, error_eval, label, luts, pyexpr,
+    pyflow, parse, closure, expand, reduce, parsings, martel, greedy, frontier,
+    logger
 )
 
 

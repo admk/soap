@@ -1,7 +1,7 @@
 from collections import namedtuple
 
-from soap.common import Flyweight, Comparable
-from soap.expression.common import is_expression
+from soap.common import Comparable, Flyweight
+from soap.expression import External, FixExpr, is_expression
 from soap.flopoco.statistics import operator_luts
 
 
@@ -26,10 +26,12 @@ class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
         def accumulate_luts_count(env):
             luts = 0
             for v in env.values():
-                if is_expression(v):
+                if is_expression(v) and not isinstance(v, External):
                     luts += operator_luts(v.op, exponent, mantissa)
-                if isinstance(v, dict):
-                    luts += accumulate_luts_count(v)
+                if isinstance(v, FixExpr):
+                    luts += accumulate_luts_count(v.bool_expr[1])
+                    luts += accumulate_luts_count(v.loop_state)
+                    luts += accumulate_luts_count(v.init_state)
             return luts
 
         self._luts = accumulate_luts_count(self.env)

@@ -8,9 +8,7 @@ from soap import logger
 from soap.analysis import expr_frontier
 from soap.common import base_dispatcher
 from soap.context import context as global_context
-from soap.expression import (
-    is_variable, expression_factory, SelectExpr, FixExpr
-)
+from soap.expression import expression_factory, SelectExpr, FixExpr
 from soap.semantics.state import MetaState
 from soap.semantics.functions import (
     arith_eval_meta_state, fixpoint_eval, expand_expr
