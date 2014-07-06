@@ -73,12 +73,16 @@ class LabelGenerator(base_dispatcher()):
         return super()._execute(expr, context)
 
 
-label = LabelGenerator()
+_label = LabelGenerator()
+
+
+def label(expr, out_vars, context=None):
+    from soap.semantics.state.fusion import fusion
+    lab, env = _label(expr, context)
+    if not is_expression(expr):
+        env = fusion(env, out_vars)
+    return LabelSemantics(lab, env)
 
 
 def luts(expr, out_vars, exponent, mantissa):
-    from soap.semantics.state.fusion import fusion
-    lab, env = label(expr)
-    if not is_expression(expr):
-        env = fusion(env, out_vars)
-    return LabelSemantics(lab, env).luts(exponent, mantissa)
+    return label(expr, out_vars).luts(exponent, mantissa)

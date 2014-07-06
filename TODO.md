@@ -17,11 +17,16 @@
 * [ ] Check `inner_meta_state` fusion is using the correct `out_vars`,
   potential bug when non-existent variable is used to fuse stuff.
 * [ ] Check if it keeps changing precision and invalidating caches.
-* [ ] Check why code gen node working for:
-    greedy(
-        flow_to_meta_state(
-            'y = 1\nwhile y < 10:\n x = x + 1 / y\n y = y + 1'),
-        s['x':[0.0, 1.1]])
+* [ ] Fix improper `out_vars` usage, workaround: use full variable list
+    - [ ] Codegen not generating part of loop body because of
+      improper `out_vars` analysis
+    - [ ] Resource usage analysis should not count unnecessary part of the
+      program, specified by `out_vars`
+  Example::
+        greedy(
+            flow_to_meta_state(
+                'y = 1\nwhile y < 10:\n x = x + 1 / y\n y = y + 1'),
+            s['x':[0.0, 1.1]])
 
 
 # Ugliness, fix if have the time to

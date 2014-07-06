@@ -1,6 +1,7 @@
 import collections
 
 from soap import logger
+from soap.common import cached
 from soap.expression import (
     is_variable, is_expression,
     External, InputVariableTuple, OutputVariableTuple, SelectExpr, FixExpr
@@ -287,14 +288,13 @@ def recursive_fusion(env, out_vars):
     return env
 
 
+@cached
 def fusion(env, out_vars):
     if not out_vars:
-        logger.error(
-            'Expect out_vars to be provided, using env.keys() instead, '
-            'may introduce nondeterminism in fusion.')
+        logger.warning(
+            'Expect out_vars to be provided, using env.keys() instead')
         out_vars = env.keys()
-    elif not isinstance(out_vars, collections.Sequence):
-        logger.error(
-            'Expect out_vars to be a sequence, '
-            'may introduce nondeterminism in fusion.')
+    if not isinstance(out_vars, collections.Sequence):
+        logger.warning('Expect out_vars to be a sequence, will sort it')
+        out_vars = sorted(out_vars, key=str)
     return MetaState(recursive_fusion(env, out_vars))
