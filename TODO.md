@@ -4,7 +4,6 @@
 * [ ] Relational domain (if possible), because currently branch constraints
   could be too restrictive to be useful, and sometimes constraints cannot
   be discovered
-* [ ] Add a util function for code gen
 
 
 # Ultra Short Term FIXMEs
@@ -14,9 +13,11 @@
     - [ ] Bottoms and tops
     - [ ] Float interval only rather than float interval + error interval in
       analysis results.
-* [ ] Check `inner_meta_state` fusion is using the correct `out_vars`,
-  potential bug when non-existent variable is used to fuse stuff.
-* [ ] Check if it keeps changing precision and invalidating caches.
+* [X] Check if it keeps changing precision and invalidating caches.
+
+
+# Ugliness, fix if have the time to
+
 * [ ] Fix improper `out_vars` usage, workaround: use full variable list
     - [ ] Codegen not generating part of loop body because of
       improper `out_vars` analysis
@@ -27,10 +28,6 @@
             flow_to_meta_state(
                 'y = 1\nwhile y < 10:\n x = x + 1 / y\n y = y + 1'),
             s['x':[0.0, 1.1]])
-
-
-# Ugliness, fix if have the time to
-
 * [ ] Get rid of identifier based analysis, no longer required.
 * [ ] Generated code has boolean expressions assigned to variables, consider
   other approaches to analysing conditionals because of this.
@@ -107,3 +104,6 @@
     - [X] Add `out_vars` to discoverer and labelling arguments.
 * [X] Check why short Pareto frontier on unrolling, since there should always
   be trade-offs between unroll levels. Turns out to be a bug in LUTs counting
+* [X] Check `inner_meta_state` fusion is using the correct `out_vars`,
+  potential bug when non-existent variable is used to fuse stuff.
+* [X] Add a util function for code gen

@@ -13,9 +13,11 @@ def _process_invalidate_cache():
 
 
 def invalidate_cache():
+    from soap import logger
     from soap.transformer.core import pool
     _process_invalidate_cache()
     pool().apply(_process_invalidate_cache)
+    logger.info('Cache invalidated.')
 
 
 def cached(f):
@@ -32,7 +34,7 @@ def cached(f):
     def decorated(*args, **kwargs):
         key = pickle.dumps((f.__name__, args, tuple(kwargs.items())))
         link = cache.get(key)
-        if not link is None:
+        if link is not None:
             p, n, k, r = link
             p[NEXT] = n
             n[PREV] = p
