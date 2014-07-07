@@ -79,6 +79,7 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
 
     def discover_FixExpr(self, expr, state, out_vars, context):
         bool_expr = expr.bool_expr
+        init_meta_state = expr.init_state
         loop_meta_state = expr.loop_state
         loop_var = expr.loop_var
 
@@ -86,9 +87,15 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
             self._equivalent_loop_meta_states(expr, context.unroll_depth))
 
         init_meta_state_set = self.discover_MetaState(
-            expr.init_state, state, [loop_var], context)
+            init_meta_state, state, [loop_var], context)
+
+        logger.debug(
+            'Discover: {}, Equivalent: {}'.format(
+                init_meta_state, len(init_meta_state_set)))
 
         eq_expr_set = set()
+
+        i = 0
 
         # for each discovered init_meta_state values
         for init_meta_state in init_meta_state_set:
@@ -103,6 +110,11 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
 
             # transform loop_meta_state
             for loop_meta_state in loop_meta_state_set:
+                i += 1
+                logger.persistent(
+                    'LoopTr', '{}/({}*{})'.format(
+                        i, len(init_meta_state_set), len(loop_meta_state_set)))
+
                 transformed_loop_meta_state_set = \
                     self.discover_MetaState(
                         loop_meta_state, loop_value_state, [loop_var], context)
@@ -115,6 +127,8 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
                         transformed_bool_expr, transformed_loop_meta_state,
                         loop_var, init_meta_state)
                     eq_expr_set.add(eq_expr)
+
+        logger.unpersistent('LoopTr')
 
         return self.filter(eq_expr_set, state, out_vars, context)
 
