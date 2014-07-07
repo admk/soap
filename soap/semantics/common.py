@@ -21,8 +21,16 @@ def precision_context(prec):
 
 
 def is_constant(e):
-    from soap.semantics.error import mpz_type, mpfr_type
-    return isinstance(e, (mpz_type, mpfr_type))
+    from soap.semantics.error import (
+        mpz_type, mpfr_type, Interval, ErrorSemantics
+    )
+    if isinstance(e, (mpz_type, mpfr_type)):
+        return True
+    if isinstance(e, Interval):
+        return e.min == e.max
+    if isinstance(e, ErrorSemantics):
+        return is_constant(e.v) and is_constant(e.e)
+    return False
 
 
 def is_numeral(e):

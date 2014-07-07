@@ -9,7 +9,7 @@ from soap.expression.common import (
 )
 from soap.expression.operators import ASSOCIATIVITY_OPERATORS
 from soap.parser import pyexpr
-from soap.semantics.common import is_constant
+from soap.semantics.common import is_numeral, is_constant
 
 
 class ExprMimic(_Mimic):

@@ -403,6 +403,7 @@ class ErrorSemantics(Lattice):
     def __init__(self, v=None, e=None, top=False, bottom=False):
         super().__init__(top=top, bottom=bottom)
         if top or bottom:
+            self.v = self.e = FloatInterval(top=top, bottom=bottom)
             return
 
         def error(v, e):
@@ -410,6 +411,11 @@ class ErrorSemantics(Lattice):
                 return e
             if e is not None:
                 return overapproximate_error(e)
+            if isinstance(v, Lattice):
+                if v.is_top():
+                    return FloatInterval(top=True)
+                if v.is_bottom():
+                    return FloatInterval(bottom=True)
             v_min, v_max = _unpack(v)
             if _are_instance(v, (int, mpz_type)):
                 abs_val = max(abs(v_min), abs(v_max))

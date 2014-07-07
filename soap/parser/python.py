@@ -3,7 +3,7 @@ import ast
 from soap.expression.operators import (
     ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP,
     EQUAL_OP, NOT_EQUAL_OP, GREATER_OP, LESS_OP, GREATER_EQUAL_OP,
-    LESS_EQUAL_OP, UNARY_NEGATION_OP, AND_OP, OR_OP, TERNARY_SELECT_OP,
+    LESS_EQUAL_OP, UNARY_NEGATION_OP, AND_OP, OR_OP
 )
 from soap.program.flow import (
     IdentityFlow, AssignFlow, CompositionalFlow, IfFlow, WhileFlow
@@ -45,13 +45,9 @@ def ast_to_expr(t, s):
     from soap.expression.arithmetic import SelectExpr
     from soap.expression.common import expression_factory
     from soap.semantics.common import is_constant
-    from soap.semantics.error import cast, mpz, mpfr
+    from soap.semantics.error import cast
     if isinstance(t, ast.Num):
-        v = t.n
-        if isinstance(v, int):
-            return mpz(v)
-        if isinstance(v, float):
-            return mpfr(v)
+        return cast(t.n)
     if isinstance(t, ast.Name):
         return expression_factory(t.id)
     if isinstance(t, ast.Str):

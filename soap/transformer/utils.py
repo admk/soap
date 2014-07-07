@@ -85,7 +85,7 @@ def reduce(tree):
     :type tree: :class:`soap.expression.Expression` or str
     :returns: A new expression tree.
     """
-    if is_expression(tree):
+    if isinstance(tree, str) or is_expression(tree):
         t = transform(tree, ArithTreeTransformer.reduction_rules,
                       multiprocessing=False)
         s = set(t)

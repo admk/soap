@@ -2,7 +2,6 @@
 .. module:: soap.analysis.core
     :synopsis: Analysis classes.
 """
-import collections
 import math
 
 import gmpy2
@@ -10,7 +9,7 @@ import gmpy2
 from soap import logger, flopoco
 from soap.context import context
 from soap.common import DynamicMethods, Flyweight
-from soap.semantics.functions import error_eval, luts
+from soap.semantics import inf, error_eval, luts
 
 
 class Analysis(DynamicMethods, Flyweight):
@@ -113,6 +112,10 @@ class ErrorAnalysis(Analysis):
         return error_eval(expr, self.var_env, prec)
 
     def error_select(self, v):
+        if v.is_bottom():
+            logger.warning(
+                'Cannot compute error for non-terminating expression')
+            return inf
         with gmpy2.local_context(gmpy2.ieee(64), round=gmpy2.RoundAwayZero):
             return float(max(abs(v.e.min), abs(v.e.max)))
 
@@ -123,15 +126,24 @@ class AreaAnalysis(Analysis):
     It is a subclass of :class:`Analysis`.
     """
     def area_analysis(self, expr, prec):
-        bound = error_eval(expr, self.var_env, prec).v
-        bound_max = max(abs(bound.min), abs(bound.max), 1)
-        exp_max = math.floor(math.log(bound_max, 2))
-        try:
-            exponent = int(math.ceil(math.log(exp_max + 1, 2) + 1))
-        except ValueError:
-            exponent = 1
-        exponent = max(exponent, flopoco.we_min)
-        return luts(expr, self.out_vars, exponent, prec)
+        # FIXME should use invariant instead
+        def min_exponent():
+            bound = error_eval(expr, self.var_env, prec).v
+            if bound.is_top():
+                return flopoco.we_max
+            if bound.is_bottom():
+                return flopoco.we_min
+            bound_max = max(abs(bound.min), abs(bound.max), 1)
+            try:
+                exp_max = math.floor(math.log(bound_max, 2))
+            except OverflowError:
+                return flopoco.we_max
+            try:
+                exponent = int(math.ceil(math.log(exp_max + 1, 2) + 1))
+                return max(exponent, flopoco.we_min)
+            except ValueError:
+                return flopoco.we_min
+        return luts(expr, self.out_vars, min_exponent(), prec)
 
     def area_select(self, v):
         return v

@@ -8,12 +8,14 @@
 
 # Ultra Short Term FIXMEs
 
-* [ ] Fix numerical analysis bugs in corner cases.
-    - [ ] Infinite bounds
-    - [ ] Bottoms and tops
-    - [ ] Float interval only rather than float interval + error interval in
+* [X] Fix numerical analysis bugs in corner cases.
+    - [X] Infinite bounds
+    - [X] Bottoms and tops
+    - [X] Float interval only rather than float interval + error interval in
       analysis results.
 * [X] Check if it keeps changing precision and invalidating caches.
+* [ ] Consider what is a reasonable thing to do with non-terminating
+  expressions
 
 
 # Ugliness, fix if have the time to
