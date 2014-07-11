@@ -124,4 +124,4 @@ def bool_eval(expr, state):
             for var, cstr in cstr_list:
                 split = split[var:cstr]
         split_list.append(split)
-    return split_list
+    return tuple(split_list)

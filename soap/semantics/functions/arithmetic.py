@@ -70,7 +70,7 @@ class ArithmeticEvaluator(base_dispatcher()):
         return op(a1, a2)
 
     def execute_FixExpr(self, expr, state):
-        from soap.semantics.functions.fixpoint import (
+        from soap.semantics.functions import (
             fixpoint_eval, arith_eval_meta_state
         )
         state = arith_eval_meta_state(expr.init_state, state)
@@ -78,6 +78,20 @@ class ArithmeticEvaluator(base_dispatcher()):
             state, expr.bool_expr, loop_meta_state=expr.loop_state)
         fixpoint['last_entry']._warn_non_termination(expr)
         return fixpoint['exit'][expr.loop_var]
+
+    def execute_MetaState(self, meta_state, state):
+        from soap.semantics.functions import arith_eval_meta_state
+        return arith_eval_meta_state(meta_state, state)
+
+
+arith_eval = ArithmeticEvaluator()
+
+
+class ErrorEvaluator(ArithmeticEvaluator):
+
+    def execute_BinaryBoolExpr(self, expr, state):
+        a1, a2 = self._execute_args(expr.args, state)
+        return cast(a1) | cast(a2)
 
     def execute_MetaState(self, meta_state, state):
         error = None
@@ -90,29 +104,14 @@ class ArithmeticEvaluator(base_dispatcher()):
         return error
 
 
-arith_eval = ArithmeticEvaluator()
-
-
-class ErrorEvaluator(ArithmeticEvaluator):
-
-    def execute_BinaryBoolExpr(self, expr, state):
-        a1, a2 = self._execute_args(expr.args, state)
-        return cast(a1) | cast(a2)
-
-
 _error_eval = ErrorEvaluator()
 
 
-def error_eval(expr, state, prec=None):
-    from soap.semantics import (
-        precision_context, BoxState, FloatInterval, ErrorSemantics
-    )
-    with precision_context(prec):
-        new_state = {}
-        for key, value in state.items():
-            if isinstance(value, FloatInterval):
-                value = ErrorSemantics(value, 0)
-            new_state[key] = value
-        new_state = BoxState(new_state)
-        error = _error_eval(expr, new_state)
-        return ErrorSemantics(error)
+def error_eval(expr, state):
+    from soap.semantics import BoxState, FloatInterval, ErrorSemantics
+    new_state = {}
+    for key, value in state.items():
+        if isinstance(value, FloatInterval):
+            value = ErrorSemantics(value, 0)
+        new_state[key] = value
+    return _error_eval(expr, BoxState(new_state))
