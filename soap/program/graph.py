@@ -1,13 +1,12 @@
 import collections
 
-from soap.label import Label
 from soap.expression import (
     is_variable, is_expression,
     Variable, InputVariable, External,
     VariableTuple, InputVariableTuple, OutputVariableTuple,
     FixExpr
 )
-from soap.semantics import is_numeral, MetaState, LabelSemantics
+from soap.semantics import is_numeral, Label, LabelSemantics, MetaState
 
 
 _LEAF = object()

@@ -1,5 +1,5 @@
 from soap.expression import Variable
-from soap.label import Identifier
+from soap.semantics.label import Identifier
 from soap.semantics.state.base import BaseState
 
 

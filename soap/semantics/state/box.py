@@ -1,7 +1,7 @@
 from soap.expression.variable import Variable
-from soap.label import Identifier
 from soap.lattice.map import map
 from soap.semantics.error import cast, ErrorSemantics, IntegerInterval
+from soap.semantics.label import Identifier
 from soap.semantics.state.base import BaseState
 from soap.semantics.state.identifier import IdentifierBaseState
 from soap.semantics.functions import bool_eval, fixpoint_eval

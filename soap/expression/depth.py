@@ -1,6 +1,6 @@
 from soap.common import base_dispatcher
 from soap.expression import expression_factory
-from soap.label import LabelContext
+from soap.semantics import LabelContext
 
 
 class Cropper(base_dispatcher('crop', 'crop')):

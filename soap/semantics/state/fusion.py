@@ -6,9 +6,8 @@ from soap.expression import (
     is_variable, is_expression,
     External, InputVariableTuple, OutputVariableTuple, SelectExpr, FixExpr
 )
-from soap.label import Label
 from soap.program.graph import DependencyGraph, CyclicGraphException
-from soap.semantics import is_numeral, MetaState
+from soap.semantics import is_numeral, Label, MetaState
 
 
 def sorted_args(expr):
@@ -20,7 +19,10 @@ def sorted_args(expr):
     if isinstance(expr, InputVariableTuple):
         return list(expr.args)
     if is_expression(expr):
-        return list(expr.args)
+        args = []
+        for a in expr.args:
+            args += sorted_args(a)
+        return args
     if isinstance(expr, (dict, MetaState)):
         return []
     raise TypeError('Do not know how to find args of {!r}'.format(expr))

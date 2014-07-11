@@ -1,9 +1,9 @@
-import functools
 from pprint import pprint
 import unittest
 
-from soap.expression import parse, OutputVariableTuple
-from soap.semantics import flow_to_meta_state
+from soap.expression import OutputVariableTuple
+from soap.semantics import BoxState, flow_to_meta_state
+from soap.semantics.functions.label import _label
 from soap.semantics.state.fusion import fusion
 
 from examples import test_programs
@@ -17,7 +17,8 @@ class TestFusion(unittest.TestCase):
                 if isinstance(k, OutputVariableTuple):
                     yield k
         state = flow_to_meta_state(case['program'])
-        new_state = fusion(state.label()[1], case['out_vars'])
+        label = _label(state, BoxState(bottom=True))[1]
+        new_state = fusion(label, case['out_vars'])
         pprint(dict(new_state))
         out_vars = list(find_output_variable_tuple(new_state))
         fusion_count = case['fusion_count']

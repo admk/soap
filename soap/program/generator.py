@@ -5,10 +5,9 @@ from soap.expression import (
     is_variable, is_expression, expression_factory,
     Variable, InputVariableTuple, OutputVariableTuple
 )
-from soap.label import Label
 from soap.program.flow import AssignFlow, IfFlow, WhileFlow, CompositionalFlow
 from soap.program.graph import HierarchicalDependencyGraph, sorted_vars, unique
-from soap.semantics import is_numeral
+from soap.semantics import Label, is_numeral
 from soap.semantics.functions import label as label_meta_state
 
 

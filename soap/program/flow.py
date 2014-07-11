@@ -7,8 +7,7 @@ from akpytemp.utils import code_gobble
 
 from soap import logger
 from soap.common import base_dispatcher, superscript
-from soap.label import Label
-from soap.semantics import is_numeral
+from soap.semantics import Label, is_numeral
 
 
 def _code_gobble(s):
