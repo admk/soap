@@ -4,6 +4,7 @@ from soap.expression import expression_factory, operators
 from soap.program import (
     IdentityFlow, AssignFlow, IfFlow, WhileFlow, CompositionalFlow
 )
+from soap.semantics import cast
 
 
 class _VisitorParser(nodes.NodeVisitor):
@@ -156,8 +157,14 @@ class _VisitorParser(nodes.NodeVisitor):
         name = self._lift_middle(node, children)
         return expression_factory(name)
 
+    def _visit_number_regex(self, node, children):
+        return cast(node.text)
+
+    visit_integer_regex = visit_float_regex = _visit_number_regex
+
     visit_number = _lift_middle
-    visit_number_regex = visit_variable_regex = _lift_text
+    visit_number_regex = _lift_child
+    visit_variable_regex = _lift_text
     visit__ = _lift_dontcare
 
 

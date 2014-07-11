@@ -107,17 +107,6 @@ def round_off_error_from_exact(v):
     return overapproximate_error([e, e])
 
 
-def cast_error_constant(v):
-    return ErrorSemantics([v, v], round_off_error_from_exact(v))
-
-
-def cast_error(v, w=None):
-    w = w if w else v
-    if v == w:
-        return cast_error_constant(v)
-    return ErrorSemantics([v, w], round_off_error([v, w]))
-
-
 def _coerce(self, other):
     if type(self) is type(other):
         return None

@@ -86,10 +86,12 @@ pow = _ '^' _
 #  regexes
 # =========
 
-number = _ number_regex _
 variable = _ variable_regex _
-
-number_regex = ~'[0-9]+'
 variable_regex = ~'[a-zA-Z_][a-zA-Z_0-9]*'
+
+number = _ (number_regex) _
+number_regex =  float_regex / integer_regex
+integer_regex = ~'[0-9]+'
+float_regex = ~'(\+|-)?([0-9]+\.?[0-9]*|\.[0-9]+)([eE](\+|-)?[0-9]+)?'
 
 _ = ~'\s*'m
