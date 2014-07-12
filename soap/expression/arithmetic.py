@@ -3,7 +3,7 @@
     :synopsis: The class of expressions.
 """
 from soap.expression.operators import (
-    ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP,
+    ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, UNARY_SUBTRACT_OP,
     TERNARY_SELECT_OP, ARITHMETIC_OPERATORS, COMMUTATIVITY_OPERATORS
 )
 from soap.expression.base import (
@@ -25,9 +25,6 @@ class ArithmeticMixin(object):
 
     def __div__(self, other):
         return BinaryArithExpr(op=DIVIDE_OP, a1=self, a2=other)
-
-    def __floordiv__(self, other):
-        return BinaryArithExpr(op=BARRIER_OP, a1=self, a2=other)
 
     def __neg__(self):
         return UnaryArithExpr(op=UNARY_SUBTRACT_OP, a=self)

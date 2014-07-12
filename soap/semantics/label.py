@@ -1,19 +1,14 @@
 from collections import namedtuple
-from reprlib import recursive_repr
+import math
 
-from soap import logger
+from soap import flopoco
 from soap.common import Comparable, Flyweight, superscript
 from soap.expression import External, FixExpr, is_expression
-from soap.flopoco.statistics import operator_luts
+from soap.expression.operators import TRADITIONAL_OPERATORS
 from soap.lattice.base import Lattice
-
+from soap.semantics.error import IntegerInterval, ErrorSemantics
 
 _label_map = {}
-
-
-class _Dummy(object):
-    def __hash__(self):
-        return id(self)
 
 
 def fresh_int(hashable, lmap=_label_map):
@@ -21,9 +16,6 @@ def fresh_int(hashable, lmap=_label_map):
     Generates a fresh int for the label of `statement`, within the known
     label mapping `lmap`.
     """
-    if hashable is None:
-        logger.error('Trying to get a fresh unassociated label. Reason?')
-        hashable = _Dummy()
     return lmap.setdefault(hashable, len(lmap) + 1)
 
 
@@ -31,18 +23,7 @@ label_namedtuple_type = namedtuple(
     'Label', ['label_value', 'bound', 'attribute', 'context_id'])
 
 
-class Label(label_namedtuple_type, Flyweight):
-    """Constructs a label for expression or statement `statement`"""
-    __slots__ = ()
-
-    def __new__(cls, statement=None, bound=None, attribute=None,
-                context_id=None, label_value=None):
-        if statement is None and label_value is None:
-            raise ValueError(
-                'Either statement or label_value must be specified.')
-        label_value = label_value or fresh_int(statement)
-        return super().__new__(cls, label_value, bound, attribute, context_id)
-
+class _PseudoLattice(object):
     def is_bottom(self):
         return False
 
@@ -53,6 +34,19 @@ class Label(label_namedtuple_type, Flyweight):
         if self == other:
             return self
         return Lattice(top=True)
+
+
+class Label(label_namedtuple_type, _PseudoLattice, Flyweight):
+    """Constructs a label for expression or statement `statement`"""
+    __slots__ = ()
+
+    def __new__(cls, statement=None, bound=None, attribute=None,
+                context_id=None, label_value=None):
+        if statement is None and label_value is None:
+            raise ValueError(
+                'Either statement or label_value must be specified.')
+        label_value = label_value or fresh_int(statement)
+        return super().__new__(cls, label_value, bound, attribute, context_id)
 
     def attributed(self, attribute):
         return self.__class__(
@@ -81,11 +75,8 @@ class Label(label_namedtuple_type, Flyweight):
         s = 'l{}'.format(self.label_value)
         if self.attribute:
             s += str(self.attribute)
-        if self.bound and not self.bound.is_bottom():
-            s += '={}'.format(self.bound)
         return s
 
-    @recursive_repr()
     def __repr__(self):
         formatter = '{cls}({label!r}, {attribute!r}, {bound!r}, {context!r})'
         return formatter.format(
@@ -148,19 +139,58 @@ class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
         super().__init__()
         self._luts = None
 
-    def luts(self, exponent, mantissa):
+    @staticmethod
+    def _datatype_exponent(op, label):
+        if op not in TRADITIONAL_OPERATORS:
+            return None, None
+
+        bound = label.bound
+        datatype = type(bound)
+
+        if datatype is IntegerInterval:
+            if bound.is_top():
+                return datatype, flopoco.wi_max
+            if bound.is_bottom():
+                return datatype, flopoco.wi_min
+            bound_max = max(abs(bound.min), abs(bound.max), 1)
+            width_max = int(math.ceil(math.log(bound_max + 1, 2)) + 1)
+            return datatype, width_max
+
+        if datatype is ErrorSemantics:
+            bound = bound.v
+            if bound.is_top():
+                return datatype, flopoco.we_max
+            if bound.is_bottom():
+                return datatype, flopoco.we_min
+            bound_max = max(abs(bound.min), abs(bound.max), 1)
+            try:
+                exp_max = math.floor(math.log(bound_max, 2))
+            except OverflowError:
+                return datatype, flopoco.we_max
+            try:
+                exponent = int(math.ceil(math.log(exp_max + 1, 2) + 1))
+                return datatype, max(exponent, flopoco.we_min)
+            except ValueError:
+                return datatype, flopoco.we_min
+
+        raise TypeError('Unrecognized type of bound {!r}'.format(bound))
+
+    def luts(self, precision):
         if self._luts is not None:
             return self._luts
 
         def accumulate_luts_count(env):
             luts = 0
-            for v in env.values():
-                if is_expression(v) and not isinstance(v, External):
-                    luts += operator_luts(v.op, exponent, mantissa)
-                if isinstance(v, FixExpr):
-                    luts += accumulate_luts_count(v.bool_expr[1])
-                    luts += accumulate_luts_count(v.loop_state)
-                    luts += accumulate_luts_count(v.init_state)
+            for label, expr in env.items():
+                if is_expression(expr) and not isinstance(expr, External):
+                    datatype, exponent = self._datatype_exponent(
+                        expr.op, label)
+                    luts += flopoco.operator_luts(
+                        expr.op, datatype, exponent, precision)
+                if isinstance(expr, FixExpr):
+                    luts += accumulate_luts_count(expr.bool_expr[1])
+                    luts += accumulate_luts_count(expr.loop_state)
+                    luts += accumulate_luts_count(expr.init_state)
             return luts
 
         self._luts = accumulate_luts_count(self.env)

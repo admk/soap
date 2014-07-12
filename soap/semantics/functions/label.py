@@ -1,7 +1,7 @@
 import collections
 
 from soap.common import base_dispatcher
-from soap.expression import expression_factory
+from soap.expression import expression_factory, operators
 from soap.semantics.functions import error_eval
 from soap.semantics.label import LabelContext, LabelSemantics
 
@@ -40,7 +40,9 @@ class LabelGenerator(base_dispatcher()):
 
     def execute_BinaryBoolExpr(self, expr, state, context):
         label_expr, label_env = self._execute_expression(expr, state, context)
-        label = context.Label(label_expr, None)
+        sub_expr = expression_factory(operators.SUBTRACT_OP, expr.a1, expr.a2)
+        bound = error_eval(sub_expr, state)
+        label = context.Label(label_expr, bound)
         label_env[label] = label_expr
         return LabelSemantics(label, label_env)
 
@@ -57,8 +59,8 @@ class LabelGenerator(base_dispatcher()):
         init_state_label, init_state_env = self(init_state, state, context)
 
         loop_bound = fixpoint_eval(init_bound, bool_expr, loop_state)['entry']
-        loop_state_label, loop_state_env = self(
-            loop_state, init_bound, context)
+        loop_state_labsem = self(loop_state, loop_bound, context)
+        loop_state_label, loop_state_env = loop_state_labsem
 
         bool_expr_labsem = self(bool_expr, loop_bound, context)
         bool_expr_label, _ = bool_expr_labsem

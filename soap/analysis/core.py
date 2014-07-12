@@ -2,8 +2,6 @@
 .. module:: soap.analysis.core
     :synopsis: Analysis classes.
 """
-import math
-
 import gmpy2
 
 from soap import logger, flopoco
@@ -126,24 +124,7 @@ class AreaAnalysis(Analysis):
     It is a subclass of :class:`Analysis`.
     """
     def area_analysis(self, expr, prec):
-        # FIXME should use invariant instead
-        def min_exponent():
-            bound = error_eval(expr, self.var_env, prec).v
-            if bound.is_top():
-                return flopoco.we_max
-            if bound.is_bottom():
-                return flopoco.we_min
-            bound_max = max(abs(bound.min), abs(bound.max), 1)
-            try:
-                exp_max = math.floor(math.log(bound_max, 2))
-            except OverflowError:
-                return flopoco.we_max
-            try:
-                exponent = int(math.ceil(math.log(exp_max + 1, 2) + 1))
-                return max(exponent, flopoco.we_min)
-            except ValueError:
-                return flopoco.we_min
-        return luts(expr, self.out_vars, min_exponent(), prec)
+        return luts(expr, self.var_env, self.out_vars, prec)
 
     def area_select(self, v):
         return v

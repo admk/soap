@@ -1,7 +1,7 @@
 import ast
 
 from soap.expression.operators import (
-    ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, BARRIER_OP, UNARY_SUBTRACT_OP,
+    ADD_OP, SUBTRACT_OP, MULTIPLY_OP, DIVIDE_OP, UNARY_SUBTRACT_OP,
     EQUAL_OP, NOT_EQUAL_OP, GREATER_OP, LESS_OP, GREATER_EQUAL_OP,
     LESS_EQUAL_OP, UNARY_NEGATION_OP, AND_OP, OR_OP
 )
@@ -15,7 +15,6 @@ OPERATOR_MAP = {
     ast.Sub: SUBTRACT_OP,
     ast.Mult: MULTIPLY_OP,
     ast.Div: DIVIDE_OP,
-    ast.BitOr: BARRIER_OP,
     ast.USub: UNARY_SUBTRACT_OP,
     ast.Eq: EQUAL_OP,
     ast.NotEq: NOT_EQUAL_OP,

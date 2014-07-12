@@ -97,13 +97,13 @@ class MetaState(BaseState, map(None, Expression)):
         mapping = dict(self)
         for var in loop_vars:
             # local loop/init variables
-            local_loop_vars = self._input_vars(loop_state, var)
-            local_init_vars = bool_expr_vars | local_loop_vars
+            local_loop_vars = bool_expr_vars
+            local_loop_vars |= self._input_vars(loop_state, var)
             # local loop/init states
             local_loop_state = self.__class__(
                 {k: v for k, v in loop_state.items() if k in local_loop_vars})
             local_init_state = self.__class__(
-                {k: v for k, v in self.items() if k in local_init_vars})
+                {k: v for k, v in self.items() if k in local_loop_vars})
             # fixpoint expression
             mapping[var] = FixExpr(
                 bool_expr, local_loop_state, var, local_init_state)
