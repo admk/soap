@@ -31,7 +31,7 @@ class TreeFarmer(object):
         cropped = []
         for t in trees:
             try:
-                t, e = crop(t, self.depth)
+                t, e = crop(t, self.depth, self)
             except AttributeError:
                 t, e = t, {}
             cropped.append(t)
