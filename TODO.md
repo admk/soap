@@ -1,19 +1,6 @@
-# Ultra Short Term TODOs -- Transforms
-
-* [ ] Integer types resource usage estimation
-* [ ] Relational domain (if possible), because currently branch constraints
-  could be too restrictive to be useful, and sometimes constraints cannot
-  be discovered
-
-
 # Ultra Short Term FIXMEs
 
-* [X] Fix numerical analysis bugs in corner cases.
-    - [X] Infinite bounds
-    - [X] Bottoms and tops
-    - [X] Float interval only rather than float interval + error interval in
-      analysis results.
-* [X] Check if it keeps changing precision and invalidating caches.
+* [ ] Check if there is analysis bias in loop unroll
 * [ ] Consider what is a reasonable thing to do with non-terminating
   expressions
 
@@ -44,6 +31,9 @@
 
 # Future Considerations
 
+* [ ] Relational domain (if possible), because currently branch constraints
+  could be too restrictive to be useful, and sometimes constraints cannot
+  be discovered
 * [ ] Latency analysis
 * [ ] Multiple mantissa widths
 * [ ] Fixed point format
@@ -109,3 +99,10 @@
 * [X] Check `inner_meta_state` fusion is using the correct `out_vars`,
   potential bug when non-existent variable is used to fuse stuff.
 * [X] Add a util function for code gen
+* [X] Integer types resource usage estimation
+* [X] Fix numerical analysis bugs in corner cases.
+    - [X] Infinite bounds
+    - [X] Bottoms and tops
+    - [X] Float interval only rather than float interval + error interval in
+      analysis results.
+* [X] Check if it keeps changing precision and invalidating caches.
