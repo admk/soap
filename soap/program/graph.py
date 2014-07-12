@@ -75,7 +75,7 @@ def sorted_vars(env, out_vars):
             return []
 
         is_seq = (isinstance(out_vars, collections.Sequence) and
-                  not isinstance(out_vars, OutputVariableTuple))
+                  not isinstance(out_vars, (Label, OutputVariableTuple)))
         if not is_seq:
             out_vars = [out_vars]
 
@@ -100,7 +100,7 @@ class DependencyGraph(object):
         env = dict(env)
         self._detect_acyclic(env, out_var)
         if isinstance(out_var, collections.Sequence):
-            if not isinstance(out_var, VariableTuple):
+            if not isinstance(out_var, (Label, VariableTuple)):
                 out_var = InputVariableTuple(out_var)
         self.env = dict(env)
         self.out_var = out_var
@@ -268,7 +268,7 @@ class DependencyGraph(object):
                     raise CyclicGraphException(
                         'Cycle detected: {}'.format(found_vars + [dep_var]))
                 walk(dep_var, found_vars + [var])
-        if not isinstance(out_var, VariableTuple):
+        if not isinstance(out_var, (Label, VariableTuple)):
             if not isinstance(out_var, collections.Sequence):
                 out_var = [out_var]
         for var in out_var:

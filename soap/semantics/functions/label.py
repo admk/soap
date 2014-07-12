@@ -39,7 +39,7 @@ class LabelGenerator(base_dispatcher()):
     def execute_BinaryBoolExpr(self, expr, state, context):
         label_expr, label_env = self._execute_expression(expr, state, context)
         label = context.Label(label_expr, None)
-        label_env[label] = expr
+        label_env[label] = label_expr
         return LabelSemantics(label, label_env)
 
     def execute_FixExpr(self, expr, state, context):

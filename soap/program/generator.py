@@ -56,8 +56,9 @@ class CodeGenerator(object):
             raise TypeError(
                 'Do not know how to add infix for {!r}'.format(expr))
 
-        if isinstance(infix, collections.Sequence):
-            infix = '_'.join(str(i) for i in infix)
+        if not isinstance(infix, Label):
+            if isinstance(infix, collections.Sequence):
+                infix = '_'.join(str(i) for i in infix)
 
         if infix is not None:
             name = '{}_{}'.format(name, infix)
