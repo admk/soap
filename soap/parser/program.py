@@ -15,27 +15,15 @@ class _VisitorParser(nodes.NodeVisitor):
         with open(self.grammar_file, 'r') as file:
             self.grammar = Grammar(file.read())
 
-    def parse(self, program):
-        tree = self.grammar.parse(program)
-        return self.visit(tree)
-
     _lift_child = nodes.NodeVisitor.lift_child
-
-    def _lift_first(self, node, children):
-        return children[0]
-
-    def _lift_children(self, node, children):
-        return children
+    _lift_first = lambda self, node, children: children[0]
+    _lift_children = lambda self, node, children: children
+    _lift_text = lambda self, node, children: node.text
+    _lift_dontcare = lambda self, node, children: None
 
     def _lift_middle(self, node, children):
         _1, value, _2 = children
         return value
-
-    def _lift_text(self, node, _):
-        return node.text
-
-    def _lift_dontcare(self, node, children):
-        pass
 
     def generic_visit(self, node, children):
         if not node.expr_name:
@@ -166,6 +154,10 @@ class _VisitorParser(nodes.NodeVisitor):
     visit_number_regex = _lift_child
     visit_variable_regex = _lift_text
     visit__ = _lift_dontcare
+
+    def parse(self, program):
+        tree = self.grammar.parse(program)
+        return self.visit(tree)
 
 
 _parser = None

@@ -28,7 +28,7 @@ code_block = left_paren statement right_paren
 
 
 # =============
-#  expressions 
+#  expressions
 # =============
 
 boolean_expression    = term boolean_operator term
