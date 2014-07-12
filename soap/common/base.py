@@ -62,9 +62,13 @@ class BaseDispatcher(object):
         return self._execute(obj, *args, **kwargs)
 
 
-def base_dispatcher(dispatch_name='execute', execute_name='execute'):
+def base_dispatcher(dispatch_name='execute', execute_name=None):
+    if execute_name is None:
+        execute_name = dispatch_name
+
     class Dispatcher(BaseDispatcher):
         pass
+
     setattr(Dispatcher, execute_name, Dispatcher._execute)
     Dispatcher.dispatch_name = dispatch_name
     return Dispatcher

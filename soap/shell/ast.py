@@ -141,7 +141,7 @@ class FlowTransformer(IPythonNodeTransformer):
             return self.vars
 
     def _transform_node_to_flow(self, node):
-        from soap.program.parser import ast_to_flow
+        from soap.parser.python import ast_to_flow
         from soap.semantics import IdentifierBoxState
         vars = {}
         for n in node:

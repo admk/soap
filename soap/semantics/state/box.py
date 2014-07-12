@@ -99,7 +99,7 @@ class IdentifierBoxState(IdentifierBaseState, BoxState):
         exit_label = flow.label.attributed_exit()
 
         # for each split, label respective changes to values
-        true_state, false_state = bool_eval(self, flow.conditional_expr)
+        true_state, false_state = bool_eval(flow.conditional_expr, self)
         true_state = true_state._labeled_transition(true_label)
         false_state = false_state._labeled_transition(false_label)
         true_state = true_state.transition(flow.true_flow)

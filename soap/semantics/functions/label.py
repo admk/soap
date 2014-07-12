@@ -1,5 +1,7 @@
+import collections
+
 from soap.common import base_dispatcher
-from soap.expression import is_expression, expression_factory
+from soap.expression import expression_factory
 from soap.semantics.functions import error_eval
 from soap.semantics.label import LabelContext, LabelSemantics
 
@@ -94,7 +96,7 @@ _label = LabelGenerator()
 def label(expr, state, out_vars, context=None):
     from soap.semantics.state.fusion import fusion
     lab, env = _label(expr, state, context)
-    if not is_expression(expr):
+    if isinstance(expr, collections.Mapping):
         env = fusion(env, out_vars)
     return LabelSemantics(lab, env)
 

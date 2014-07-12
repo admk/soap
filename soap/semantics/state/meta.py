@@ -1,5 +1,5 @@
 from soap.expression import (
-    Expression, SelectExpr, FixExpr, Variable, OutputVariableTuple
+    is_variable, Expression, SelectExpr, FixExpr, Variable, OutputVariableTuple
 )
 from soap.lattice.map import map
 from soap.semantics.error import cast
@@ -71,7 +71,7 @@ class MetaState(BaseState, map(None, Expression)):
 
     @staticmethod
     def _input_vars(meta_state, var):
-        in_vars = set()
+        in_vars = {var}
         next_vars = {var}
         while next_vars:
             var = next_vars.pop()
@@ -89,8 +89,9 @@ class MetaState(BaseState, map(None, Expression)):
         bool_expr_vars = bool_expr.vars()
 
         # loop_state for all output variables
+        input_vars = loop_flow.vars(output=False)
         loop_vars = loop_flow.vars(input=False)
-        id_state = self.__class__({k: k for k in loop_vars})
+        id_state = self.__class__({k: k for k in input_vars | loop_vars})
         loop_state = id_state.transition(loop_flow)
 
         mapping = dict(self)

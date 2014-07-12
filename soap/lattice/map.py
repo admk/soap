@@ -97,7 +97,7 @@ class MapLattice(Lattice, Mapping):
         return hash_val
 
     def __str__(self):
-        return '[{}]'.format(', '.join(
+        return '{{{}}}'.format(', '.join(
             '{key}: {value}'.format(key=k, value=v)
             for k, v in sorted(self.items(), key=str)))
 
