@@ -4,10 +4,10 @@
 """
 import gmpy2
 
-from soap import logger, flopoco
-from soap.context import context
+from soap import flopoco, logger
 from soap.common import DynamicMethods, Flyweight
-from soap.semantics import inf, error_eval, luts
+from soap.context import context
+from soap.semantics import error_eval, ErrorSemantics, inf, luts
 
 
 class Analysis(DynamicMethods, Flyweight):
@@ -107,7 +107,8 @@ class ErrorAnalysis(Analysis):
     It is a subclass of :class:`Analysis`.
     """
     def error_analysis(self, expr, prec):
-        return error_eval(expr, self.var_env, prec)
+        # FIXME precision
+        return ErrorSemantics(error_eval(expr, self.var_env))
 
     def error_select(self, v):
         if v.is_bottom():

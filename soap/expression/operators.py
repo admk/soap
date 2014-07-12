@@ -6,7 +6,7 @@
 ADD_OP = '+'
 SUBTRACT_OP = '-'
 UNARY_SUBTRACT_OP = '_'
-MULTIPLY_OP = '⨯'
+MULTIPLY_OP = '*'
 DIVIDE_OP = '/'
 
 # boolean operators
