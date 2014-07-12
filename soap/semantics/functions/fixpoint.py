@@ -85,7 +85,6 @@ def fixpoint_eval(state, bool_expr, loop_meta_state=None, loop_flow=None):
         loop_state = _widen(loop_state, prev_loop_state, iteration)
 
     logger.unpersistent('Iteration')
-    logger.info()
 
     return {
         'entry': entry_join_state,

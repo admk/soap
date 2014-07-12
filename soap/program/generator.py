@@ -8,7 +8,6 @@ from soap.expression import (
 from soap.program.flow import AssignFlow, IfFlow, WhileFlow, CompositionalFlow
 from soap.program.graph import HierarchicalDependencyGraph, sorted_vars, unique
 from soap.semantics import Label, is_numeral
-from soap.semantics.functions import label as label_meta_state
 
 
 class CodeGenerator(object):
@@ -222,5 +221,6 @@ def generate(env, out_vars):
 
 
 def meta_state_to_flow(meta_state, out_vars):
-    _, env = label_meta_state(meta_state, out_vars)
+    from soap.semantics import BoxState, label
+    _, env = label(meta_state, BoxState(bottom=True), out_vars)
     return generate(env, out_vars)

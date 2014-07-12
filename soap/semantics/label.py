@@ -3,8 +3,12 @@ import math
 
 from soap import flopoco
 from soap.common import Comparable, Flyweight, superscript
-from soap.expression import External, FixExpr, is_expression
-from soap.expression.operators import TRADITIONAL_OPERATORS
+from soap.expression import (
+    External, FixExpr, is_expression, OutputVariableTuple
+)
+from soap.expression.operators import (
+    FIXPOINT_OP, TERNARY_SELECT_OP, TRADITIONAL_OPERATORS
+)
 from soap.lattice.base import Lattice
 from soap.semantics.error import IntegerInterval, ErrorSemantics
 
@@ -125,6 +129,54 @@ class Identifier(namedtuple('Identifier', ['variable', 'label']), Flyweight):
             variable=self.variable, label=self.label)
 
 
+_FILTER_OPERATORS = TRADITIONAL_OPERATORS + [TERNARY_SELECT_OP]
+
+
+def _datatype_exponent(op, label):
+    if isinstance(label, OutputVariableTuple):
+        exponent = 0
+        for l in label:
+            label_datatype, label_exponent = _datatype_exponent(op, l)
+            exponent += label_exponent
+        return None, exponent
+
+    if op == FIXPOINT_OP:
+        return None, 0
+    if op not in _FILTER_OPERATORS:
+        return None, None
+
+    bound = label.bound
+    datatype = type(bound)
+
+    if datatype is IntegerInterval:
+        if bound.is_top():
+            return datatype, flopoco.wi_max
+        if bound.is_bottom():
+            return datatype, flopoco.wi_min
+        bound_max = max(abs(bound.min), abs(bound.max), 1)
+        width_max = int(math.ceil(math.log(bound_max + 1, 2)) + 1)
+        return datatype, width_max
+
+    if datatype is ErrorSemantics:
+        bound = bound.v
+        if bound.is_top():
+            return datatype, flopoco.we_max
+        if bound.is_bottom():
+            return datatype, flopoco.we_min
+        bound_max = max(abs(bound.min), abs(bound.max), 1)
+        try:
+            exp_max = math.floor(math.log(bound_max, 2))
+        except OverflowError:
+            return datatype, flopoco.we_max
+        try:
+            exponent = int(math.ceil(math.log(exp_max + 1, 2) + 1))
+            return datatype, max(exponent, flopoco.we_min)
+        except ValueError:
+            return datatype, flopoco.we_min
+
+    raise TypeError('Unrecognized type of bound {!r}'.format(bound))
+
+
 _label_semantics_tuple_type = namedtuple('LabelSemantics', ['label', 'env'])
 
 
@@ -139,42 +191,6 @@ class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
         super().__init__()
         self._luts = None
 
-    @staticmethod
-    def _datatype_exponent(op, label):
-        if op not in TRADITIONAL_OPERATORS:
-            return None, None
-
-        bound = label.bound
-        datatype = type(bound)
-
-        if datatype is IntegerInterval:
-            if bound.is_top():
-                return datatype, flopoco.wi_max
-            if bound.is_bottom():
-                return datatype, flopoco.wi_min
-            bound_max = max(abs(bound.min), abs(bound.max), 1)
-            width_max = int(math.ceil(math.log(bound_max + 1, 2)) + 1)
-            return datatype, width_max
-
-        if datatype is ErrorSemantics:
-            bound = bound.v
-            if bound.is_top():
-                return datatype, flopoco.we_max
-            if bound.is_bottom():
-                return datatype, flopoco.we_min
-            bound_max = max(abs(bound.min), abs(bound.max), 1)
-            try:
-                exp_max = math.floor(math.log(bound_max, 2))
-            except OverflowError:
-                return datatype, flopoco.we_max
-            try:
-                exponent = int(math.ceil(math.log(exp_max + 1, 2) + 1))
-                return datatype, max(exponent, flopoco.we_min)
-            except ValueError:
-                return datatype, flopoco.we_min
-
-        raise TypeError('Unrecognized type of bound {!r}'.format(bound))
-
     def luts(self, precision):
         if self._luts is not None:
             return self._luts
@@ -183,8 +199,7 @@ class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
             luts = 0
             for label, expr in env.items():
                 if is_expression(expr) and not isinstance(expr, External):
-                    datatype, exponent = self._datatype_exponent(
-                        expr.op, label)
+                    datatype, exponent = _datatype_exponent(expr.op, label)
                     luts += flopoco.operator_luts(
                         expr.op, datatype, exponent, precision)
                 if isinstance(expr, FixExpr):
