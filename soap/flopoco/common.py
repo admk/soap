@@ -43,9 +43,9 @@ wf_range = list(range(wf_min, wf_max + 1))
 wi_min, wi_max = 1, 100
 wi_range = list(range(wi_min, wi_max + 1))
 
-directory = 'soap/flopoco/'
-default_file = directory + 'luts.pkl'
-template_file = directory + 'template.vhdl'
+directory = os.path.dirname(__file__)
+default_file = os.path.join(directory, 'luts.pkl')
+template_file = os.path.join(directory, 'template.vhdl')
 
 device_name = 'Virtex6'
 device_model = 'xc6vlx760'

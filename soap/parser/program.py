@@ -1,3 +1,5 @@
+from os import path
+
 from parsimonious import Grammar, nodes
 
 from soap.expression import expression_factory, operators
@@ -8,7 +10,7 @@ from soap.semantics import cast
 
 
 class _VisitorParser(nodes.NodeVisitor):
-    grammar_file = 'soap/parser/program.grammar'
+    grammar_file = path.join(path.dirname(__file__), 'program.grammar')
 
     def __init__(self):
         super().__init__()
