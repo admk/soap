@@ -85,6 +85,10 @@ def ast_to_flow(prog_ast, prog_str):
     """Converts abstract syntax trees into program flow :class:`Flow`
     instances."""
     flow = CompositionalFlow()
+    if len(prog_ast) == 1:
+        expr_ast = prog_ast[0]
+        if isinstance(expr_ast, ast.Expr):
+            return ast_to_expr(expr_ast.value, prog_str)
     for stmt in prog_ast:
         if isinstance(stmt, ast.Assign):
             flow += AssignFlow(
@@ -123,5 +127,5 @@ def pyexpr(s):
         raise e
 
 
-def pyflow(prog_str):
+def pyparse(prog_str):
     return ast_to_flow(ast.parse(prog_str).body, prog_str)

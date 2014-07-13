@@ -1,6 +1,6 @@
 import unittest
 
-from soap.parser import pyflow
+from soap.parser import pyparse
 from soap.program import generate
 from soap.semantics import BoxState, flow_to_meta_state
 from soap.semantics.functions import label
@@ -11,7 +11,7 @@ from examples import test_programs
 class TestCodeGenerator(unittest.TestCase):
 
     def check(self, case):
-        program = pyflow(case['program'])
+        program = pyparse(case['program'])
 
         print('Original:')
         print(program.format())

@@ -8,19 +8,15 @@ from soap.context import context
 from soap.shell import interactive
 
 
-def _setup_ipdb(args):
+def _setup_context(args):
     context.ipdb = args['--ipdb']
 
-
-def _setup_logger(args):
     if args['--verbose']:
         logger.set_context(level=logger.levels.info)
     if args['--debug']:
         logger.set_context(level=logger.levels.debug)
     logger.debug('CLI options: \n', args)
 
-
-def _setup_precision(args):
     precision = args['--precision']
     if precision:
         context.precision = int(precision)
@@ -32,6 +28,11 @@ def _setup_precision(args):
     double_precision = args['--double']
     if double_precision:
         context.precision = 'double'
+
+    context.unroll_factor = int(args['--unroll-factor'])
+    context.widen_factor = int(args['--widen-factor'])
+    context.window_depth = int(args['--window-depth'])
+    context.unroll_depth = int(args['--unroll-depth'])
 
 
 def _interactive(args):
@@ -57,7 +58,7 @@ def _file(args):
 def _parser(args):
     if args['--simple']:
         return soap.parser.program.parse
-    return soap.parser.python.pyflow
+    return soap.parser.python.pyparse
 
 
 def _analyze(args):
@@ -87,8 +88,7 @@ def _unreachable(args):
 def main():
     args = docopt(soap.__doc__, version=soap.__version__)
     functions = [
-        _setup_ipdb, _setup_logger, _setup_precision,
-        _interactive, _analyze, _optimize, _unreachable
+        _setup_context, _interactive, _analyze, _optimize, _unreachable
     ]
     for f in functions:
         return_code = f(args)

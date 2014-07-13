@@ -26,6 +26,14 @@ Options:
                             If not specified, use standard Python syntax
                             instead and use the `ast` module to perform
                             parsing.
+    --unroll-factor=50      Set the number of iterations bofore stopping loop
+                            unroll and use the loop invariant in loop analysis.
+                            [default: 50]
+    --widen-factor=100      Set the number of iterations before using widening
+                            in loop analysis.  [default: 100]
+    --window-depth=2        Set the depth limit window of structural
+                            optimization.  [default: 2]
+    --unroll-depth=3        Set the loop unrolling depth.  [default: 3]
     --ipdb                  Launch ipdb interactive prompt on exceptions.
     -v --verbose            Do a verbose execution.
     -d --debug              Show debug information, also enable `--verbose`.
@@ -55,7 +63,7 @@ import gmpy2
 
 from soap.context import context
 from soap.analysis import analyse, frontier, Plot, plot, analyse_and_plot
-from soap.parser import pyexpr, pyflow, parse
+from soap.parser import pyparse, parse
 from soap.program import Flow, meta_state_to_flow
 from soap.semantics import (
     IntegerInterval, FloatInterval, FractionInterval, ErrorSemantics,

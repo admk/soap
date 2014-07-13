@@ -113,6 +113,6 @@ class MetaState(BaseState, map(None, Expression)):
 
 def flow_to_meta_state(flow):
     if isinstance(flow, str):
-        from soap.parser import pyflow
-        flow = pyflow(flow)
+        from soap.parser import pyparse
+        flow = pyparse(flow)
     return to_meta_state(flow)
