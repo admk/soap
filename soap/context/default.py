@@ -2,6 +2,8 @@ from soap.context.soap import SoapContext
 
 
 context = dict(
+    # debugging
+    ipdb=False,
     # interactive shell
     autocall=True,
     xmode='verbose',

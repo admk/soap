@@ -1,3 +1,5 @@
+import sys
+
 import IPython
 
 import soap
@@ -27,3 +29,4 @@ class Shell(IPython.terminal.embed.InteractiveShellEmbed):
 
 
 shell = Shell()
+sys.excepthook = soap.excepthook

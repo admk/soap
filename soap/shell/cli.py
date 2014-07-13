@@ -8,6 +8,10 @@ from soap.context import context
 from soap.shell import interactive
 
 
+def _setup_ipdb(args):
+    context.ipdb = args['--ipdb']
+
+
 def _setup_logger(args):
     if args['--verbose']:
         logger.set_context(level=logger.levels.info)
@@ -83,8 +87,8 @@ def _unreachable(args):
 def main():
     args = docopt(soap.__doc__, version=soap.__version__)
     functions = [
-        _setup_logger, _setup_precision, _interactive, _analyze, _optimize,
-        _unreachable
+        _setup_ipdb, _setup_logger, _setup_precision,
+        _interactive, _analyze, _optimize, _unreachable
     ]
     for f in functions:
         return_code = f(args)

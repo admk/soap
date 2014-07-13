@@ -26,9 +26,20 @@ Options:
                             If not specified, use standard Python syntax
                             instead and use the `ast` module to perform
                             parsing.
+    --ipdb                  Launch ipdb interactive prompt on exceptions.
     -v --verbose            Do a verbose execution.
     -d --debug              Show debug information, also enable `--verbose`.
 """.format(**locals())
+
+
+def excepthook(type, value, traceback):
+    rv = ultratb.VerboseTB()(type, value, traceback)
+    if context.ipdb:
+        from IPython.core.debugger import Pdb
+        from soap.shell import shell
+        pdb = Pdb(shell.colors)
+        pdb.interaction(None, traceback)
+    return rv
 
 
 try:
@@ -37,7 +48,7 @@ except ImportError:
     pass
 else:
     import sys
-    sys.excepthook = ultratb.VerboseTB()
+    sys.excepthook = excepthook
 
 
 import gmpy2
