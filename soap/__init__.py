@@ -10,14 +10,13 @@ Structural Optimization of Arithmetic Programs.
 Usage:
     {__executable__} analyze [options] (<file> | -)
     {__executable__} optimize [options] (<file> | -)
-    {__executable__} (-i | --interactive)
+    {__executable__} interactive [options]
     {__executable__} (-h | --help)
     {__executable__} --version
 
 Options:
     -h --help               Show this help message.
     --version               Show version number.
-    -i --interactive        Start interactive IPython shell.
     --precision=<width>     Specify the floating-point precision used.
     --single                Use single-precision format, overrides the option
                             `--precision=<width>`.

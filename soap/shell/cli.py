@@ -13,6 +13,7 @@ def _setup_logger(args):
         logger.set_context(level=logger.levels.info)
     if args['--debug']:
         logger.set_context(level=logger.levels.debug)
+    logger.debug('CLI options: \n', args)
 
 
 def _setup_precision(args):
@@ -30,15 +31,22 @@ def _setup_precision(args):
 
 
 def _interactive(args):
-    if args['--interactive']:
+    if args['interactive']:
         interactive.main()
         return 0
 
 
 def _file(args):
     file = args['<file>']
-    file = sys.stdin if file == '-' else open(file)
-    return file.read()
+    try:
+        file = sys.stdin if file == '-' else open(file)
+    except FileNotFoundError:
+        logger.error('File {!r} does not exist'.format(file))
+        return -1
+    file = file.read()
+    if not file:
+        logger.error('Empty input')
+        return -1
 
 
 def _parser(args):
@@ -54,7 +62,10 @@ def _analyze(args):
         return 0
 
     if args['analyze']:
-        return analyze_and_exit(_file(args))
+        file = _file(args)
+        if file == -1:
+            return -1
+        return analyze_and_exit(file)
 
 
 def _optimize(args):
