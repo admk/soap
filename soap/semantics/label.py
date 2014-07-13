@@ -117,6 +117,7 @@ class Identifier(namedtuple('Identifier', ['variable', 'label']), Flyweight):
     __slots__ = ()
 
     def __new__(cls, variable, label=None):
+        label = label or Lattice(bottom=True)
         return super().__new__(cls, variable, label)
 
     def __str__(self):

@@ -42,7 +42,7 @@ ctx = context
 
 
 def debug(program):
-    print(flow(program).debug())
+    print(pyflow(program).debug())
 
 
 def main():

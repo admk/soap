@@ -7,7 +7,7 @@ from akpytemp.utils import code_gobble
 
 from soap import logger
 from soap.common import base_dispatcher, superscript
-from soap.semantics import Label, is_numeral
+from soap.semantics import BoxState, Label, is_numeral
 
 
 def _code_gobble(s):
@@ -22,9 +22,11 @@ def _state_with_label(state, label):
     if state is None:
         return
     try:
-        return str(state.filter(lambda k: k.label == label))
+        state = state.filter(lambda k: k.label == label)
+        state = BoxState({k.variable: v for k, v in state.items()})
     except AttributeError:
-        return str(state)
+        pass
+    return str(state)
 
 
 class Flow(object):
