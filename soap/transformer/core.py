@@ -9,6 +9,7 @@ import sys
 
 from soap import logger
 from soap.common import cached
+from soap.common.parallel import pool
 from soap.expression.common import expression_factory, is_expression
 from soap.expression.depth import crop, stitch
 from soap.parser import parse
@@ -116,7 +117,7 @@ class TreeTransformer(TreeFarmer):
             chunksize = int(len(expressions) / cpu_count) + 1
             # this gives the desired deterministic behaviour for reduction
             # so never change it to imap_unordered!!
-            map = pool().imap
+            map = pool.map
         else:
             cpu_count = chunksize = 1
             map = lambda func, args_list, _: [func(args) for args in args_list]
@@ -216,16 +217,6 @@ def par_union(sl):
     return functools.reduce(lambda s, t: s | t, sl)
 
 
-_pool = None
-
-
-def pool():
-    global _pool
-    if _pool is None:
-        _pool = multiprocessing.Pool()
-    return _pool
-
-
 def _iunion(sl, no_processes):
     """Parallel set union, slower than serial implementation."""
     def chunks(l, n):
@@ -235,5 +226,5 @@ def _iunion(sl, no_processes):
     while len(sl) > 1:
         sys.stdout.write('\rUnion: %d.' % len(sl))
         sys.stdout.flush()
-        sl = list(pool().imap_unordered(par_union, chunks(sl, chunksize)))
+        sl = pool.map_unordered(par_union, chunks(sl, chunksize))
     return sl.pop()

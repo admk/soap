@@ -6,7 +6,7 @@ import functools
 _cached_funcs = []
 
 
-def _process_invalidate_cache():
+def process_invalidate_cache():
     for f in _cached_funcs:
         f.cache_clear()
     Flyweight._cache.clear()
@@ -14,9 +14,9 @@ def _process_invalidate_cache():
 
 def invalidate_cache():
     from soap import logger
-    from soap.transformer.core import pool
-    _process_invalidate_cache()
-    pool().apply(_process_invalidate_cache)
+    from soap.common.parallel import pool
+    process_invalidate_cache()
+    pool.invalidate_cache()
     logger.info('Cache invalidated.')
 
 
