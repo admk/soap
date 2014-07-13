@@ -34,9 +34,13 @@ class _Context(dict):
     def __setattr__(self, key, value):
         hook = getattr(self, key + '_hook', lambda v: v)
         value = hook(value)
-        self[key] = self._cast_dict(value)
+        if key != '_snapshot':
+            value = self._cast_dict(value)
+        old_value = self.get(key)
+        self[key] = value
         if self.get('should_invalidate_cache', True):
-            invalidate_cache()
+            if old_value != value:
+                invalidate_cache()
 
     def __getattr__(self, key):
         try:
@@ -56,8 +60,14 @@ class _Context(dict):
         dictionary = {k: self._cast_dict(v) for k, v in dictionary.items()}
         return self.__class__(dictionary)
 
+    def update(self, dictionary=None, **kwargs):
+        dictionary = dict(dictionary or {}, **kwargs)
+        for k, v in dictionary.items():
+            setattr(self, k, v)
+
     def take_snapshot(self):
-        self._snapshot = copy.deepcopy(self)
+        with self.no_invalidate_cache():
+            self._snapshot = copy.deepcopy(dict(self))
 
     def restore_snapshot(self):
         if '_snapshot' not in self:
@@ -73,6 +83,6 @@ class _Context(dict):
     def local(self, dictionary=None, **kwargs):
         """Withable local context.  """
         self.take_snapshot()
-        self.update(dict(dictionary or {}, **kwargs))
+        self.update(dictionary, **kwargs)
         yield
         self.restore_snapshot()

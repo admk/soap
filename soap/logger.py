@@ -29,7 +29,8 @@ with _global_context.no_invalidate_cache():
 
 
 def set_context(**kwargs):
-    context.update(kwargs)
+    with context.no_invalidate_cache():
+        context.update(kwargs)
 
 
 def get_context():
