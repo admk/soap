@@ -47,6 +47,7 @@ def _file(args):
     if not file:
         logger.error('Empty input')
         return -1
+    return file
 
 
 def _parser(args):
