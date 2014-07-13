@@ -8,7 +8,6 @@ gmpy2.set_context(gmpy2.ieee(64))
 
 import soap
 from soap.context.base import _Context, ConfigError
-from soap.shell import shell
 
 
 _repr = builtins.repr
@@ -17,6 +16,7 @@ _soap_classes = [c for c in dir(soap) if inspect.isclass(c)]
 
 
 def _run_line_magic(magic, value):
+    from soap.shell import shell
     with open(os.devnull, 'w') as null:
         with contextlib.redirect_stdout(null):
             shell.run_line_magic(magic, value)
@@ -32,6 +32,8 @@ class SoapContext(_Context):
         fp_format = {'single': 32, 'double': 64}.get(value, None)
         if fp_format is not None:
             value = gmpy2.ieee(fp_format).precision - 1
+        if isinstance(value, str):
+            value = int(value)
         gmpy2.get_context().precision = value + 1
         return value
 

@@ -1,6 +1,7 @@
 # Ultra Short Term FIXMEs
 
-* [ ] Check if there is analysis bias in loop unroll
+* [ ] There is analysis bias in loop unroll, because of iteration is relaxed,
+  what to do next?
 * [ ] Consider what is a reasonable thing to do with non-terminating
   expressions
 
@@ -106,3 +107,5 @@
     - [X] Float interval only rather than float interval + error interval in
       analysis results.
 * [X] Check if it keeps changing precision and invalidating caches.
+* [X] Optimization gives smaller Pareto set because of some minuscule
+  differences can no longer be detected when using `mpfr` instead of `mpq`.

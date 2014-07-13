@@ -113,7 +113,7 @@ class ErrorAnalysis(Analysis):
     def error_select(self, v):
         if v.is_bottom():
             logger.warning(
-                'Cannot compute error for non-terminating expression')
+                'Cannot compute error for unreachable expression')
             return inf
         with gmpy2.local_context(gmpy2.ieee(64), round=gmpy2.RoundAwayZero):
             return float(max(abs(v.e.min), abs(v.e.max)))
