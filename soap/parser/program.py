@@ -155,6 +155,7 @@ class _VisitorParser(nodes.NodeVisitor):
     visit_number = _lift_middle
     visit_number_regex = _lift_child
     visit_variable_regex = _lift_text
+
     visit__ = _lift_dontcare
 
     def parse(self, program):

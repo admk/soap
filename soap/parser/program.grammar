@@ -94,4 +94,4 @@ number_regex =  float_regex / integer_regex
 integer_regex = ~'[0-9]+'
 float_regex = ~'(\+|-)?([0-9]+\.?[0-9]*|\.[0-9]+)([eE](\+|-)?[0-9]+)?'
 
-_ = ~'\s*'m
+_ = ~r"\s*(?:#[^\r\n]*)?\s*"
