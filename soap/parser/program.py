@@ -39,7 +39,7 @@ class _VisitorParser(nodes.NodeVisitor):
         if not statement:
             return single_statement
         if isinstance(statement, CompositionalFlow):
-            flows = statement.flows
+            flows = list(statement.flows)
         else:
             flows = [statement]
         flows = [single_statement] + flows
@@ -61,7 +61,7 @@ class _VisitorParser(nodes.NodeVisitor):
 
     def visit_if_else_block(self, node, children):
         if_flow, false_flow = children
-        bool_expr = if_flow.bool_expr
+        bool_expr = if_flow.conditional_expr
         true_flow = if_flow.true_flow
         return IfFlow(bool_expr, true_flow, false_flow)
 

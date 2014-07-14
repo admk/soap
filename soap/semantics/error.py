@@ -355,12 +355,15 @@ class IntegerInterval(Interval):
 
 
 class _FloatIntervalFormatMixin(object):
-    def __str__(self):
+    def _vals_to_str(self):
         min_val = '-∞' if self.min == -inf else '{:.5g}'.format(self.min)
         max_val = '∞' if self.max == inf else '{:.5g}'.format(self.max)
+        return min_val, max_val
+
+    def __str__(self):
         if self.min == self.max:
-            return '[{}]'.format(min_val)
-        return '[{}, {}]'.format(min_val, max_val)
+            return '{}'.format(self._vals_to_str()[0])
+        return '[{}, {}]'.format(*self._vals_to_str())
 
 
 class FloatInterval(_FloatIntervalFormatMixin, Interval):
@@ -551,7 +554,15 @@ class ErrorSemantics(Lattice):
         return ErrorSemantics(self.v, [k_min, k_max])
 
     def __str__(self):
-        return '{value}{error}'.format(value=self.v, error=self.e)
+        v = str(self.v)
+        e = '' if self.e.min == self.e.max == 0 else str(self.e)
+        if not e:
+            return v
+        if self.v.min == self.v.max:
+            v = '[{}]'.format(v)
+        if self.e.min == self.e.max:
+            e = '[{}]'.format(e)
+        return v + e
 
     def __repr__(self):
         return '{cls}({value!r}, {error!r})'.format(

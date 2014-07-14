@@ -7,7 +7,7 @@ from akpytemp.utils import code_gobble
 
 from soap import logger
 from soap.common import base_dispatcher, superscript
-from soap.semantics import BoxState, Label, is_numeral
+from soap.semantics import BoxState, is_numeral, Label
 
 
 def _code_gobble(s):
@@ -37,6 +37,10 @@ class Flow(object):
     *effect* of the computation associated with the flow, which is specified in
     the definition of the state.
     """
+    def __init__(self):
+        super().__init__()
+        self._label = None
+
     def vars(self, input=True, output=True):
         return flow_variables(self, input, output)
 
@@ -59,7 +63,7 @@ class Flow(object):
 
     @property
     def label(self):
-        return Label(statement=self)
+        return Label(id(self))
 
     def __eq__(self, other):
         return type(self) is type(other)

@@ -12,7 +12,13 @@ from soap.expression.operators import (
 from soap.lattice.base import Lattice
 from soap.semantics.error import IntegerInterval, ErrorSemantics
 
+
 _label_map = {}
+
+
+class _Dummy(object):
+    def __hash__(self):
+        return id(self)
 
 
 def fresh_int(hashable, lmap=_label_map):
@@ -20,6 +26,8 @@ def fresh_int(hashable, lmap=_label_map):
     Generates a fresh int for the label of `statement`, within the known
     label mapping `lmap`.
     """
+    if hashable is None:
+        hashable = _Dummy()
     return lmap.setdefault(hashable, len(lmap) + 1)
 
 

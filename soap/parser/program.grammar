@@ -54,7 +54,7 @@ prod_expr       = prod_operator atom
 # ==========
 
 skip        = _ 'skip'  _
-assign      = _ ':= '   _
+assign      = _ ':='    _
 if          = _ 'if'    _
 while       = _ 'while' _
 left_paren  = _ '('     _

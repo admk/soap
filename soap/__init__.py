@@ -74,7 +74,7 @@ Options:
                             definition.  Allowed options are: `python` and
                             `simple`.  If not specified, use standard Python
                             syntax instead and use the `ast` module to perform
-                            parsing.  [default: python]
+                            parsing.  [default: simple]
     --unroll-factor={context.unroll_factor}
                             Set the number of iterations bofore stopping loop
                             unroll and use the loop invariant in loop analysis.
