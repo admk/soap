@@ -17,6 +17,7 @@ Usage:
     {__executable__} analyze [options] (<file> | --command=<str> | -)
     {__executable__} optimize [options] (<file> | --command=<str> | -)
     {__executable__} interactive [options]
+    {__executable__} lint [--syntax=<str>] (<file> | --command=<str> | -)
     {__executable__} (-h | --help)
     {__executable__} --version
 
@@ -53,14 +54,13 @@ Options:
                             Set the loop unrolling depth.
                             [default: {context.unroll_depth}]
     --state=<str>           The variable input ranges, a JSON dictionary
-                            object.  [default: ]
-    --state-file=<str>      The variable input ranges, a file containing a JSON
-                            dictionary object.  Overrides `--state`.
+                            object.  If specifed, overrides the input
+                            statement in the program to be optimized.
+                            [default: ]
     --out-vars=<str>        A JSON list object that specifies the output
-                            variables and the ordering of these.  [default: ]
-    --out-vars-file=<str>   A file containing the JSON list object that
-                            specifies the output variables and the ordering of
-                            these.  Overrides `--out-vars`.
+                            variables and the ordering of these. If specifed,
+                            overrides the output statement in the program to be
+                            optimized.  [default: ]
     --algorithm=<str>       The name of the algorithm used for optimization.
                             Allows: `closure`, `expand`, `reduce`, `parsings`,
                             `greedy` or `frontier`.  [default: greedy]
@@ -76,6 +76,10 @@ Options:
     -v --verbose            Do a verbose execution.
     -d --debug              Show debug information, also enable `--verbose`.
 """.format(**vars(soap))
+
+
+class CommandError(Exception):
+    """Failed to execute command.  """
 
 
 def _setup_context(args):
@@ -127,12 +131,10 @@ def _file(args):
         try:
             file = sys.stdin if file == '-' else open(file)
         except FileNotFoundError:
-            logger.error('File {!r} does not exist'.format(file))
-            return -1
+            raise CommandError('File {!r} does not exist'.format(file))
         file = file.read()
     if not file:
-        logger.error('Empty input')
-        return -1
+        raise CommandError('Empty input')
     return file
 
 
@@ -145,14 +147,20 @@ def _parser(args):
     return syntax_map[syntax]
 
 
+def _state(args):
+    state = args['--state']
+    if not state:
+        return {}
+    return eval(state)
+
+
 def _analyze(args):
     if not args['analyze']:
         return
-    file = _file(args)
-    if file == -1:
-        return -1
     parse = _parser(args)
-    print(parse(file).debug())
+    flow = parse(_file(args))
+    state = _state(args)
+    print(flow.debug(state))
     return 0
 
 
@@ -163,22 +171,8 @@ def _optimize(args):
     from soap.expression import is_expression, Variable
     from soap.semantics import flow_to_meta_state
 
-    def _state(args):
-        state_file = args['--state-file']
-        if state_file:
-            state = open(state_file).read()
-        else:
-            state = args['--state']
-        if not state:
-            return {}
-        return eval(state)
-
     def _out_vars(args):
-        out_vars_file = args['--out-vars-file']
-        if out_vars_file:
-            out_vars = open(out_vars_file).read()
-        else:
-            out_vars = args['--out-vars']
+        out_vars = args['--out-vars']
         if not out_vars:
             return None
         out_vars = [Variable(v) for v in eval(out_vars)]
@@ -199,14 +193,9 @@ def _optimize(args):
         }
         return algorithm_map[algorithm]
 
-    file = _file(args)
-    if file == -1:
-        return -1
-
-    flow = _parser(args)(file)
+    flow = _parser(args)(_file(args))
     if not is_expression(flow):
         flow = flow_to_meta_state(flow)
-
     state = _state(args)
     out_vars = _out_vars(args)
     func = _algorithm(args)
@@ -217,20 +206,32 @@ def _optimize(args):
     return 0
 
 
+def _lint(args):
+    if not args['lint']:
+        return
+    flow = _parser(args)(_file(args))
+    print(flow)
+    return 0
+
+
 def _unreachable(args):
     # did not complete
-    return -1
+    raise CommandError('This statement should never be reached.')
 
 
 def main():
     args = docopt(usage, version=soap.__version__)
     functions = [
-        _setup_context, _interactive, _analyze, _optimize, _unreachable
+        _setup_context, _interactive, _analyze, _optimize, _lint, _unreachable
     ]
-    for f in functions:
-        return_code = f(args)
-        if return_code is not None:
-            sys.exit(return_code)
+    try:
+        for f in functions:
+            return_code = f(args)
+            if return_code is not None:
+                sys.exit(return_code)
+    except CommandError as e:
+        logger.error(e)
+        sys.exit(-1)
 
 
 if __name__ == '__main__':

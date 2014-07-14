@@ -11,8 +11,13 @@ class BaseState(base_dispatcher('visit', 'transition')):
     def empty(cls):
         return cls(bottom=True)
 
+    def generic_visit(self, flow):
+        raise TypeError('No method to visit {!r}'.format(flow))
+
     def visit_IdentityFlow(self, flow):
         return self
+
+    visit_InputFlow = visit_OutputFlow = visit_IdentityFlow
 
     def visit_AssignFlow(self, flow):
         return self[flow.var:arith_eval(flow.expr, self)]

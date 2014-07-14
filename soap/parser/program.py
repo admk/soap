@@ -4,9 +4,10 @@ from parsimonious import Grammar, nodes
 
 from soap.expression import expression_factory, operators
 from soap.program import (
-    IdentityFlow, AssignFlow, IfFlow, WhileFlow, CompositionalFlow
+    IdentityFlow, AssignFlow, IfFlow, WhileFlow, CompositionalFlow,
+    InputFlow, OutputFlow,
 )
-from soap.semantics import cast
+from soap.semantics import cast, ErrorSemantics
 
 
 class _VisitorParser(nodes.NodeVisitor):
@@ -36,7 +37,7 @@ class _VisitorParser(nodes.NodeVisitor):
 
     def visit_compound_statement(self, node, children):
         single_statement, statement = children
-        if not statement:
+        if statement is None:
             return single_statement
         if isinstance(statement, CompositionalFlow):
             flows = list(statement.flows)
@@ -70,6 +71,44 @@ class _VisitorParser(nodes.NodeVisitor):
         return WhileFlow(bool_expr, loop_flow)
 
     visit_boolean_block = visit_code_block = _lift_middle
+
+    def visit_input_statement(self, node, children):
+        input_lit, left_paren, input_list, right_paren, semicolon = children
+        return InputFlow(input_list)
+
+    def visit_input_list(self, node, children):
+        input_expr, maybe_input_list = children
+        input_list = input_expr
+        if maybe_input_list:
+            input_list.update(maybe_input_list)
+        return input_list
+
+    visit_maybe_input_list = _lift_child
+
+    def visit_comma_input_list(self, node, children):
+        comma, input_list = children
+        return input_list
+
+    def visit_input_expr(self, node, children):
+        variable, colon, number = children
+        return {variable: number}
+
+    def visit_output_statement(self, node, children):
+        output_lit, left_paren, output_list, right_paren, semicolon = children
+        return OutputFlow(output_list)
+
+    def visit_output_list(self, node, children):
+        output_var, maybe_output_list = children
+        output_list = [output_var]
+        if maybe_output_list:
+            output_list += maybe_output_list
+        return output_list
+
+    visit_maybe_output_list = _lift_child
+
+    def visit_comma_output_list(self, node, children):
+        comma, output_list = children
+        return output_list
 
     def visit_boolean_expression(self, node, children):
         left_expr, op, right_expr = children
@@ -113,7 +152,34 @@ class _VisitorParser(nodes.NodeVisitor):
     visit_sum_list = visit_prod_list = _visit_list
     visit_sum_expr = visit_prod_expr = _lift_children
 
+    def visit_number(self, node, children):
+        child = self._lift_child(node, children)
+        if isinstance(child, str):
+            return cast(child)
+        return child
+
+    def visit_error(self, node, children):
+        value, error = children
+        if isinstance(value, ErrorSemantics):
+            value = value.v
+        if isinstance(error, ErrorSemantics):
+            error = error.v
+        return ErrorSemantics(value, error)
+
+    def visit_interval(self, node, children):
+        left_brac, min_val, comma, max_val, right_brac = children
+        if isinstance(min_val, ErrorSemantics):
+            min_val = min_val.v
+        if isinstance(max_val, ErrorSemantics):
+            max_val = max_val.v
+        min_val = min_val.min
+        max_val = max_val.max
+        return cast([min_val, max_val])
+
+    visit_scalar = _lift_child
+
     visit_skip = visit_assign = visit_if = visit_while = _lift_dontcare
+    visit_input = visit_output = _lift_dontcare
     visit_left_paren = visit_right_paren = visit_semicolon = _lift_dontcare
     visit_question = visit_colon = _lift_dontcare
 
@@ -143,6 +209,8 @@ class _VisitorParser(nodes.NodeVisitor):
 
     visit_add = visit_sub = visit_mul = visit_div = visit_pow = _visit_operator
 
+    visit_left_brac = visit_right_brac = visit_comma = _lift_dontcare
+
     def visit_variable(self, node, children):
         name = self._lift_middle(node, children)
         return expression_factory(name)
@@ -152,8 +220,7 @@ class _VisitorParser(nodes.NodeVisitor):
 
     visit_integer_regex = visit_float_regex = _visit_number_regex
 
-    visit_number = _lift_middle
-    visit_number_regex = _lift_child
+    visit_integer = visit_float = _lift_middle
     visit_variable_regex = _lift_text
 
     visit__ = _lift_dontcare
@@ -161,7 +228,6 @@ class _VisitorParser(nodes.NodeVisitor):
     def parse(self, program):
         tree = self.grammar.parse(program)
         return self.visit(tree)
-
 
 _parser = None
 

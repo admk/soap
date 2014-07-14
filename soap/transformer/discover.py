@@ -9,6 +9,7 @@ from soap.analysis import expr_frontier
 from soap.common import base_dispatcher
 from soap.context import context as global_context
 from soap.expression import expression_factory, SelectExpr, FixExpr
+from soap.program import Flow
 from soap.semantics.state import MetaState
 from soap.semantics.functions import (
     arith_eval_meta_state, fixpoint_eval, expand_expr
@@ -191,10 +192,13 @@ class FrontierDiscoverer(_FrontierFilter):
 
 
 def _discover(discoverer_class, expr, state, out_vars, context):
+    if isinstance(expr, Flow):
+        state = state or expr.inputs()
+        out_vars = out_vars or expr.outputs()
     return discoverer_class()(expr, state, out_vars, context)
 
 
-def greedy(expr, state, out_vars=None, context=None):
+def greedy(expr, state=None, out_vars=None, context=None):
     """Finds our equivalent expressions using :class:`GreedyDiscoverer`.
 
     :param expr: An expression or a variable-expression mapping
@@ -211,7 +215,7 @@ def greedy(expr, state, out_vars=None, context=None):
     return _discover(GreedyDiscoverer, expr, state, out_vars, context)
 
 
-def frontier(expr, state, out_vars=None, context=None):
+def frontier(expr, state=None, out_vars=None, context=None):
     """Finds our equivalent expressions using :class:`FrontierDiscoverer`.
 
     :param expr: An expression or a variable-expression mapping
@@ -228,7 +232,7 @@ def frontier(expr, state, out_vars=None, context=None):
     return _discover(FrontierDiscoverer, expr, state, out_vars, context)
 
 
-def martel(expr, state, out_vars=None, context=None):
+def martel(expr, state=None, out_vars=None, context=None):
     """Finds Martel's equivalent expressions.
 
     :param expr: An expression or a variable-expression mapping

@@ -1,0 +1,6 @@
+# original
+input (i: 0, x: 1.0);
+while (x < 10) (
+    i := i + 1;
+    x := x + 1;
+);

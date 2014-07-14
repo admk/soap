@@ -5,7 +5,6 @@
 from akpytemp import Template
 from akpytemp.utils import code_gobble
 
-from soap import logger
 from soap.common import base_dispatcher, superscript
 from soap.semantics import BoxState, is_numeral, Label
 
@@ -44,6 +43,12 @@ class Flow(object):
     def vars(self, input=True, output=True):
         return flow_variables(self, input, output)
 
+    def inputs(self):
+        return input_output_variables(self)['inputs']
+
+    def outputs(self):
+        return input_output_variables(self)['outputs']
+
     def flow(self, state):
         """Evaluates the flow with state."""
         return state.transition(self)
@@ -53,9 +58,9 @@ class Flow(object):
         from soap.semantics.state import (
             IdentifierBaseState, IdentifierBoxState
         )
-        state = state or IdentifierBoxState()
+        state = state or self.inputs()
         if not isinstance(state, IdentifierBaseState):
-            logger.warning('state object type is not IdentifierBaseState.')
+            state = IdentifierBoxState(state or {})
         return self.format(self.flow(state))
 
     def format(self, state=None):
@@ -69,7 +74,7 @@ class Flow(object):
         return type(self) is type(other)
 
     def __str__(self):
-        return self.format().replace('    ', '').replace('\n', '')
+        return self.format().replace('    ', '').replace('\n', '').strip()
 
     def __hash__(self):
         return hash(self.__class__)
@@ -87,6 +92,35 @@ class IdentityFlow(Flow):
         return '{cls}()'.format(cls=self.__class__.__name__)
 
 
+class InputFlow(IdentityFlow):
+    def __init__(self, inputs):
+        super().__init__()
+        self.inputs = inputs
+
+    def format(self, state=None):
+        inputs = ', '.join(
+            '{}: {}'.format(k, v) for k, v in self.inputs.items())
+        return 'input ({}); '.format(inputs)
+
+    def __repr__(self):
+        return '{cls}({inputs!r})'.format(
+            cls=self.__class__.__name__, inputs=self.inputs)
+
+
+class OutputFlow(IdentityFlow):
+    def __init__(self, outputs):
+        super().__init__()
+        self.outputs = outputs
+
+    def format(self, state=None):
+        outputs = ', '.join(str(v) for v in self.outputs)
+        return 'output ({}); '.format(outputs)
+
+    def __repr__(self):
+        return '{cls}({outputs!r})'.format(
+            cls=self.__class__.__name__, outputs=self.outputs)
+
+
 class AssignFlow(Flow):
     """Assignment flow.
 
@@ -99,7 +133,7 @@ class AssignFlow(Flow):
         self.expr = expr
 
     def format(self, state=None):
-        s = '{var} ≔ {expr}; '.format(var=self.var, expr=self.expr)
+        s = '{var} := {expr}; '.format(var=self.var, expr=self.expr)
         if state:
             s += '\n' + _state_with_label(state, self.label)
         return s
@@ -266,7 +300,7 @@ class CompositionalFlow(Flow):
         return hash((self.__class__, self.flows))
 
 
-class VariableSetGenerator(base_dispatcher()):
+class _VariableSetGenerator(base_dispatcher()):
 
     def generic_execute(self, flow, input, output):
         raise TypeError(
@@ -274,6 +308,8 @@ class VariableSetGenerator(base_dispatcher()):
 
     def execute_IdentityFlow(self, flow, input, output):
         return set()
+
+    execute_InputFlow = execute_OutputFlow = execute_IdentityFlow
 
     def execute_AssignFlow(self, flow, input, output):
         in_vars = out_vars = set()
@@ -311,4 +347,45 @@ class VariableSetGenerator(base_dispatcher()):
         return super()._execute(flow, input, output)
 
 
-flow_variables = VariableSetGenerator()
+flow_variables = _VariableSetGenerator()
+
+
+class _InputOutputGenerator(base_dispatcher()):
+    def __init__(self):
+        super().__init__()
+        self.inputs = self.outputs = None
+
+    def execute_InputFlow(self, flow):
+        self.inputs = flow.inputs
+
+    def execute_OutputFlow(self, flow):
+        self.outputs = flow.outputs
+
+    def _execute_dont_care(self, flow):
+        pass
+
+    execute_IdentityFlow = execute_AssignFlow = _execute_dont_care
+
+    def execute_IfFlow(self, flow):
+        self(flow.true_flow)
+        self(flow.false_flow)
+
+    def execute_WhileFlow(self, flow):
+        self(flow.loop_flow)
+
+    def execute_CompositionalFlow(self, flow):
+        for f in flow.flows:
+            self(f)
+
+    def _execute(self, flow):
+        super()._execute(flow)
+
+
+def input_output_variables(flow):
+    g = _InputOutputGenerator()
+    g(flow)
+    rv = {
+        'inputs': g.inputs,
+        'outputs': g.outputs,
+    }
+    return rv
