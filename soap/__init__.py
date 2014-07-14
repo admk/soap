@@ -1,4 +1,5 @@
 __version__ = '2.0.dev'
+__date__ = 'TBA'
 __author__ = 'Xitong Gao'
 __email__ = '@'.join(['xtg08', 'ic.ac.uk'])
 
@@ -45,7 +46,7 @@ from soap.transformer import (
 
 __executable__ = os.path.basename(sys.argv[0])
 __doc__ = """
-SOAP {__version__}
+SOAP {__version__} {__date__}
 Structural Optimization of Arithmetic Programs.
 {__author__} ({__email__})
 

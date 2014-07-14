@@ -84,7 +84,7 @@ def ulp(v, underflow=True):
         with gmpy2.local_context(round=gmpy2.RoundUp):
             return mpfr(mpq(2) ** v.as_mantissa_exp()[1] + underflow_error)
     except OverflowError:
-        return mpfr('Inf')
+        return inf
 
 
 def overapproximate_error(e):
@@ -354,7 +354,16 @@ class IntegerInterval(Interval):
             'The interval is a top or bottom.'
 
 
-class FloatInterval(Interval):
+class _FloatIntervalFormatMixin(object):
+    def __str__(self):
+        min_val = '-∞' if self.min == -inf else '{:.5g}'.format(self.min)
+        max_val = '∞' if self.max == inf else '{:.5g}'.format(self.max)
+        if self.min == self.max:
+            return '[{}]'.format(min_val)
+        return '[{}, {}]'.format(min_val, max_val)
+
+
+class FloatInterval(_FloatIntervalFormatMixin, Interval):
     """The interval containing floating point values."""
     def __init__(self, v=None, top=False, bottom=False):
         super().__init__(v, top=top, bottom=bottom)
@@ -366,13 +375,8 @@ class FloatInterval(Interval):
         except AttributeError:
             'The interval is a top or bottom.'
 
-    def __str__(self):
-        min_val = '-∞' if self.min == -inf else '{:.5g}'.format(self.min)
-        max_val = '∞' if self.max == inf else '{:.5g}'.format(self.max)
-        return '[{}, {}]'.format(min_val, max_val)
 
-
-class FractionInterval(Interval):
+class FractionInterval(_FloatIntervalFormatMixin, Interval):
     """The interval containing real rational values."""
     def __init__(self, v=None, top=False, bottom=False):
         super().__init__(v, top=top, bottom=bottom)
@@ -380,11 +384,6 @@ class FractionInterval(Interval):
             return
         self.min = mpq(self.min)
         self.max = mpq(self.max)
-
-    def __str__(self):
-        min_val = '-∞' if self.min == -inf else '{:.5g}'.format(self.min)
-        max_val = '∞' if self.max == inf else '{:.5g}'.format(self.max)
-        return '[{}, {}]'.format(min_val, max_val)
 
 
 class ErrorSemantics(Lattice):
@@ -454,8 +453,15 @@ class ErrorSemantics(Lattice):
     def __add__(self, other, cls):
         if cls is not None:
             return cls(self) + cls(other)
-        v = self.v + other.v
-        e = self.e + other.e + round_off_error(v)
+        self_v_min, self_v_max = self.v
+        other_v_min, other_v_max = other.v
+        if self_v_min == self_v_max and other_v_min == other_v_max:
+            v = mpq(self_v_min) + mpq(other_v_min)
+            e = round_off_error_from_exact(v)
+        else:
+            v = self.v + other.v
+            e = round_off_error(v)
+        e += self.e + other.e
         return self.__class__(v, e)
     __radd__ = __add__
 
@@ -463,8 +469,15 @@ class ErrorSemantics(Lattice):
     def __sub__(self, other, cls):
         if cls is not None:
             return cls(self) - cls(other)
-        v = self.v - other.v
-        e = self.e - other.e + round_off_error(v)
+        self_v_min, self_v_max = self.v
+        other_v_min, other_v_max = other.v
+        if self_v_min == self_v_max and other_v_min == other_v_max:
+            v = mpq(self_v_min) - mpq(other_v_min)
+            e = round_off_error_from_exact(v)
+        else:
+            v = self.v - other.v
+            e = round_off_error(v)
+        e += self.e - other.e
         return self.__class__(v, e)
 
     @_decorate_operator
@@ -477,10 +490,16 @@ class ErrorSemantics(Lattice):
     def __mul__(self, other, cls):
         if cls is not None:
             return cls(self) * cls(other)
-        v = self.v * other.v
-        e = self.e * other.e + round_off_error(v)
-        e += self.v * other.e
-        e += other.v * self.e
+        e = self.e * other.e
+        self_v_min, self_v_max = self.v
+        other_v_min, other_v_max = other.v
+        if self_v_min == self_v_max and other_v_min == other_v_max:
+            v = mpq(self_v_min) * mpq(other_v_min)
+            e += round_off_error_from_exact(v)
+        else:
+            v = self.v * other.v
+            e += round_off_error(v)
+        e += self.v * other.e + other.v * self.e
         return self.__class__(v, e)
     __rmul__ = __mul__
 
@@ -488,9 +507,18 @@ class ErrorSemantics(Lattice):
     def __truediv__(self, other, cls):
         if cls is not None:
             return cls(self) / cls(other)
-        v = self.v / other.v
+        self_v_min, self_v_max = self.v
+        other_v_min, other_v_max = other.v
+        if self_v_min == self_v_max and other_v_min == other_v_max:
+            v = mpq(self_v_min) / mpq(other_v_min)
+            er = round_off_error_from_exact(v)
+            v = mpfr(v)
+        else:
+            v = self.v / other.v
+            er = round_off_error(v)
         e = self.e - v * other.e
         e /= other.v + other.e
+        e += er
         return self.__class__(v, e)
 
     @_decorate_operator

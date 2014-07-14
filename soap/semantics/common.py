@@ -13,7 +13,7 @@ def is_constant(e):
     if isinstance(e, Interval):
         return e.min == e.max
     if isinstance(e, ErrorSemantics):
-        return is_constant(e.v) and is_constant(e.e)
+        return is_constant(e.v)
     return False
 
 
