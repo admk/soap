@@ -25,8 +25,6 @@ else:
 import os
 import sys
 
-
-
 import gmpy2
 
 from soap.context import context
