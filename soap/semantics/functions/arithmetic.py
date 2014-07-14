@@ -1,6 +1,7 @@
 from soap.common import base_dispatcher
+from soap.context import context
 from soap.expression import operators
-from soap.semantics.error import cast
+from soap.semantics.error import cast, norm_func
 
 
 class ArithmeticEvaluator(base_dispatcher()):
@@ -94,14 +95,9 @@ class ErrorEvaluator(ArithmeticEvaluator):
         return cast(a1) | cast(a2)
 
     def execute_MetaState(self, meta_state, state):
-        error = None
-        for expr in meta_state.values():
-            expr_error = self(expr, state)
-            if not error:
-                error = expr_error
-            else:
-                error |= expr_error
-        return error
+        errors = [self(expr, state) for expr in meta_state.values()]
+        norm = norm_func(context)
+        return norm(errors)
 
 
 _error_eval = ErrorEvaluator()

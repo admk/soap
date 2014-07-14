@@ -599,3 +599,72 @@ def cast(v=None):
         if isfloat(v_min) or isfloat(v_max):
             return ErrorSemantics(v)
     raise TypeError('Do not know how to cast value {!r}'.format(v))
+
+
+def _ln_norm(errors, n):
+    v_min = v_max = e_min = e_max = 0
+    for e in errors:
+        if not isinstance(e, ErrorSemantics):
+            continue
+        v_min += abs(e.v.min) ** n
+        v_max += abs(e.v.max) ** n
+        e_min += abs(e.e.min) ** n
+        e_max += abs(e.e.max) ** n
+    inv_n = 1.0 / n
+    v_min **= inv_n
+    v_max **= inv_n
+    e_min **= inv_n
+    e_max **= inv_n
+    if v_min > v_max:
+        v_min, v_max = v_max, v_min
+    if e_min > e_max:
+        e_min, e_max = e_max, e_min
+    return ErrorSemantics([v_min, v_max], [e_min, e_max])
+
+
+mean_error = lambda errors: _ln_norm(errors, 1)
+mse_error = lambda errors: _ln_norm(errors, 2)
+
+
+def max_error(errors):
+    acc = None
+    for e in errors:
+        if not acc:
+            acc = e
+        else:
+            acc |= e
+    return acc
+
+
+def geomean(errors):
+    with gmpy2.local_context(round=gmpy2.RoundAwayZero):
+        min_error = mpfr(ulp(1))
+    geoabs = lambda v: abs(v) if v != 0 else min_error
+    v_min = v_max = e_min = e_max = 1
+    for e in errors:
+        if not isinstance(e, ErrorSemantics):
+            continue
+        v_min *= geoabs(e.v.min)
+        v_max *= geoabs(e.v.max)
+        e_min *= geoabs(e.e.min)
+        e_max *= geoabs(e.e.max)
+    inv_n = 1.0 / len(errors)
+    v_min **= inv_n
+    v_max **= inv_n
+    e_min **= inv_n
+    e_max **= inv_n
+    if v_min > v_max:
+        v_min, v_max = v_max, v_min
+    if e_min > e_max:
+        e_min, e_max = e_max, e_min
+    return ErrorSemantics([v_min, v_max], [e_min, e_max])
+
+
+def norm_func(context):
+    norm_func_map = {
+        'mean_error': mean_error,
+        'mse_error': mse_error,
+        'max_error': max_error,
+        'geomean': geomean,
+    }
+    return norm_func_map[context.norm]
