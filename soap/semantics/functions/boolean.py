@@ -40,18 +40,9 @@ def _contract(op, bound):
     return bmin, bmax
 
 
-_negate_dict = {
-    LESS_OP: GREATER_EQUAL_OP,
-    LESS_EQUAL_OP: GREATER_OP,
-    GREATER_OP: LESS_EQUAL_OP,
-    GREATER_EQUAL_OP: LESS_OP,
-    EQUAL_OP: NOT_EQUAL_OP,
-    NOT_EQUAL_OP: EQUAL_OP,
-}
-
-
 def _constraint(op, cond, bound):
-    op = _negate_dict[op] if not cond else op
+    from soap.semantics.state.constraint import constraint_negate_dict
+    op = constraint_negate_dict[op] if not cond else op
     if bound.is_bottom():
         return bound
     bound_min, bound_max = _contract(op, bound)
