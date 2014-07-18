@@ -7,7 +7,7 @@ from soap.semantics.error import cast, norm_func
 class ArithmeticEvaluator(base_dispatcher()):
 
     _unary_operator_function_dictionary = {
-        operators.UNARY_SUBTRACT_OP: lambda x, _: -x,
+        operators.UNARY_SUBTRACT_OP: lambda x: -x,
     }
 
     _binary_operator_function_dictionary = {
@@ -15,14 +15,6 @@ class ArithmeticEvaluator(base_dispatcher()):
         operators.SUBTRACT_OP: lambda x, y: x - y,
         operators.MULTIPLY_OP: lambda x, y: x * y,
         operators.DIVIDE_OP: lambda x, y: x / y,
-    }
-
-    _binary_boolean_operator_function_dictionary = {
-        operators.LESS_OP: lambda x, y: x < y,
-        operators.LESS_EQUAL_OP: lambda x, y: x <= y,
-        operators.EQUAL_OP: lambda x, y: x == y,
-        operators.GREATER_EQUAL_OP: lambda x, y: x >= y,
-        operators.GREATER_OP: lambda x, y: x > y,
     }
 
     def generic_execute(self, expr, state):
@@ -61,14 +53,6 @@ class ArithmeticEvaluator(base_dispatcher()):
         true_value = eval_split(expr.true_expr, true_state)
         false_value = eval_split(expr.false_expr, false_state)
         return true_value | false_value
-
-    def execute_BinaryBoolExpr(self, expr, state):
-        a1, a2 = self._execute_args(expr.args, state)
-        try:
-            op = self._binary_boolean_operator_function_dictionary[expr.op]
-        except KeyError:
-            raise KeyError('Unrecognized operator type {!r}'.format(self.op))
-        return op(a1, a2)
 
     def execute_FixExpr(self, expr, state):
         from soap.semantics.functions import (
