@@ -222,6 +222,7 @@ _binary_operator_construct_map = {
 }
 
 
+@cached
 def construct(expr):
     op = expr.op
     if op in COMPARISON_OPERATORS:
@@ -241,7 +242,7 @@ def bool_eval(expr, state):
     constraints = construct(expr)
     true_list, false_list = [], []
     for each in constraints:
-        bool_eval_list = [bool_eval(bool_expr, state) for bool_expr in each]
+        bool_eval_list = [_bool_eval(bool_expr, state) for bool_expr in each]
         true, false = zip(*bool_eval_list)
         true_list.append(meet(true))
         false_list.append(meet(false))
