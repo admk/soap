@@ -2,6 +2,7 @@
 .. module:: soap.lattice.common
     :synopsis: The common utilities for lattices.
 """
+import functools
 
 
 def _lattice_factory(cls, lattice_cls, name):
@@ -53,3 +54,11 @@ def _lattice_factory(cls, lattice_cls, name):
     if name:
         L.__name__ = name
     return L
+
+
+def join(iterable):
+    return functools.reduce(lambda x, y: x.join(y), iterable)
+
+
+def meet(iterable):
+    return functools.reduce(lambda x, y: x.meet(y), iterable)

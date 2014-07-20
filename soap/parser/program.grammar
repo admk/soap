@@ -47,7 +47,21 @@ comma_output_list = comma output_list
 #  expressions
 # =============
 
-boolean_expression    = term boolean_operator term
+boolean_expression = and_factor maybe_or_list
+
+and_factor   = bool_atom maybe_and_list
+bool_atom    = bool_parened / binary_bool_expr / unary_bool_expr
+bool_parened = left_paren boolean_expression right_paren
+
+binary_bool_expr = term compare_operator term
+unary_bool_expr  = not bool_atom
+maybe_or_list    = or_list / _
+or_list          = or_expr maybe_or_list
+or_expr          = or and_factor
+maybe_and_list   = and_list / _
+and_list         = and_expr maybe_and_list
+and_expr         = and bool_atom
+
 arithmetic_expression = select / term
 
 select  = boolean_expression question term colon term
@@ -87,7 +101,7 @@ semicolon   = _ ';'  _
 question    = _ '?'  _
 colon       = _ ':'  _
 
-boolean_operator = lt / le / ge / gt / eq / ne
+compare_operator = lt / le / ge / gt / eq / ne
 
 lt = _ '<'  _
 le = _ '<=' _
@@ -95,6 +109,10 @@ ge = _ '>=' _
 gt = _ '>'  _
 eq = _ '==' _
 ne = _ '!=' _
+
+and = _ 'and' _
+or  = _ 'or'  _
+not = _ 'not' _
 
 sum_operator = add / sub
 prod_operator = mul / div / pow

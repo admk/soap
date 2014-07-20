@@ -1,12 +1,35 @@
+import collections
+import itertools
+
 from soap.common.cache import cached
 from soap.expression import (
-    LESS_OP, GREATER_OP, LESS_EQUAL_OP, GREATER_EQUAL_OP,
-    EQUAL_OP, NOT_EQUAL_OP, is_variable
+    BinaryBoolExpr, is_variable, LESS_OP, GREATER_OP, LESS_EQUAL_OP,
+    GREATER_EQUAL_OP, EQUAL_OP, NOT_EQUAL_OP, UNARY_NEGATION_OP, AND_OP, OR_OP,
+    COMPARISON_OPERATORS, BINARY_OPERATORS,
 )
+from soap.lattice import join, meet
 from soap.semantics.error import (
     inf, ulp, mpz_type, mpfr_type,
     IntegerInterval, FloatInterval, ErrorSemantics
 )
+
+
+_negate_dict = {
+    LESS_OP: GREATER_EQUAL_OP,
+    LESS_EQUAL_OP: GREATER_OP,
+    GREATER_OP: LESS_EQUAL_OP,
+    GREATER_EQUAL_OP: LESS_OP,
+    EQUAL_OP: NOT_EQUAL_OP,
+    NOT_EQUAL_OP: EQUAL_OP,
+}
+_mirror_dict = {
+    LESS_OP: GREATER_OP,
+    LESS_EQUAL_OP: GREATER_EQUAL_OP,
+    GREATER_OP: LESS_OP,
+    GREATER_EQUAL_OP: LESS_EQUAL_OP,
+    EQUAL_OP: EQUAL_OP,
+    NOT_EQUAL_OP: NOT_EQUAL_OP,
+}
 
 
 def _rhs_eval(expr, state):
@@ -38,16 +61,6 @@ def _contract(op, bound):
     else:
         raise TypeError
     return bmin, bmax
-
-
-_negate_dict = {
-    LESS_OP: GREATER_EQUAL_OP,
-    LESS_EQUAL_OP: GREATER_OP,
-    GREATER_OP: LESS_EQUAL_OP,
-    GREATER_EQUAL_OP: LESS_OP,
-    EQUAL_OP: NOT_EQUAL_OP,
-    NOT_EQUAL_OP: EQUAL_OP,
-}
 
 
 def _constraint(op, cond, bound):
@@ -82,18 +95,7 @@ def _conditional(op, var, expr, state, cond):
     return var, cstr
 
 
-_mirror_dict = {
-    LESS_OP: GREATER_OP,
-    LESS_EQUAL_OP: GREATER_EQUAL_OP,
-    GREATER_OP: LESS_OP,
-    GREATER_EQUAL_OP: LESS_EQUAL_OP,
-    EQUAL_OP: EQUAL_OP,
-    NOT_EQUAL_OP: NOT_EQUAL_OP,
-}
-
-
-@cached
-def bool_eval(expr, state):
+def _bool_eval(expr, state):
     """
     Supports only simple boolean expressions::
         <variable> <operator> <arithmetic expression>
@@ -125,3 +127,123 @@ def bool_eval(expr, state):
                 split = split[var:cstr]
         split_list.append(split)
     return tuple(split_list)
+
+
+class _Constraints(collections.MutableSet):
+    def __init__(self, iterable=None):
+        super().__init__()
+        iterable = iterable or []
+        if isinstance(iterable, BinaryBoolExpr):
+            iterable = [iterable]
+        disjunctions = set()
+        for e in iterable:
+            if isinstance(e, BinaryBoolExpr):
+                e = {e}
+            if isinstance(e, set):
+                e = frozenset(e)
+            if isinstance(e, frozenset):
+                disjunctions.add(e)
+                continue
+            raise TypeError('Do not know how to add {!r}.'.format(e))
+        self.constraints = self._reduce(disjunctions)
+
+    def _reduce(self, iterable):
+        reduced = []
+        for more in iterable:
+            if any(fewer <= more for fewer in iterable if fewer != more):
+                continue
+            reduced.append(more)
+        return set(reduced)
+
+    def __contains__(self, item):
+        return item in self.constraints
+
+    def __iter__(self):
+        return iter(self.constraints)
+
+    def __len__(self):
+        return len(self.constraints)
+
+    def add(self, item):
+        return self.constraints.add(item)
+
+    def discard(self, item):
+        return self.constraints.discard(item)
+
+    def __lt__(self, other):
+        return self.constraints < other.constraints
+
+    @staticmethod
+    def _other(other):
+        if isinstance(other, BinaryBoolExpr):
+            return {other}
+        return other.constraints
+
+    def __or__(self, other):
+        return self.__class__(self.constraints | self._other(other))
+
+    def __and__(self, other):
+        other = self._other(other)
+        new_cstr_list = [
+            self_cstr | other_cstr
+            for self_cstr, other_cstr in itertools.product(self, other)]
+        return self.__class__(new_cstr_list)
+
+    @staticmethod
+    def _negate(expr):
+        return BinaryBoolExpr(_negate_dict[expr.op], *expr.args)
+
+    def __invert__(self):
+        conjunctions = [
+            self.__class__(self._negate(e) for e in c)
+            for c in self.constraints]
+        constraint_set = None
+        for c in conjunctions:
+            if constraint_set is None:
+                constraint_set = c
+            else:
+                constraint_set = constraint_set & c
+        return constraint_set
+
+    def __str__(self):
+        conjunctions = [
+            '({})'.format(' & '.join(str(e) for e in c))
+            for c in self.constraints]
+        return ' | '.join(conjunctions)
+
+    def __repr__(self):
+        return '{cls}({cstr})'.format(
+            cls=self.__class__.__name__, cstr=self.constraints)
+
+
+_binary_operator_construct_map = {
+    AND_OP: lambda a1, a2: a1 & a2,
+    OR_OP: lambda a1, a2: a1 | a2,
+}
+
+
+@cached
+def construct(expr):
+    op = expr.op
+    if op in COMPARISON_OPERATORS:
+        return _Constraints(expr)
+    if op in BINARY_OPERATORS:
+        a1, a2 = expr.args
+        a1, a2 = construct(a1), construct(a2)
+        return _binary_operator_construct_map[op](a1, a2)
+    if op == UNARY_NEGATION_OP:
+        return ~expr.a
+    TypeError(
+        'Do not know how to construct constraints from {}'.format(expr))
+
+
+@cached
+def bool_eval(expr, state):
+    constraints = construct(expr)
+    true_list, false_list = [], []
+    for each in constraints:
+        bool_eval_list = [_bool_eval(bool_expr, state) for bool_expr in each]
+        true, false = zip(*bool_eval_list)
+        true_list.append(meet(true))
+        false_list.append(meet(false))
+    return join(true_list), join(false_list)
