@@ -1,10 +1,10 @@
 # finds the root of `x ^ 2 = 3` by bisection
-input (a: [0.0,0.5], b: [1.5, 2.0]);
+input (a: [0.0, 2.0], b: [0.0, 2.0]);
 output (x);
 
 delta := 0.001;
 i := 0;
-while (b > a + delta) (
+while (b > a + delta and b - delta > a) (
     i := i + 1;
     x := (a + b) / 2;
     y := x * x - 3;
