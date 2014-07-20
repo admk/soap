@@ -11,9 +11,9 @@ from soap import logger
 from soap.common import cached
 from soap.common.parallel import pool
 from soap.expression.common import expression_factory, is_expression
-from soap.expression.depth import crop, stitch
 from soap.parser import parse
-from soap.transformer import pattern
+from soap.transformer.pattern import transform
+from soap.transformer.depth import crop, stitch
 
 
 RECURSION_LIMIT = sys.getrecursionlimit()
@@ -203,7 +203,7 @@ def _recursive_walk(expression, rules, depth):
     if not is_expression(expression):
         return discovered
     for rule in rules.get(expression.op, []):
-        discovered |= pattern.transform(rule, expression)
+        discovered |= transform(rule, expression)
     args_discovered = (_recursive_walk(a, rules, depth) | {a}
                        for a in expression.args)
     for args in itertools.product(*args_discovered):
