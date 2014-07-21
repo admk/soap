@@ -68,6 +68,7 @@ Options:
                             Specify the name of the norm function to use.
                             Allows: `mean_error`, `mse_error`, `max_error`
                             and `geomean`.  [default: {context.norm}]
+    --no-multiprocessing    Disable multiprocessing.
     --ipdb                  Launch ipdb interactive prompt on exceptions.
     --no-error              Silent all errors.  Overrides `--no-warning`,
                             `--verbose` and `--debug`.
@@ -113,6 +114,9 @@ def _setup_context(args):
     context.unroll_depth = int(args['--unroll-depth'])
 
     context.norm = args['--norm']
+
+    if args['--no-multiprocessing']:
+        context.multiprocessing = False
 
 
 def _interactive(args):

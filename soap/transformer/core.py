@@ -10,6 +10,7 @@ import sys
 from soap import logger
 from soap.common import cached
 from soap.common.parallel import pool
+from soap.context import context
 from soap.expression.common import expression_factory, is_expression
 from soap.parser import parse
 from soap.transformer.pattern import transform
@@ -71,19 +72,14 @@ class TreeTransformer(TreeFarmer):
         reduction, it should take as argument a set of trees and turn a new set
         of trees.
     :type reduce_plugin: function
-    :param multiprocessing: If set, the class will multiprocess when computing
-        new equivalent trees.
-    :type multiprocessing: bool
     """
     transform_rules = {}
     reduction_rules = {}
 
     def __init__(self, tree_or_trees,
                  depth=None, transform_rules=None, reduction_rules=None,
-                 step_plugin=None, reduce_plugin=None,
-                 multiprocessing=True):
+                 step_plugin=None, reduce_plugin=None):
         super().__init__(depth=depth or RECURSION_LIMIT)
-        self.multiprocessing = multiprocessing
         self.step_plugin = step_plugin
         self.reduce_plugin = reduce_plugin
         if transform_rules:
@@ -112,7 +108,7 @@ class TreeTransformer(TreeFarmer):
     def _step(self, expressions, closure=False, depth=None):
         """One step of the transitive closure."""
         rules = self.transform_rules if closure else self.reduction_rules
-        if self.multiprocessing:
+        if context.multiprocessing:
             cpu_count = multiprocessing.cpu_count()
             chunksize = int(len(expressions) / cpu_count) + 1
             # this gives the desired deterministic behaviour for reduction
