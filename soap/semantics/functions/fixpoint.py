@@ -17,7 +17,7 @@ def _is_fixpoint(state, prev_state, curr_join_state, prev_join_state,
 
 def _widen(state, prev_state, iteration):
     if context.unroll_factor:
-        if iteration % context.unroll_factor == 0:
+        if iteration % context.widen_factor == 0:
             logger.info('Widening', iteration)
             state = prev_state.widen(state)
     return state
