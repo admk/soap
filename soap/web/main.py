@@ -1,5 +1,6 @@
 import os
 import threading
+import traceback
 import uuid
 
 from akpytemp.utils import code_gobble
@@ -25,43 +26,52 @@ app.secret_key = os.urandom(24)
 _progress_dict = {}
 
 
-def _analyze(flow):
-    return flow.debug()
-
-
 def _step_callback(uid, json):
     _progress_dict[uid] = json
 
 
-def _greedy(flow, inputs, outputs, uid):
+def _analyze_thread(flow, uid):
+    _step_callback(uid, {
+        'status': 'complete',
+        'result': flow.debug(),
+    })
+
+
+def _analyze(flow):
+    thread = threading.Thread(
+        target=_analyze_thread, args=(flow, session['uid']))
+    thread.start()
+
+
+def _optimize_thread(flow, inputs, outputs, uid):
     logger.debug('Optimizing...')
-    no_of_steps = steps(flow)
-
-    class ProgressReportingDiscoverer(GreedyDiscoverer):
-        def _execute(self, expr, state, out_vars, context=None):
-            results = super()._execute(expr, state, out_vars, context)
-            json = {
-                'status': 'working',
-                'step': self.step_count,
-                'total': no_of_steps,
-            }
-            _step_callback(uid, json)
-            return results
-
     try:
+        no_of_steps = steps(flow)
+        class ProgressReportingDiscoverer(GreedyDiscoverer):
+            def _execute(self, expr, state, out_vars, context=None):
+                results = super()._execute(expr, state, out_vars, context)
+                json = {
+                    'status': 'working',
+                    'step': self.step_count,
+                    'total': no_of_steps,
+                }
+                _step_callback(uid, json)
+                return results
         result = ProgressReportingDiscoverer()(flow, inputs, outputs)
-    except Exception as e:
+    except Exception:
+        tb = traceback.format_exc()
         json = {
             'status': 'error',
-            'error': str(e),
+            'error': tb
         }
+        logger.error('An error occurred', tb)
     else:
         json = {
             'status': 'complete',
             'result':  '[' + '\n '.join(str(r) for r in result) + ']',
         }
+        logger.debug('Finished optimization')
     _step_callback(uid, json)
-    logger.debug('Finished optimization')
 
 
 def _optimize(flow):
@@ -69,7 +79,7 @@ def _optimize(flow):
     outputs = flow.outputs()
     flow = flow_to_meta_state(flow)
     thread = threading.Thread(
-        target=_greedy, args=(flow, inputs, outputs, session['uid']))
+        target=_optimize_thread, args=(flow, inputs, outputs, session['uid']))
     thread.start()
 
 
@@ -92,19 +102,18 @@ def run():
     }
     try:
         flow = parse(code)
+        json['status'] = 'starting'
         if action == 'analyze':
-            rv = _analyze(flow)
-            json['status'] = 'complete'
-            json['result'] = rv
+            _analyze(flow)
         elif action == 'optimize':
             _optimize(flow)
-            json['status'] = 'starting'
         else:
             json['status'] = 'error'
             json['error'] = 'Do not recognize action ' + action
-    except Exception as e:
+    except Exception:
         json['status'] = 'error'
-        json['error'] = '{}: {}'.format(e.__class__.__name__, e)
+        json['error'] = tb = traceback.format_exc()
+        logger.error('An error occurred', tb)
     _step_callback(session['uid'], json)
     return jsonify({'success': True})
 
