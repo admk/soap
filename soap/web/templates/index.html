@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block head %}
+    <link rel="stylesheet" href="//usablica.github.io/progress.js/progressjs.css"
+        type="text/css" media="all" />
+    <script src="//usablica.github.io/progress.js/progress.js"></script>
+{% endblock %}
+{% block content %}
+    <script>
+        function captialize(str)
+        {
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+        function ing(str)
+        {
+            return $.trim(str).slice(0, -1) + "ing...";
+        }
+        function poll(action) {
+            var btn_id = "#" + action
+            $(btn_id).html(captialize(ing(action)));
+            $(btn_id).attr("disabled", true);
+            var pjs = progressJs(btn_id)
+            pjs.setOptions({
+                theme: 'blueOverlayRadiusHalfOpacity',
+                overlayMode: true
+            });
+            pjs.start();
+
+            $.ajax({
+                url: "/progress",
+                success: function(rv) {
+                    if (rv.status == "starting") {
+                        // do nothing
+                    }
+                    else if (rv.status == "working") {
+                        console.log(100.0 * rv.step / rv.total);
+                        progressJs(btn_id).set(100.0 * rv.step / rv.total);
+                    }
+                    else if (rv.status == "complete") {
+                        $("#div-message").css('display', 'block')
+                        $("#ta-message").html(rv.result);
+                    }
+                    else {
+                        alert(rv.error);
+                    }
+                    if (rv.status == "complete" || rv.status == "error") {
+                        $(btn_id).html(captialize(action));
+                        $(btn_id).attr("disabled", false);
+                        progressJs(btn_id).end();
+                    }
+                    if (rv.status == "starting" || rv.status == "working") {
+                        setTimeout(function () { poll(action); }, 500);
+                    }
+                },
+                dataType: "json",
+                timeout: 500
+            });
+        }
+
+        function run(action) {
+            var code = $("#code").val();
+            var jstr = JSON.stringify({
+                action: action,
+                code: code,
+            })
+            $.ajax({
+                url: "/run",
+                type: "POST",
+                data: jstr,
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function() { poll(action); }
+            });
+        }
+    </script>
+    <p>
+        <textarea id="code"
+            class="form-control code" name="code">{{ program }}</textarea>
+    </p>
+    <div id="btn-row">
+        <div id="menu" class="btn-group select select-block">
+            <button class="btn dropdown-toggle clearfix"
+                    data-toggle="dropdown">
+                <span class="filter-option pull-left">
+                    Choose Example
+                </span>
+                &nbsp;
+                <span class="caret"></span>
+            </button>
+            <span class="dropdown-arrow dropdown-arrow-inverse"></span>
+            <ul class="dropdown-menu dropdown-inverse" role="menu" >
+                <li rel="0" class="">
+                    <a tabindex="-1" href="#" class="active">
+                        <span class="pull-left">1</span>
+                    </a>
+                </li>
+                <li rel="1" class="">
+                    <a tabindex="-1" href="#" class="active">
+                        <span class="pull-left">2</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <button id="analyze" class="btn btn-primary btn-width"
+                onclick="run(this.id)">
+            Analyze
+        </button>
+        <button id="optimize" class="btn btn-primary btn-width"
+                onclick="run(this.id)">
+            Optimize
+        </button>
+        &nbsp;&nbsp;&nbsp;&nbsp;
+        <button class="btn btn-danger" onclick="$('#code').html('')">
+            Clear
+        </button>
+    </div>
+    <div id="div-message" style="display:none;">
+        <hr/>
+        <textarea id="ta-message" class="form-control code" disabled>
+        </textarea>
+    </div>
+{% endblock %}

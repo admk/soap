@@ -23,6 +23,10 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
 
     Subclasses need to override :member:`closure`.
     """
+    def __init__(self):
+        super().__init__()
+        self.step_count = 0
+
     def filter(self, expr_set, state, out_vars, context):
         raise NotImplementedError
 
@@ -152,8 +156,18 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
     discover_MetaState = _discover_multiple_expressions
 
     def _execute(self, expr, state, out_vars, context=None):
+        self.step_count += 1
         context = context or global_context
         return super()._execute(expr, state, out_vars, context)
+
+
+class ProgressDiscoverer(BaseDiscoverer):
+    """A dummy step count discoverer."""
+    def filter(self, expr_set, state, out_vars, context):
+        return expr_set
+
+    def closure(self, expr_set, state, out_vars, context):
+        return expr_set
 
 
 class MartelDiscoverer(BaseDiscoverer):
@@ -189,6 +203,12 @@ class FrontierDiscoverer(_FrontierFilter):
     def closure(self, expr_set, state, out_vars, context):
         expr_set = closure(expr_set, depth=context.window_depth)
         return self.filter(expr_set, state, out_vars, context)
+
+
+def steps(expr):
+    d = ProgressDiscoverer()
+    d(expr, None, None)
+    return d.step_count
 
 
 def _discover(discoverer_class, expr, state, out_vars, context):

@@ -1,0 +1,15 @@
+textarea.code {
+    height: 250px;
+    width: 500px;
+    font-family: Consolas, Monaco, Lucida Console, Liberation Mono, DejaVu Sans
+        Mono, Bitstream Vera Sans Mono, Courier New, monospace !important;
+}
+textarea#ta-message {
+    color: rgb(52, 73, 94);
+}
+.btn-width {
+    width: 110px;
+}
+#menu {
+    width: 200px;
+}

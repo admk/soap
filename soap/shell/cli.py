@@ -18,6 +18,7 @@ Usage:
     {__executable__} optimize [options] (<file> | --command=<str> | -)
     {__executable__} interactive [options]
     {__executable__} lint [--syntax=<str>] (<file> | --command=<str> | -)
+    {__executable__} web [-v | --verbose] [-d | --debug] [--port=<number>]
     {__executable__} (-h | --help)
     {__executable__} --version
 
@@ -74,6 +75,9 @@ Options:
                             `--verbose` and `--debug`.
     --no-warning            Silent all warnings.  Overrides `--verbose` and
                             `--debug`.
+    --port={context.port}
+                            Specify the port of the webserver.
+                            [default: {context.port}]
     -v --verbose            Do a verbose execution.
     -d --debug              Show debug information, also enable `--verbose`.
 """.format(**vars(soap))
@@ -117,6 +121,8 @@ def _setup_context(args):
 
     if args['--no-multiprocessing']:
         context.multiprocessing = False
+
+    context.port = int(args['--port'])
 
 
 def _interactive(args):
@@ -218,6 +224,14 @@ def _lint(args):
     return 0
 
 
+def _web(args):
+    if not args['web']:
+        return
+    from soap.web.main import main
+    main()
+    return 0
+
+
 def _unreachable(args):
     # did not complete
     raise CommandError('This statement should never be reached.')
@@ -226,7 +240,8 @@ def _unreachable(args):
 def main():
     args = docopt(usage, version=soap.__version__)
     functions = [
-        _setup_context, _interactive, _analyze, _optimize, _lint, _unreachable
+        _setup_context, _interactive, _analyze, _optimize, _lint, _web,
+        _unreachable
     ]
     try:
         for f in functions:

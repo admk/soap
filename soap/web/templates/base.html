@@ -1,0 +1,30 @@
+<html>
+    <head>
+        <title>{{ soap.__soap__ }}</title>
+        <link rel="stylesheet"
+            href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"
+            type="text/css" media="all" />
+        <link rel="stylesheet"
+            href="//designmodo.github.io/Flat-UI/css/flat-ui.css"
+            type="text/css" media="all" />
+        <link rel="stylesheet" href="static/css/main.css"
+            type="text/css" media="all" />
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js">
+        </script>
+        <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js">
+        </script>
+        {% block head %}{% endblock %}
+    </head>
+    <body>
+        <div class="row">
+            <div class="col-sm-3"></div>
+            <div class="col-sm-6">
+                <h1 class="text-center">Saponaceous</h1>
+                <p class="text-justify">
+                    Description goes here.
+                </p>
+                {% block content %}{% endblock %}
+            </div>
+            <div class="col-sm-3"></div>
+    </body>
+</html>
