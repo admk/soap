@@ -1,5 +1,8 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
     <head>
+        <meta charset="utf-8">
+        <meta name="description" content="{{ soap.__description__ }}">
         <title>{{ soap.__soap__ }}</title>
         <link rel="stylesheet"
             href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"
@@ -16,15 +19,32 @@
         {% block head %}{% endblock %}
     </head>
     <body>
-        <div class="row">
+        <div id="header" class="row">
             <div class="col-sm-3"></div>
             <div class="col-sm-6">
                 <h1 class="text-center">Saponaceous</h1>
                 <p class="text-justify">
-                    Description goes here.
+                    Description goes here.  Absolutely no warranty.
                 </p>
+            </div>
+            <div class="col-sm-3"></div>
+        </div>
+        <div id="content" class="row">
+            <div class="col-sm-3"></div>
+            <div class="col-sm-6">
                 {% block content %}{% endblock %}
             </div>
             <div class="col-sm-3"></div>
+        </div>
+        <footer>
+        <div id="footer" class="row">
+            <div class="col-sm-3"></div>
+            <div class="col-sm-6 text-center">
+                Circuits and Systems Research Group<br/>
+                Imperial College London
+            </div>
+            <div class="col-sm-3"></div>
+        </div>
+        </footer>
     </body>
 </html>

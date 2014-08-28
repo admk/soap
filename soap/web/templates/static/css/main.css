@@ -1,8 +1,10 @@
 textarea.code {
     height: 250px;
-    width: 500px;
     font-family: Consolas, Monaco, Lucida Console, Liberation Mono, DejaVu Sans
         Mono, Bitstream Vera Sans Mono, Courier New, monospace !important;
+}
+#div-message {
+    margin-top: 20px;
 }
 textarea#ta-message {
     color: rgb(52, 73, 94);
@@ -11,5 +13,10 @@ textarea#ta-message {
     width: 110px;
 }
 #menu {
-    width: 200px;
+    display: inline-block;
+    margin-bottom: 0px;
+    width: 160px;
+}
+footer {
+    margin-top: 100px;
 }

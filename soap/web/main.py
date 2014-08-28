@@ -23,32 +23,56 @@ app.jinja_loader = jinja2.FileSystemLoader(
     os.path.join(directory, 'templates'))
 app.secret_key = os.urandom(24)
 
+
+def _uid():
+    return session.setdefault('uid', uuid.uuid4())
+
+
 _progress_dict = {}
+_stop_requests = set()
 
 
 def _step_callback(uid, json):
+    logger.debug(json);
     _progress_dict[uid] = json
 
 
 def _analyze_thread(flow, uid):
-    _step_callback(uid, {
-        'status': 'complete',
-        'result': flow.debug(),
-    })
+    logger.debug('Analyzing...')
+    try:
+        result = flow.debug()
+    except:
+        tb = traceback.format_exc()
+        json = {
+            'status': 'error',
+            'error': tb
+        }
+        logger.error('An error occurred', tb)
+    else:
+        logger.debug('Finished analysis')
+        json = {
+            'status': 'complete',
+            'result': result,
+        }
+    _step_callback(uid, json)
 
 
 def _analyze(flow):
     thread = threading.Thread(
-        target=_analyze_thread, args=(flow, session['uid']))
+        target=_analyze_thread, args=(flow, _uid()))
     thread.start()
 
 
 def _optimize_thread(flow, inputs, outputs, uid):
     logger.debug('Optimizing...')
+    class TerminateException(Exception):
+        pass
     try:
         no_of_steps = steps(flow)
         class ProgressReportingDiscoverer(GreedyDiscoverer):
             def _execute(self, expr, state, out_vars, context=None):
+                if uid in _stop_requests:
+                    raise TerminateException
                 results = super()._execute(expr, state, out_vars, context)
                 json = {
                     'status': 'working',
@@ -58,7 +82,13 @@ def _optimize_thread(flow, inputs, outputs, uid):
                 _step_callback(uid, json)
                 return results
         result = ProgressReportingDiscoverer()(flow, inputs, outputs)
-    except Exception:
+    except TerminateException:
+        json = {
+            'status': 'complete',
+            'result': 'Stopped by user',
+        }
+        logger.debug('Stopping')
+    except:
         tb = traceback.format_exc()
         json = {
             'status': 'error',
@@ -72,6 +102,8 @@ def _optimize_thread(flow, inputs, outputs, uid):
         }
         logger.debug('Finished optimization')
     _step_callback(uid, json)
+    if uid in _stop_requests:
+        _stop_requests.remove(uid)
 
 
 def _optimize(flow):
@@ -79,7 +111,7 @@ def _optimize(flow):
     outputs = flow.outputs()
     flow = flow_to_meta_state(flow)
     thread = threading.Thread(
-        target=_optimize_thread, args=(flow, inputs, outputs, session['uid']))
+        target=_optimize_thread, args=(flow, inputs, outputs, _uid()))
     thread.start()
 
 
@@ -88,11 +120,14 @@ def progress():
     default = {
         'status': 'ready',
     }
-    return jsonify(_progress_dict.get(session['uid'], default))
+    return jsonify(_progress_dict.get(_uid(), default))
 
 
 @app.route("/run", methods=['POST'])
 def run():
+    rv = jsonify({'success': True})
+    if _uid() in _stop_requests:
+        _stop_requests.remove(uid)
     req = request.get_json()
     action = req['action']
     code = req['code']
@@ -103,25 +138,32 @@ def run():
     try:
         flow = parse(code)
         json['status'] = 'starting'
+        _step_callback(_uid(), json)
         if action == 'analyze':
             _analyze(flow)
-        elif action == 'optimize':
+            return rv
+        if action == 'optimize':
             _optimize(flow)
-        else:
-            json['status'] = 'error'
-            json['error'] = 'Do not recognize action ' + action
+            return rv
+        json['error'] = 'Unrecognized action ' + action
     except Exception:
-        json['status'] = 'error'
         json['error'] = tb = traceback.format_exc()
         logger.error('An error occurred', tb)
-    _step_callback(session['uid'], json)
+    json['status'] = 'error'
+    return rv
+
+
+@app.route("/stop")
+def stop():
+    uid = _uid()
+    _stop_requests.add(uid)
+    json = {'status': 'stopping'}
+    _step_callback(uid, json)
     return jsonify({'success': True})
 
 
 @app.route("/")
 def index():
-    if 'uid' not in session:
-        session['uid'] = uuid.uuid4()
     program = code_gobble(
         """
         input (
