@@ -156,9 +156,10 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
     discover_MetaState = _discover_multiple_expressions
 
     def _execute(self, expr, state, out_vars, context=None):
-        self.step_count += 1
         context = context or global_context
-        return super()._execute(expr, state, out_vars, context)
+        result = super()._execute(expr, state, out_vars, context)
+        self.step_count += 1
+        return result
 
 
 class ProgressDiscoverer(BaseDiscoverer):

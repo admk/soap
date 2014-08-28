@@ -32,7 +32,7 @@ _progress_dict = {}
 _stop_requests = set()
 
 
-def _step_callback(uid, json):
+def _update_progress(uid, json):
     logger.debug(json);
     _progress_dict[uid] = json
 
@@ -54,7 +54,7 @@ def _analyze_thread(flow, uid):
             'status': 'complete',
             'result': result,
         }
-    _step_callback(uid, json)
+    _update_progress(uid, json)
 
 
 def _analyze(flow):
@@ -79,7 +79,7 @@ def _optimize_thread(flow, inputs, outputs, uid):
                     'step': self.step_count,
                     'total': no_of_steps,
                 }
-                _step_callback(uid, json)
+                _update_progress(uid, json)
                 return results
         result = ProgressReportingDiscoverer()(flow, inputs, outputs)
     except TerminateException:
@@ -87,7 +87,7 @@ def _optimize_thread(flow, inputs, outputs, uid):
             'status': 'complete',
             'result': 'Stopped by user',
         }
-        logger.debug('Stopping')
+        logger.debug('Stopped optimization')
     except:
         tb = traceback.format_exc()
         json = {
@@ -101,7 +101,7 @@ def _optimize_thread(flow, inputs, outputs, uid):
             'result':  '[' + '\n '.join(str(r) for r in result) + ']',
         }
         logger.debug('Finished optimization')
-    _step_callback(uid, json)
+    _update_progress(uid, json)
     if uid in _stop_requests:
         _stop_requests.remove(uid)
 
@@ -126,7 +126,8 @@ def progress():
 @app.route("/run", methods=['POST'])
 def run():
     rv = jsonify({'success': True})
-    if _uid() in _stop_requests:
+    uid = _uid
+    if uid in _stop_requests:
         _stop_requests.remove(uid)
     req = request.get_json()
     action = req['action']
@@ -138,7 +139,7 @@ def run():
     try:
         flow = parse(code)
         json['status'] = 'starting'
-        _step_callback(_uid(), json)
+        _update_progress(_uid(), json)
         if action == 'analyze':
             _analyze(flow)
             return rv
@@ -156,9 +157,10 @@ def run():
 @app.route("/stop")
 def stop():
     uid = _uid()
-    _stop_requests.add(uid)
-    json = {'status': 'stopping'}
-    _step_callback(uid, json)
+    if _progress_dict[uid]['status'] == 'working':
+        _stop_requests.add(uid)
+        json = {'status': 'stopping'}
+        _update_progress(uid, json)
     return jsonify({'success': True})
 
 

@@ -31,8 +31,8 @@ function poll(action) {
             else if (rv.status == "working") {
                 $("#danger").html("Stop");
                 $("#danger").attr("disabled", false);
-                console.log(100.0 * rv.step / rv.total);
-                progressJs(btn_id).set(100.0 * rv.step / rv.total);
+                progressJs(btn_id).set(
+                    100.0 * Math.pow(rv.step / rv.total, 2.5));
             }
             else if (rv.status == "complete") {
                 $("#danger").html("Clear");
