@@ -5,6 +5,8 @@ from docopt import docopt
 import soap
 from soap import logger
 from soap.context import context
+from soap.parser import parse
+from soap.program import Flow
 from soap.shell import interactive
 
 
@@ -34,11 +36,6 @@ Options:
                             `--precision=<width>`.
     --double                Use double-precision format, overrides both options
                             `--precision=<width>` and `--single`.
-    --syntax=<str>          Parse using the specified language syntax
-                            definition.  Allowed options are: `python` and
-                            `simple`.  If not specified, use standard Python
-                            syntax instead and use the `ast` module to perform
-                            parsing.  [default: simple]
     --unroll-factor={context.unroll_factor}
                             Set the number of iterations bofore stopping loop
                             unroll and use the loop invariant in loop analysis.
@@ -142,28 +139,22 @@ def _file(args):
     return file
 
 
-def _parser(args):
-    syntax = args['--syntax']
-    syntax_map = {
-        'python': soap.parser.python.pyparse,
-        'simple': soap.parser.program.parse,
-    }
-    return syntax_map[syntax]
-
-
-def _state(args):
+def _state(flow, args):
+    if isinstance(flow, Flow):
+        state = flow.inputs()
+        if state:
+            return state
     state = args['--state']
-    if not state:
-        return {}
-    return eval(state)
+    if state:
+        return eval(state)
+    return {}
 
 
 def _analyze(args):
     if not args['analyze']:
         return
-    parse = _parser(args)
     flow = parse(_file(args))
-    state = _state(args)
+    state = _state(flow, args)
     print(flow.debug(state))
     return 0
 
@@ -175,12 +166,15 @@ def _optimize(args):
     from soap.expression import is_expression, Variable
     from soap.semantics import flow_to_meta_state
 
-    def _out_vars(args):
+    def _out_vars(flow, args):
+        if isinstance(flow, Flow):
+            out_vars = flow.outputs()
+            if out_vars:
+                return out_vars
         out_vars = args['--out-vars']
-        if not out_vars:
-            return None
-        out_vars = [Variable(v) for v in eval(out_vars)]
-        return out_vars
+        if out_vars:
+            return [Variable(v) for v in eval(out_vars)]
+        return None
 
     def _algorithm(args):
         from soap.transformer import (
@@ -197,11 +191,11 @@ def _optimize(args):
         }
         return algorithm_map[algorithm]
 
-    flow = _parser(args)(_file(args))
+    flow = parse(_file(args))
+    state = _state(flow, args)
+    out_vars = _out_vars(flow, args)
     if not is_expression(flow):
         flow = flow_to_meta_state(flow)
-    state = _state(args)
-    out_vars = _out_vars(args)
     func = _algorithm(args)
     results = func(flow, state, out_vars)
     for r in results:
@@ -213,7 +207,7 @@ def _optimize(args):
 def _lint(args):
     if not args['lint']:
         return
-    flow = _parser(args)(_file(args))
+    flow = parse(_file(args))
     print(flow)
     return 0
 
