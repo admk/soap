@@ -65,7 +65,7 @@ class Lattice(Flyweight, metaclass=LatticeMeta):
     Subclasses of this class must implement the member functions:
     :member:`join`, :member:`meet`, :member:`le`.
     """
-    __slots__ = ()
+    __slots__ = ('_hash')
 
     def __init__(self, *args, top=False, bottom=False, **kwargs):
         super().__init__()
@@ -74,6 +74,7 @@ class Lattice(Flyweight, metaclass=LatticeMeta):
                 'Lattice element cannot be bottom and top simultaneously.')
         self.top = top
         self.bottom = bottom
+        self._hash = None
 
         _decorate(self.__class__)
 
@@ -127,10 +128,15 @@ class Lattice(Flyweight, metaclass=LatticeMeta):
         lambda self, other: not self.le(other) or not other.le(self))
 
     def __hash__(self):
+        hash_val = self._hash
+        if hash_val:
+            return hash_val
         is_top = self.is_top()
         is_bottom = self.is_bottom()
         if is_top or is_bottom:
-            return hash((self.__class__, is_top, is_bottom))
+            hash_val = hash((self.__class__, is_top, is_bottom))
+            self._hash = hash_val
+            return hash_val
 
     def __str__(self):
         if self.is_top():

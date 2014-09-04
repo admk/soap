@@ -338,7 +338,8 @@ class Interval(Lattice):
             cls=self.__class__.__name__, min=self.min, max=self.max)
 
     def __hash__(self):
-        return hash(tuple(self))
+        self._hash = hash_val = hash(tuple(self))
+        return hash_val
 
 
 class IntegerInterval(Interval):
@@ -569,7 +570,8 @@ class ErrorSemantics(Lattice):
             cls=self.__class__.__name__, value=self.v, error=self.e)
 
     def __hash__(self):
-        return hash((self.v, self.e))
+        self._hash = hash_val = hash((self.v, self.e))
+        return hash_val
 
 
 def cast(v=None):

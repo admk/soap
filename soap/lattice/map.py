@@ -10,7 +10,7 @@ from soap.lattice.common import _lattice_factory
 
 class MapLattice(Lattice, Mapping):
     """Defines a lattice for mappings/functions."""
-    __slots__ = ('mapping', '_hash')
+    __slots__ = ('mapping')
 
     def __init__(self, dictionary=None, top=False, bottom=False, **kwargs):
         super().__init__(top=top, bottom=bottom)
@@ -88,12 +88,7 @@ class MapLattice(Lattice, Mapping):
             return self._cast_value(bottom=True)
 
     def __hash__(self):
-        try:
-            return self._hash
-        except AttributeError:
-            pass
-        hash_val = hash(tuple(self.items()))
-        self._hash = hash_val
+        self._hash = hash_val = hash(tuple(self.items()))
         return hash_val
 
     def __str__(self):

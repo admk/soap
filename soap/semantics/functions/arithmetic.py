@@ -1,7 +1,7 @@
-from soap.common import base_dispatcher
+from soap.common import base_dispatcher, cached
 from soap.context import context
 from soap.expression import operators
-from soap.semantics.error import cast, norm_func
+from soap.semantics.error import cast, ErrorSemantics, FloatInterval, norm_func
 
 
 class ArithmeticEvaluator(base_dispatcher()):
@@ -68,11 +68,21 @@ class ArithmeticEvaluator(base_dispatcher()):
         from soap.semantics.functions import arith_eval_meta_state
         return arith_eval_meta_state(meta_state, state)
 
+    @cached
+    def _execute(self, expr, state):
+        return super()._execute(expr, state)
+
 
 arith_eval = ArithmeticEvaluator()
 
 
 class ErrorEvaluator(ArithmeticEvaluator):
+
+    def execute_Variable(self, expr, state):
+        value = state[expr]
+        if isinstance(value, FloatInterval):
+            value = ErrorSemantics(value, 0)
+        return value
 
     def execute_BinaryBoolExpr(self, expr, state):
         a1, a2 = self._execute_args(expr.args, state)
@@ -84,14 +94,4 @@ class ErrorEvaluator(ArithmeticEvaluator):
         return norm(errors)
 
 
-_error_eval = ErrorEvaluator()
-
-
-def error_eval(expr, state):
-    from soap.semantics import BoxState, FloatInterval, ErrorSemantics
-    new_state = {}
-    for key, value in state.items():
-        if isinstance(value, FloatInterval):
-            value = ErrorSemantics(value, 0)
-        new_state[key] = value
-    return _error_eval(expr, BoxState(new_state))
+error_eval = ErrorEvaluator()

@@ -176,8 +176,8 @@ def inner_meta_fusion(env, var):
     ori_loop_var = loop_var = expr.loop_var
     if not isinstance(loop_var, OutputVariableTuple):
         loop_var = [loop_var]
-    loop_state = MetaState(recursive_fusion(expr.loop_state, loop_var))
-    init_state = MetaState(recursive_fusion(expr.init_state, loop_var))
+    loop_state = MetaState(recursive_fusion(expr.loop_state, loop_var, []))
+    init_state = MetaState(recursive_fusion(expr.init_state, loop_var, []))
 
     # update env with new expr, no dependency cycles created
     expr = FixExpr(
@@ -252,10 +252,10 @@ def outer_scope_fusion(env, var):
     return env
 
 
-def recursive_fusion(env, out_vars):
+def recursive_fusion(env, out_vars, done_vars):
     def acyclic_assign(fusion_func, env, expr):
         new_env = fusion_func(env, expr)
-        if env == new_env:
+        if id(env) == id(new_env) or env == new_env:
             return env
         try:
             DependencyGraph(new_env, out_vars)
@@ -264,16 +264,18 @@ def recursive_fusion(env, out_vars):
         return new_env
 
     for var in out_vars:
+        if var in done_vars:
+            continue
+        done_vars.append(var)
+
         # InputVariableTuple
         if isinstance(var, InputVariableTuple):
-            env = recursive_fusion(env, var)
+            env = recursive_fusion(env, var, done_vars)
             continue
 
         expr = env.get(var)
         if expr is None or expr.is_bottom():
             raise KeyError('Node {} has no expression'.format(var))
-
-        logger.debug('Node fusion: {}, for expr: {}'.format(var, expr))
 
         # fusion kernel
         env = acyclic_assign(branch_fusion, env, expr)
@@ -281,7 +283,7 @@ def recursive_fusion(env, out_vars):
 
         if not isinstance(expr, FixExpr):
             # depth-first recursively merge branches
-            env = recursive_fusion(env, sorted_args(expr))
+            env = recursive_fusion(env, sorted_args(expr), done_vars)
         else:
             # is fixpoint expression, fuse stuff in local environments
             env = inner_meta_fusion(env, var)
@@ -290,7 +292,6 @@ def recursive_fusion(env, out_vars):
     return env
 
 
-@cached
 def fusion(env, out_vars):
     if not out_vars:
         logger.warning(
@@ -299,4 +300,4 @@ def fusion(env, out_vars):
     if not isinstance(out_vars, collections.Sequence):
         logger.warning('Expect out_vars to be a sequence, will sort it')
         out_vars = sorted(out_vars, key=str)
-    return MetaState(recursive_fusion(env, out_vars))
+    return MetaState(recursive_fusion(env, out_vars, []))

@@ -1,6 +1,6 @@
 import collections
 
-from soap.common import base_dispatcher
+from soap.common import base_dispatcher, cached
 from soap.expression import expression_factory, operators
 from soap.semantics.functions import error_eval
 from soap.semantics.label import LabelContext, LabelSemantics
@@ -87,6 +87,7 @@ class LabelGenerator(base_dispatcher()):
 
         return LabelSemantics(label, env)
 
+    @cached
     def _execute(self, expr, state, context=None):
         context = context or LabelContext(expr)
         return super()._execute(expr, state, context)

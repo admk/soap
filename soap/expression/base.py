@@ -11,7 +11,7 @@ from soap.lattice.flat import FlatLattice
 class Expression(FlatLattice, Flyweight):
     """A base class for expressions."""
 
-    __slots__ = ('_op', '_args', '_hash')
+    __slots__ = ('_op', '_args')
 
     def __init__(self, op=None, *args, top=False, bottom=False, **kwargs):
         super().__init__(top=top, bottom=bottom)
@@ -135,12 +135,8 @@ class Expression(FlatLattice, Flyweight):
         return not self == other
 
     def __hash__(self):
-        try:
-            return self._hash
-        except AttributeError:
-            pass
-        self._hash = hash(self._attr())
-        return self._hash
+        self._hash = hash_val = hash(self._attr())
+        return hash_val
 
 
 class UnaryExpression(Expression):
