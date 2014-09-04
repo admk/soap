@@ -13,17 +13,20 @@ from soap.common.parallel import pool
 from soap.context import context
 from soap.expression.common import expression_factory, is_expression
 from soap.parser import parse
+from soap.semantics import LabelContext
 from soap.transformer.pattern import transform
 from soap.transformer.depth import crop, stitch
 
 
 RECURSION_LIMIT = sys.getrecursionlimit()
+_depth_context = LabelContext('DepthContext')
 
 
 class TreeFarmer(object):
     def __init__(self, depth):
         super().__init__()
         self.depth = depth
+        self._crop_env = {}
 
     def _harvest(self, trees):
         """Crops all trees at the depth limit."""
@@ -32,10 +35,7 @@ class TreeFarmer(object):
         logger.debug('Harvesting trees.')
         cropped = []
         for t in trees:
-            try:
-                t, e = crop(t, self.depth, self)
-            except AttributeError:
-                t, e = t, {}
+            t, e = crop(t, self.depth, _depth_context)
             cropped.append(t)
             self._crop_env.update(e)
         return cropped
@@ -92,7 +92,6 @@ class TreeTransformer(TreeFarmer):
             self._expressions = [tree_or_trees]
         else:
             self._expressions = tree_or_trees
-        self._crop_env = {}
         if self.depth >= RECURSION_LIMIT and self.transform_rules:
             logger.warning('Depth limit not set.', depth)
 

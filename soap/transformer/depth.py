@@ -30,12 +30,12 @@ class Cropper(base_dispatcher('crop', 'crop')):
 
         return expr, env
 
-    def crop_FixExpr(self, expr, depth, context):
-        return expr, {}
-
     crop_BinaryArithExpr = _crop_expression
     crop_BinaryBoolExpr = _crop_expression
     crop_SelectExpr = _crop_expression
+
+    def crop_FixExpr(self, expr, depth, context):
+        return expr, {}
 
     def _execute(self, expr, depth, context=None):
         context = context or LabelContext(expr)

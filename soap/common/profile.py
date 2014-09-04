@@ -5,6 +5,7 @@ from contextlib import contextmanager
 
 def timeit(f):
     from soap import logger
+
     def timed(*args, **kwargs):
         ts = time.time()
         result = f(*args, **kwargs)
@@ -23,14 +24,20 @@ def timed(name=''):
     logger.info('%s %f sec' % (name, te - ts))
 
 
+def profile_calls():
+    from pycallgraph import PyCallGraph
+    from pycallgraph.output import GraphvizOutput
+    graphviz = GraphvizOutput()
+    graphviz.output_file = 'profile.png'
+    return PyCallGraph(output=graphviz)
+
+
 @contextmanager
-def profiled():
-    import pycallgraph
+def profile_memory():
     from pympler.classtracker import ClassTracker
     from pympler.asizeof import asizeof
     from soap.common import Flyweight, _cache_map
     from soap.expression import Expr
-    pycallgraph.start_trace()
     tracker = ClassTracker()
     tracker.track_object(Flyweight._cache)
     tracker.track_class(Expr)
@@ -39,4 +46,3 @@ def profiled():
     tracker.stats.print_summary()
     print('Flyweight cache size', asizeof(Flyweight._cache))
     print('Global cache size', asizeof(_cache_map))
-    pycallgraph.make_dot_graph('profile.png')

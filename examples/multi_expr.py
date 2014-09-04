@@ -1,18 +1,19 @@
 import sys
 
+from soap import logger
 from soap.analysis import Plot
-from soap.transformer.discover import greedy, frontier, martel
 from soap.flopoco import wf_range
-import soap.logger as logger
+from soap.parser import parse
+from soap.transformer.discover import frontier, greedy, martel
 
-logger.set_context(level=logger.levels.info)
+logger.set_context(level=logger.levels.debug)
 logger.set_context(pause_level=logger.levels.warning)
 vary_width = 'vary_width' in sys.argv
 
-e = """
+e = parse("""
     (a + a + b) * (a + b + b) * (b + b + c) *
     (b + c + c) * (c + c + a) * (c + a + a)
-    """
+    """)
 # e_y = '(1 + b + c) * (a + 1 + c) * (a + b + 1)'
 # e += ' | ' + e_y
 v = {

@@ -60,6 +60,11 @@ class Label(label_namedtuple_type, _PseudoLattice, Flyweight):
         label_value = label_value or fresh_int(statement)
         return super().__new__(cls, label_value, bound, attribute, context_id)
 
+    def __getnewargs__(self):
+        return (
+            None, self.bound, self.attribute, self.context_id,
+            self.label_value)
+
     def attributed(self, attribute):
         return self.__class__(
             label_value=self.label_value, bound=self.bound,

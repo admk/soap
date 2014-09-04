@@ -10,23 +10,12 @@ def _decorate(cls):
     if cls is Lattice or cls in cls._decorated:
         return
 
-    def check_return(func):
-        @wraps(func)
-        def checker(*args, **kwargs):
-            v = func(*args, **kwargs)
-            if v is not None:
-                return v
-            raise RuntimeError('Function {} does not return a value'.format(
-                func.__qualname__))
-        return checker
-
     def decorate_self(base_func, decd_func):
         if not decd_func:
             raise ValueError(
                 'No function matching {} from class {} to decorate'.format(
                     base_func.__qualname__, cls))
 
-        @check_return
         @wraps(decd_func)
         def wrapper(self):
             t = base_func(self)
@@ -39,7 +28,6 @@ def _decorate(cls):
             raise ValueError('No matching {} function to decorate'.format(
                 base_func.__qualname__))
 
-        @check_return
         @wraps(decd_func)
         def wrapper(self, other):
             t = base_func(self, other)
@@ -139,8 +127,10 @@ class Lattice(Flyweight, metaclass=LatticeMeta):
         lambda self, other: not self.le(other) or not other.le(self))
 
     def __hash__(self):
-        if self.is_top() or self.is_bottom():
-            return hash((self.__class__, self.is_top(), self.is_bottom()))
+        is_top = self.is_top()
+        is_bottom = self.is_bottom()
+        if is_top or is_bottom:
+            return hash((self.__class__, is_top, is_bottom))
 
     def __str__(self):
         if self.is_top():
