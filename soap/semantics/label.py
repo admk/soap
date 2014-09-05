@@ -3,6 +3,7 @@ import math
 
 from soap import flopoco
 from soap.common import Comparable, Flyweight, superscript
+from soap.context import context
 from soap.expression import (
     External, FixExpr, is_expression, OutputVariableTuple
 )
@@ -205,7 +206,9 @@ class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
         super().__init__()
         self._luts = None
 
-    def luts(self, precision):
+    def luts(self, precision=None):
+        precision = precision or context.precision
+
         if self._luts is not None:
             return self._luts
 

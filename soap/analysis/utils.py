@@ -6,16 +6,11 @@ import math
 import itertools
 
 from soap import logger
+from soap.analysis.core import AreaErrorAnalysis
 from soap.context import context
 
 
-def _analyser(expr_set, var_env, out_vars, prec):
-    from soap.analysis.core import AreaErrorAnalysis
-    precs = [prec] if prec else None
-    return AreaErrorAnalysis(expr_set, var_env, out_vars, precs)
-
-
-def analyse(expr_set, var_env, out_vars=None, prec=None, vary_width=False):
+def analyze(expr_set, var_env, out_vars=None):
     """Provides area and error analysis of expressions with input ranges
     and precisions.
 
@@ -26,14 +21,11 @@ def analyse(expr_set, var_env, out_vars=None, prec=None, vary_width=False):
         :class:`soap.semantics.error.Interval`
     :param out_vars: The output variables of the metastate
     :type out_vars: :class:`collections.Sequence`
-    :param precs: Precisions used to evaluate the expressions, defaults to
-        single precision.
-    :type precs: int or a list of int
     """
-    return _analyser(expr_set, var_env, out_vars, prec).analyse()
+    return AreaErrorAnalysis(expr_set, var_env, out_vars).analyze()
 
 
-def frontier(expr_set, var_env, out_vars, prec=None, vary_width=None):
+def frontier(expr_set, var_env, out_vars=None):
     """Provides the Pareto frontier of the area and error analysis of
     expressions with input ranges and precisions.
 
@@ -44,11 +36,8 @@ def frontier(expr_set, var_env, out_vars, prec=None, vary_width=None):
         :class:`soap.semantics.error.Interval`
     :param out_vars: The output variables of the metastate
     :type out_vars: :class:`collections.Sequence`
-    :param precs: Precisions used to evaluate the expressions, defaults to
-        single precision.
-    :type precs: int or a list of int
     """
-    return _analyser(expr_set, var_env, out_vars, prec).frontier()
+    return AreaErrorAnalysis(expr_set, var_env, out_vars).frontier()
 
 
 def list_from_keys(result, keys=None):
@@ -89,8 +78,8 @@ def min_error(result):
     return _min_objective(result, 'error')
 
 
-def expr_frontier(expr_set, var_env, out_vars=None, prec=None):
-    return expr_list(frontier(expr_set, var_env, out_vars, prec))
+def expr_frontier(expr_set, var_env, out_vars=None):
+    return expr_list(frontier(expr_set, var_env, out_vars))
 
 
 _ZIGZAG_MARGIN = 1000.0
@@ -148,7 +137,7 @@ class Plot(object):
                  log=None, legend_pos=None, **kwargs):
         """Initialisation.
 
-        :param result: results provided by :func:`analyse`.
+        :param result: results provided by :func:`analyze`.
         :type result: list
         :param var_env: The ranges of input variables to be used in transforms.
         :type var_env: dictionary containing mappings from variables to
@@ -180,7 +169,7 @@ class Plot(object):
     def add_analysis(self, expr, func=None, precs=None, var_env=None,
                      depth=None, annotate=False, legend=None,
                      legend_depth=False, legend_time=False, **kwargs):
-        """Performs transforms, then analyses expressions and add results to
+        """Performs transforms, then analyzes expressions and add results to
         plot.
 
         :param expr: original expression to be transformed.
@@ -218,12 +207,12 @@ class Plot(object):
             if p:
                 logger.persistent('Precision', p)
             if func:
-                with context.local(window_precision=p, window_depth=d):
+                with context.local(precision=p, window_depth=d):
                     derived = func(expr, var_env, context)
             else:
                 derived = {expr}
-            analysis_func = frontier if p else analyse
-            r = analysis_func(derived, var_env, p)
+            analysis_func = frontier if p else analyze
+            r = analysis_func(derived, var_env)
             results += r
         t = time.time() - t
         if func:
@@ -244,7 +233,7 @@ class Plot(object):
     def add(self, result, expr=None,
             legend=None, frontier=True, annotate=False, time=None, depth=None,
             color_group=None, **kwargs):
-        """Add analysed results.
+        """Add analyzed results.
 
         :param expr: Optional, the original expression.
         :type expr: :class:`soap.expression.Expr`
@@ -341,7 +330,7 @@ class Plot(object):
             d = r['kwargs']
             if not r['color_group'] is None:
                 d['color'] = color_groups[r['color_group']]
-            elif not 'color' in d:
+            elif 'color' not in d:
                 d['color'] = next(colors)
         markers = self._markers()
         xmin, xmax = ymin, ymax = float('Inf'), float('-Inf')
@@ -375,7 +364,7 @@ class Plot(object):
         for r in self.result_list:
             scatter_kwargs = dict(self.scatter_defaults)
             scatter_kwargs.update(r['kwargs'])
-            if not 'marker' in scatter_kwargs:
+            if 'marker' not in scatter_kwargs:
                 scatter_kwargs['marker'] = next(markers)
             scatter_kwargs.setdefault('edgecolor', scatter_kwargs['color'])
             for k in self.scatter_forbidden:
@@ -426,7 +415,7 @@ def plot(result, **kwargs):
     return p
 
 
-def analyse_and_plot(s, v, d=None, f=None, o=False, t=True):
+def analyze_and_plot(s, v, d=None, f=None, o=False, t=True):
     from soap.transformer.utils import greedy_trace
     f = f or [greedy_trace]
     p = Plot(var_env=v, depth=d)

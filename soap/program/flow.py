@@ -377,8 +377,8 @@ class _InputOutputGenerator(base_dispatcher()):
         for f in flow.flows:
             self(f)
 
-    def _execute(self, flow):
-        super()._execute(flow)
+    def __eq__(self, other):
+        return NotImplemented
 
 
 def input_output_variables(flow):

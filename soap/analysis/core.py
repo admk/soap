@@ -4,46 +4,36 @@
 """
 import gmpy2
 
-from soap import flopoco, logger
+from soap import logger
 from soap.common import DynamicMethods, Flyweight
 from soap.context import context
 from soap.semantics import error_eval, ErrorSemantics, inf, luts
 
 
 class Analysis(DynamicMethods, Flyweight):
-    """A base class that analyses expressions for the quality metrics.
+    """A base class that analyzes expressions for the quality metrics.
 
     This base class is not meant to be instantiated, but to be subclassed
     with methods to provide proper analysis.
     """
 
-    def __init__(self, expr_set, var_env, out_vars=None, precs=None):
+    def __init__(self, expr_set, var_env, out_vars=None):
         """Analysis class initialisation.
 
         :param expr_set: A set of expressions or a single expression.
-        :type expr_set: `set` or :class:`soap.expression.Expr`
+        :type expr_set: `set` or :class:`soap.expression.Expression`
         :param var_env: The ranges of input variables.
         :type var_env: dictionary containing mappings from variables to
             :class:`soap.semantics.error.Interval`
-        :param precs: Precisions used to evaluate the expressions, defaults to
-            the return value of :member:`precisions`.
-        :type precs: list of integers
         """
         super().__init__()
         self.expr_set = expr_set
         self.var_env = var_env
         self.out_vars = out_vars
-        self.precs = precs if precs else self.precisions()
+        self.precision = context.precision
 
-    def precisions(self):
-        """Returns the precisions being used.
-
-        :returns: a list of integers indicating precisions.
-        """
-        return [context.precision]
-
-    def analyse(self):
-        """Analyses the set of expressions with input ranges and precisions
+    def analyze(self):
+        """analyzes the set of expressions with input ranges and precisions
         provided in initialisation.
 
         :returns: a list of dictionaries each containing results and the
@@ -60,16 +50,15 @@ class Analysis(DynamicMethods, Flyweight):
 
         result = []
         i = 0
-        total = len(self.expr_set) * len(self.precs)
-        for prec in self.precs:
-            for expr in self.expr_set:
-                i += 1
-                logger.persistent('Analysing', '%d/%d' % (i, total),
-                                  l=logger.levels.debug)
-                analysis_dict = {'expression': expr}
-                for name, func in zip(analysis_names, analysis_methods):
-                    analysis_dict[name] = func(expr, prec)
-                result.append(analysis_dict)
+        total = len(self.expr_set)
+        for expr in self.expr_set:
+            i += 1
+            logger.persistent('Analysing', '%d/%d' % (i, total),
+                              l=logger.levels.debug)
+            analysis_dict = {'expression': expr}
+            for name, func in zip(analysis_names, analysis_methods):
+                analysis_dict[name] = func(expr)
+            result.append(analysis_dict)
 
         logger.unpersistent('Analysing')
 
@@ -106,8 +95,7 @@ class ErrorAnalysis(Analysis):
 
     It is a subclass of :class:`Analysis`.
     """
-    def error_analysis(self, expr, prec):
-        # FIXME precision
+    def error_analysis(self, expr):
         return ErrorSemantics(error_eval(expr, self.var_env))
 
     def error_select(self, v):
@@ -124,8 +112,8 @@ class AreaAnalysis(Analysis):
 
     It is a subclass of :class:`Analysis`.
     """
-    def area_analysis(self, expr, prec):
-        return luts(expr, self.var_env, self.out_vars, prec)
+    def area_analysis(self, expr):
+        return luts(expr, self.var_env, self.out_vars, self.precision)
 
     def area_select(self, v):
         return v
@@ -159,16 +147,6 @@ class AreaErrorAnalysis(ErrorAnalysis, AreaAnalysis):
     It is a subclass of :class:`ErrorAnalysis` and :class:`AreaAnalysis`.
     """
     def frontier(self):
-        """Computes the Pareto frontier from analysed results.
+        """Computes the Pareto frontier from analyzed results.
         """
-        return pareto_frontier_2d(self.analyse(), keys=self.names())
-
-
-class VaryWidthAnalysis(AreaErrorAnalysis):
-    """Collect area and error analysis.
-
-    It is a subclass of :class:`ErrorAnalysis` and :class:`AreaAnalysis`.
-    """
-    def precisions(self):
-        """Allow precisions to vary in the range of `flopoco.wf_range`."""
-        return flopoco.wf_range
+        return pareto_frontier_2d(self.analyze(), keys=self.names())

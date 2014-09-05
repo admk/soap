@@ -71,6 +71,7 @@ Options:
                             `--verbose` and `--debug`.
     --no-warning            Silent all warnings.  Overrides `--verbose` and
                             `--debug`.
+    --dump-cache-info       Show cache statistics on exit.
     -v --verbose            Do a verbose execution.
     -d --debug              Show debug information, also enable `--verbose`.
 """.format(**vars(soap))
@@ -217,16 +218,25 @@ def _unreachable(args):
     raise CommandError('This statement should never be reached.')
 
 
+def _post_run(args):
+    if args['--dump-cache-info']:
+        from soap.common.cache import dump_cache_info
+        with logger.info_context():
+            dump_cache_info()
+
+
 def main():
     args = docopt(usage, version=soap.__version__)
     functions = [
-        _setup_context, _interactive, _analyze, _optimize, _lint, _unreachable
+        _setup_context, _interactive, _analyze, _optimize, _lint, _unreachable,
     ]
     try:
         for f in functions:
             return_code = f(args)
             if return_code is not None:
-                sys.exit(return_code)
+                break
+        _post_run(args)
+        sys.exit(return_code)
     except CommandError as e:
         logger.error(e)
         sys.exit(-1)

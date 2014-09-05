@@ -27,7 +27,7 @@ def full_closure(tree, **kwargs):
     return closure(tree)
 
 
-def greedy_frontier_closure(tree, var_env, out_vars=None, prec=None, **kwargs):
+def greedy_frontier_closure(tree, var_env, out_vars=None, **kwargs):
     """Our greedy transitive closure.
 
     :param tree: The expression(s) under transform.
@@ -39,11 +39,8 @@ def greedy_frontier_closure(tree, var_env, out_vars=None, prec=None, **kwargs):
         :class:`soap.semantics.error.Interval`
     :param out_vars: The output variables of the metastate
     :type out_vars: :class:`collections.Sequence`
-    :param prec: Precision used to evaluate the expression, defaults to
-        single precision.
-    :type prec: int
     """
-    plugin = lambda expr_set: expr_frontier(expr_set, var_env, out_vars, prec)
+    plugin = lambda expr_set: expr_frontier(expr_set, var_env, out_vars)
     transformer = ArithTreeTransformer(tree, step_plugin=plugin, **kwargs)
     return plugin(transformer.closure())
 

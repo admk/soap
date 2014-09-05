@@ -3,7 +3,7 @@ from soap.expression import expression_factory
 from soap.semantics import LabelContext
 
 
-class Cropper(base_dispatcher('crop', 'crop')):
+class Cropper(base_dispatcher('crop')):
     def generic_crop(self, expr, depth, context):
         raise TypeError('Do not know how to crop expression {!r}'.format(expr))
 
@@ -37,12 +37,12 @@ class Cropper(base_dispatcher('crop', 'crop')):
     def crop_FixExpr(self, expr, depth, context):
         return expr, {}
 
-    def _execute(self, expr, depth, context=None):
+    def __call__(self, expr, depth, context=None):
         context = context or LabelContext(expr)
-        return super()._execute(expr, depth, context)
+        return super().__call__(expr, depth, context)
 
 
-class Stitcher(base_dispatcher('stitch', 'stitch')):
+class Stitcher(base_dispatcher('stitch')):
     def generic_stitch(self, expr, env):
         raise TypeError('Do not know how to stitch expression {!r}'
                         .format(expr))

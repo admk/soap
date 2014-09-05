@@ -3,7 +3,7 @@ from soap.common import base_dispatcher
 from soap.semantics.functions import arith_eval, bool_eval, fixpoint_eval
 
 
-class BaseState(base_dispatcher('visit', 'transition')):
+class BaseState(base_dispatcher('visit')):
     """Base state for all program states."""
     __slots__ = ()
 
@@ -57,3 +57,6 @@ class BaseState(base_dispatcher('visit', 'transition')):
     def widen(self, other):
         """Widening, defaults to least upper bound (i.e. join)."""
         return self | other
+
+    def transition(self, flow):
+        return self.__call__(flow)

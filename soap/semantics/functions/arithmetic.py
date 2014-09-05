@@ -69,8 +69,14 @@ class ArithmeticEvaluator(base_dispatcher()):
         return arith_eval_meta_state(meta_state, state)
 
     @cached
-    def _execute(self, expr, state):
-        return super()._execute(expr, state)
+    def __call__(self, expr, state):
+        return super().__call__(expr, state)
+
+    def __eq__(self, other):
+        return self.__class__ == other.__class__
+
+    def __hash__(self):
+        return hash(self.__class__)
 
 
 arith_eval = ArithmeticEvaluator()

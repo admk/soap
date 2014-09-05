@@ -1,6 +1,7 @@
 import collections
 
 from soap.common import base_dispatcher, cached
+from soap.context import context
 from soap.expression import expression_factory, operators
 from soap.semantics.functions import error_eval
 from soap.semantics.label import LabelContext, LabelSemantics
@@ -77,9 +78,7 @@ class LabelGenerator(base_dispatcher()):
     def execute_MetaState(self, expr, state, context):
         from soap.semantics.state.meta import MetaState
         env = {}
-        # FIXME better determinism in labelling, currently uses str-based
-        # sorting, could use context.out_vars to traverse trees
-        for each_var, each_expr in sorted(expr.items(), key=str):
+        for each_var, each_expr in sorted(expr.items(), key=hash):
             expr_label, expr_env = self(each_expr, state, context)
             env.update(expr_env)
             env[each_var] = expr_label
@@ -88,21 +87,25 @@ class LabelGenerator(base_dispatcher()):
         return LabelSemantics(label, env)
 
     @cached
-    def _execute(self, expr, state, context=None):
+    def __call__(self, expr, state, context=None):
         context = context or LabelContext(expr)
-        return super()._execute(expr, state, context)
+        return super().__call__(expr, state, context)
 
 
 _label = LabelGenerator()
 
 
 def label(expr, state, out_vars, context=None):
-    from soap.semantics.state.fusion import fusion
     lab, env = _label(expr, state, context)
     if isinstance(expr, collections.Mapping):
+        from soap.semantics.state.fusion import fusion
         env = fusion(env, out_vars)
     return LabelSemantics(lab, env)
 
 
-def luts(expr, state, out_vars, mantissa):
-    return label(expr, state, out_vars).luts(mantissa)
+_luts_context = LabelContext('luts_count')
+
+
+def luts(expr, state, out_vars, mantissa=None):
+    mantissa = mantissa or context.precision
+    return label(expr, state, out_vars, _luts_context).luts(mantissa)

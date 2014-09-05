@@ -6,7 +6,7 @@ import itertools
 
 from soap import logger
 from soap.analysis import expr_frontier
-from soap.common import base_dispatcher
+from soap.common import base_dispatcher, cached
 from soap.context import context as global_context
 from soap.expression import expression_factory, SelectExpr, FixExpr
 from soap.program import Flow
@@ -18,7 +18,7 @@ from soap.transformer.arithmetic import MartelTreeTransformer
 from soap.transformer.utils import closure, greedy_frontier_closure
 
 
-class BaseDiscoverer(base_dispatcher('discover', 'discover')):
+class BaseDiscoverer(base_dispatcher('discover')):
     """Bottom-up hierarchical equivalence finding.
 
     Subclasses need to override :member:`closure`.
@@ -151,9 +151,10 @@ class BaseDiscoverer(base_dispatcher('discover', 'discover')):
     discover_dict = _discover_multiple_expressions
     discover_MetaState = _discover_multiple_expressions
 
-    def _execute(self, expr, state, out_vars, context=None):
+    @cached
+    def __call__(self, expr, state, out_vars, context=None):
         context = context or global_context
-        return super()._execute(expr, state, out_vars, context)
+        return super().__call__(expr, state, out_vars, context)
 
 
 class MartelDiscoverer(BaseDiscoverer):
@@ -169,7 +170,7 @@ class MartelDiscoverer(BaseDiscoverer):
 
 class _FrontierFilter(BaseDiscoverer):
     def filter(self, expr_set, state, out_vars, context):
-        return expr_frontier(expr_set, state, out_vars, context.precision)
+        return expr_frontier(expr_set, state, out_vars)
 
 
 class GreedyDiscoverer(_FrontierFilter):
@@ -179,8 +180,7 @@ class GreedyDiscoverer(_FrontierFilter):
     """
     def closure(self, expr_set, state, out_vars, context):
         return greedy_frontier_closure(
-            expr_set, state, out_vars, context.precision,
-            depth=context.window_depth)
+            expr_set, state, out_vars, depth=context.window_depth)
 
 
 class FrontierDiscoverer(_FrontierFilter):

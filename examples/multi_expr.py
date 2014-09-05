@@ -4,6 +4,7 @@ from soap import logger
 from soap.analysis import Plot
 from soap.flopoco import wf_range
 from soap.parser import parse
+from soap.semantics import BoxState
 from soap.transformer.discover import frontier, greedy, martel
 
 logger.set_context(level=logger.levels.debug)
@@ -16,11 +17,11 @@ e = parse("""
     """)
 # e_y = '(1 + b + c) * (a + 1 + c) * (a + b + 1)'
 # e += ' | ' + e_y
-v = {
+v = BoxState({
     'a': ['1.0', '2.0'],
     'b': ['10.0', '20.0'],
     'c': ['100.0', '200.0'],
-}
+})
 t = [
     (False, 2, frontier, 'x', '-'),
     (False, 3, greedy,   '.', '--'),

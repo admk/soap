@@ -32,7 +32,7 @@ def cached(f):
     PREV, NEXT, KEY, RESULT = range(4)
 
     def decorated(*args, **kwargs):
-        key = pickle.dumps((f.__name__, args, tuple(kwargs.items())))
+        key = pickle.dumps((args, tuple(kwargs.items())))
         link = cache.get(key)
         if link is not None:
             p, n, k, r = link
@@ -79,6 +79,18 @@ def cached(f):
     _cached_funcs.append(d)
 
     return d
+
+
+def dump_cache_info():
+    from soap import logger
+    logger.info('Cache Hits and Misses')
+    logger.info('Name\tHits\tMisses\tRate\tSize')
+    for func in _cached_funcs:
+        hits, misses, size = func.cache_info()
+        if hits or misses:
+            rate = '{}'.format(int(100 * hits / (hits + misses)))
+            logger.info('{}\n\t\t{}\t{}\t{}%\t{}'.format(
+                func.__qualname__, hits, misses, rate, size))
 
 
 class Flyweight(object):

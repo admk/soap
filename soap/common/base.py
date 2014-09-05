@@ -38,7 +38,6 @@ class Comparable(object):
 
 
 class BaseDispatcher(object):
-
     def _dispatch(self, obj):
         from soap.semantics.error import (
             mpz_type, mpfr_type, Interval, ErrorSemantics
@@ -54,21 +53,13 @@ class BaseDispatcher(object):
         except AttributeError:
             return getattr(self, 'generic_' + base_name)
 
-    def _execute(self, obj, *args, **kwargs):
+    def __call__(self, obj, *args, **kwargs):
         func = self._dispatch(obj)
         return func(obj, *args, **kwargs)
 
-    def __call__(self, obj, *args, **kwargs):
-        return self._execute(obj, *args, **kwargs)
 
-
-def base_dispatcher(dispatch_name='execute', execute_name=None):
-    if execute_name is None:
-        execute_name = dispatch_name
-
+def base_dispatcher(dispatch_name='execute'):
     class Dispatcher(BaseDispatcher):
         pass
-
-    setattr(Dispatcher, execute_name, Dispatcher._execute)
     Dispatcher.dispatch_name = dispatch_name
     return Dispatcher

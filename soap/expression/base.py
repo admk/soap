@@ -25,18 +25,6 @@ class Expression(FlatLattice, Flyweight):
     def _cast_value(self, value, top=False, bottom=False):
         return value
 
-    def __getattr__(self, attribute):
-        def raise_err():
-            raise AttributeError('{} has no attribute {!r}'.format(
-                self.__class__.__name__, attribute))
-        if not attribute.startswith('a'):
-            raise_err()
-        try:
-            index = int(attribute[1:]) - 1
-            return self.args[index]
-        except (ValueError, KeyError):
-            raise_err()
-
     @property
     def op(self):
         return self._op
@@ -151,6 +139,10 @@ class UnaryExpression(Expression):
     def a(self):
         return self.args[0]
 
+    @property
+    def a1(self):
+        return self.args[0]
+
     def __str__(self):
         return '{op}{a}'.format(op=self.op, a=self._args_to_str().pop())
 
@@ -163,6 +155,14 @@ class BinaryExpression(Expression):
     def __init__(self, op=None, a1=None, a2=None, top=False, bottom=False,
                  **kwargs):
         super().__init__(op, a1, a2, top=top, bottom=bottom, **kwargs)
+
+    @property
+    def a1(self):
+        return self.args[0]
+
+    @property
+    def a2(self):
+        return self.args[1]
 
     def __str__(self):
         a1, a2 = self._args_to_str()
@@ -178,6 +178,18 @@ class TernaryExpression(Expression):
                  top=False, bottom=False, **kwargs):
         super().__init__(op, a1, a2, a3, top=top, bottom=bottom, **kwargs)
 
+    @property
+    def a1(self):
+        return self.args[0]
+
+    @property
+    def a2(self):
+        return self.args[1]
+
+    @property
+    def a3(self):
+        return self.args[2]
+
 
 class QuaternaryExpression(Expression):
     """A quaternary expression class. Instance has four arguments."""
@@ -187,6 +199,22 @@ class QuaternaryExpression(Expression):
     def __init__(self, op=None, a1=None, a2=None, a3=None, a4=None,
                  top=False, bottom=False, **kwargs):
         super().__init__(op, a1, a2, a3, a4, top=top, bottom=bottom, **kwargs)
+
+    @property
+    def a1(self):
+        return self.args[0]
+
+    @property
+    def a2(self):
+        return self.args[1]
+
+    @property
+    def a3(self):
+        return self.args[2]
+
+    @property
+    def a4(self):
+        return self.args[3]
 
 
 class VariableSetGenerator(base_dispatcher()):
