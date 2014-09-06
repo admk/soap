@@ -1,13 +1,16 @@
 # Ultra Short Term FIXMEs
 
+* [ ] Fix some constant analysis bug found in `basal.soap`.
+* [ ] Use Xilinx statistics, update it to support int to float conversion.
 * [ ] There is analysis bias in loop unroll, because of iteration is relaxed,
   what to do next?
-* [ ] Consider what is a reasonable thing to do with non-terminating
-  expressions
+* [ ] Fix label caching, suspect dictionary pickling is non-deterministic.
 
 
 # Ugliness, fix if have the time to
 
+* [ ] Consider what is a reasonable thing to do with non-terminating
+  expressions
 * [ ] Fix improper `out_vars` usage, workaround: use full variable list
     - [ ] Codegen not generating part of loop body because of
       improper `out_vars` analysis
