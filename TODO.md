@@ -4,11 +4,11 @@
 * [ ] Use Xilinx statistics, update it to support int to float conversion.
 * [ ] There is analysis bias in loop unroll, because of iteration is relaxed,
   what to do next?
-* [ ] Fix label caching, suspect dictionary pickling is non-deterministic.
 
 
 # Ugliness, fix if have the time to
 
+* [ ] Fix caching because pickling is non-deterministic.
 * [ ] Consider what is a reasonable thing to do with non-terminating
   expressions
 * [ ] Fix improper `out_vars` usage, workaround: use full variable list

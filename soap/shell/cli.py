@@ -198,8 +198,8 @@ def _optimize(args):
     if not is_expression(flow):
         flow = flow_to_meta_state(flow)
     func = _algorithm(args)
-    results = func(flow, state, out_vars)
-    for r in results:
+    frontier, discovered = func(flow, state, out_vars)
+    for r in frontier:
         print(r)
 
     return 0

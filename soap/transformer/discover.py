@@ -35,23 +35,29 @@ class BaseDiscoverer(base_dispatcher('discover')):
             .format(expr))
 
     def _discover_atom(self, expr, state, out_vars):
-        return {expr}
+        discovered = frontier = {expr}
+        return frontier, discovered
 
     discover_numeral = _discover_atom
     discover_Variable = _discover_atom
 
     def _discover_expression(self, expr, state, out_vars):
         op = expr.op
-        eq_args_list = tuple(
-            self(arg, state, out_vars) for arg in expr.args)
-        expr_set = {
+        frontier_args_list, discovered_args_list = zip(*[
+            self(arg, state, out_vars) for arg in expr.args])
+        frontier_expr_set = {
             expression_factory(op, *args)
-            for args in itertools.product(*eq_args_list)
+            for args in itertools.product(*frontier_args_list)
         }
-        expr_set = self.closure(expr_set, state, out_vars)
+        frontier = self.closure(frontier_expr_set, state, out_vars)
+        discovered_expr_set = {
+            expression_factory(op, *args)
+            for args in itertools.product(*discovered_args_list)
+        }
+        discovered = set(frontier) | discovered_expr_set
         logger.debug(
-            'Discover: {}, Equivalent: {}'.format(expr, len(expr_set)))
-        return expr_set
+            'Discover: {}, Equivalent: {}'.format(expr, len(frontier)))
+        return frontier, discovered
 
     discover_BinaryArithExpr = _discover_expression
     discover_BinaryBoolExpr = _discover_expression
@@ -87,66 +93,74 @@ class BaseDiscoverer(base_dispatcher('discover')):
         loop_meta_state_set = set(
             self._equivalent_loop_meta_states(expr.unroll_depth))
 
-        init_meta_state_set = self.discover_MetaState(
+        frontier_init_meta_state_set, discovered_init_meta_state_set = self(
             init_meta_state, state, [loop_var])
 
         logger.debug(
             'Discover: {}, Equivalent: {}'.format(
-                init_meta_state, len(init_meta_state_set)))
+                init_meta_state, len(frontier_init_meta_state_set)))
 
-        eq_expr_set = set()
+        # compute loop optimizing value ranges
+        init_value_state = arith_eval_meta_state(init_meta_state, state)
+        loop_value_state = fixpoint_eval(
+            init_value_state, bool_expr, loop_meta_state)['entry']
 
-        i = 0
+        # transform bool_expr
+        frontier_bool_expr_set, discovered_bool_expr_set = self(
+            bool_expr, loop_value_state, None)
 
-        # for each discovered init_meta_state values
-        for init_meta_state in init_meta_state_set:
-            # compute loop optimizing value ranges
-            init_value_state = arith_eval_meta_state(init_meta_state, state)
-            loop_value_state = fixpoint_eval(
-                init_value_state, bool_expr, loop_meta_state)['entry']
+        frontier_expr_set = set()
+        discovered_expr_set = set()
+        i, n = 0, len(loop_meta_state_set)
 
-            # transform bool_expr
-            transformed_bool_expr_set = self._discover_expression(
-                bool_expr, loop_value_state, None)
+        # transform loop_meta_state
+        for loop_meta_state in loop_meta_state_set:
+            i += 1
+            logger.persistent('Unroll', '{}/{}'.format(i, n))
 
-            # transform loop_meta_state
-            for loop_meta_state in loop_meta_state_set:
-                i += 1
-                logger.persistent(
-                    'LoopTr', '{}/({}*{})'.format(
-                        i, len(init_meta_state_set), len(loop_meta_state_set)))
+            frontier_loop_meta_state_set, discovered_loop_meta_state_set = \
+                self(loop_meta_state, loop_value_state, [loop_var])
 
-                transformed_loop_meta_state_set = \
-                    self.discover_MetaState(
-                        loop_meta_state, loop_value_state, [loop_var])
+            iterer = itertools.product(
+                frontier_bool_expr_set, frontier_loop_meta_state_set,
+                frontier_init_meta_state_set)
+            for bool_expr, loop_meta_state, init_meta_state in iterer:
+                expr = FixExpr(
+                    bool_expr, loop_meta_state, loop_var, init_meta_state)
+                frontier_expr_set.add(expr)
 
-                for transformed_bool_expr, transformed_loop_meta_state in \
-                        itertools.product(
-                            transformed_bool_expr_set,
-                            transformed_loop_meta_state_set):
-                    eq_expr = FixExpr(
-                        transformed_bool_expr, transformed_loop_meta_state,
-                        loop_var, init_meta_state)
-                    eq_expr_set.add(eq_expr)
+            iterer = itertools.product(
+                discovered_bool_expr_set, discovered_loop_meta_state_set,
+                discovered_init_meta_state_set)
+            for bool_expr, loop_meta_state, init_meta_state in iterer:
+                expr = FixExpr(
+                    bool_expr, loop_meta_state, loop_var, init_meta_state)
+                discovered_expr_set.add(expr)
 
         logger.unpersistent('LoopTr')
 
-        return self.filter(eq_expr_set, state, out_vars)
+        frontier = self.filter(frontier_expr_set, state, out_vars)
+        discovered = frontier_expr_set | discovered_expr_set
+        return frontier, discovered
 
     def _discover_multiple_expressions(
             self, var_expr_state, state, out_vars):
         var_list = list(var_expr_state.keys())
-        eq_expr_list = [
-            self(var_expr_state[var], state, out_vars)
-            for var in var_list]
+        frontier_expr_list, discovered_expr_list = zip(*[
+            self(var_expr_state[var], state, out_vars) for var in var_list])
 
-        state_set = set()
-        for expr_list in itertools.product(*eq_expr_list):
+        frontier = set()
+        for expr_list in itertools.product(*frontier_expr_list):
             eq_state = {var: expr for var, expr in zip(var_list, expr_list)}
-            state_set.add(MetaState(eq_state))
-        state_set = self.filter(state_set, state, out_vars)
+            frontier.add(MetaState(eq_state))
+        frontier = self.filter(frontier, state, out_vars)
 
-        return state_set
+        discovered = set()
+        for expr_list in itertools.product(*discovered_expr_list):
+            eq_state = {var: expr for var, expr in zip(var_list, expr_list)}
+            discovered.add(MetaState(eq_state))
+
+        return frontier, discovered
 
     discover_dict = _discover_multiple_expressions
     discover_MetaState = _discover_multiple_expressions
