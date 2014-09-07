@@ -10,7 +10,7 @@ from soap.lattice.common import _lattice_factory
 
 class MapLattice(Lattice, Mapping):
     """Defines a lattice for mappings/functions."""
-    __slots__ = ('mapping')
+    __slots__ = ('_mapping')
 
     def __init__(self, dictionary=None, top=False, bottom=False, **kwargs):
         super().__init__(top=top, bottom=bottom)
@@ -24,6 +24,13 @@ class MapLattice(Lattice, Mapping):
             if not v.is_bottom():
                 mapping[k] = v
         self._mapping = mapping
+
+    def __getstate__(self):
+        return (self.top, self.bottom, sorted(self.items(), key=hash))
+
+    def __setstate__(self, state):
+        self.top, self.bottom = state[:2]
+        self._mapping = state[2]
 
     def _cast_key(self, k):
         raise NotImplementedError
@@ -88,7 +95,7 @@ class MapLattice(Lattice, Mapping):
             return self._cast_value(bottom=True)
 
     def __hash__(self):
-        self._hash = hash_val = hash(tuple(self.items()))
+        self._hash = hash_val = hash(tuple(sorted(self.items(), key=hash)))
         return hash_val
 
     def __str__(self):

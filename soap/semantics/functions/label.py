@@ -106,6 +106,7 @@ def label(expr, state, out_vars, context=None):
 _luts_context = LabelContext('luts_count')
 
 
+@cached
 def luts(expr, state, out_vars, mantissa=None):
     mantissa = mantissa or context.precision
     return label(expr, state, out_vars, _luts_context).luts(mantissa)

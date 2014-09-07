@@ -32,7 +32,11 @@ def cached(f):
     PREV, NEXT, KEY, RESULT = range(4)
 
     def decorated(*args, **kwargs):
-        key = pickle.dumps((args, tuple(kwargs.items())))
+        if not kwargs:
+            key_tuple = args
+        else:
+            key_tuple = (args, tuple(sorted(kwargs.items(), key=hash)))
+        key = pickle.dumps(key_tuple)
         link = cache.get(key)
         if link is not None:
             p, n, k, r = link

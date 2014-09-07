@@ -1,7 +1,6 @@
 import collections
 
 from soap import logger
-from soap.common import cached
 from soap.expression import (
     is_variable, is_expression,
     External, InputVariableTuple, OutputVariableTuple, SelectExpr, FixExpr

@@ -15,6 +15,7 @@ from soap.semantics.error import IntegerInterval, ErrorSemantics
 
 
 _label_map = {}
+_label_context_maps = {}
 
 
 class _Dummy(object):
@@ -105,14 +106,15 @@ class Label(label_namedtuple_type, _PseudoLattice, Flyweight):
 
 class LabelContext(object):
     def __init__(self, description, out_vars=None):
+        super().__init__()
         if not isinstance(description, str):
             description = 'c{}'.format(Label(description).label_value)
         self.description = description
         self.out_vars = out_vars
-        self.lmap = {}
 
     def Label(self, statement=None, bound=None, attribute=None):
-        label_value = fresh_int(statement, lmap=self.lmap)
+        lmap = _label_context_maps.setdefault(self.description, {})
+        label_value = fresh_int(statement, lmap=lmap)
         return Label(
             label_value=label_value, bound=bound, attribute=attribute,
             context_id=self.description)
