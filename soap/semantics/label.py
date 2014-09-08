@@ -1,17 +1,15 @@
-from collections import namedtuple
 import math
+from collections import namedtuple
 
 from soap import flopoco
-from soap.common import Comparable, Flyweight, superscript
+from soap.common import cached, Comparable, Flyweight, superscript
 from soap.context import context
 from soap.expression import (
-    External, FixExpr, is_expression, OutputVariableTuple
-)
-from soap.expression.operators import (
-    FIXPOINT_OP, TERNARY_SELECT_OP, TRADITIONAL_OPERATORS
+    External, FixExpr, is_expression, operators, OutputVariableTuple
 )
 from soap.lattice.base import Lattice
-from soap.semantics.error import IntegerInterval, ErrorSemantics
+from soap.semantics.common import is_numeral
+from soap.semantics.error import ErrorSemantics, IntegerInterval
 
 
 _label_map = {}
@@ -146,9 +144,12 @@ class Identifier(namedtuple('Identifier', ['variable', 'label']), Flyweight):
             variable=self.variable, label=self.label)
 
 
-_FILTER_OPERATORS = TRADITIONAL_OPERATORS + [TERNARY_SELECT_OP]
+_FILTER_OPERATORS = operators.TRADITIONAL_OPERATORS + [
+    operators.TERNARY_SELECT_OP
+]
 
 
+@cached
 def _datatype_exponent(op, label):
     if isinstance(label, OutputVariableTuple):
         exponent = 0
@@ -157,7 +158,7 @@ def _datatype_exponent(op, label):
             exponent += label_exponent
         return None, exponent
 
-    if op == FIXPOINT_OP:
+    if op == operators.FIXPOINT_OP:
         return None, 0
     if op not in _FILTER_OPERATORS:
         return None, None
@@ -196,6 +197,40 @@ def _datatype_exponent(op, label):
 
 _label_semantics_tuple_type = namedtuple('LabelSemantics', ['label', 'env'])
 
+s = namedtuple('Statistics', ['dsp', 'ff', 'lut'])
+_integer_table = {
+    'comparison': s(0, 0, 39),
+    operators.ADD_OP: s(0, 0, 32),
+    operators.SUBTRACT_OP: s(0, 0, 32),
+    operators.MULTIPLY_OP: s(4, 45, 21),
+    operators.DIVIDE_OP: s(0, 1712, 1779),
+    operators.UNARY_SUBTRACT_OP: s(0, 0, 32),
+    operators.TERNARY_SELECT_OP: s(0, 0, 71),
+    operators.FIXPOINT_OP: s(0, 0, 0),
+}
+_single_table = {
+    'conversion': s(0, 128, 519),
+    'comparison': s(0, 66, 239),
+    operators.ADD_OP: s(2, 227, 400),
+    operators.SUBTRACT_OP: s(2, 227, 400),
+    operators.MULTIPLY_OP: s(3, 128, 324),
+    operators.DIVIDE_OP: s(0, 363, 986),
+    operators.UNARY_SUBTRACT_OP: s(0, 0, 37),
+    operators.TERNARY_SELECT_OP: s(0, 0, 71),
+    operators.FIXPOINT_OP: s(0, 0, 0),
+}
+_double_table = {
+    'conversion': s(0, 189, 578),
+    'comparison': s(0, 130, 578),
+    operators.ADD_OP: s(3, 445, 1144),
+    operators.SUBTRACT_OP: s(3, 445, 1144),
+    operators.MULTIPLY_OP: s(11, 299, 570),
+    operators.DIVIDE_OP: s(0, 1710, 3623),
+    operators.UNARY_SUBTRACT_OP: s(0, 0, 81),
+    operators.TERNARY_SELECT_OP: s(0, 0, 103),
+    operators.FIXPOINT_OP: s(0, 0, 0),
+}
+
 
 class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
     """The semantics that captures the area of an expression."""
@@ -206,13 +241,54 @@ class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
 
     def __init__(self, label, env):
         super().__init__()
-        self._luts = None
 
+    @cached
     def luts(self, precision=None):
+        """FIXME Emergency luts statistics for now"""
         precision = precision or context.precision
+        if precision == 23:
+            table = _single_table
+        elif precision == 52:
+            table = _double_table
+        else:
+            raise ValueError('Precision must be single (23) or double (52).')
 
-        if self._luts is not None:
-            return self._luts
+        def accumulate_luts_count(env):
+            luts = 0
+            conversion_set = set()
+            for label, expr in env.items():
+                if is_expression(expr) and not isinstance(expr, External):
+                    op = expr.op
+                    if op in operators.COMPARISON_OPERATORS:
+                        op = 'comparison'
+                    if isinstance(label, Label):
+                        datatype = type(label.bound)
+                    else:
+                        datatype = None
+                    if datatype is IntegerInterval:
+                        luts += _integer_table[op].lut
+                    elif datatype is ErrorSemantics:
+                        for arg in expr.args:
+                            if not isinstance(arg, Label):
+                                continue
+                            if not isinstance(arg.bound, IntegerInterval):
+                                continue
+                            if is_numeral(env[arg]):
+                                continue
+                            conversion_set.add(arg)
+                        luts += table[op].lut
+                if isinstance(expr, FixExpr):
+                    luts += accumulate_luts_count(expr.bool_expr[1])
+                    luts += accumulate_luts_count(expr.loop_state)
+                    luts += accumulate_luts_count(expr.init_state)
+            luts += len(conversion_set) * table['conversion'].lut
+            return luts
+
+        return accumulate_luts_count(self.env)
+
+    @cached
+    def _alt_luts(self, precision=None):
+        precision = precision or context.precision
 
         def accumulate_luts_count(env):
             luts = 0
@@ -227,8 +303,7 @@ class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
                     luts += accumulate_luts_count(expr.init_state)
             return luts
 
-        self._luts = accumulate_luts_count(self.env)
-        return self._luts
+        return accumulate_luts_count(self.env)
 
     def __iter__(self):
         return iter((self.label, self.env))

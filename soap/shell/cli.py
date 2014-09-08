@@ -16,7 +16,8 @@ usage = """
 {__author__} ({__email__})
 
 Usage:
-    {__executable__} analyze [options] (<file> | --command=<str> | -)
+    {__executable__} analyze error [options] (<file> | --command=<str> | -)
+    {__executable__} analyze resource [options] (<file> | --command=<str> | -)
     {__executable__} optimize [options] (<file> | --command=<str> | -)
     {__executable__} interactive [options]
     {__executable__} lint [--syntax=<str>] (<file> | --command=<str> | -)
@@ -151,12 +152,29 @@ def _state(flow, args):
     return {}
 
 
+def _out_vars(flow, args):
+    from soap.expression import Variable
+    if isinstance(flow, Flow):
+        out_vars = flow.outputs()
+        if out_vars:
+            return out_vars
+    out_vars = args['--out-vars']
+    if out_vars:
+        return [Variable(v) for v in eval(out_vars)]
+    return None
+
+
 def _analyze(args):
     if not args['analyze']:
         return
     flow = parse(_file(args))
     state = _state(flow, args)
-    print(flow.debug(state))
+    if args['error']:
+        print(flow.debug(state))
+    if args['resource']:
+        from soap.semantics import BoxState, flow_to_meta_state, luts
+        out_vars = _out_vars(flow, args)
+        print(luts(flow_to_meta_state(flow), BoxState(state), out_vars))
     return 0
 
 
@@ -164,18 +182,8 @@ def _optimize(args):
     if not args['optimize']:
         return
 
-    from soap.expression import is_expression, Variable
+    from soap.expression import is_expression
     from soap.semantics import flow_to_meta_state
-
-    def _out_vars(flow, args):
-        if isinstance(flow, Flow):
-            out_vars = flow.outputs()
-            if out_vars:
-                return out_vars
-        out_vars = args['--out-vars']
-        if out_vars:
-            return [Variable(v) for v in eval(out_vars)]
-        return None
 
     def _algorithm(args):
         from soap.transformer import (

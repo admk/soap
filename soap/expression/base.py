@@ -246,7 +246,7 @@ class VariableSetGenerator(base_dispatcher()):
 
     execute_Label = _execute_atom
     execute_Variable = _execute_atom
-    execute_BinaryArithExpr = _execute_expression
+    execute_UnaryArithExpr = execute_BinaryArithExpr = _execute_expression
     execute_BinaryBoolExpr = _execute_expression
     execute_SelectExpr = _execute_expression
 
