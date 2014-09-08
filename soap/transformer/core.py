@@ -78,8 +78,8 @@ class TreeTransformer(TreeFarmer):
                  depth=None, steps=None,
                  transform_rules=None, reduction_rules=None,
                  step_plugin=None, reduce_plugin=None):
-        super().__init__(depth=depth or RECURSION_LIMIT)
-        self.steps = steps or RECURSION_LIMIT
+        super().__init__(depth=depth or context.window_depth)
+        self.steps = steps or context.max_steps
         self.step_plugin = step_plugin
         self.reduce_plugin = reduce_plugin
         if transform_rules:
@@ -92,15 +92,12 @@ class TreeTransformer(TreeFarmer):
             self._expressions = [tree_or_trees]
         else:
             self._expressions = tree_or_trees
-        if self.depth >= RECURSION_LIMIT and self.transform_rules:
-            if self.steps >= RECURSION_LIMIT:
-                logger.warning(
-                    'Set a resource limit (depth / steps) to avoid '
-                    'combinatorial explosion.')
 
-    def _plugin(self, trees, plugin):
+    def _plugin(self, curr_step, trees, plugin):
         """Plugin function call setup and cleanup."""
         if not plugin:
+            return trees
+        if curr_step % context.plugin_every != 0:
             return trees
         trees = self._seed(trees)
         trees = plugin(trees)
@@ -146,13 +143,15 @@ class TreeTransformer(TreeFarmer):
                     self._step(todo_trees, not reduced, None)
                 step_trees -= done_trees
                 step_trees = self._recursive_closure(step_trees, True)
-                step_trees = self._plugin(step_trees, self.step_plugin)
+                step_trees = self._plugin(
+                    curr_step, step_trees, self.step_plugin)
                 done_trees |= todo_trees
                 todo_trees = step_trees - done_trees
             else:
                 nore_trees, step_trees = \
                     self._step(todo_trees, not reduced, None)
-                step_trees = self._plugin(step_trees, self.reduce_plugin)
+                step_trees = self._plugin(
+                    curr_step, step_trees, self.reduce_plugin)
                 done_trees |= nore_trees
                 todo_trees = step_trees - nore_trees
             curr_step += 1

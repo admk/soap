@@ -133,8 +133,8 @@ def _log_margin(lmin, lmax):
 
 class Plot(object):
     """Provides plotting of results"""
-    def __init__(self, result=None, var_env=None, depth=None, precs=None,
-                 log=None, legend_pos=None, **kwargs):
+    def __init__(self, result=None, var_env=None, out_vars=None,
+                 depth=None, precs=None, log=None, legend_pos=None, **kwargs):
         """Initialisation.
 
         :param result: results provided by :func:`analyze`.
@@ -160,13 +160,15 @@ class Plot(object):
         if result:
             self.add(result, **kwargs)
         self.var_env = var_env
+        self.out_vars = out_vars
         self.depth = depth
         self.precs = precs
         if log is not None:
             self.log_enable = log
         super().__init__()
 
-    def add_analysis(self, expr, func=None, precs=None, var_env=None,
+    def add_analysis(self, expr, func=None, precs=None,
+                     out_vars=None, var_env=None,
                      depth=None, annotate=False, legend=None,
                      legend_depth=False, legend_time=False, **kwargs):
         """Performs transforms, then analyzes expressions and add results to
@@ -197,6 +199,7 @@ class Plot(object):
         import time
         from soap.common import invalidate_cache
         var_env = var_env or self.var_env
+        out_vars = out_vars or self.out_vars
         d = depth or self.depth
         precs = precs or self.precs or [None]
         results = []
@@ -208,7 +211,7 @@ class Plot(object):
                 logger.persistent('Precision', p)
             if func:
                 with context.local(precision=p, window_depth=d):
-                    derived = func(expr, var_env, context)
+                    derived = func(expr, var_env, out_vars)
             else:
                 derived = {expr}
             analysis_func = frontier if p else analyze

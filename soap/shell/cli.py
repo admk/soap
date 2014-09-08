@@ -143,7 +143,8 @@ def _file(args):
 
 def _state(flow, args):
     if isinstance(flow, Flow):
-        state = flow.inputs()
+        from soap.semantics import BoxState
+        state = BoxState(flow.inputs())
         if state:
             return state
     state = args['--state']
@@ -172,9 +173,9 @@ def _analyze(args):
     if args['error']:
         print(flow.debug(state))
     if args['resource']:
-        from soap.semantics import BoxState, flow_to_meta_state, luts
+        from soap.semantics import flow_to_meta_state, luts
         out_vars = _out_vars(flow, args)
-        print(luts(flow_to_meta_state(flow), BoxState(state), out_vars))
+        print(luts(flow_to_meta_state(flow), state, out_vars))
     return 0
 
 
@@ -184,6 +185,7 @@ def _optimize(args):
 
     from soap.expression import is_expression
     from soap.semantics import flow_to_meta_state
+    from soap.analysis import Plot
 
     def _algorithm(args):
         from soap.transformer import (
@@ -204,12 +206,15 @@ def _optimize(args):
     state = _state(flow, args)
     out_vars = _out_vars(flow, args)
     if not is_expression(flow):
-        flow = flow_to_meta_state(flow)
+        meta_state = flow_to_meta_state(flow)
     func = _algorithm(args)
-    frontier = func(flow, state, out_vars)
-    for r in frontier:
-        print(r)
-
+    plot = Plot(
+        var_env=state, out_vars=out_vars,
+        precs=[context.precision], depth=context.window_depth,
+        legend_time=True)
+    plot.add_analysis(meta_state, func=func)
+    plot.save('cli.pdf')
+    plot.show()
     return 0
 
 
