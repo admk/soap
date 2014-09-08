@@ -35,30 +35,21 @@ class BaseDiscoverer(base_dispatcher('discover')):
             .format(expr))
 
     def _discover_atom(self, expr, state, out_vars):
-        discovered = frontier = {expr}
-        return frontier, discovered
+        return {expr}
 
     discover_numeral = _discover_atom
     discover_Variable = _discover_atom
 
     def _discover_expression(self, expr, state, out_vars):
         op = expr.op
-        frontier_args_list, discovered_args_list = zip(*[
-            self(arg, state, out_vars) for arg in expr.args])
+        frontier_args_list = [self(arg, state, out_vars) for arg in expr.args]
         frontier_expr_set = {
             expression_factory(op, *args)
             for args in itertools.product(*frontier_args_list)
         }
         frontier = self.closure(frontier_expr_set, state, out_vars)
-        discovered_expr_set = {
-            expression_factory(op, *args)
-            for args in itertools.product(*discovered_args_list)
-        }
-        discovered = set(frontier) | discovered_expr_set
-        logger.debug(
-            'Discover: {}, Frontier: {}, Equivalent: {}'.format(
-                expr, len(frontier), len(discovered)))
-        return frontier, discovered
+        logger.debug('Discover: {}, Frontier: {}'.format(expr, len(frontier)))
+        return frontier
 
     discover_BinaryArithExpr = _discover_expression
     discover_BinaryBoolExpr = _discover_expression
@@ -94,13 +85,10 @@ class BaseDiscoverer(base_dispatcher('discover')):
         loop_meta_state_set = set(
             self._equivalent_loop_meta_states(expr, context.unroll_depth))
 
-        frontier_init_meta_state_set, discovered_init_meta_state_set = self(
-            init_meta_state, state, [loop_var])
+        frontier_init_meta_state_set = self(init_meta_state, state, [loop_var])
 
-        logger.debug(
-            'Discover: {}, Frontier: {}, Equivalent: {}'.format(
-                init_meta_state, len(frontier_init_meta_state_set),
-                len(discovered_init_meta_state_set)))
+        logger.debug('Discover: {}, Frontier: {}'.format(
+            init_meta_state, len(frontier_init_meta_state_set)))
 
         # compute loop optimizing value ranges
         init_value_state = arith_eval_meta_state(init_meta_state, state)
@@ -108,11 +96,9 @@ class BaseDiscoverer(base_dispatcher('discover')):
             init_value_state, bool_expr, loop_meta_state)['entry']
 
         # transform bool_expr
-        frontier_bool_expr_set, discovered_bool_expr_set = self(
-            bool_expr, loop_value_state, None)
+        frontier_bool_expr_set = self(bool_expr, loop_value_state, None)
 
         frontier_expr_set = set()
-        discovered_expr_set = set()
         i, n = 0, len(loop_meta_state_set)
 
         # transform loop_meta_state
@@ -120,41 +106,30 @@ class BaseDiscoverer(base_dispatcher('discover')):
             i += 1
             logger.persistent('Unroll', '{}/{}'.format(i, n))
 
-            frontier_loop_meta_state_set, discovered_loop_meta_state_set = \
-                self(loop_meta_state, loop_value_state, [loop_var])
+            frontier_loop_meta_state_set = self(
+                loop_meta_state, loop_value_state, [loop_var])
 
             iterer = itertools.product(
                 frontier_bool_expr_set, frontier_loop_meta_state_set,
                 frontier_init_meta_state_set)
             for bool_expr, loop_meta_state, init_meta_state in iterer:
-                expr = FixExpr(
-                    bool_expr, loop_meta_state, loop_var, init_meta_state)
-                frontier_expr_set.add(expr)
-
-            iterer = itertools.product(
-                discovered_bool_expr_set, discovered_loop_meta_state_set,
-                discovered_init_meta_state_set)
-            for bool_expr, loop_meta_state, init_meta_state in iterer:
                 fix_expr = FixExpr(
                     bool_expr, loop_meta_state, loop_var, init_meta_state)
-                discovered_expr_set.add(fix_expr)
+                frontier_expr_set.add(fix_expr)
 
         logger.unpersistent('LoopTr')
 
         frontier = self.filter(frontier_expr_set, state, out_vars)
-        discovered = frontier_expr_set | discovered_expr_set
 
-        logger.debug(
-            'Discover: {}, Frontier: {}, Equivalent: {}'.format(
-                expr, len(frontier), len(discovered)))
+        logger.debug('Discover: {}, Frontier: {}'.format(expr, len(frontier)))
 
-        return frontier, discovered
+        return frontier
 
     def _discover_multiple_expressions(
             self, var_expr_state, state, out_vars):
         var_list = list(var_expr_state.keys())
-        frontier_expr_list, discovered_expr_list = zip(*[
-            self(var_expr_state[var], state, out_vars) for var in var_list])
+        frontier_expr_list = [
+            self(var_expr_state[var], state, out_vars) for var in var_list]
 
         frontier = set()
         for expr_list in itertools.product(*frontier_expr_list):
@@ -162,12 +137,7 @@ class BaseDiscoverer(base_dispatcher('discover')):
             frontier.add(MetaState(eq_state))
         frontier = self.filter(frontier, state, out_vars)
 
-        discovered = set()
-        for expr_list in itertools.product(*discovered_expr_list):
-            eq_state = {var: expr for var, expr in zip(var_list, expr_list)}
-            discovered.add(MetaState(eq_state))
-
-        return frontier, discovered
+        return frontier
 
     discover_dict = _discover_multiple_expressions
     discover_MetaState = _discover_multiple_expressions

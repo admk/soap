@@ -1,7 +1,7 @@
 from soap.expression import (
     Expression, SelectExpr, FixExpr, Variable, OutputVariableTuple
 )
-from soap.lattice.map import map
+from soap.lattice import Lattice, map
 from soap.semantics.error import cast
 from soap.semantics.common import is_numeral
 from soap.semantics.label import Label
@@ -23,11 +23,13 @@ class MetaState(BaseState, map(None, Expression)):
     def _cast_value(self, value=None, top=False, bottom=False):
         if top or bottom:
             return Expression(top=top, bottom=bottom)
+        if isinstance(value, (Label, Expression)):
+            return value
+        if isinstance(value, Lattice) and value.is_top():
+            return value
         if isinstance(value, str):
             from soap.parser import parse
             return parse(value)
-        if isinstance(value, (Label, Expression)):
-            return value
         if isinstance(value, (int, float)) or is_numeral(value):
             return cast(value)
         if isinstance(value, dict):
