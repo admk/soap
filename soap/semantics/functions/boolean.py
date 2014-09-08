@@ -79,19 +79,7 @@ def _conditional(op, var, expr, state, cond):
     return var, cstr
 
 
-def _bool_eval(expr, state):
-    """
-    Supports only simple boolean expressions::
-        <variable> <operator> <arithmetic expression>
-    Or::
-        <arithmetic expression> <operator> <variable>
-
-    For example::
-        x <= 3 * y.
-
-    Returns:
-        Two states, respectively satisfying or dissatisfying the conditional.
-    """
+def _comparison_eval(expr, state):
     op = expr.op
     a1, a2 = expr.args
     args_swap_list = [(op, a1, a2), (COMPARISON_MIRROR_DICT[op], a2, a1)]
@@ -222,11 +210,12 @@ def construct(expr):
 
 
 @cached
-def bool_transform(expr):
+def _bool_transform(expr):
     from soap.transformer.utils import closure
     bool_vars = []
     bool_expr_set = set()
-    for expr in sorted(closure(expr, steps=context.bool_steps), key=hash):
+    transformed = closure(expr, depth=100, steps=context.bool_steps)
+    for expr in sorted(transformed, key=hash):
         a1, a2 = expr.args
         if is_variable(a1) and a1 not in bool_vars:
             bool_vars.append(a1)
@@ -234,16 +223,22 @@ def bool_transform(expr):
         if is_variable(a2) and a2 not in bool_vars:
             bool_vars.append(a2)
             bool_expr_set.add(expr)
-    return _Constraints([bool_expr_set])
+    return bool_expr_set
 
 
 @cached
 def bool_eval(expr, state):
-    constraints = bool_transform(expr)
+    constraints = construct(expr)
     true_list, false_list = [], []
-    for each in constraints:
-        bool_eval_list = [_bool_eval(bool_expr, state) for bool_expr in each]
-        true, false = zip(*bool_eval_list)
+    for cstr in constraints:
+        cstr_list = []
+        for cmp_expr in cstr:
+            cmp_eval_list = [
+                _comparison_eval(cmp_expr, state)
+                for cmp_expr in _bool_transform(cmp_expr)]
+            print(cmp_eval_list[0][0], cmp_eval_list[0][1])
+            cstr_list += cmp_eval_list
+        true, false = zip(*cstr_list)
         true_list.append(meet(true))
-        false_list.append(meet(false))
-    return join(true_list), join(false_list)
+        false_list.append(join(false))
+    return join(true_list), meet(false_list)
