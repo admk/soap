@@ -97,6 +97,9 @@ _label = LabelGenerator()
 
 
 def label(expr, state, out_vars, context=None):
+    from soap.semantics.state.meta import MetaState
+    if isinstance(expr, MetaState):
+        expr = MetaState({k: v for k, v in expr.items() if k in out_vars})
     lab, env = _label(expr, state, context)
     if isinstance(expr, collections.Mapping):
         from soap.semantics.state.fusion import fusion

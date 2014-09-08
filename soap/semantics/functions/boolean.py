@@ -236,7 +236,6 @@ def bool_eval(expr, state):
             cmp_eval_list = [
                 _comparison_eval(cmp_expr, state)
                 for cmp_expr in _bool_transform(cmp_expr)]
-            print(cmp_eval_list[0][0], cmp_eval_list[0][1])
             cstr_list += cmp_eval_list
         true, false = zip(*cstr_list)
         true_list.append(meet(true))

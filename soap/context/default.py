@@ -17,9 +17,9 @@ context = dict(
     norm='mse_error',
     # transform related
     max_steps=10,
-    plugin_every=1,
+    plugin_every=3,
     bool_steps=4,
-    window_depth=2,
+    window_depth=3,
     unroll_depth=3,
 )
 context = SoapContext(context)

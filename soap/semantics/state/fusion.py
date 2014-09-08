@@ -274,7 +274,8 @@ def recursive_fusion(env, out_vars, done_vars):
 
         expr = env.get(var)
         if expr is None or expr.is_bottom():
-            raise KeyError('Node {} has no expression'.format(var))
+            logger.error('Node {} has no expression'.format(var))
+            continue
 
         # fusion kernel
         env = acyclic_assign(branch_fusion, env, expr)

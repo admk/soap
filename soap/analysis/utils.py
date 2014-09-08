@@ -79,6 +79,9 @@ def min_error(result):
 
 
 def expr_frontier(expr_set, var_env, out_vars=None):
+    # FIXME do something about this
+    if len(expr_set) < 10:
+        return expr_set
     return expr_list(frontier(expr_set, var_env, out_vars))
 
 
@@ -215,7 +218,7 @@ class Plot(object):
             else:
                 derived = {expr}
             analysis_func = frontier if p else analyze
-            r = analysis_func(derived, var_env)
+            r = analysis_func(derived, var_env, out_vars)
             results += r
         t = time.time() - t
         if func:

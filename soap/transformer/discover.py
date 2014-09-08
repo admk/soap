@@ -51,8 +51,8 @@ class BaseDiscoverer(base_dispatcher('discover')):
         logger.debug('Discover: {}, Frontier: {}'.format(expr, len(frontier)))
         return frontier
 
-    discover_BinaryArithExpr = _discover_expression
-    discover_BinaryBoolExpr = _discover_expression
+    discover_UnaryArithExpr = discover_BinaryArithExpr = _discover_expression
+    discover_UnaryBoolExpr = discover_BinaryBoolExpr = _discover_expression
     discover_SelectExpr = _discover_expression
 
     @staticmethod
@@ -187,6 +187,9 @@ def _discover(discoverer, expr, state, out_vars):
         out_vars = out_vars or expr.outputs()
     if not isinstance(state, BoxState):
         state = BoxState(state)
+    if out_vars:
+        if isinstance(expr, MetaState):
+            expr = MetaState({k: v for k, v in expr.items() if k in out_vars})
     return discoverer(expr, state, out_vars)
 
 
