@@ -91,7 +91,7 @@ class ErrorEvaluator(ArithmeticEvaluator):
         return value
 
     def execute_BinaryBoolExpr(self, expr, state):
-        raise NotImplementedError
+        return 0
 
     def execute_MetaState(self, meta_state, state):
         errors = [self(expr, state) for expr in meta_state.values()]

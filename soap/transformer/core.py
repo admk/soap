@@ -32,7 +32,6 @@ class TreeFarmer(object):
         """Crops all trees at the depth limit."""
         if self.depth >= RECURSION_LIMIT:
             return trees
-        logger.debug('Harvesting trees.')
         cropped = []
         for t in trees:
             t, e = crop(t, self.depth, _depth_context)
@@ -42,7 +41,6 @@ class TreeFarmer(object):
 
     def _seed(self, trees):
         """Stitches all trees."""
-        logger.debug('Seeding trees.')
         if not self._crop_env:
             return trees
         seeded = set()

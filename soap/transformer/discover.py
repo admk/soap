@@ -56,7 +56,8 @@ class BaseDiscoverer(base_dispatcher('discover')):
         }
         discovered = set(frontier) | discovered_expr_set
         logger.debug(
-            'Discover: {}, Equivalent: {}'.format(expr, len(frontier)))
+            'Discover: {}, Frontier: {}, Equivalent: {}'.format(
+                expr, len(frontier), len(discovered)))
         return frontier, discovered
 
     discover_BinaryArithExpr = _discover_expression
@@ -91,14 +92,15 @@ class BaseDiscoverer(base_dispatcher('discover')):
         loop_var = expr.loop_var
 
         loop_meta_state_set = set(
-            self._equivalent_loop_meta_states(expr.unroll_depth))
+            self._equivalent_loop_meta_states(expr, context.unroll_depth))
 
         frontier_init_meta_state_set, discovered_init_meta_state_set = self(
             init_meta_state, state, [loop_var])
 
         logger.debug(
-            'Discover: {}, Equivalent: {}'.format(
-                init_meta_state, len(frontier_init_meta_state_set)))
+            'Discover: {}, Frontier: {}, Equivalent: {}'.format(
+                init_meta_state, len(frontier_init_meta_state_set),
+                len(discovered_init_meta_state_set)))
 
         # compute loop optimizing value ranges
         init_value_state = arith_eval_meta_state(init_meta_state, state)
@@ -133,14 +135,19 @@ class BaseDiscoverer(base_dispatcher('discover')):
                 discovered_bool_expr_set, discovered_loop_meta_state_set,
                 discovered_init_meta_state_set)
             for bool_expr, loop_meta_state, init_meta_state in iterer:
-                expr = FixExpr(
+                fix_expr = FixExpr(
                     bool_expr, loop_meta_state, loop_var, init_meta_state)
-                discovered_expr_set.add(expr)
+                discovered_expr_set.add(fix_expr)
 
         logger.unpersistent('LoopTr')
 
         frontier = self.filter(frontier_expr_set, state, out_vars)
         discovered = frontier_expr_set | discovered_expr_set
+
+        logger.debug(
+            'Discover: {}, Frontier: {}, Equivalent: {}'.format(
+                expr, len(frontier), len(discovered)))
+
         return frontier, discovered
 
     def _discover_multiple_expressions(
