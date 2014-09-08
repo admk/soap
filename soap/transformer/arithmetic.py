@@ -2,13 +2,13 @@
 .. module:: soap.transformer.arithmetic
     :synopsis: Transforms arithmetic expression instances.
 """
-from patmat.mimic import Val
+from patmat.mimic import Pred, Val
 
 from soap.expression import expression_factory, operators, SelectExpr
-from soap.transformer.pattern import compile, ExprMimic, ExprConstPropMimic
-from soap.transformer.core import TreeTransformer
 from soap.semantics.functions import arith_eval
 from soap.semantics.state import BoxState
+from soap.transformer.core import TreeTransformer
+from soap.transformer.pattern import compile, ExprConstPropMimic, ExprMimic
 
 
 associativity_addition = (
@@ -230,6 +230,44 @@ constant_reduction = (
 )
 
 
+def boolean_mirror_func(op, a1, a2):
+    op = operators.COMPARISON_MIRROR_DICT[op]
+    return expression_factory(op, a2, a1)
+
+
+boolean_mirror = (
+    compile(ExprMimic(op=Val('op'), args=[Val('a1'), Val('a2')])),
+    compile(boolean_mirror_func),
+    'boolean_mirror'
+)
+
+
+_boolean_rearrange_dict = {
+    operators.ADD_OP: operators.SUBTRACT_OP,
+    operators.SUBTRACT_OP: operators.ADD_OP,
+}
+
+
+def boolean_rearrange_pred(op):
+    return op in _boolean_rearrange_dict
+
+
+def boolean_rearrange_func(op, a1, opr, a2, a3):
+    lhs = expression_factory(_boolean_rearrange_dict[opr], a1, a3)
+    return expression_factory(op, lhs, a2)
+
+
+boolean_rearrange = (
+    compile(ExprMimic(
+        op=Val('op'), args=[
+            Val('a1'), ExprMimic(
+                op=Pred(boolean_rearrange_pred, Val('opr')),
+                args=[Val('a2'), Val('a3')])])),
+    compile(boolean_rearrange_func),
+    'boolean_rearrange'
+)
+
+
 class ArithTreeTransformer(TreeTransformer):
     """The class that provides transformation of binary operator expressions.
 
@@ -278,6 +316,30 @@ class ArithTreeTransformer(TreeTransformer):
             distributivity_collect_select_division_2,
             commutativity_select_1,
             commutativity_select_2,
+        ],
+        operators.EQUAL_OP: [
+            boolean_mirror,
+            boolean_rearrange
+        ],
+        operators.NOT_EQUAL_OP: [
+            boolean_mirror,
+            boolean_rearrange
+        ],
+        operators.GREATER_OP: [
+            boolean_mirror,
+            boolean_rearrange
+        ],
+        operators.GREATER_EQUAL_OP: [
+            boolean_mirror,
+            boolean_rearrange
+        ],
+        operators.LESS_OP: [
+            boolean_mirror,
+            boolean_rearrange
+        ],
+        operators.LESS_EQUAL_OP: [
+            boolean_mirror,
+            boolean_rearrange
         ],
     }
     reduction_rules = {

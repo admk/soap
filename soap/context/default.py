@@ -16,5 +16,6 @@ context = dict(
     unroll_depth=3,
     norm='mse_error',
     multiprocessing=True,
+    bool_steps=4,
 )
 context = SoapContext(context)

@@ -37,7 +37,8 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
         return not self == other
 
     def __hash__(self):
-        return hash((self.name, self.__class__))
+        self._hash = hash_val = hash((self.name, self.__class__))
+        return hash_val
 
 
 class _MagicalMixin(object):

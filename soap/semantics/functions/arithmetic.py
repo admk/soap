@@ -1,7 +1,7 @@
 from soap.common import base_dispatcher, cached
 from soap.context import context
 from soap.expression import operators
-from soap.semantics.error import cast, ErrorSemantics, FloatInterval, norm_func
+from soap.semantics.error import ErrorSemantics, FloatInterval, norm_func
 
 
 class ArithmeticEvaluator(base_dispatcher()):
@@ -91,8 +91,7 @@ class ErrorEvaluator(ArithmeticEvaluator):
         return value
 
     def execute_BinaryBoolExpr(self, expr, state):
-        a1, a2 = self._execute_args(expr.args, state)
-        return cast(a1) | cast(a2)
+        raise NotImplementedError
 
     def execute_MetaState(self, meta_state, state):
         errors = [self(expr, state) for expr in meta_state.values()]

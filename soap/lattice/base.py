@@ -19,7 +19,9 @@ def _decorate(cls):
         @wraps(decd_func)
         def wrapper(self):
             t = base_func(self)
-            return t if t is not None else decd_func(self)
+            if t is not None:
+                return t
+            return decd_func(self)
 
         return wrapper
 
@@ -31,7 +33,9 @@ def _decorate(cls):
         @wraps(decd_func)
         def wrapper(self, other):
             t = base_func(self, other)
-            return t if t is not None else decd_func(self, other)
+            if t is not None:
+                return t
+            return decd_func(self, other)
 
         return wrapper
 

@@ -36,6 +36,7 @@ class LabelGenerator(base_dispatcher()):
         label_env[label] = label_expr
         return LabelSemantics(label, label_env)
 
+    execute_UnaryArithExpr = _execute_arithmetic_expression
     execute_BinaryArithExpr = _execute_arithmetic_expression
     execute_SelectExpr = _execute_arithmetic_expression
 

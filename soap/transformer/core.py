@@ -77,9 +77,11 @@ class TreeTransformer(TreeFarmer):
     reduction_rules = {}
 
     def __init__(self, tree_or_trees,
-                 depth=None, transform_rules=None, reduction_rules=None,
+                 depth=None, steps=None,
+                 transform_rules=None, reduction_rules=None,
                  step_plugin=None, reduce_plugin=None):
         super().__init__(depth=depth or RECURSION_LIMIT)
+        self.steps = steps or RECURSION_LIMIT
         self.step_plugin = step_plugin
         self.reduce_plugin = reduce_plugin
         if transform_rules:
@@ -93,7 +95,10 @@ class TreeTransformer(TreeFarmer):
         else:
             self._expressions = tree_or_trees
         if self.depth >= RECURSION_LIMIT and self.transform_rules:
-            logger.warning('Depth limit not set.', depth)
+            if self.steps >= RECURSION_LIMIT:
+                logger.warning(
+                    'Set a resource limit (depth / steps) to avoid '
+                    'combinatorial explosion.')
 
     def _plugin(self, trees, plugin):
         """Plugin function call setup and cleanup."""
@@ -131,11 +136,11 @@ class TreeTransformer(TreeFarmer):
         """Transitive closure algorithm."""
         done_trees = set()
         todo_trees = set(trees)
-        i = 1
-        while todo_trees:
+        curr_step = 1
+        while todo_trees and curr_step <= self.steps:
             # print set size
             logger.persistent(
-                'Iteration' if not reduced else 'Reduction', i)
+                'Iteration' if not reduced else 'Reduction', curr_step)
             logger.persistent('Trees', len(done_trees))
             logger.persistent('Todo', len(todo_trees))
             if not reduced:
@@ -152,7 +157,7 @@ class TreeTransformer(TreeFarmer):
                 step_trees = self._plugin(step_trees, self.reduce_plugin)
                 done_trees |= nore_trees
                 todo_trees = step_trees - nore_trees
-            i += 1
+            curr_step += 1
         logger.unpersistent('Iteration', 'Reduction', 'Trees', 'Todo')
         return done_trees
 

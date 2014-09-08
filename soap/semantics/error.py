@@ -459,13 +459,8 @@ class ErrorSemantics(Lattice):
             return cls(self) + cls(other)
         self_v_min, self_v_max = self.v
         other_v_min, other_v_max = other.v
-        if self_v_min == self_v_max and other_v_min == other_v_max:
-            v = mpq(self_v_min) + mpq(other_v_min)
-            e = round_off_error_from_exact(v)
-        else:
-            v = self.v + other.v
-            e = round_off_error(v)
-        e += self.e + other.e
+        v = self.v + other.v
+        e = round_off_error(v) + self.e + other.e
         return self.__class__(v, e)
     __radd__ = __add__
 
@@ -475,13 +470,8 @@ class ErrorSemantics(Lattice):
             return cls(self) - cls(other)
         self_v_min, self_v_max = self.v
         other_v_min, other_v_max = other.v
-        if self_v_min == self_v_max and other_v_min == other_v_max:
-            v = mpq(self_v_min) - mpq(other_v_min)
-            e = round_off_error_from_exact(v)
-        else:
-            v = self.v - other.v
-            e = round_off_error(v)
-        e += self.e - other.e
+        v = self.v - other.v
+        e = round_off_error(v) + (self.e - other.e)
         return self.__class__(v, e)
 
     @_decorate_operator
@@ -494,15 +484,10 @@ class ErrorSemantics(Lattice):
     def __mul__(self, other, cls):
         if cls is not None:
             return cls(self) * cls(other)
-        e = self.e * other.e
         self_v_min, self_v_max = self.v
         other_v_min, other_v_max = other.v
-        if self_v_min == self_v_max and other_v_min == other_v_max:
-            v = mpq(self_v_min) * mpq(other_v_min)
-            e += round_off_error_from_exact(v)
-        else:
-            v = self.v * other.v
-            e += round_off_error(v)
+        v = self.v * other.v
+        e = self.e * other.e + round_off_error(v)
         e += self.v * other.e + other.v * self.e
         return self.__class__(v, e)
     __rmul__ = __mul__
@@ -513,16 +498,10 @@ class ErrorSemantics(Lattice):
             return cls(self) / cls(other)
         self_v_min, self_v_max = self.v
         other_v_min, other_v_max = other.v
-        if self_v_min == self_v_max and other_v_min == other_v_max:
-            v = mpq(self_v_min) / mpq(other_v_min)
-            er = round_off_error_from_exact(v)
-            v = mpfr(v)
-        else:
-            v = self.v / other.v
-            er = round_off_error(v)
+        v = self.v / other.v
         e = self.e - v * other.e
         e /= other.v + other.e
-        e += er
+        e += round_off_error(v)
         return self.__class__(v, e)
 
     @_decorate_operator

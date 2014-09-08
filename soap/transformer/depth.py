@@ -30,6 +30,7 @@ class Cropper(base_dispatcher('crop')):
 
         return expr, env
 
+    crop_UnaryArithExpr = _crop_expression
     crop_BinaryArithExpr = _crop_expression
     crop_BinaryBoolExpr = _crop_expression
     crop_SelectExpr = _crop_expression
@@ -60,6 +61,7 @@ class Stitcher(base_dispatcher('stitch')):
         args = tuple(self(arg, env) for arg in expr.args)
         return expression_factory(expr.op, *args)
 
+    stitch_UnaryArithExpr = _stitch_expression
     stitch_BinaryArithExpr = _stitch_expression
     stitch_BinaryBoolExpr = _stitch_expression
     stitch_SelectExpr = _stitch_expression

@@ -2,34 +2,18 @@ import collections
 import itertools
 
 from soap.common.cache import cached
+from soap.context import context
 from soap.expression import (
     BinaryBoolExpr, is_variable, LESS_OP, GREATER_OP, LESS_EQUAL_OP,
-    GREATER_EQUAL_OP, EQUAL_OP, NOT_EQUAL_OP, UNARY_NEGATION_OP, AND_OP, OR_OP,
-    COMPARISON_OPERATORS, BINARY_OPERATORS,
+    GREATER_EQUAL_OP, EQUAL_OP, NOT_EQUAL_OP, UNARY_NEGATION_OP, AND_OP,
+    OR_OP, COMPARISON_OPERATORS, BINARY_OPERATORS, COMPARISON_NEGATE_DICT,
+    COMPARISON_MIRROR_DICT,
 )
 from soap.lattice import join, meet
 from soap.semantics.error import (
     inf, ulp, mpz_type, mpfr_type,
     IntegerInterval, FloatInterval, ErrorSemantics
 )
-
-
-_negate_dict = {
-    LESS_OP: GREATER_EQUAL_OP,
-    LESS_EQUAL_OP: GREATER_OP,
-    GREATER_OP: LESS_EQUAL_OP,
-    GREATER_EQUAL_OP: LESS_OP,
-    EQUAL_OP: NOT_EQUAL_OP,
-    NOT_EQUAL_OP: EQUAL_OP,
-}
-_mirror_dict = {
-    LESS_OP: GREATER_OP,
-    LESS_EQUAL_OP: GREATER_EQUAL_OP,
-    GREATER_OP: LESS_OP,
-    GREATER_EQUAL_OP: LESS_EQUAL_OP,
-    EQUAL_OP: EQUAL_OP,
-    NOT_EQUAL_OP: NOT_EQUAL_OP,
-}
 
 
 def _rhs_eval(expr, state):
@@ -64,7 +48,7 @@ def _contract(op, bound):
 
 
 def _constraint(op, cond, bound):
-    op = _negate_dict[op] if not cond else op
+    op = COMPARISON_NEGATE_DICT[op] if not cond else op
     if bound.is_bottom():
         return bound
     bound_min, bound_max = _contract(op, bound)
@@ -110,7 +94,7 @@ def _bool_eval(expr, state):
     """
     op = expr.op
     a1, a2 = expr.args
-    args_swap_list = [(op, a1, a2), (_mirror_dict[op], a2, a1)]
+    args_swap_list = [(op, a1, a2), (COMPARISON_MIRROR_DICT[op], a2, a1)]
     split_list = []
     for cond in True, False:
         cstr_list = []
@@ -191,7 +175,7 @@ class _Constraints(collections.MutableSet):
 
     @staticmethod
     def _negate(expr):
-        return BinaryBoolExpr(_negate_dict[expr.op], *expr.args)
+        return BinaryBoolExpr(COMPARISON_NEGATE_DICT[expr.op], *expr.args)
 
     def __invert__(self):
         conjunctions = [
@@ -238,8 +222,24 @@ def construct(expr):
 
 
 @cached
+def bool_transform(expr):
+    from soap.transformer.utils import closure
+    bool_vars = []
+    bool_expr_set = set()
+    for expr in sorted(closure(expr, steps=context.bool_steps), key=hash):
+        a1, a2 = expr.args
+        if is_variable(a1) and a1 not in bool_vars:
+            bool_vars.append(a1)
+            bool_expr_set.add(expr)
+        if is_variable(a2) and a2 not in bool_vars:
+            bool_vars.append(a2)
+            bool_expr_set.add(expr)
+    return _Constraints([bool_expr_set])
+
+
+@cached
 def bool_eval(expr, state):
-    constraints = construct(expr)
+    constraints = bool_transform(expr)
     true_list, false_list = [], []
     for each in constraints:
         bool_eval_list = [_bool_eval(bool_expr, state) for bool_expr in each]

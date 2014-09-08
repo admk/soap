@@ -1,13 +1,12 @@
 # Ultra Short Term FIXMEs
 
-* [ ] Fix some constant analysis bug found in `basal.soap`.
 * [ ] Use Xilinx statistics, update it to support int to float conversion.
-* [ ] There is analysis bias in loop unroll, because of iteration is relaxed,
-  what to do next?
 
 
 # Ugliness, fix if have the time to
 
+* [ ] Fix some constant analysis bug found in `basal.soap`.
+    - [X] Temporary fix: avoid constant errors
 * [ ] Fix caching because pickling is non-deterministic.
 * [ ] Consider what is a reasonable thing to do with non-terminating
   expressions
