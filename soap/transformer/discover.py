@@ -2,10 +2,13 @@
 .. module:: soap.transformer.trace
     :synopsis: implementation of TraceExpr classes.
 """
+import collections
 import itertools
 
 from soap import logger
-from soap.analysis import expr_frontier
+from soap.analysis import (
+    frontier as analysis_frontier, thick_frontier as thick_analysis_frontier
+)
 from soap.common import base_dispatcher, cached
 from soap.context import context
 from soap.expression import expression_factory, SelectExpr, FixExpr
@@ -15,7 +18,9 @@ from soap.semantics.functions import (
     arith_eval_meta_state, fixpoint_eval, expand_expr
 )
 from soap.transformer.arithmetic import MartelTreeTransformer
-from soap.transformer.utils import closure, greedy_frontier_closure
+from soap.transformer.utils import (
+    closure, greedy_frontier_closure, thick_frontier_closure
+)
 
 
 class BaseDiscoverer(base_dispatcher('discover')):
@@ -160,7 +165,8 @@ class MartelDiscoverer(BaseDiscoverer):
 
 class _FrontierFilter(BaseDiscoverer):
     def filter(self, expr_set, state, out_vars):
-        return expr_frontier(expr_set, state, out_vars)
+        return [
+            r.expression for r in analysis_frontier(expr_set, state, out_vars)]
 
 
 class GreedyDiscoverer(_FrontierFilter):
@@ -169,8 +175,16 @@ class GreedyDiscoverer(_FrontierFilter):
     equivalent expressions.
     """
     def closure(self, expr_set, state, out_vars):
-        return greedy_frontier_closure(
-            expr_set, state, out_vars, depth=context.window_depth)
+        return greedy_frontier_closure(expr_set, state, out_vars)
+
+
+class ThickDiscoverer(BaseDiscoverer):
+    def filter(self, expr_set, state, out_vars):
+        return [r.expression
+                for r in thick_analysis_frontier(expr_set, state, out_vars)]
+
+    def closure(self, expr_set, state, out_vars):
+        return thick_frontier_closure(expr_set, state, out_vars)
 
 
 class FrontierDiscoverer(_FrontierFilter):
@@ -185,17 +199,42 @@ def _discover(discoverer, expr, state, out_vars):
     if isinstance(expr, Flow):
         state = state or expr.inputs()
         out_vars = out_vars or expr.outputs()
+
+    if isinstance(expr, MetaState) and not out_vars:
+        logger.warning(
+            'Expect out_vars to be provided, using env.keys() instead')
+        out_vars = expr.keys()
+    if not isinstance(out_vars, collections.Sequence):
+        logger.warning('Expect out_vars to be a sequence, will sort it')
+        out_vars = sorted(out_vars, key=hash)
+    if isinstance(expr, MetaState):
+        expr = MetaState({k: v for k, v in expr.items() if k in out_vars})
+
     if not isinstance(state, BoxState):
         state = BoxState(state)
-    if out_vars:
-        if isinstance(expr, MetaState):
-            expr = MetaState({k: v for k, v in expr.items() if k in out_vars})
+
     return discoverer(expr, state, out_vars)
 
 
 _martel_discoverer = MartelDiscoverer()
 _greedy_discoverer = GreedyDiscoverer()
 _frontier_discoverer = FrontierDiscoverer()
+_thick_discoverer = ThickDiscoverer()
+
+
+def thick(expr, state=None, out_vars=None):
+    """Finds our equivalent expressions using :class:`ThickDiscoverer`.
+
+    :param expr: An expression or a variable-expression mapping
+    :type expr:
+        :class:`soap.expression.Expression` or
+        :class:`soap.semantics.state.MetaState`
+    :param state: The ranges of input variables.
+    :type state: :class:`soap.semantics.state.BoxState`
+    :param out_vars: The output variables of the metastate
+    :type out_vars: :class:`collections.Sequence`
+    """
+    return _discover(_thick_discoverer, expr, state, out_vars)
 
 
 def greedy(expr, state=None, out_vars=None):

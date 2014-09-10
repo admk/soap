@@ -6,20 +6,21 @@ context = dict(
     ipdb=False,
     # interactive shell
     autocall=True,
-    xmode='verbose',
+    xmode='context',
     repr=repr,
     # general
     multiprocessing=True,
     # analysis related
-    unroll_factor=50,
-    widen_factor=100,
+    unroll_factor=50,   # how many steps before no unrolling in static analysis
+    widen_factor=100,   # how many steps before widening in static analysis
     precision='single',
-    norm='mse_error',
+    norm='mse_error',   # function for computing multiple variable avg error
     # transform related
-    max_steps=10,
-    plugin_every=3,
-    bool_steps=4,
-    window_depth=3,
-    unroll_depth=3,
+    max_steps=10,       # max no of steps for equivalent expr discovery
+    plugin_every=1,     # no of steps before plugins are executed
+    thickness=2,        # no of iterations of pareto suboptimal inclusion
+    bool_steps=4,       # transition steps for finding equivalent boolean exprs
+    window_depth=2,     # depth limit window for equivalent expr discovery
+    unroll_depth=3,     # partial unroll depth limit
 )
 context = SoapContext(context)

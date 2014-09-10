@@ -61,7 +61,7 @@ Options:
                             optimized.  [default: ]
     --algorithm=<str>       The name of the algorithm used for optimization.
                             Allows: `closure`, `expand`, `reduce`, `parsings`,
-                            `greedy` or `frontier`.  [default: greedy]
+                            `greedy`, `frontier` or `thick`.  [default: thick]
     --norm={context.norm}
                             Specify the name of the norm function to use.
                             Allows: `mean_error`, `mse_error`, `max_error`
@@ -189,7 +189,7 @@ def _optimize(args):
 
     def _algorithm(args):
         from soap.transformer import (
-            closure, expand, parsings, reduce, greedy, frontier
+            closure, expand, parsings, reduce, greedy, frontier, thick
         )
         algorithm = args['--algorithm']
         algorithm_map = {
@@ -199,6 +199,7 @@ def _optimize(args):
             'reduce': lambda s, _1, _2: reduce(s),
             'greedy': greedy,
             'frontier': frontier,
+            'thick': thick,
         }
         return algorithm_map[algorithm]
 
@@ -209,11 +210,11 @@ def _optimize(args):
         meta_state = flow_to_meta_state(flow)
     func = _algorithm(args)
     plot = Plot(
-        var_env=state, out_vars=out_vars,
+        state=state, out_vars=out_vars,
         precs=[context.precision], depth=context.window_depth,
         legend_time=True)
     plot.add_analysis(meta_state, func=func)
-    plot.save('cli.pdf')
+    plot.save('{}.pdf'.format(args['<file>']))
     plot.show()
     return 0
 

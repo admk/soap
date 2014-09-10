@@ -2,9 +2,9 @@ import sys
 
 from soap import logger
 from soap.analysis import Plot
-from soap.flopoco import wf_range
+from soap.context import context
 from soap.parser import parse
-from soap.semantics import BoxState
+from soap.semantics import BoxState, ErrorSemantics
 from soap.transformer.discover import frontier, greedy, martel
 
 logger.set_context(level=logger.levels.debug)
@@ -18,9 +18,9 @@ e = parse("""
 # e_y = '(1 + b + c) * (a + 1 + c) * (a + b + 1)'
 # e += ' | ' + e_y
 v = BoxState({
-    'a': ['1.0', '2.0'],
-    'b': ['10.0', '20.0'],
-    'c': ['100.0', '200.0'],
+    'a': ErrorSemantics(['1.0', '2.0'], [0, 0]),
+    'b': ErrorSemantics(['10.0', '20.0'], [0, 0]),
+    'c': ErrorSemantics(['100.0', '200.0'], [0, 0]),
 })
 t = [
     (False, 2, frontier, 'x', '-'),
@@ -35,7 +35,7 @@ if vary_width:
 else:
     ss = 5
     w = 2.0
-p = Plot(var_env=v, precs=(wf_range if vary_width else None))
+p = Plot(state=v, precs=[context.precision])
 for s, d, f, m, l in t:
     if vary_width:
         m = '.'

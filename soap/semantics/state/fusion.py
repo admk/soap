@@ -1,5 +1,3 @@
-import collections
-
 from soap import logger
 from soap.expression import (
     is_variable, is_expression,
@@ -293,11 +291,4 @@ def recursive_fusion(env, out_vars, done_vars):
 
 
 def fusion(env, out_vars):
-    if not out_vars:
-        logger.warning(
-            'Expect out_vars to be provided, using env.keys() instead')
-        out_vars = env.keys()
-    if not isinstance(out_vars, collections.Sequence):
-        logger.warning('Expect out_vars to be a sequence, will sort it')
-        out_vars = sorted(out_vars, key=str)
     return MetaState(recursive_fusion(env, out_vars, []))

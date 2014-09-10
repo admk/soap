@@ -6,83 +6,53 @@ import math
 import itertools
 
 from soap import logger
-from soap.analysis.core import AreaErrorAnalysis
+from soap.analysis.core import Analysis
 from soap.context import context
 
 
-def analyze(expr_set, var_env, out_vars=None):
+def analyze(expr_set, state, out_vars=None):
     """Provides area and error analysis of expressions with input ranges
     and precisions.
 
     :param expr_set: A set of expressions.
     :type expr_set: set or list
-    :param var_env: The ranges of input variables.
-    :type var_env: dictionary containing mappings from variables to
+    :param state: The ranges of input variables.
+    :type state: dictionary containing mappings from variables to
         :class:`soap.semantics.error.Interval`
     :param out_vars: The output variables of the metastate
     :type out_vars: :class:`collections.Sequence`
     """
-    return AreaErrorAnalysis(expr_set, var_env, out_vars).analyze()
+    return Analysis(expr_set, state, out_vars).analyze()
 
 
-def frontier(expr_set, var_env, out_vars=None):
+def frontier(expr_set, state, out_vars=None):
     """Provides the Pareto frontier of the area and error analysis of
     expressions with input ranges and precisions.
 
     :param expr_set: A set of expressions.
     :type expr_set: set or list
-    :param var_env: The ranges of input variables.
-    :type var_env: dictionary containing mappings from variables to
+    :param state: The ranges of input variables.
+    :type state: dictionary containing mappings from variables to
         :class:`soap.semantics.error.Interval`
     :param out_vars: The output variables of the metastate
     :type out_vars: :class:`collections.Sequence`
     """
-    return AreaErrorAnalysis(expr_set, var_env, out_vars).frontier()
+    return Analysis(expr_set, state, out_vars).frontier()
 
 
-def list_from_keys(result, keys=None):
-    if not isinstance(keys, str):
-        try:
-            return [[r[k] for k in keys or result[0].keys()] for r in result]
-        except TypeError:
-            pass
-    return [r[keys] for r in result]
+def thick_frontier(expr_set, state, out_vars=None):
+    """Provides the thick Pareto frontier of the area and error analysis of
+    expressions with input ranges and precisions.
 
-
-def zip_from_keys(result, keys='expression'):
-    return zip(*list_from_keys(result, keys))
-
-
-def zip_result(result):
-    from soap.analysis.core import AreaErrorAnalysis
-    return zip_from_keys(result, keys=AreaErrorAnalysis.names())
-
-
-def expr_list(result):
-    return list_from_keys(result, keys='expression')
-
-
-def expr_set(result):
-    return set(expr_list(result))
-
-
-def _min_objective(result, key):
-    return sorted(result, key=lambda r: float(r[key]))[0]
-
-
-def min_area(result):
-    return _min_objective(result, 'area')
-
-
-def min_error(result):
-    return _min_objective(result, 'error')
-
-
-def expr_frontier(expr_set, var_env, out_vars=None):
-    # FIXME do something about this
-    if len(expr_set) < 10:
-        return expr_set
-    return expr_list(frontier(expr_set, var_env, out_vars))
+    :param expr_set: A set of expressions.
+    :type expr_set: set or list
+    :param state: The ranges of input variables.
+    :type state: dictionary containing mappings from variables to
+        :class:`soap.semantics.error.Interval`
+    :param out_vars: The output variables of the metastate
+    :type out_vars: :class:`collections.Sequence`
+    """
+    return Analysis(expr_set, state, out_vars).thick_frontier()
 
 
 _ZIGZAG_MARGIN = 1000.0
@@ -136,14 +106,14 @@ def _log_margin(lmin, lmax):
 
 class Plot(object):
     """Provides plotting of results"""
-    def __init__(self, result=None, var_env=None, out_vars=None,
+    def __init__(self, result=None, state=None, out_vars=None,
                  depth=None, precs=None, log=None, legend_pos=None, **kwargs):
         """Initialisation.
 
         :param result: results provided by :func:`analyze`.
         :type result: list
-        :param var_env: The ranges of input variables to be used in transforms.
-        :type var_env: dictionary containing mappings from variables to
+        :param state: The ranges of input variables to be used in transforms.
+        :type state: dictionary containing mappings from variables to
             :class:`soap.semantics.error.Interval`
         :param depth: the depth limit used in transforms.
         :type depth: int
@@ -162,7 +132,7 @@ class Plot(object):
         self.legend_pos = legend_pos
         if result:
             self.add(result, **kwargs)
-        self.var_env = var_env
+        self.state = state
         self.out_vars = out_vars
         self.depth = depth
         self.precs = precs
@@ -171,7 +141,7 @@ class Plot(object):
         super().__init__()
 
     def add_analysis(self, expr, func=None, precs=None,
-                     out_vars=None, var_env=None,
+                     out_vars=None, state=None,
                      depth=None, annotate=False, legend=None,
                      legend_depth=False, legend_time=False, **kwargs):
         """Performs transforms, then analyzes expressions and add results to
@@ -181,8 +151,8 @@ class Plot(object):
         :type expr: :class:`soap.expression.Expr`
         :param func: the function used to transform `expr`.
         :type func: callable with arguments::
-            `(tree, var_env, depth, prec)`, where `tree` is an expression,
-            `var_env` is the input ranges, `depth` is the depth limit and
+            `(tree, state, depth, prec)`, where `tree` is an expression,
+            `state` is the input ranges, `depth` is the depth limit and
             `prec` is the precision used.
         :param precs: Precisions used to evaluate the expressions, defaults to
             single precision.
@@ -201,7 +171,7 @@ class Plot(object):
         """
         import time
         from soap.common import invalidate_cache
-        var_env = var_env or self.var_env
+        state = state or self.state
         out_vars = out_vars or self.out_vars
         d = depth or self.depth
         precs = precs or self.precs or [None]
@@ -214,11 +184,11 @@ class Plot(object):
                 logger.persistent('Precision', p)
             if func:
                 with context.local(precision=p, window_depth=d):
-                    derived = func(expr, var_env, out_vars)
+                    derived = func(expr, state, out_vars)
             else:
                 derived = {expr}
             analysis_func = frontier if p else analyze
-            r = analysis_func(derived, var_env, out_vars)
+            r = analysis_func(derived, state, out_vars)
             results += r
         t = time.time() - t
         if func:
@@ -316,7 +286,7 @@ class Plot(object):
         plot.locator_params(axis='x', nbins=7)
 
     def _plot(self):
-        from soap.analysis.core import AreaErrorAnalysis, pareto_frontier_2d
+        from soap.analysis.core import pareto_frontier_2d
         try:
             return self.figure
         except AttributeError:
@@ -349,11 +319,9 @@ class Plot(object):
                 for k in self.plot_forbidden:
                     if k in plot_kwargs:
                         del plot_kwargs[k]
-                keys = AreaErrorAnalysis.names()
-                f = pareto_frontier_2d(r['result'], keys=keys)
-                keys.append('expression')
+                f = pareto_frontier_2d(r['result'])
                 try:
-                    area, error, expr = zip_from_keys(f, keys=keys)
+                    area, error, expr = zip(*f)
                     logger.debug(r['legend'])
                     for a, e, x in zip(area, error, expr):
                         logger.debug(a, e, x)
@@ -382,7 +350,7 @@ class Plot(object):
             if scatter_kwargs['marker'] == '+':
                 scatter_kwargs['s'] *= 1.5
             try:
-                area, error = zip_result(r['result'])
+                area, error, _ = zip(*r['result'])
                 xmin, xmax = min(xmin, min(area)), max(xmax, max(area))
                 ymin, ymax = min(ymin, min(error)), max(ymax, max(error))
             except ValueError:
@@ -424,7 +392,7 @@ def plot(result, **kwargs):
 def analyze_and_plot(s, v, d=None, f=None, o=False, t=True):
     from soap.transformer.utils import greedy_trace
     f = f or [greedy_trace]
-    p = Plot(var_env=v, depth=d)
+    p = Plot(state=v, depth=d)
     try:
         for i, (d, m) in enumerate(itertools.product(s, f)):
             e, depth, legend = d['e'], d.get('d'), d.get('l')
@@ -448,7 +416,7 @@ def analyze_and_plot(s, v, d=None, f=None, o=False, t=True):
 
 if __name__ == '__main__':
     logger.set_context(level=logger.levels.info)
-    p = Plot(var_env={'x': [0, 1]})
+    p = Plot(state={'x': [0, 1]})
     p.add_analysis('x * x + x + 1', legend='1')
     p.add_analysis('x * (x + 1) + 1', legend='2')
     p.add_analysis('1 + x + x * x', legend='3')

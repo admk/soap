@@ -14,53 +14,76 @@ from soap.transformer.arithmetic import (
     distributivity_distribute_multiplication,
     distributivity_distribute_division, ArithTreeTransformer
 )
-from soap.analysis import expr_frontier
+from soap.analysis import frontier, thick_frontier
 
 
-def closure(tree, **kwargs):
+def closure(expr, **kwargs):
     """The full transitive closure."""
-    return ArithTreeTransformer(tree, **kwargs).closure()
+    return ArithTreeTransformer(expr, **kwargs).closure()
 
 
-def full_closure(tree, **kwargs):
+def full_closure(expr, **kwargs):
     """The same as :func:`closure`, ignoring the `kwargs` stuff."""
-    return closure(tree)
+    return closure(expr)
 
 
-def greedy_frontier_closure(tree, var_env, out_vars=None, **kwargs):
+def _plugin_closure(plugin, expr, state, out_vars, **kwargs):
+    transformer = ArithTreeTransformer(expr, step_plugin=plugin, **kwargs)
+    return plugin(transformer.closure())
+
+
+def greedy_frontier_closure(expr, state, out_vars=None, **kwargs):
     """Our greedy transitive closure.
 
-    :param tree: The expression(s) under transform.
-    :type tree:
+    :param expr: The expression(s) under transform.
+    :type expr:
         :class:`soap.expression.Expression` or
-        :class:`soap.semantics.state.MetaState` or set, or str
-    :param var_env: The ranges of input variables.
-    :type var_env: dictionary containing mappings from variables to
+        :class:`soap.semantics.state.MetaState`
+    :param state: The ranges of input variables.
+    :type state: dictionary containing mappings from variables to
         :class:`soap.semantics.error.Interval`
     :param out_vars: The output variables of the metastate
     :type out_vars: :class:`collections.Sequence`
     """
-    plugin = lambda expr_set: expr_frontier(expr_set, var_env, out_vars)
-    transformer = ArithTreeTransformer(tree, step_plugin=plugin, **kwargs)
-    return plugin(transformer.closure())
+    plugin = lambda exprs: [
+        r.expression for r in frontier(exprs, state, out_vars)]
+    return _plugin_closure(plugin, expr, state, out_vars, **kwargs)
 
 
-def transform(tree, reduction_rules=None, transform_rules=None,
+def thick_frontier_closure(expr, state, out_vars=None, **kwargs):
+    """Our thick frontier transitive closure.
+
+    :param expr: The expression(s) under transform.
+    :type expr:
+        :class:`soap.expression.Expression` or
+        :class:`soap.semantics.state.MetaState`
+    :param state: The ranges of input variables.
+    :type state: dictionary containing mappings from variables to
+        :class:`soap.semantics.error.Interval`
+    :param out_vars: The output variables of the metastate
+    :type out_vars: :class:`collections.Sequence`
+    """
+    plugin = lambda exprs: [
+        r.expression for r in thick_frontier(exprs, state, out_vars)]
+    return _plugin_closure(plugin, expr, state, out_vars, **kwargs)
+
+
+def transform(expr, reduction_rules=None, transform_rules=None,
               step_plugin=None, reduce_plugin=None, depth=None,
               multiprocessing=True):
     """One liner for :class:`soap.transformer.TreeTransformer`."""
     return TreeTransformer(
-        tree, transform_rules=transform_rules, reduction_rules=reduction_rules,
+        expr, transform_rules=transform_rules, reduction_rules=reduction_rules,
         step_plugin=step_plugin, reduce_plugin=reduce_plugin,
         depth=depth, multiprocessing=multiprocessing).closure()
 
 
-def expand(tree):
-    """Fully expands the expression tree by distributivity.
+def expand(expr):
+    """Fully expands the expression expr by distributivity.
 
-    :param tree: The expression tree.
-    :type tree: :class:`soap.expression.Expression` or str
-    :returns: A fully expanded tree.
+    :param expr: The expression expr.
+    :type expr: :class:`soap.expression.Expression` or str
+    :returns: A fully expanded expr.
     """
     def pop(s):
         if s:
@@ -71,42 +94,42 @@ def expand(tree):
         distributivity_distribute_division,
     ]
     return transform(
-        tree, reduction_rules=reduction_rules, reduce_plugin=pop,
+        expr, reduction_rules=reduction_rules, reduce_plugin=pop,
         multiprocessing=False).pop()
 
 
-def reduce(tree):
-    """Transforms tree by reduction rules only.
+def reduce(expr):
+    """Transforms expr by reduction rules only.
 
-    :param tree: The expression tree.
-    :type tree: :class:`soap.expression.Expression` or str
-    :returns: A new expression tree.
+    :param expr: The expression expr.
+    :type expr: :class:`soap.expression.Expression` or str
+    :returns: A new expression expr.
     """
-    if isinstance(tree, str) or is_expression(tree):
-        t = transform(tree, ArithTreeTransformer.reduction_rules,
+    if isinstance(expr, str) or is_expression(expr):
+        t = transform(expr, ArithTreeTransformer.reduction_rules,
                       multiprocessing=False)
         s = set(t)
         if len(s) > 1:
-            s.remove(tree)
+            s.remove(expr)
         if len(s) == 1:
             return s.pop()
     with logger.local_context(level=logger.levels.info):
-        if isinstance(tree, collections.Mapping):
-            return MetaState({v: reduce(e) for v, e in tree.items()})
-        if isinstance(tree, collections.Iterable):
-            return {reduce(t) for t in tree}
-    raise TypeError('Do not know how to reduce {!r}'.format(tree))
+        if isinstance(expr, collections.Mapping):
+            return MetaState({v: reduce(e) for v, e in expr.items()})
+        if isinstance(expr, collections.Iterable):
+            return {reduce(t) for t in expr}
+    raise TypeError('Do not know how to reduce {!r}'.format(expr))
 
 
-def parsings(tree):
-    """Generates all possible parsings of the same tree by associativity.
+def parsings(expr):
+    """Generates all possible parsings of the same expr by associativity.
 
-    :param tree: The expression tree.
-    :type tree: :class:`soap.expression.Expression` or str
-    :returns: A set of trees.
+    :param expr: The expression expr.
+    :type expr: :class:`soap.expression.Expression` or str
+    :returns: A set of exprs.
     """
     return transform(
-        tree, None, {
+        expr, None, {
             operators.ADD_OP: [associativity_addition],
             operators.MULTIPLY_OP: [associativity_multiplication]
         })

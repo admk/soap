@@ -20,7 +20,7 @@ for i, l in enumerate(['debug', 'info', 'warning', 'error', 'off']):
 with _global_context.no_invalidate_cache():
     _global_context.logger = {
         'level': levels.warning,
-        'pause_level': levels.off,
+        'pause_level': levels.error,
         'color': True,
         'file': None,
         '_persistent': {},
