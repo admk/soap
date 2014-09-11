@@ -35,14 +35,41 @@ def _pareto_frontier_2d(expr_set):
     return optimal, suboptimal
 
 
-def pareto_frontier_2d(expr_set):
-    return _pareto_frontier_2d(expr_set)[0]
+def _pareto_frontier(points):
+    """Last row is always the expression!"""
+
+    dom_func = lambda dominator_row, dominated_row: not any(
+        dominator > dominated
+        for dominator, dominated in zip(dominator_row, dominated_row))
+
+    pareto_points = set()
+    for candidate_row in points:
+        candidate_stat = candidate_row[:-1]
+        to_remove = set()
+        for pareto_row in pareto_points:
+            pareto_stat = pareto_row[:-1]
+            if pareto_stat == candidate_stat:
+                continue
+            if dom_func(candidate_stat, pareto_stat):
+                to_remove.add(pareto_row)
+            if dom_func(pareto_stat, candidate_stat):
+                break
+        else:
+            pareto_points.add(candidate_row)
+        pareto_points -= to_remove
+
+    dominated_points = set(points) - pareto_points
+    return pareto_points, dominated_points
 
 
-def thick_frontier_2d(expressions, keys=None):
+def pareto_frontier(points):
+    return _pareto_frontier(points)[0]
+
+
+def thick_frontier(points):
     frontier = []
     for _ in range(context.thickness + 1):
-        optimal, expressions = _pareto_frontier_2d(expressions)
+        optimal, points = _pareto_frontier(points)
         frontier += optimal
     return frontier
 
@@ -78,20 +105,25 @@ class Analysis(Flyweight):
         if results:
             return results
 
+        expr_set = self.expr_set
         state = self.state
         out_vars = self.out_vars
         precision = context.precision
 
         results = set()
         step = 0
-        total = len(self.expr_set)
-        for expr in self.expr_set:
-            step += 1
-            logger.persistent(
-                'Analysing', '%d/%d' % (step, total), l=logger.levels.debug)
-            area = luts(expr, state, out_vars, precision)
-            error = abs_error(expr, state)
-            results.add(AnalysisResult(area, error, expr))
+        total = len(expr_set)
+        try:
+            for expr in expr_set:
+                step += 1
+                logger.persistent(
+                    'Analysing', '{}/{}'.format(step, total),
+                    l=logger.levels.debug)
+                area = luts(expr, state, out_vars, precision)
+                error = abs_error(expr, state)
+                results.add(AnalysisResult(area, error, expr))
+        except KeyboardInterrupt:
+            logger.warning('Analysis interrupted.')
         logger.unpersistent('Analysing')
 
         self._results = results
@@ -99,7 +131,7 @@ class Analysis(Flyweight):
 
     def frontier(self):
         """Computes the Pareto frontier from analyzed results."""
-        return pareto_frontier_2d(self.analyze())
+        return pareto_frontier(self.analyze())
 
     def thick_frontier(self):
-        return thick_frontier_2d(self.analyze())
+        return thick_frontier(self.analyze())

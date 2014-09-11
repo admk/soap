@@ -23,7 +23,7 @@ def invalidate_cache():
 def cached(f):
     class NonLocals(object):
         pass
-    CACHE_CAPACITY = 1000
+    CACHE_CAPACITY = 10000
     cache = {}
     NonLocals.full = False
     NonLocals.hits = NonLocals.misses = NonLocals.currsize = 0

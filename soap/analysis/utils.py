@@ -174,7 +174,8 @@ class Plot(object):
         state = state or self.state
         out_vars = out_vars or self.out_vars
         d = depth or self.depth
-        precs = precs or self.precs or [None]
+        precs = precs or self.precs
+        analysis_func = frontier if len(precs) > 1 else analyze
         results = []
         if legend_time:
             invalidate_cache()
@@ -187,7 +188,6 @@ class Plot(object):
                     derived = func(expr, state, out_vars)
             else:
                 derived = {expr}
-            analysis_func = frontier if p else analyze
             r = analysis_func(derived, state, out_vars)
             results += r
         t = time.time() - t
@@ -286,7 +286,7 @@ class Plot(object):
         plot.locator_params(axis='x', nbins=7)
 
     def _plot(self):
-        from soap.analysis.core import pareto_frontier_2d
+        from soap.analysis.core import pareto_frontier
         try:
             return self.figure
         except AttributeError:
@@ -319,9 +319,9 @@ class Plot(object):
                 for k in self.plot_forbidden:
                     if k in plot_kwargs:
                         del plot_kwargs[k]
-                f = pareto_frontier_2d(r['result'])
+                result = sorted(pareto_frontier(r['result']))
                 try:
-                    area, error, expr = zip(*f)
+                    area, error, expr = zip(*result)
                     logger.debug(r['legend'])
                     for a, e, x in zip(area, error, expr):
                         logger.debug(a, e, x)

@@ -16,7 +16,7 @@ __doc__ = """
 
 
 def excepthook(type, value, traceback):
-    rv = ultratb.VerboseTB()(type, value, traceback)
+    rv = ultratb.ColorTB()(type, value, traceback)
     if context.ipdb:
         from IPython.core.debugger import Pdb
         from soap.shell import shell
