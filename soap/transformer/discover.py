@@ -13,10 +13,12 @@ from soap.common import base_dispatcher, cached
 from soap.context import context
 from soap.expression import expression_factory, SelectExpr, FixExpr
 from soap.program import Flow
+from soap.program.graph import DependencyGraph, unique
 from soap.semantics.state import BoxState, MetaState
 from soap.semantics.functions import (
     arith_eval_meta_state, fixpoint_eval, expand_expr
 )
+from soap.semantics.functions.label import _label
 from soap.transformer.arithmetic import MartelTreeTransformer
 from soap.transformer.utils import (
     closure, greedy_frontier_closure, thick_frontier_closure
@@ -52,8 +54,9 @@ class BaseDiscoverer(base_dispatcher('discover')):
             expression_factory(op, *args)
             for args in itertools.product(*frontier_args_list)
         }
+        frontier_expr_set.add(expr)
         frontier = self.closure(frontier_expr_set, state, out_vars)
-        logger.debug('Discover: {}, Frontier: {}'.format(expr, len(frontier)))
+        logger.info('Discover: {}, Frontier: {}'.format(expr, len(frontier)))
         return frontier
 
     discover_UnaryArithExpr = discover_BinaryArithExpr = _discover_expression
@@ -90,9 +93,11 @@ class BaseDiscoverer(base_dispatcher('discover')):
         loop_meta_state_set = set(
             self._equivalent_loop_meta_states(expr, context.unroll_depth))
 
+        logger.info('Discovering: {}'.format(init_meta_state))
+
         frontier_init_meta_state_set = self(init_meta_state, state, [loop_var])
 
-        logger.debug('Discover: {}, Frontier: {}'.format(
+        logger.info('Discover: {}, Frontier: {}'.format(
             init_meta_state, len(frontier_init_meta_state_set)))
 
         # compute loop optimizing value ranges
@@ -103,8 +108,10 @@ class BaseDiscoverer(base_dispatcher('discover')):
         # transform bool_expr
         frontier_bool_expr_set = self(bool_expr, loop_value_state, None)
 
-        frontier_expr_set = set()
+        frontier_expr_set = {expr}
         i, n = 0, len(loop_meta_state_set)
+
+        logger.info('Discovering loop: {}'.format(loop_meta_state))
 
         # transform loop_meta_state
         for loop_meta_state in loop_meta_state_set:
@@ -126,26 +133,40 @@ class BaseDiscoverer(base_dispatcher('discover')):
 
         frontier = self.filter(frontier_expr_set, state, out_vars)
 
-        logger.debug('Discover: {}, Frontier: {}'.format(expr, len(frontier)))
+        logger.info('Discover: {}, Frontier: {}'.format(expr, len(frontier)))
 
         return frontier
 
     def _discover_multiple_expressions(
             self, var_expr_state, state, out_vars):
-        var_list = list(var_expr_state.keys())
-        frontier_expr_list = [
-            self(var_expr_state[var], state, out_vars) for var in var_list]
 
-        frontier = set()
-        for expr_list in itertools.product(*frontier_expr_list):
-            eq_state = {var: expr for var, expr in zip(var_list, expr_list)}
-            frontier.add(MetaState(eq_state))
+        _, env = _label(var_expr_state, state)
+        graph = DependencyGraph(env, out_vars)
+        var_list = graph.order_by_dependencies(var_expr_state.keys())
+        var_list = unique(out_vars + var_list)
+
+        logger.info('Discovering state: {}'.format(var_expr_state))
+
+        frontier = [{}]
+        n = len(var_list)
+        for i, var in enumerate(var_list):
+            logger.persistent('Merge', '{}/{}'.format(i + 1, n))
+            var_expr_set = self(var_expr_state[var], state, out_vars)
+            iterer = itertools.product(frontier, var_expr_set)
+            new_frontier = []
+            for meta_state, var_expr in iterer:
+                meta_state = dict(meta_state)
+                meta_state[var] = var_expr
+                new_frontier.append(MetaState(meta_state))
+            frontier = self.filter(new_frontier, state, out_vars)
         frontier = self.filter(frontier, state, out_vars)
 
+        logger.unpersistent('Merge')
+        logger.info('Discovered: {}, Frontier: {}'
+                    .format(var_expr_state, len(frontier)))
         return frontier
 
-    discover_dict = _discover_multiple_expressions
-    discover_MetaState = _discover_multiple_expressions
+    discover_dict = discover_MetaState = _discover_multiple_expressions
 
     @cached
     def __call__(self, expr, state, out_vars=None):
@@ -154,7 +175,7 @@ class BaseDiscoverer(base_dispatcher('discover')):
 
 class MartelDiscoverer(BaseDiscoverer):
     """A subclass of :class:`BaseDiscoverer` to generate Martel's results."""
-    def filter(self, expr_set, state, out_vars):
+    def filter(self, expr_set, state, out_vars, no_fusion=False):
         return expr_set
 
     def closure(self, expr_set, state, out_vars):
@@ -164,7 +185,7 @@ class MartelDiscoverer(BaseDiscoverer):
 
 
 class _FrontierFilter(BaseDiscoverer):
-    def filter(self, expr_set, state, out_vars):
+    def filter(self, expr_set, state, out_vars, no_fusion=False):
         return [
             r.expression for r in analysis_frontier(expr_set, state, out_vars)]
 

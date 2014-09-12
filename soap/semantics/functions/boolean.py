@@ -214,7 +214,8 @@ def _bool_transform(expr):
     from soap.transformer.utils import closure
     bool_vars = []
     bool_expr_set = set()
-    transformed = closure(expr, depth=100, steps=context.bool_steps)
+    transformed = closure(
+        expr, depth=100, no_bool=False, steps=context.bool_steps)
     for expr in sorted(transformed, key=hash):
         a1, a2 = expr.args
         if is_variable(a1) and a1 not in bool_vars:

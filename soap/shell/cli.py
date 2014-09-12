@@ -170,8 +170,7 @@ def _optimize(args):
     results = optimize(file)
     for r in results:
         logger.debug(str(r))
-    out_file = '{}.emir'.format(out_file)
-    with open(out_file, 'wb') as f:
+    with open('{}.emir'.format(out_file), 'wb') as f:
         pickle.dump(results, f)
     if args['--plot']:
         plot(results, out_file)

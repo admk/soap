@@ -317,6 +317,8 @@ class ArithTreeTransformer(TreeTransformer):
             commutativity_select_1,
             commutativity_select_2,
         ],
+    }
+    boolean_rules = {
         operators.EQUAL_OP: [
             boolean_mirror,
             boolean_rearrange

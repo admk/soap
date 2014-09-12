@@ -9,8 +9,5 @@ while (i < n) (
     x0 := x + v * dt;
     v := v - w * x * dt;
     x := x0;
-    x0 := x0 + v * dt;
-    v := v - w * x * dt;
-    x := x0;
-    i := i + 2;
+    i := i + 1;
 );

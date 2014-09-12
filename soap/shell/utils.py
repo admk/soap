@@ -1,4 +1,4 @@
-from soap.analysis import Analysis, Plot
+from soap.analysis import analyze, Plot
 from soap.context import context
 from soap.expression import is_expression
 from soap.parser import parse as _parse
@@ -46,7 +46,7 @@ def optimize(program):
         program = flow_to_meta_state(program)
     func = _algorithm_map[context.algorithm]
     expr_set = func(program, state, out_vars)
-    return Analysis(expr_set, state, out_vars).analyze()
+    return analyze(expr_set, state, out_vars)
 
 
 def plot(emir, file_name):

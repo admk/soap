@@ -19,8 +19,8 @@ context = dict(
     algorithm='thick',
     max_steps=10,       # max no of steps for equivalent expr discovery
     plugin_every=1,     # no of steps before plugins are executed
-    thickness=3,        # no of iterations of pareto suboptimal inclusion
-    bool_steps=4,       # transition steps for finding equivalent boolean exprs
+    thickness=1,        # no of iterations of pareto suboptimal inclusion
+    bool_steps=5,       # transition steps for finding equivalent boolean exprs
     window_depth=2,     # depth limit window for equivalent expr discovery
     unroll_depth=3,     # partial unroll depth limit
 )
