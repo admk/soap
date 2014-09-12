@@ -74,7 +74,10 @@ def thick_frontier(points):
     return frontier
 
 
-AnalysisResult = namedtuple('AnalysisResult', ['area', 'error', 'expression'])
+class AnalysisResult(
+        namedtuple('AnalysisResult', ['area', 'error', 'expression'])):
+    def __str__(self):
+        return '({}, {}, {})'.format(*self)
 
 
 class Analysis(Flyweight):

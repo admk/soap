@@ -322,9 +322,7 @@ class Plot(object):
                 result = sorted(pareto_frontier(r['result']))
                 try:
                     area, error, expr = zip(*result)
-                    logger.debug(r['legend'])
-                    for a, e, x in zip(area, error, expr):
-                        logger.debug(a, e, x)
+                    logger.debug('legend', r['legend'])
                     lx, ly = _insert_region_frontier(area, error)
                 except ValueError:
                     lx = ly = []

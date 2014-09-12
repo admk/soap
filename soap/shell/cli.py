@@ -1,3 +1,4 @@
+import pickle
 import sys
 
 from docopt import docopt
@@ -5,9 +6,10 @@ from docopt import docopt
 import soap
 from soap import logger
 from soap.context import context
-from soap.parser import parse
-from soap.program import Flow
 from soap.shell import interactive
+from soap.shell.utils import (
+    analyze_error, analyze_resource, optimize, parse, plot
+)
 
 
 usage = """
@@ -19,8 +21,9 @@ Usage:
     {__executable__} analyze error [options] (<file> | --command=<str> | -)
     {__executable__} analyze resource [options] (<file> | --command=<str> | -)
     {__executable__} optimize [options] (<file> | --command=<str> | -)
+    {__executable__} plot <file>
     {__executable__} interactive [options]
-    {__executable__} lint [--syntax=<str>] (<file> | --command=<str> | -)
+    {__executable__} lint [options] (<file> | --command=<str> | -)
     {__executable__} (-h | --help)
     {__executable__} --version
 
@@ -51,14 +54,6 @@ Options:
     --unroll-depth={context.unroll_depth}
                             Set the loop unrolling depth.
                             [default: {context.unroll_depth}]
-    --state=<str>           The variable input ranges, a JSON dictionary
-                            object.  If specifed, overrides the input
-                            statement in the program to be optimized.
-                            [default: ]
-    --out-vars=<str>        A JSON list object that specifies the output
-                            variables and the ordering of these. If specifed,
-                            overrides the output statement in the program to be
-                            optimized.  [default: ]
     --algorithm=<str>       The name of the algorithm used for optimization.
                             Allows: `closure`, `expand`, `reduce`, `parsings`,
                             `greedy`, `frontier` or `thick`.  [default: thick]
@@ -66,6 +61,7 @@ Options:
                             Specify the name of the norm function to use.
                             Allows: `mean_error`, `mse_error`, `max_error`
                             and `geomean`.  [default: {context.norm}]
+    --plot                  Plot results.
     --no-multiprocessing    Disable multiprocessing.
     --ipdb                  Launch ipdb interactive prompt on exceptions.
     --no-error              Silent all errors.  Overrides `--no-warning`,
@@ -107,6 +103,10 @@ def _setup_context(args):
     if double_precision:
         context.precision = 'double'
 
+    algorithm = args['--algorithm']
+    if algorithm:
+        context.algorithm = algorithm
+
     context.unroll_factor = int(args['--unroll-factor'])
     context.widen_factor = int(args['--widen-factor'])
     context.window_depth = int(args['--window-depth'])
@@ -129,101 +129,69 @@ def _file(args):
     command = args['--command']
     if command:
         file = command
+        out_file = 'from_command'
     else:
         file = args['<file>']
         try:
-            file = sys.stdin if file == '-' else open(file)
+            if file == '-':
+                out_file = 'from_stdin'
+                file = sys.stdin
+            else:
+                out_file = file
+                file = open(file)
         except FileNotFoundError:
             raise CommandError('File {!r} does not exist'.format(file))
         file = file.read()
     if not file:
         raise CommandError('Empty input')
-    return file
-
-
-def _state(flow, args):
-    if isinstance(flow, Flow):
-        from soap.semantics import BoxState
-        state = BoxState(flow.inputs())
-        if state:
-            return state
-    state = args['--state']
-    if state:
-        return eval(state)
-    return {}
-
-
-def _out_vars(flow, args):
-    from soap.expression import Variable
-    if isinstance(flow, Flow):
-        out_vars = flow.outputs()
-        if out_vars:
-            return out_vars
-    out_vars = args['--out-vars']
-    if out_vars:
-        return [Variable(v) for v in eval(out_vars)]
-    return None
+    return file, out_file
 
 
 def _analyze(args):
     if not args['analyze']:
         return
-    flow = parse(_file(args))
-    state = _state(flow, args)
+    file, out_file = _file(args)
     if args['error']:
-        print(flow.debug(state))
+        result = analyze_error(file)
+        out_file = '{}.acc'.format(out_file)
     if args['resource']:
-        from soap.semantics import flow_to_meta_state, luts
-        out_vars = _out_vars(flow, args)
-        print(luts(flow_to_meta_state(flow), state, out_vars))
+        result = analyze_resource(file)
+        out_file = '{}.res'.format(out_file)
+    logger.debug(result)
+    with open(out_file, 'w') as f:
+        f.write(str(result))
     return 0
 
 
 def _optimize(args):
     if not args['optimize']:
         return
+    file, out_file = _file(args)
+    results = optimize(file)
+    for r in results:
+        logger.debug(str(r))
+    out_file = '{}.emir'.format(out_file)
+    with open(out_file, 'wb') as f:
+        pickle.dump(results, f)
+    if args['--plot']:
+        plot(results, out_file)
+    return 0
 
-    from soap.expression import is_expression
-    from soap.semantics import flow_to_meta_state
-    from soap.analysis import Plot
 
-    def _algorithm(args):
-        from soap.transformer import (
-            closure, expand, parsings, reduce, greedy, frontier, thick
-        )
-        algorithm = args['--algorithm']
-        algorithm_map = {
-            'closure': lambda s, _1, _2: closure(s),
-            'expand': lambda s, _1, _2: expand(s),
-            'parsings': lambda s, _1, _2: parsings(s),
-            'reduce': lambda s, _1, _2: reduce(s),
-            'greedy': greedy,
-            'frontier': frontier,
-            'thick': thick,
-        }
-        return algorithm_map[algorithm]
-
-    flow = parse(_file(args))
-    state = _state(flow, args)
-    out_vars = _out_vars(flow, args)
-    if not is_expression(flow):
-        meta_state = flow_to_meta_state(flow)
-    func = _algorithm(args)
-    plot = Plot(
-        state=state, out_vars=out_vars,
-        precs=[context.precision], depth=context.window_depth,
-        legend_time=True)
-    plot.add_analysis(meta_state, func=func)
-    plot.save('{}.pdf'.format(args['<file>']))
-    plot.show()
+def _plot(args):
+    if not args['plot']:
+        return
+    file, out_file = _file(args)
+    emir = pickle.loads(file)
+    plot(emir, out_file)
     return 0
 
 
 def _lint(args):
     if not args['lint']:
         return
-    flow = parse(_file(args))
-    print(flow)
+    program, _, _ = parse(_file(args))
+    logger.debug(program)
     return 0
 
 

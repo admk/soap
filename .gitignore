@@ -3,3 +3,6 @@
 
 # python
 *.py[co]
+
+# soap
+*.soap.*

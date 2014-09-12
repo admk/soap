@@ -44,7 +44,7 @@ class Flow(object):
         return flow_variables(self, input, output)
 
     def inputs(self):
-        return input_output_variables(self)['inputs']
+        return BoxState(input_output_variables(self)['inputs'])
 
     def outputs(self):
         return input_output_variables(self)['outputs']
