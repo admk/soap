@@ -9,6 +9,7 @@ from gmpy2 import mpfr as _mpfr, mpq as _mpq, mpz
 
 from soap import logger
 from soap.common import ignored
+from soap.context import context
 from soap.lattice import Lattice
 
 
@@ -641,11 +642,13 @@ def geomean(errors):
     return ErrorSemantics([v_min, v_max], [e_min, e_max])
 
 
-def norm_func(context):
-    norm_func_map = {
-        'mean_error': mean_error,
-        'mse_error': mse_error,
-        'max_error': max_error,
-        'geomean': geomean,
-    }
-    return norm_func_map[context.norm]
+_norm_func_map = {
+    'mean_error': mean_error,
+    'mse_error': mse_error,
+    'max_error': max_error,
+    'geomean': geomean,
+}
+
+
+def error_norm(errors):
+    return _norm_func_map[context.norm](errors)

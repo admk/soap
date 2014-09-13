@@ -16,6 +16,8 @@ context = dict(
     precision='single',
     norm='mse_error',   # function for computing multiple variable avg error
     # transform related
+    rand_seed=0,
+    size_limit=1000,
     algorithm='thick',
     max_steps=10,       # max no of steps for equivalent expr discovery
     plugin_every=1,     # no of steps before plugins are executed

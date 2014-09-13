@@ -21,7 +21,7 @@ Usage:
     {__executable__} analyze error [options] (<file> | --command=<str> | -)
     {__executable__} analyze resource [options] (<file> | --command=<str> | -)
     {__executable__} optimize [options] (<file> | --command=<str> | -)
-    {__executable__} plot <file>
+    {__executable__} plot [options] <file>
     {__executable__} interactive [options]
     {__executable__} lint [options] (<file> | --command=<str> | -)
     {__executable__} (-h | --help)
@@ -180,9 +180,10 @@ def _optimize(args):
 def _plot(args):
     if not args['plot']:
         return
-    file, out_file = _file(args)
-    emir = pickle.loads(file)
-    plot(emir, out_file)
+    file = args['<file>']
+    with open(file, 'rb') as f:
+        emir = pickle.load(f)
+    plot(emir, file)
     return 0
 
 
@@ -209,7 +210,8 @@ def _post_run(args):
 def main():
     args = docopt(usage, version=soap.__version__)
     functions = [
-        _setup_context, _interactive, _analyze, _optimize, _lint, _unreachable,
+        _setup_context, _interactive, _analyze, _optimize, _lint, _plot,
+        _unreachable,
     ]
     try:
         for f in functions:

@@ -1,7 +1,6 @@
 from soap.common import base_dispatcher, cached
-from soap.context import context
 from soap.expression import operators
-from soap.semantics.error import ErrorSemantics, FloatInterval, norm_func
+from soap.semantics.error import ErrorSemantics, FloatInterval, error_norm
 
 
 class ArithmeticEvaluator(base_dispatcher()):
@@ -15,6 +14,7 @@ class ArithmeticEvaluator(base_dispatcher()):
         operators.SUBTRACT_OP: lambda x, y: x - y,
         operators.MULTIPLY_OP: lambda x, y: x * y,
         operators.DIVIDE_OP: lambda x, y: x / y,
+        operators.BARRIER_OP: lambda x, y: error_norm([x, y]),
     }
 
     def generic_execute(self, expr, state):
@@ -55,14 +55,8 @@ class ArithmeticEvaluator(base_dispatcher()):
         return true_value | false_value
 
     def execute_FixExpr(self, expr, state):
-        from soap.semantics.functions import (
-            fixpoint_eval, arith_eval_meta_state
-        )
-        state = arith_eval_meta_state(expr.init_state, state)
-        fixpoint = fixpoint_eval(
-            state, expr.bool_expr, loop_meta_state=expr.loop_state)
-        fixpoint['last_entry']._warn_non_termination(expr)
-        return fixpoint['exit'][expr.loop_var]
+        from soap.semantics.functions import fix_expr_eval
+        return fix_expr_eval(expr, state)
 
     def execute_MetaState(self, meta_state, state):
         from soap.semantics.functions import arith_eval_meta_state
@@ -94,9 +88,7 @@ class ErrorEvaluator(ArithmeticEvaluator):
         return 0
 
     def execute_MetaState(self, meta_state, state):
-        errors = [self(expr, state) for expr in meta_state.values()]
-        norm = norm_func(context)
-        return norm(errors)
+        return error_norm([self(expr, state) for expr in meta_state.values()])
 
 
 error_eval = ErrorEvaluator()
