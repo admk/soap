@@ -83,7 +83,7 @@ def ulp(v, underflow=True):
     try:
         with gmpy2.local_context(round=gmpy2.RoundUp):
             return mpfr(mpq(2) ** v.as_mantissa_exp()[1] + underflow_error)
-    except OverflowError:
+    except (OverflowError, ValueError):
         return inf
 
 
