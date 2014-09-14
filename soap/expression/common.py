@@ -67,7 +67,7 @@ def expression_factory(op, *args):
     from soap.expression.boolean import (
         UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr
     )
-    from soap.expression.fixpoint import FixExpr
+    from soap.expression.fixpoint import FixExpr, UnrollExpr
 
     if not args:
         if isinstance(op, Variable):
@@ -82,6 +82,9 @@ def expression_factory(op, *args):
 
     if op == operators.TERNARY_SELECT_OP:
         return SelectExpr(*args)
+
+    if op == operators.UNROLL_OP:
+        return UnrollExpr(*args)
 
     if op in operators.ARITHMETIC_OPERATORS:
         class_list = [UnaryArithExpr, BinaryArithExpr, TernaryArithExpr]

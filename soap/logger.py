@@ -70,13 +70,17 @@ def log(*args, **kwargs):
     end = kwargs.get('end', '')
     print(begin + header(format(*args), l), end=end, file=f)
     while l >= get_context()['pause_level']:
-        r = input('Continue [Return], Stack trace [t], Abort [q]: ')
+        r = input(
+            'Continue [Return], Stack trace [t], Debugger [d], Abort [q]: ')
         if not r:
             break
-        if r == 't':
+        elif r == 'd':
+            import ipdb
+            ipdb.set_trace()
+        elif r == 't':
             import traceback
             traceback.print_stack()
-        if r == 'q':
+        elif r == 'q':
             sys.exit(-1)
 
 

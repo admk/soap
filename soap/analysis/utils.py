@@ -262,7 +262,7 @@ class Plot(object):
         return itertools.cycle('bgrcmyk')
 
     def _markers(self):
-        return itertools.cycle('so+x.v^<>')
+        return itertools.cycle('xso+.v^<>')
 
     def _auto_scale(self, plot, xlim, ylim):
         try:

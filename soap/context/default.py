@@ -18,6 +18,7 @@ context = dict(
     # transform related
     rand_seed=0,
     size_limit=1000,
+    loop_size_limit=100,
     algorithm='thick',
     max_steps=10,       # max no of steps for equivalent expr discovery
     plugin_every=1,     # no of steps before plugins are executed

@@ -123,16 +123,14 @@ class BaseDiscoverer(base_dispatcher('discover')):
 
         loop_meta_state_list = list(equivalent_loop_meta_states(
             expr, context.unroll_depth))
-        frontier_expr_set = {
-            UnrollExpr(expr, expr.loop_state, context.unroll_depth)
-        }
+        frontier = {UnrollExpr(expr, expr.loop_state, context.unroll_depth)}
         total = len(loop_meta_state_list)
 
         # transform loop_meta_state
         for depth, unrolled_loop_meta_state in enumerate(loop_meta_state_list):
             logger.persistent('Unroll', '{}/{}'.format(depth, total - 1))
 
-            todo_depth = context.unroll_depth - depth
+            remaining_depth = context.unroll_depth - depth
 
             frontier_loop_meta_state_set = self(
                 unrolled_loop_meta_state, loop_value_state, [loop_var])
@@ -140,16 +138,22 @@ class BaseDiscoverer(base_dispatcher('discover')):
             iterer = itertools.product(
                 frontier_bool_expr_set, frontier_loop_meta_state_set,
                 frontier_init_meta_state_set)
+            each_frontier = set()
             for bool_expr, each_loop_meta_state, init_meta_state in iterer:
                 fix_expr = FixExpr(
                     bool_expr, each_loop_meta_state, loop_var, init_meta_state)
-                frontier_expr_set.add(
-                    UnrollExpr(fix_expr, loop_meta_state, todo_depth))
+                unroll_expr = UnrollExpr(
+                    fix_expr, loop_meta_state, remaining_depth)
+                each_frontier.add(unroll_expr)
+
+            each_frontier = self.filter(
+                each_frontier, state, out_vars,
+                size_limit=context.loop_size_limit)
+            frontier |= each_frontier
 
         logger.unpersistent('LoopTr')
 
-        frontier = self.filter(
-            frontier_expr_set, state, out_vars, size_limit=0)
+        frontier = self.filter(frontier, state, out_vars, size_limit=0)
 
         logger.info('Discovered: {}, Frontier: {}'.format(expr, len(frontier)))
 
@@ -168,7 +172,8 @@ class BaseDiscoverer(base_dispatcher('discover')):
         frontier = [{}]
         n = len(var_list)
         for i, var in enumerate(var_list):
-            logger.persistent('Merge', '{}/{}'.format(i + 1, n))
+            i += 1
+            logger.persistent('Merge', '{}/{}'.format(i, n))
             var_expr_set = self(var_expr_state[var], state, out_vars)
             iterer = itertools.product(frontier, var_expr_set)
             new_frontier = []
@@ -176,7 +181,7 @@ class BaseDiscoverer(base_dispatcher('discover')):
                 meta_state = dict(meta_state)
                 meta_state[var] = var_expr
                 new_frontier.append(MetaState(meta_state))
-            frontier = self.filter(new_frontier, state, out_vars)
+            frontier = self.filter(new_frontier, state, var_list[:i])
         frontier = self.filter(frontier, state, out_vars)
 
         logger.unpersistent('Merge')

@@ -167,13 +167,15 @@ def _optimize(args):
     if not args['optimize']:
         return
     file, out_file = _file(args)
-    results = optimize(file)
-    for r in results:
+    emir = optimize(file, out_file)
+    for r in emir['results']:
         logger.debug(str(r))
+    logger.debug(emir['original'])
+    logger.debug('Time:', emir['time'])
     with open('{}.emir'.format(out_file), 'wb') as f:
-        pickle.dump(results, f)
+        pickle.dump(emir, f)
     if args['--plot']:
-        plot(results, out_file)
+        plot(emir, out_file)
     return 0
 
 

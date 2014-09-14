@@ -38,6 +38,9 @@ class Cropper(base_dispatcher('crop')):
     def crop_FixExpr(self, expr, depth, context):
         return expr, {}
 
+    def crop_UnrollExpr(self, expr, depth, context):
+        return expr, {}
+
     def __call__(self, expr, depth, context=None):
         context = context or LabelContext(expr)
         return super().__call__(expr, depth, context)
@@ -65,6 +68,12 @@ class Stitcher(base_dispatcher('stitch')):
     stitch_BinaryArithExpr = _stitch_expression
     stitch_BinaryBoolExpr = _stitch_expression
     stitch_SelectExpr = _stitch_expression
+
+    def stitch_FixExpr(self, expr, env):
+        return expr
+
+    def stitch_UnrollExpr(self, expr, env):
+        return expr
 
 
 crop = Cropper()
