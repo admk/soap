@@ -75,7 +75,7 @@ class TreeTransformer(TreeFarmer):
     reduction_rules = {}
 
     def __init__(self, tree_or_trees,
-                 depth=None, steps=None,
+                 depth=None, steps=None, no_bool=True,
                  transform_rules=None, reduction_rules=None,
                  step_plugin=None, reduce_plugin=None):
         super().__init__(depth=depth or context.window_depth)
@@ -84,6 +84,9 @@ class TreeTransformer(TreeFarmer):
         self.reduce_plugin = reduce_plugin
         if transform_rules:
             self.transform_rules = transform_rules
+        if not no_bool:
+            self.transform_rules = dict(
+                self.transform_rules, **self.boolean_rules)
         if reduction_rules:
             self.reduction_rules = reduction_rules
         if isinstance(tree_or_trees, str):

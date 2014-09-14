@@ -2,6 +2,7 @@
 .. module:: soap.analysis.core
     :synopsis: Analysis classes.
 """
+import random
 from collections import namedtuple
 
 from soap import logger
@@ -74,12 +75,15 @@ def thick_frontier(points):
     return frontier
 
 
-AnalysisResult = namedtuple('AnalysisResult', ['area', 'error', 'expression'])
+class AnalysisResult(
+        namedtuple('AnalysisResult', ['area', 'error', 'expression'])):
+    def __str__(self):
+        return '({}, {}, {})'.format(*self)
 
 
 class Analysis(Flyweight):
 
-    def __init__(self, expr_set, state, out_vars=None):
+    def __init__(self, expr_set, state, out_vars=None, size_limit=-1):
         """Analysis class initialisation.
 
         :param expr_set: A set of expressions or a single expression.
@@ -92,6 +96,7 @@ class Analysis(Flyweight):
         self.expr_set = expr_set
         self.state = state
         self.out_vars = out_vars
+        self.size_limit = size_limit if size_limit >= 0 else context.size_limit
         self._results = None
 
     def analyze(self):
@@ -110,6 +115,14 @@ class Analysis(Flyweight):
         out_vars = self.out_vars
         precision = context.precision
 
+        limit = context.size_limit
+        if limit >= 0 and len(expr_set) > limit:
+            logger.debug(
+                'Equivalent structures over limit, '
+                'reduces population size by sampling.')
+            random.seed(context.rand_seed)
+            expr_set = random.sample(expr_set, limit)
+
         results = set()
         step = 0
         total = len(expr_set)
@@ -123,7 +136,8 @@ class Analysis(Flyweight):
                 error = abs_error(expr, state)
                 results.add(AnalysisResult(area, error, expr))
         except KeyboardInterrupt:
-            logger.warning('Analysis interrupted.')
+            logger.warning('Analysis interrupted, completed: {}.'
+                           .format(len(results)))
         logger.unpersistent('Analysing')
 
         self._results = results

@@ -1,6 +1,7 @@
 from __future__ import print_function
 import os
 import sys
+import time
 from pprint import pformat
 from contextlib import contextmanager
 
@@ -89,7 +90,15 @@ def rewrite(*args, **kwargs):
     log(*args, end='\r', l=l)
 
 
+_last_time = {}
+
+
 def persistent(name, *args, **kwargs):
+    now = time.time()
+    if now - _last_time.get(name, 0) <= 0.25:
+        return
+    _last_time[name] = now
+
     l = kwargs.get('l', levels.info)
     prev = get_context()['_persistent'].get(name)
     curr = args + (l, )

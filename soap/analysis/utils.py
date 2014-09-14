@@ -10,7 +10,7 @@ from soap.analysis.core import Analysis
 from soap.context import context
 
 
-def analyze(expr_set, state, out_vars=None):
+def analyze(expr_set, state, out_vars=None, **kwargs):
     """Provides area and error analysis of expressions with input ranges
     and precisions.
 
@@ -22,10 +22,10 @@ def analyze(expr_set, state, out_vars=None):
     :param out_vars: The output variables of the metastate
     :type out_vars: :class:`collections.Sequence`
     """
-    return Analysis(expr_set, state, out_vars).analyze()
+    return Analysis(expr_set, state, out_vars, **kwargs).analyze()
 
 
-def frontier(expr_set, state, out_vars=None):
+def frontier(expr_set, state, out_vars=None, **kwargs):
     """Provides the Pareto frontier of the area and error analysis of
     expressions with input ranges and precisions.
 
@@ -37,10 +37,10 @@ def frontier(expr_set, state, out_vars=None):
     :param out_vars: The output variables of the metastate
     :type out_vars: :class:`collections.Sequence`
     """
-    return Analysis(expr_set, state, out_vars).frontier()
+    return Analysis(expr_set, state, out_vars, **kwargs).frontier()
 
 
-def thick_frontier(expr_set, state, out_vars=None):
+def thick_frontier(expr_set, state, out_vars=None, **kwargs):
     """Provides the thick Pareto frontier of the area and error analysis of
     expressions with input ranges and precisions.
 
@@ -52,7 +52,7 @@ def thick_frontier(expr_set, state, out_vars=None):
     :param out_vars: The output variables of the metastate
     :type out_vars: :class:`collections.Sequence`
     """
-    return Analysis(expr_set, state, out_vars).thick_frontier()
+    return Analysis(expr_set, state, out_vars, **kwargs).thick_frontier()
 
 
 _ZIGZAG_MARGIN = 1000.0
@@ -322,9 +322,7 @@ class Plot(object):
                 result = sorted(pareto_frontier(r['result']))
                 try:
                     area, error, expr = zip(*result)
-                    logger.debug(r['legend'])
-                    for a, e, x in zip(area, error, expr):
-                        logger.debug(a, e, x)
+                    logger.debug('legend', r['legend'])
                     lx, ly = _insert_region_frontier(area, error)
                 except ValueError:
                     lx = ly = []

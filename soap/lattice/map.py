@@ -30,7 +30,7 @@ class MapLattice(Lattice, Mapping):
 
     def __setstate__(self, state):
         self.top, self.bottom = state[:2]
-        self._mapping = state[2]
+        self._mapping = {k: v for k, v in state[2]}
 
     def _cast_key(self, k):
         raise NotImplementedError
