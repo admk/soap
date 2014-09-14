@@ -76,6 +76,9 @@ class LabelGenerator(base_dispatcher()):
         env = {label: expr}
         return LabelSemantics(label, env)
 
+    def execute_UnrollExpr(self, expr, state, context):
+        return self(expr.a1, state, context)
+
     def execute_MetaState(self, expr, state, context):
         from soap.semantics.state.meta import MetaState
         env = {}

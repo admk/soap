@@ -103,18 +103,17 @@ def fix_expr_eval(expr, state):
     return fixpoint['exit'][expr.loop_var]
 
 
-def _equivalent_loop_meta_state_replace_kernel(expr, kernel, depth):
+def _equivalent_loop_meta_state(expr, outer_state, depth):
     from soap.semantics.state.meta import MetaState
 
-    loop_state = expr.loop_state
-    unroll_state = kernel
-    expanded_bool_expr = expand_expr(expr.bool_expr, loop_state)
+    unroll_state = expr.loop_state
+    expanded_bool_expr = expand_expr(expr.bool_expr, outer_state)
 
     for _ in range(depth):
         new_unroll_state = {}
         for var, expr in unroll_state.items():
-            true_expr = expand_expr(expr, loop_state)
-            false_expr = loop_state[var]
+            true_expr = expand_expr(expr, outer_state)
+            false_expr = outer_state[var]
             if true_expr == false_expr:
                 new_unroll_state[var] = true_expr
             else:
@@ -127,15 +126,13 @@ def _equivalent_loop_meta_state_replace_kernel(expr, kernel, depth):
 
 
 def equivalent_loop_meta_states(expr, depth):
-    for d in range(depth):
-        yield _equivalent_loop_meta_state_replace_kernel(
-            expr, expr.loop_state, d)
+    for d in range(depth + 1):
+        yield _equivalent_loop_meta_state(expr, expr.loop_state, d)
 
 
-def unroll_eval(state, expr, kernel, depth):
+def unroll_eval(expr, outer, state, depth):
     bool_expr = expr.bool_expr
-    loop_meta_state = _equivalent_loop_meta_state_replace_kernel(
-        expr, kernel, depth)
-    unroll_expr = FixExpr(
+    loop_meta_state = _equivalent_loop_meta_state(expr, outer, depth)
+    unrolled_expr = FixExpr(
         bool_expr, loop_meta_state, expr.loop_var, expr.init_state)
-    return fix_expr_eval(unroll_expr, state)
+    return fix_expr_eval(unrolled_expr, state)

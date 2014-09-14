@@ -11,7 +11,9 @@ from soap.analysis import (
 )
 from soap.common import base_dispatcher, cached
 from soap.context import context
-from soap.expression import expression_factory, SelectExpr, FixExpr, operators
+from soap.expression import (
+    expression_factory, SelectExpr, FixExpr, operators, UnrollExpr
+)
 from soap.program import Flow
 from soap.program.graph import DependencyGraph, unique
 from soap.semantics import BoxState, ErrorSemantics, MetaState
@@ -121,23 +123,28 @@ class BaseDiscoverer(base_dispatcher('discover')):
 
         loop_meta_state_list = list(equivalent_loop_meta_states(
             expr, context.unroll_depth))
-        frontier_expr_set = {expr}
+        frontier_expr_set = {
+            UnrollExpr(expr, expr.loop_state, context.unroll_depth)
+        }
         total = len(loop_meta_state_list)
 
         # transform loop_meta_state
-        for depth, loop_meta_state in enumerate(loop_meta_state_list):
+        for depth, unrolled_loop_meta_state in enumerate(loop_meta_state_list):
             logger.persistent('Unroll', '{}/{}'.format(depth, total - 1))
 
+            todo_depth = context.unroll_depth - depth
+
             frontier_loop_meta_state_set = self(
-                loop_meta_state, loop_value_state, [loop_var])
+                unrolled_loop_meta_state, loop_value_state, [loop_var])
 
             iterer = itertools.product(
                 frontier_bool_expr_set, frontier_loop_meta_state_set,
                 frontier_init_meta_state_set)
-            for bool_expr, loop_meta_state, init_meta_state in iterer:
+            for bool_expr, each_loop_meta_state, init_meta_state in iterer:
                 fix_expr = FixExpr(
-                    bool_expr, loop_meta_state, loop_var, init_meta_state)
-                frontier_expr_set.add(fix_expr)
+                    bool_expr, each_loop_meta_state, loop_var, init_meta_state)
+                frontier_expr_set.add(
+                    UnrollExpr(fix_expr, loop_meta_state, todo_depth))
 
         logger.unpersistent('LoopTr')
 

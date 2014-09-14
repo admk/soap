@@ -1,7 +1,7 @@
 from soap.common.formatting import underline
 
-from soap.expression.operators import FIXPOINT_OP
-from soap.expression.arithmetic import QuaternaryArithExpr
+from soap.expression.operators import FIXPOINT_OP, UNROLL_OP
+from soap.expression.arithmetic import TernaryArithExpr, QuaternaryArithExpr
 
 
 class FixExpr(QuaternaryArithExpr):
@@ -35,3 +35,24 @@ class FixExpr(QuaternaryArithExpr):
             fvar=fixpoint_var, op=self.op, bool_expr=self.bool_expr,
             loop_state=self.loop_state, var=self.loop_var,
             init_state=self.init_state)
+
+
+class UnrollExpr(TernaryArithExpr):
+    def __init__(self, a1=None, a2=None, a3=None, top=False, bottom=False):
+        super().__init__(UNROLL_OP, a1, a2, a3, top=top, bottom=bottom)
+
+    @property
+    def fix_expr(self):
+        return self.a1
+
+    @property
+    def outer(self):
+        return self.a2
+
+    @property
+    def depth(self):
+        return self.a3
+
+    def __str__(self):
+        fix_expr, outer, depth = self._args_to_str()
+        return '{} @ {}'.format(fix_expr, depth)

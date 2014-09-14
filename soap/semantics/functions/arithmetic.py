@@ -58,6 +58,11 @@ class ArithmeticEvaluator(base_dispatcher()):
         from soap.semantics.functions import fix_expr_eval
         return fix_expr_eval(expr, state)
 
+    def execute_UnrollExpr(self, expr, state):
+        from soap.semantics.functions import unroll_eval
+        expr, kernel, depth = expr.args
+        return unroll_eval(expr, kernel, state, depth)
+
     def execute_MetaState(self, meta_state, state):
         from soap.semantics.functions import arith_eval_meta_state
         return arith_eval_meta_state(meta_state, state)
