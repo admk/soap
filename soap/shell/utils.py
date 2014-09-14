@@ -8,6 +8,7 @@ from soap.semantics import flow_to_meta_state, luts
 from soap.transformer import (
     closure, expand, parsings, reduce, greedy, frontier, thick
 )
+from soap.transformer.discover import unroll
 
 
 def parse(program):
@@ -43,19 +44,21 @@ _algorithm_map = {
 
 
 def optimize(program, file_name=None):
-    start_time = time.time()
-
     program, state, out_vars = parse(program)
     if not is_expression(program):
         program = flow_to_meta_state(program)
     func = _algorithm_map[context.algorithm]
-    expr_set = func(program, state, out_vars)
 
+    unrolled = unroll(program)
+    original = analyze([unrolled], state, out_vars).pop()
+
+    start_time = time.time()
+    expr_set = func(program, state, out_vars)
     elapsed_time = time.time() - start_time
 
     results = analyze(expr_set, state, out_vars)
     emir = {
-        'original': analyze([program], state, out_vars).pop(),
+        'original': original,
         'results': results,
         'time': elapsed_time,
         'context': context,

@@ -27,6 +27,37 @@ from soap.transformer.utils import (
 )
 
 
+class Unroller(base_dispatcher('unroll')):
+    def generic_unroll(self, expr):
+        raise TypeError('Do not know how to unroll {!r}'.format(expr))
+
+    def _unroll_atom(self, expr):
+        return expr
+
+    unroll_numeral = _unroll_atom
+    unroll_Variable = _unroll_atom
+
+    def _unroll_expression(self, expr):
+        return expression_factory(expr.op, *[self(arg) for arg in expr.args])
+
+    unroll_UnaryArithExpr = unroll_BinaryArithExpr = _unroll_expression
+    unroll_UnaryBoolExpr = unroll_BinaryBoolExpr = _unroll_expression
+    unroll_SelectExpr = _unroll_expression
+
+    def unroll_FixExpr(self, expr):
+        init_state = self(expr.init_state)
+        loop_state = self(expr.loop_state)
+        fix_expr = FixExpr(
+            expr.bool_expr, loop_state, expr.loop_var, init_state)
+        return UnrollExpr(fix_expr, loop_state, context.unroll_depth)
+
+    def unroll_MetaState(self, expr):
+        return MetaState({v: self(e) for v, e in expr.items()})
+
+
+unroll = Unroller()
+
+
 class BaseDiscoverer(base_dispatcher('discover')):
     """Bottom-up hierarchical equivalence finding.
 
@@ -146,9 +177,9 @@ class BaseDiscoverer(base_dispatcher('discover')):
                     fix_expr, loop_meta_state, remaining_depth)
                 each_frontier.add(unroll_expr)
 
-            each_frontier = self.filter(
+            each_frontier = set(self.filter(
                 each_frontier, state, out_vars,
-                size_limit=context.loop_size_limit)
+                size_limit=context.loop_size_limit))
             frontier |= each_frontier
 
         logger.unpersistent('LoopTr')
