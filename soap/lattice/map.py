@@ -29,6 +29,7 @@ class MapLattice(Lattice, Mapping):
         return (self.top, self.bottom, sorted(self.items(), key=hash))
 
     def __setstate__(self, state):
+        self._hash = None
         self.top, self.bottom = state[:2]
         self._mapping = {k: v for k, v in state[2]}
 
