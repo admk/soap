@@ -216,11 +216,7 @@ class CodeGenerator(object):
         return flows
 
 
-def generate(env, out_vars):
-    return CodeGenerator(env=env, out_vars=out_vars).generate()
-
-
-def meta_state_to_flow(meta_state, out_vars):
+def generate(meta_state, out_vars):
     from soap.semantics import BoxState, label
     _, env = label(meta_state, BoxState(bottom=True), out_vars)
-    return generate(env, out_vars)
+    return CodeGenerator(env=env, out_vars=out_vars).generate()

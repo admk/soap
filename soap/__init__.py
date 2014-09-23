@@ -1,10 +1,12 @@
 import os
 import sys
 
-__soap__ = 'SOAP'
-__description__ = 'Structural Optimization of Arithmetic Programs.'
-__version__ = '2.0.dev'
-__date__ = 'TBA'
+__soap__ = 'Saponaceous'
+__description__ = """
+--- The numerical program optimizer ---
+Semantics-directed structure-transforming numerical program optimization."""
+__version__ = '2.0.0'
+__date__ = '29 Sep 2014'
 __author__ = 'Xitong Gao'
 __email__ = '@'.join(['xtg08', 'ic.ac.uk'])
 __executable__ = os.path.basename(sys.argv[0])
@@ -38,7 +40,7 @@ import gmpy2
 from soap.context import context
 from soap.analysis import analyze, frontier, Plot, plot, analyze_and_plot
 from soap.parser import pyparse, parse
-from soap.program import Flow, meta_state_to_flow
+from soap.program import Flow, generate
 from soap.semantics import (
     IntegerInterval, FloatInterval, FractionInterval, ErrorSemantics,
     BoxState, IdentifierBoxState, MetaState, flow_to_meta_state,

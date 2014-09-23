@@ -22,7 +22,7 @@ Usage:
     {__executable__} analyze resource [options] (<file> | --command=<str> | -)
     {__executable__} optimize [options] (<file> | --command=<str> | -)
     {__executable__} plot [options] <file>
-    {__executable__} interactive [options]
+    {__executable__} interactive [options] [<file> | --command=<str> | -]
     {__executable__} lint [options] (<file> | --command=<str> | -)
     {__executable__} (-h | --help)
     {__executable__} --version
@@ -121,7 +121,8 @@ def _setup_context(args):
 def _interactive(args):
     if not args['interactive']:
         return
-    interactive.main()
+    file, _ = _file(args)
+    interactive.main(file)
     return 0
 
 
@@ -133,6 +134,8 @@ def _file(args):
     else:
         file = args['<file>']
         try:
+            if not file:
+                return None, None
             if file == '-':
                 out_file = 'from_stdin'
                 file = sys.stdin
