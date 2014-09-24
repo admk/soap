@@ -132,14 +132,15 @@ class Lattice(Flyweight, metaclass=LatticeMeta):
         lambda self, other: not self.le(other) or not other.le(self))
 
     def __hash__(self):
+        # FIXME horrible hack for hashing-pickling bug
+        self._hash = None
         hash_val = self._hash
         if hash_val:
             return hash_val
         is_top = self.is_top()
         is_bottom = self.is_bottom()
         if is_top or is_bottom:
-            hash_val = hash((self.__class__, is_top, is_bottom))
-            self._hash = hash_val
+            self._hash = hash_val = hash((is_top, is_bottom))
             return hash_val
 
     def __str__(self):

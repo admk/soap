@@ -1,6 +1,6 @@
 from soap import logger
 from soap.common import base_dispatcher
-from soap.expression import is_variable
+from soap.expression import is_variable, is_expression
 from soap.program.flow import _indent
 from soap.program.generator.flow import CodeGenerator
 from soap.semantics import ErrorSemantics, IntegerInterval, Label, label
@@ -35,7 +35,7 @@ def _decl_code_gen(meta_state, state, out_vars):
                 bound = expr.bound
             elif is_variable(expr):
                 label = self.env.get(expr)
-                if label is None:
+                if label is None or is_expression(label):
                     # input variable
                     bound = 'input'
                 else:

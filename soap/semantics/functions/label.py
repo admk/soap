@@ -114,6 +114,10 @@ _luts_context = LabelContext('luts_count')
 
 
 @cached
-def luts(expr, state, out_vars, mantissa=None):
+def resources(expr, state, out_vars, mantissa=None):
     mantissa = mantissa or context.precision
-    return label(expr, state, out_vars, _luts_context).luts(mantissa)
+    return label(expr, state, out_vars, _luts_context).resources(mantissa)
+
+
+def luts(expr, state, out_vars, mantissa=None):
+    return resources(expr, state, out_vars, mantissa).lut

@@ -7,7 +7,7 @@ from soap.expression import (
 )
 from soap.program.flow import AssignFlow, IfFlow, WhileFlow, CompositionalFlow
 from soap.program.graph import HierarchicalDependencyGraph, sorted_vars, unique
-from soap.semantics import Label, is_numeral
+from soap.semantics import ErrorSemantics, FloatInterval, is_numeral, Label
 
 
 class CodeGenerator(object):
@@ -49,6 +49,12 @@ class CodeGenerator(object):
                          for a in expr.args)
             return expression_factory(expr.op, *args)
         if is_numeral(expr):
+            if isinstance(expr, ErrorSemantics):
+                expr = expr.v
+            if isinstance(expr, FloatInterval):
+                logger.warning(
+                    'Bound found as a constant, defaults to min val.')
+                expr = expr.min
             return expr
 
         if isinstance(expr, Label):

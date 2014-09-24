@@ -197,42 +197,74 @@ def _datatype_exponent(op, label):
 
 _label_semantics_tuple_type = namedtuple('LabelSemantics', ['label', 'env'])
 
-s = namedtuple('Statistics', ['dsp', 'ff', 'lut'])
+
+class s(namedtuple('Statistics', ['dsp', 'ff', 'lut'])):
+    def __add__(self, other):
+        dsp, ff, lut = [a + b for a, b in zip(self, other)]
+        return self.__class__(dsp, ff, lut)
+
+
 _integer_table = {
-    'comparison': s(0, 0, 39),
-    operators.ADD_OP: s(0, 0, 32),
-    operators.SUBTRACT_OP: s(0, 0, 32),
-    operators.MULTIPLY_OP: s(4, 45, 21),
-    operators.DIVIDE_OP: s(0, 1712, 1779),
-    operators.UNARY_SUBTRACT_OP: s(0, 0, 32),
-    operators.TERNARY_SELECT_OP: s(0, 0, 71),
-    operators.FIXPOINT_OP: s(0, 0, 0),
+    # dsp, ff, lut
+    # TODO legup!!
+    'comparison': s(0, 65, 35),
+    operators.ADD_OP: s(0, 96, 32),
+    operators.SUBTRACT_OP: s(0, 96, 32),
+    operators.MULTIPLY_OP: s(4, 96, 0),
+    operators.DIVIDE_OP: s(0, 96, 1247),
+    operators.UNARY_SUBTRACT_OP: s(0, 0, 32),  # TODO
+    operators.TERNARY_SELECT_OP: s(0, 0, 32),
+    operators.FIXPOINT_OP: s(0, 0, 32),
     operators.BARRIER_OP: s(0, 0, 0),
 }
 _single_table = {
-    'conversion': s(0, 128, 519),
-    'comparison': s(0, 66, 239),
-    operators.ADD_OP: s(2, 227, 400),
-    operators.SUBTRACT_OP: s(2, 227, 400),
-    operators.MULTIPLY_OP: s(3, 128, 324),
-    operators.DIVIDE_OP: s(0, 363, 986),
-    operators.UNARY_SUBTRACT_OP: s(0, 0, 37),
-    operators.TERNARY_SELECT_OP: s(0, 0, 71),
-    operators.FIXPOINT_OP: s(0, 0, 0),
+    'conversion': s(0, 238, 182),
+    'comparison': s(0, 33, 68),
+    operators.ADD_OP: s(0, 345, 576),
+    operators.SUBTRACT_OP: s(0, 345, 576),
+    operators.MULTIPLY_OP: s(4, 148, 138),
+    operators.DIVIDE_OP: s(0, 2074, 1646),
+    operators.UNARY_SUBTRACT_OP: s(0, 0, 1),
+    operators.TERNARY_SELECT_OP: s(0, 0, 32),
+    operators.FIXPOINT_OP: s(0, 0, 32),
     operators.BARRIER_OP: s(0, 0, 0),
 }
-_double_table = {
-    'conversion': s(0, 189, 578),
-    'comparison': s(0, 130, 578),
-    operators.ADD_OP: s(3, 445, 1144),
-    operators.SUBTRACT_OP: s(3, 445, 1144),
-    operators.MULTIPLY_OP: s(11, 299, 570),
-    operators.DIVIDE_OP: s(0, 1710, 3623),
-    operators.UNARY_SUBTRACT_OP: s(0, 0, 81),
-    operators.TERNARY_SELECT_OP: s(0, 0, 103),
-    operators.FIXPOINT_OP: s(0, 0, 0),
-    operators.BARRIER_OP: s(0, 0, 0),
-}
+# Xilinx Vivado
+# _integer_table = {
+    # 'comparison': s(0, 0, 39),
+    # operators.ADD_OP: s(0, 0, 32),
+    # operators.SUBTRACT_OP: s(0, 0, 32),
+    # operators.MULTIPLY_OP: s(4, 45, 21),
+    # operators.DIVIDE_OP: s(0, 1712, 1779),
+    # operators.UNARY_SUBTRACT_OP: s(0, 0, 32),
+    # operators.TERNARY_SELECT_OP: s(0, 0, 71),
+    # operators.FIXPOINT_OP: s(0, 0, 71),
+    # operators.BARRIER_OP: s(0, 0, 0),
+# }
+# _single_table = {
+    # 'conversion': s(0, 128, 519),
+    # 'comparison': s(0, 66, 239),
+    # operators.ADD_OP: s(2, 227, 400),
+    # operators.SUBTRACT_OP: s(2, 227, 400),
+    # operators.MULTIPLY_OP: s(3, 128, 324),
+    # operators.DIVIDE_OP: s(0, 363, 986),
+    # operators.UNARY_SUBTRACT_OP: s(0, 0, 37),
+    # operators.TERNARY_SELECT_OP: s(0, 0, 71),
+    # operators.FIXPOINT_OP: s(0, 0, 0),
+    # operators.BARRIER_OP: s(0, 0, 0),
+# }
+# _double_table = {
+    # 'conversion': s(0, 189, 578),
+    # 'comparison': s(0, 130, 578),
+    # operators.ADD_OP: s(3, 445, 1144),
+    # operators.SUBTRACT_OP: s(3, 445, 1144),
+    # operators.MULTIPLY_OP: s(11, 299, 570),
+    # operators.DIVIDE_OP: s(0, 1710, 3623),
+    # operators.UNARY_SUBTRACT_OP: s(0, 0, 81),
+    # operators.TERNARY_SELECT_OP: s(0, 0, 103),
+    # operators.FIXPOINT_OP: s(0, 0, 0),
+    # operators.BARRIER_OP: s(0, 0, 0),
+# }
 
 
 class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
@@ -246,7 +278,7 @@ class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
         super().__init__()
 
     @cached
-    def luts(self, precision=None):
+    def resources(self, precision=None):
         """FIXME Emergency luts statistics for now"""
         precision = precision or context.precision
         if precision == 23:
@@ -257,7 +289,7 @@ class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
             raise ValueError('Precision must be single (23) or double (52).')
 
         def accumulate_luts_count(env):
-            luts = 0
+            stat = s(0, 0, 0)
             conversion_set = set()
             for label, expr in env.items():
                 if is_expression(expr) and not isinstance(expr, External):
@@ -269,7 +301,7 @@ class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
                     else:
                         datatype = None
                     if datatype is IntegerInterval:
-                        luts += _integer_table[op].lut
+                        stat += _integer_table[op]
                     elif datatype is ErrorSemantics:
                         for arg in expr.args:
                             if not isinstance(arg, Label):
@@ -279,13 +311,15 @@ class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
                             if is_numeral(env[arg]):
                                 continue
                             conversion_set.add(arg)
-                        luts += table[op].lut
+                        stat += table[op]
                 if isinstance(expr, FixExpr):
-                    luts += accumulate_luts_count(expr.bool_expr[1])
-                    luts += accumulate_luts_count(expr.loop_state)
-                    luts += accumulate_luts_count(expr.init_state)
-            luts += len(conversion_set) * table['conversion'].lut
-            return luts
+                    stat += accumulate_luts_count(expr.bool_expr[1])
+                    stat += accumulate_luts_count(expr.loop_state)
+                    stat += accumulate_luts_count(expr.init_state)
+            dsp, ff, lut = table['conversion']
+            no_conv = len(conversion_set)
+            stat += s(no_conv * dsp, no_conv * ff, no_conv * lut)
+            return stat
 
         return accumulate_luts_count(self.env)
 

@@ -283,7 +283,8 @@ class HierarchicalDependencyGraph(DependencyGraph):
         super().__init__(env, out_var)
         self._parent_nodes = _parent_nodes
         self._flat_edges = self.edges
-        self.edges, self._subgraphs = self._partition({}, self.out_var)
+        # Horrible hack
+        # self.edges, self._subgraphs = self._partition({}, self.out_var)
         self._local_nodes = None
 
     @property
