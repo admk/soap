@@ -317,7 +317,7 @@ class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
         return self.label == other.label and self.env == other.env
 
     def __hash__(self):
-        return hash((self.__class__, self.label, self.env))
+        return hash((self.label, self.env))
 
     def __str__(self):
         return '({}, {})'.format(self.label, self.env)

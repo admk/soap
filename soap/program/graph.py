@@ -1,5 +1,6 @@
 import collections
 
+from soap import logger
 from soap.expression import (
     is_variable, is_expression,
     Variable, InputVariable, External,
@@ -251,7 +252,9 @@ class DependencyGraph(object):
     def _generate_dictionaries(edges):
         dep_dict = {}
         flow_dict = {}
-        for var, dep_var in edges:
+        total = len(edges)
+        for i, (var, dep_var) in enumerate(edges):
+            logger.persistent('Deps:', '{}/{}'.format(i, total))
             deps = dep_dict.setdefault(var, set())
             deps.add(dep_var)
             flows = flow_dict.setdefault(dep_var, set())

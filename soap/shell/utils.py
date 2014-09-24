@@ -59,6 +59,8 @@ def optimize(program, file_name=None):
     results = analyze(expr_set, state, out_vars)
     emir = {
         'original': original,
+        'inputs': state,
+        'outputs': out_vars,
         'results': results,
         'time': elapsed_time,
         'context': context,

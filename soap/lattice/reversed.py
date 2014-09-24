@@ -31,7 +31,7 @@ class ReversedLattice(Lattice):
         return self.__class__(lattice=(self.lattice | other.lattice))
 
     def __hash__(self, other):
-        return hash((self.__class__, self.lattice))
+        return hash(self.lattice)
 
     def __str__(self):
         return 'r<{}>'.format(self.lattice)

@@ -71,7 +71,7 @@ class ListLattice(Lattice):
             return self._cast_value(bottom=True)
 
     def __hash__(self):
-        return hash((self.__class__, self.list))
+        return hash(self.list)
 
     def __str__(self):
         return str(builtins.list(self.list))

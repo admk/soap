@@ -47,7 +47,7 @@ class FlatLattice(Lattice):
         return self.value == other.value
 
     def __hash__(self):
-        return hash((self.__class__, self.value))
+        return hash(self.value)
 
     def __str__(self):
         return str(self.value)

@@ -37,7 +37,7 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
         return not self == other
 
     def __hash__(self):
-        self._hash = hash_val = hash((self.name, self.__class__))
+        self._hash = hash_val = hash((self.name))
         return hash_val
 
 

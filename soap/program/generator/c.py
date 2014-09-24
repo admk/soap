@@ -107,14 +107,19 @@ class CTranspiler(base_dispatcher('transpile')):
 def _generate(meta_state, state, out_vars):
     code, int_set, float_set = _decl_code_gen(meta_state, state, out_vars)
     code = CTranspiler()(code)
+    return code, int_set, float_set
+
+
+def _generate_declarations(int_set, float_set):
     decl = 'int {};\n'.format(', '.join(sorted(int_set)))
     decl += 'float {};\n'.format(', '.join(sorted(float_set)))
-    return decl + code, int_set, float_set
+    return decl
 
 
 def generate(meta_state, state, out_vars):
-    code, _, _ = _generate(meta_state, state, out_vars)
-    return code
+    code, int_set, float_set = _generate(meta_state, state, out_vars)
+    decl = _generate_declarations(int_set, float_set)
+    return decl + code
 
 
 def generate_function(meta_state, state, out_vars, func_name):
@@ -133,11 +138,16 @@ def generate_function(meta_state, state, out_vars, func_name):
         raise TypeError('No type for return variable {}'.format(out_var))
     code = code + 'return {};\n'.format(out_var)
 
+    inputs = {v.name for v in state}
+    int_set -= inputs
+    float_set -= inputs
+
+    decl = _indent(_generate_declarations(int_set, float_set))
+
     inputs = ', '.join(
         '{} {}'.format(_bound_type(v), k) for k, v in state.items())
-    formatter = (
-        '{out_type} {func_name}({inputs}) {{\n{code}\n}}\n')
+    formatter = '{out_type} {func_name}({inputs}) {{\n{decl}{code}}}\n'
     func_code = formatter.format(
         out_type=out_type, func_name=func_name, inputs=inputs,
-        code=_indent(code))
+        decl=decl, code=_indent(code))
     return func_code

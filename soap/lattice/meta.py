@@ -112,7 +112,7 @@ class ComponentWiseLattice(object):
                    zip(self.components, other.components))
 
     def __hash__(self):
-        return hash((self.__class__, self.components))
+        return hash(self.components)
 
     def __str__(self):
         return '({})'.format(','.join(str(c) for c in self.components))

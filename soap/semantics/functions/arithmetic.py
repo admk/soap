@@ -75,7 +75,7 @@ class ArithmeticEvaluator(base_dispatcher()):
         return self.__class__ == other.__class__
 
     def __hash__(self):
-        return hash(self.__class__)
+        return hash('arith_eval')
 
 
 arith_eval = ArithmeticEvaluator()

@@ -16,7 +16,12 @@ class CodeGenerator(object):
         super().__init__()
         if env:
             self.env = env
-        self.graph = graph or HierarchicalDependencyGraph(env, out_vars)
+        if graph:
+            self.graph = graph
+        else:
+            logger.info(
+                'Partitioning dependency graph for {}'.format(out_vars))
+            self.graph = HierarchicalDependencyGraph(env, out_vars)
         if not env:
             self.env = self.graph.env
         self.parent = parent
@@ -70,6 +75,8 @@ class CodeGenerator(object):
 
     def generate(self):
         order = self.graph.local_order()
+        logger.info('Generating code for nodes {}'.format(
+            ','.join(str(o) for o in order)))
         flows = []
         while order:
             var = order.pop()
@@ -204,8 +211,9 @@ class CodeGenerator(object):
         # while loop generation
         bool_expr = self._with_infix(bool_expr, infix)
         loop_flow_generator = generator_class(
-            env=loop_state, out_vars=loop_vars, parent=self,
-            label_infix=infix, in_var_infix=infix, out_var_infix=infix)
+            env=loop_state, out_vars=sorted(loop_state.keys(), key=str),
+            parent=self, label_infix=infix, in_var_infix=infix,
+            out_var_infix=infix)
         loop_flow = loop_flow_generator.generate()
         loop_flow = WhileFlow(bool_expr, loop_flow)
 

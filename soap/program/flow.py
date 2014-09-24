@@ -76,9 +76,6 @@ class Flow(object):
     def __str__(self):
         return self.format().replace('    ', '').replace('\n', '').strip()
 
-    def __hash__(self):
-        return hash(self.__class__)
-
 
 class IdentityFlow(Flow):
     """Identity flow, does nothing."""
@@ -148,7 +145,7 @@ class AssignFlow(Flow):
             cls=self.__class__.__name__, var=self.var, expr=self.expr)
 
     def __hash__(self):
-        return hash((self.__class__, self.var, self.expr))
+        return hash((self.var, self.expr))
 
 
 class IfFlow(Flow):
@@ -212,7 +209,7 @@ class IfFlow(Flow):
             true_flow=self.true_flow, false_flow=self.false_flow)
 
     def __hash__(self):
-        return hash((self.__class__, self.conditional_expr,
+        return hash((self.conditional_expr,
                      self.true_flow, self.false_flow))
 
 
@@ -258,7 +255,7 @@ class WhileFlow(Flow):
             flow=self.loop_flow)
 
     def __hash__(self):
-        return hash((self.__class__, self.conditional_expr, self.loop_flow))
+        return hash((self.conditional_expr, self.loop_flow))
 
 
 class CompositionalFlow(Flow):
@@ -297,7 +294,7 @@ class CompositionalFlow(Flow):
             cls=self.__class__.__name__, flows=self.flows)
 
     def __hash__(self):
-        return hash((self.__class__, self.flows))
+        return hash(self.flows)
 
 
 class _VariableSetGenerator(base_dispatcher()):
