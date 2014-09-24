@@ -69,7 +69,7 @@ class LabelGenerator(base_dispatcher()):
 
         label_expr = expr.__class__(
             bool_expr_label, loop_state_label, expr.loop_var, init_state_label)
-        label = context.Label(label_expr, None)
+        label = context.Label(label_expr, loop_bound[expr.loop_var])
 
         expr = expr.__class__(
             bool_expr_labsem, loop_state_env, expr.loop_var, init_state_env)

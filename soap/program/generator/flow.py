@@ -14,7 +14,11 @@ class CodeGenerator(object):
     def __init__(self, graph=None, env=None, out_vars=None, parent=None,
                  label_infix=None, in_var_infix=None, out_var_infix=None):
         super().__init__()
+        if env:
+            self.env = env
         self.graph = graph or HierarchicalDependencyGraph(env, out_vars)
+        if not env:
+            self.env = self.graph.env
         self.parent = parent
         self.label_infix = label_infix
         self.in_var_infix = in_var_infix
@@ -216,7 +220,9 @@ class CodeGenerator(object):
         return flows
 
 
-def generate(meta_state, out_vars):
+def generate(meta_state, state, out_vars):
     from soap.semantics import BoxState, label
-    _, env = label(meta_state, BoxState(bottom=True), out_vars)
+    if not state:
+        state = BoxState(bottom=True)
+    _, env = label(meta_state, state, out_vars)
     return CodeGenerator(env=env, out_vars=out_vars).generate()
