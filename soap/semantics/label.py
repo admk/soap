@@ -206,15 +206,14 @@ class s(namedtuple('Statistics', ['dsp', 'ff', 'lut'])):
 
 _integer_table = {
     # dsp, ff, lut
-    # TODO legup!!
     'comparison': s(0, 65, 35),
     operators.ADD_OP: s(0, 96, 32),
     operators.SUBTRACT_OP: s(0, 96, 32),
     operators.MULTIPLY_OP: s(4, 96, 0),
     operators.DIVIDE_OP: s(0, 96, 1247),
-    operators.UNARY_SUBTRACT_OP: s(0, 0, 32),  # TODO
-    operators.TERNARY_SELECT_OP: s(0, 0, 32),
-    operators.FIXPOINT_OP: s(0, 0, 32),
+    operators.UNARY_SUBTRACT_OP: s(0, 96, 32),  # TODO
+    operators.TERNARY_SELECT_OP: s(0, 96, 32),
+    operators.FIXPOINT_OP: s(0, 96, 32),
     operators.BARRIER_OP: s(0, 0, 0),
 }
 _single_table = {

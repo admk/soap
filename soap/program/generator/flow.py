@@ -6,8 +6,12 @@ from soap.expression import (
     Variable, InputVariableTuple, OutputVariableTuple
 )
 from soap.program.flow import AssignFlow, IfFlow, WhileFlow, CompositionalFlow
-from soap.program.graph import HierarchicalDependencyGraph, sorted_vars, unique
-from soap.semantics import ErrorSemantics, FloatInterval, is_numeral, Label
+from soap.program.graph import (
+    DependencyGraph, HierarchicalDependencyGraph, sorted_vars, unique
+)
+from soap.semantics import (
+    ErrorSemantics, FloatInterval, is_constant, is_numeral, Label
+)
 
 
 class CodeGenerator(object):
@@ -21,7 +25,7 @@ class CodeGenerator(object):
         else:
             logger.info(
                 'Partitioning dependency graph for {}'.format(out_vars))
-            self.graph = HierarchicalDependencyGraph(env, out_vars)
+            self.graph = DependencyGraph(env, out_vars)
         if not env:
             self.env = self.graph.env
         self.parent = parent
@@ -52,8 +56,9 @@ class CodeGenerator(object):
             if isinstance(expr, ErrorSemantics):
                 expr = expr.v
             if isinstance(expr, FloatInterval):
-                logger.warning(
-                    'Bound found as a constant, defaults to min val.')
+                if not is_constant(expr):
+                    logger.warning(
+                        'Bound found as a constant, defaults to min val.')
                 expr = expr.min
             return expr
 
@@ -80,7 +85,11 @@ class CodeGenerator(object):
         return Variable(name)
 
     def generate(self):
-        order = self.graph.local_order()
+        if isinstance(self.graph, HierarchicalDependencyGraph):
+            order = self.graph.local_order()
+        else:
+            nodes = {n for n, _ in self.graph.edges}
+            order = self.graph.order_by_dependencies(nodes)
         logger.info('Generating code for nodes {}'.format(
             ','.join(str(o) for o in order)))
         flows = []
@@ -123,7 +132,10 @@ class CodeGenerator(object):
 
     def emit_SelectExpr(self, var, expr, order):
         graph = self.graph
-        subgraphs = graph.subgraphs
+        if isinstance(graph, HierarchicalDependencyGraph):
+            subgraphs = graph.subgraphs
+        else:
+            subgraphs = {}
 
         def generate_branch_output_interface(label):
             if not isinstance(var, OutputVariableTuple):
