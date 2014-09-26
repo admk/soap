@@ -217,15 +217,15 @@ _integer_table = {
     operators.BARRIER_OP: s(0, 0, 0),
 }
 _single_table = {
-    'conversion': s(0, 238, 182),
+    'conversion': s(0, 211, 186),
     'comparison': s(0, 33, 68),
-    operators.ADD_OP: s(0, 345, 576),
-    operators.SUBTRACT_OP: s(0, 345, 576),
-    operators.MULTIPLY_OP: s(4, 148, 138),
-    operators.DIVIDE_OP: s(0, 2074, 1646),
+    operators.ADD_OP: s(0, 540, 505),
+    operators.SUBTRACT_OP: s(0, 540, 505),
+    operators.MULTIPLY_OP: s(4, 222, 141),
+    operators.DIVIDE_OP: s(0, 2788, 3198),
     operators.UNARY_SUBTRACT_OP: s(0, 0, 1),
-    operators.TERNARY_SELECT_OP: s(0, 0, 32),
-    operators.FIXPOINT_OP: s(0, 0, 32),
+    operators.TERNARY_SELECT_OP: s(0, 96, 32),
+    operators.FIXPOINT_OP: s(0, 96, 32),
     operators.BARRIER_OP: s(0, 0, 0),
 }
 # Xilinx Vivado
