@@ -120,7 +120,7 @@ def legup_and_quartus(code):
     return legup_stats, quartus_stats, fmax
 
 
-results_file_name = 'resources_compare_no_sharing.pkl'
+results_file_name = 'resources_compare_sharing.pkl'
 
 
 def load_results():
@@ -222,12 +222,12 @@ def plot_percentage_difference(results):
 
 
 def plot_order(results):
-    from scipy.stats import rankdata
-    points = data_points(results)
+    points = sorted(data_points(results))
     soap, legup, quartus = zip(*points)
-    soap = rankdata(soap)
-    legup = rankdata(legup)
-    quartus = rankdata(quartus)
+    old_quartus = quartus
+    quartus = sorted(range(len(quartus)), key=lambda i: (quartus[i], soap[i]))
+    soap = sorted(range(len(soap)), key=lambda i: (soap[i], old_quartus[i]))
+    legup = sorted(range(len(legup)), key=lambda i: (legup[i], old_quartus[i]))
     figure = pyplot.figure()
     plot = figure.add_subplot(111)
     plot.scatter(soap, quartus, label='Quartus', marker='+', color='b')
@@ -255,6 +255,7 @@ def main():
 
 if __name__ == '__main__':
     results = main()
+    # results = load_results()
     plot_scatter(results)
     plot_percentage_difference(results)
     plot_order(results)
