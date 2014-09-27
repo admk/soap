@@ -1,3 +1,4 @@
+import json
 import pickle
 import sys
 
@@ -8,7 +9,8 @@ from soap import logger
 from soap.context import context
 from soap.shell import interactive
 from soap.shell.utils import (
-    analyze_error, analyze_resource, optimize, parse, plot
+    analyze_error, analyze_resource, optimize, parse, plot, report,
+    simulate_error
 )
 
 
@@ -20,8 +22,10 @@ usage = """
 Usage:
     {__executable__} analyze error [options] (<file> | --command=<str> | -)
     {__executable__} analyze resource [options] (<file> | --command=<str> | -)
+    {__executable__} simulate [options] (<file> | --command=<str> | -)
     {__executable__} optimize [options] (<file> | --command=<str> | -)
     {__executable__} plot [options] <file>
+    {__executable__} report [options] <file>
     {__executable__} interactive [options] [<file> | --command=<str> | -]
     {__executable__} lint [options] (<file> | --command=<str> | -)
     {__executable__} (-h | --help)
@@ -40,6 +44,9 @@ Options:
                             `--precision=<width>`.
     --double                Use double-precision format, overrides both options
                             `--precision=<width>` and `--single`.
+    --population-size=<int> Simulation is used to find actual bound on errors.
+                            This parameter specifies the population size for
+                            simulation. [default: 100]
     --unroll-factor={context.unroll_factor}
                             Set the number of iterations bofore stopping loop
                             unroll and use the loop invariant in loop analysis.
@@ -166,6 +173,13 @@ def _analyze(args):
     return 0
 
 
+def _simulate(args):
+    if not args['simulate']:
+        return
+    file, out_file = _file(args)
+    return simulate_error(file, int(args['--population-size']))
+
+
 def _optimize(args):
     if not args['optimize']:
         return
@@ -192,6 +206,21 @@ def _plot(args):
     return 0
 
 
+def _report(args):
+    if not args['report']:
+        return
+    file = args['<file>']
+    with open(file, 'rb') as f:
+        emir = pickle.load(f)
+    rpt = report(emir, file)
+    rpt = json.dumps(rpt, sort_keys=True, indent=4, separators=(',', ': '))
+    logger.debug(rpt)
+    report_file = emir['file'] + '.rpt'
+    with open(report_file, 'w') as f:
+        f.write(rpt)
+    return 0
+
+
 def _lint(args):
     if not args['lint']:
         return
@@ -215,8 +244,8 @@ def _post_run(args):
 def main():
     args = docopt(usage, version=soap.__version__)
     functions = [
-        _setup_context, _interactive, _analyze, _optimize, _lint, _plot,
-        _unreachable,
+        _setup_context, _interactive, _analyze, _simulate, _optimize, _lint,
+        _plot, _report, _unreachable,
     ]
     try:
         for f in functions:

@@ -5,7 +5,7 @@ from soap.semantics.error import (
     inf, ulp, round_off_error, cast
 )
 from soap.semantics.functions import (
-    arith_eval, error_eval, label, luts
+    arith_eval, error_eval, label, luts, resources,
 )
 from soap.semantics.label import (
     Label, LabelContext, Identifier, LabelSemantics

@@ -7,7 +7,6 @@ import itertools
 
 from soap import logger
 from soap.analysis.core import Analysis
-from soap.context import context
 
 
 def analyze(expr_set, state, out_vars=None, **kwargs):
@@ -140,10 +139,10 @@ class Plot(object):
             self.log_enable = log
         super().__init__()
 
-    def add_analysis(self, expr, func=None, precs=None,
-                     out_vars=None, state=None,
-                     depth=None, annotate=False, legend=None,
-                     legend_depth=False, legend_time=False, **kwargs):
+    def add_analysis(
+            self, expr, func=None, out_vars=None, state=None,
+            annotate=False, legend=None, legend_depth=False, legend_time=False,
+            **kwargs):
         """Performs transforms, then analyzes expressions and add results to
         plot.
 
@@ -173,23 +172,14 @@ class Plot(object):
         from soap.common import invalidate_cache
         state = state or self.state
         out_vars = out_vars or self.out_vars
-        d = depth or self.depth
-        precs = precs or self.precs
-        analysis_func = frontier if len(precs) > 1 else analyze
-        results = []
         if legend_time:
             invalidate_cache()
         t = time.time()
-        for p in precs:
-            if p:
-                logger.persistent('Precision', p)
-            if func:
-                with context.local(precision=p, window_depth=d):
-                    derived = func(expr, state, out_vars)
-            else:
-                derived = {expr}
-            r = analysis_func(derived, state, out_vars)
-            results += r
+        if func:
+            derived = func(expr, state, out_vars)
+        else:
+            derived = {expr}
+        results = analyze(derived, state, out_vars)
         t = time.time() - t
         if func:
             front = True
@@ -197,22 +187,18 @@ class Plot(object):
         else:
             front = False
             marker = 'o'
-        depth = d if legend_depth else None
         duration = t if legend_time else None
         duration = duration if legend_time is True else legend_time
         kwargs.setdefault('marker', marker)
         logger.unpersistent('Precision')
         self.add(results, legend=legend, frontier=front, annotate=annotate,
-                 time=duration, depth=depth, **kwargs)
+                 time=duration, **kwargs)
         return self
 
-    def add(self, result, expr=None,
-            legend=None, frontier=True, annotate=False, time=None, depth=None,
-            color_group=None, **kwargs):
+    def add(self, result, original=True, legend=None, frontier=True,
+            annotate=False, time=None, depth=None, color_group=None, **kwargs):
         """Add analyzed results.
 
-        :param expr: Optional, the original expression.
-        :type expr: :class:`soap.expression.Expr`
         :param legend: The legend name for the results.
         :type legend: str
         :param frontier: If set, plots the frontier.
@@ -234,6 +220,7 @@ class Plot(object):
                     legend += ' (%s)' % time
         self.result_list.append({
             'result': result,
+            'original': original,
             'legend': _escape_legend(legend),
             'frontier': frontier,
             'annotate': annotate,
@@ -259,29 +246,17 @@ class Plot(object):
     scatter_forbidden = ['linestyle', 'alpha', 'color']
 
     def _colors(self):
-        return itertools.cycle('bgrcmyk')
+        return itertools.cycle('kbgrcmy')
 
     def _markers(self):
         return itertools.cycle('xso+.v^<>')
 
     def _auto_scale(self, plot, xlim, ylim):
-        try:
-            log_enable = self.log_enable
-        except AttributeError:
-            log_enable = False
-            if min(ylim) <= 0:
-                log_enable = True
-            elif max(ylim) / min(ylim) >= 10:
-                log_enable = True
-            self.log_enable = log_enable
-        if log_enable:
-            plot.set_yscale('log')
-            plot.set_ylim(_log_margin(*ylim))
-        else:
-            plot.set_yscale('linear')
-            plot.set_ylim(_linear_margin(*ylim))
-            plot.yaxis.get_major_formatter().set_scientific(True)
-            plot.yaxis.get_major_formatter().set_powerlimits((-3, 4))
+        # FIXME log scale
+        plot.set_yscale('linear')
+        plot.set_ylim(_linear_margin(*ylim))
+        plot.yaxis.get_major_formatter().set_scientific(True)
+        plot.yaxis.get_major_formatter().set_powerlimits((-3, 4))
         plot.set_xlim(_linear_margin(*xlim))
         plot.locator_params(axis='x', nbins=7)
 
@@ -321,17 +296,17 @@ class Plot(object):
                         del plot_kwargs[k]
                 result = sorted(pareto_frontier(r['result']))
                 try:
-                    area, error, expr = zip(*result)
+                    lut, dsp, error, expr = zip(*result)
                     logger.debug('legend', r['legend'])
-                    lx, ly = _insert_region_frontier(area, error)
+                    lx, ly = _insert_region_frontier(lut, error)
                 except ValueError:
                     lx = ly = []
                 plot.plot(lx, ly, **plot_kwargs)
-                if lx and ly:
+                if lx and ly and r['original']:
                     plot.fill_between(lx, ly, max(ly),
                                       alpha=0.1, color=plot_kwargs['color'])
                 if r['annotate']:
-                    for x, y, e in zip(area, error, expr):
+                    for x, y, e in zip(lut, error, expr):
                         plot.annotate(str(e), xy=(x, y), alpha=0.5)
         for r in self.result_list:
             scatter_kwargs = dict(self.scatter_defaults)
@@ -348,12 +323,12 @@ class Plot(object):
             if scatter_kwargs['marker'] == '+':
                 scatter_kwargs['s'] *= 1.5
             try:
-                area, error, _ = zip(*r['result'])
-                xmin, xmax = min(xmin, min(area)), max(xmax, max(area))
+                lut, dsp, error, _ = zip(*r['result'])
+                xmin, xmax = min(xmin, min(lut)), max(xmax, max(lut))
                 ymin, ymax = min(ymin, min(error)), max(ymax, max(error))
             except ValueError:
-                area = error = []
-            plot.scatter(area, error, label=r['legend'], **scatter_kwargs)
+                lut = error = []
+            plot.scatter(lut, error, label=r['legend'], **scatter_kwargs)
         self._auto_scale(plot, (xmin, xmax), (ymin, ymax))
         legend_pos = self.legend_pos or (1.1, 1.1)
         l = plot.legend(
@@ -364,7 +339,7 @@ class Plot(object):
         if l:
             l.draggable()
         plot.grid(True, which='both', ls=':')
-        plot.set_xlabel('Area (Number of LUTs)')
+        plot.set_xlabel('Resources (LUTs)')
         plot.set_ylabel('Absolute Error')
         return self.figure
 

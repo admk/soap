@@ -211,7 +211,7 @@ _integer_table = {
     operators.SUBTRACT_OP: s(0, 96, 32),
     operators.MULTIPLY_OP: s(4, 96, 0),
     operators.DIVIDE_OP: s(0, 96, 1247),
-    operators.UNARY_SUBTRACT_OP: s(0, 96, 32),  # TODO
+    operators.UNARY_SUBTRACT_OP: s(0, 96, 32),
     operators.TERNARY_SELECT_OP: s(0, 96, 32),
     operators.FIXPOINT_OP: s(0, 96, 32),
     operators.BARRIER_OP: s(0, 0, 0),
@@ -228,42 +228,45 @@ _single_table = {
     operators.FIXPOINT_OP: s(0, 96, 32),
     operators.BARRIER_OP: s(0, 0, 0),
 }
-# Xilinx Vivado
-# _integer_table = {
-    # 'comparison': s(0, 0, 39),
-    # operators.ADD_OP: s(0, 0, 32),
-    # operators.SUBTRACT_OP: s(0, 0, 32),
-    # operators.MULTIPLY_OP: s(4, 45, 21),
-    # operators.DIVIDE_OP: s(0, 1712, 1779),
-    # operators.UNARY_SUBTRACT_OP: s(0, 0, 32),
-    # operators.TERNARY_SELECT_OP: s(0, 0, 71),
-    # operators.FIXPOINT_OP: s(0, 0, 71),
-    # operators.BARRIER_OP: s(0, 0, 0),
-# }
-# _single_table = {
-    # 'conversion': s(0, 128, 519),
-    # 'comparison': s(0, 66, 239),
-    # operators.ADD_OP: s(2, 227, 400),
-    # operators.SUBTRACT_OP: s(2, 227, 400),
-    # operators.MULTIPLY_OP: s(3, 128, 324),
-    # operators.DIVIDE_OP: s(0, 363, 986),
-    # operators.UNARY_SUBTRACT_OP: s(0, 0, 37),
-    # operators.TERNARY_SELECT_OP: s(0, 0, 71),
-    # operators.FIXPOINT_OP: s(0, 0, 0),
-    # operators.BARRIER_OP: s(0, 0, 0),
-# }
-# _double_table = {
-    # 'conversion': s(0, 189, 578),
-    # 'comparison': s(0, 130, 578),
-    # operators.ADD_OP: s(3, 445, 1144),
-    # operators.SUBTRACT_OP: s(3, 445, 1144),
-    # operators.MULTIPLY_OP: s(11, 299, 570),
-    # operators.DIVIDE_OP: s(0, 1710, 3623),
-    # operators.UNARY_SUBTRACT_OP: s(0, 0, 81),
-    # operators.TERNARY_SELECT_OP: s(0, 0, 103),
-    # operators.FIXPOINT_OP: s(0, 0, 0),
-    # operators.BARRIER_OP: s(0, 0, 0),
-# }
+_double_table = {}
+"""
+Xilinx Vivado
+_integer_table = {
+    'comparison': s(0, 0, 39),
+    operators.ADD_OP: s(0, 0, 32),
+    operators.SUBTRACT_OP: s(0, 0, 32),
+    operators.MULTIPLY_OP: s(4, 45, 21),
+    operators.DIVIDE_OP: s(0, 1712, 1779),
+    operators.UNARY_SUBTRACT_OP: s(0, 0, 32),
+    operators.TERNARY_SELECT_OP: s(0, 0, 71),
+    operators.FIXPOINT_OP: s(0, 0, 71),
+    operators.BARRIER_OP: s(0, 0, 0),
+}
+_single_table = {
+    'conversion': s(0, 128, 519),
+    'comparison': s(0, 66, 239),
+    operators.ADD_OP: s(2, 227, 400),
+    operators.SUBTRACT_OP: s(2, 227, 400),
+    operators.MULTIPLY_OP: s(3, 128, 324),
+    operators.DIVIDE_OP: s(0, 363, 986),
+    operators.UNARY_SUBTRACT_OP: s(0, 0, 37),
+    operators.TERNARY_SELECT_OP: s(0, 0, 71),
+    operators.FIXPOINT_OP: s(0, 0, 0),
+    operators.BARRIER_OP: s(0, 0, 0),
+}
+_double_table = {
+    'conversion': s(0, 189, 578),
+    'comparison': s(0, 130, 578),
+    operators.ADD_OP: s(3, 445, 1144),
+    operators.SUBTRACT_OP: s(3, 445, 1144),
+    operators.MULTIPLY_OP: s(11, 299, 570),
+    operators.DIVIDE_OP: s(0, 1710, 3623),
+    operators.UNARY_SUBTRACT_OP: s(0, 0, 81),
+    operators.TERNARY_SELECT_OP: s(0, 0, 103),
+    operators.FIXPOINT_OP: s(0, 0, 0),
+    operators.BARRIER_OP: s(0, 0, 0),
+}
+"""
 
 
 class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):

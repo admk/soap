@@ -45,7 +45,7 @@ def fixpoint_eval(state, bool_expr, loop_meta_state=None, loop_flow=None):
 
     while True:
         iteration += 1
-        logger.persistent('Iteration', iteration)
+        logger.persistent('Iteration', iteration, l=logger.levels.debug)
 
         # split state by the conditional of the while loop
         entry_state, exit_state = bool_eval(bool_expr, loop_state)

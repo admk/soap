@@ -109,7 +109,7 @@ class BaseDiscoverer(base_dispatcher('discover')):
         for true_expr, false_expr in iterer:
             true_false_set.add(expression_factory(
                 operators.BARRIER_OP, true_expr, false_expr))
-        true_false_set = self.closure(true_false_set, state, out_vars)
+        true_false_set = self.filter(true_false_set, state, out_vars)
 
         logger.info('Discovered: {}, {}, Frontier: {}'.format(
             true_expr, false_expr, len(true_false_set)))
@@ -120,6 +120,7 @@ class BaseDiscoverer(base_dispatcher('discover')):
             true_expr, false_expr = true_false_expr.args
             expr_set.add(SelectExpr(bool_expr, true_expr, false_expr))
 
+        expr_set = self.filter(expr_set, state, out_vars)
         return self.closure(expr_set, state, out_vars)
 
     def discover_FixExpr(self, expr, state, out_vars):
