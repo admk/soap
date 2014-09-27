@@ -27,6 +27,10 @@ def analyze_error(program):
     return program.debug(state)
 
 
+def simulate_error(program):
+    program, state, _ = parse(program)
+
+
 def analyze_resource(program):
     program, state, out_vars = parse(program)
     return luts(flow_to_meta_state(program), state, out_vars)
@@ -73,5 +77,5 @@ def plot(emir, file_name):
     plot = Plot(legend_time=True)
     plot.add([emir['original']], marker='o', legend='Original')
     plot.add(emir['results'], legend='Discovered', time=emir['time'])
-    plot.save('{}.pdf'.format(emir['file']))
+    plot.save('{}.pdf'.format(file_name))
     plot.show()

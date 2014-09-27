@@ -120,7 +120,7 @@ def legup_and_quartus(code):
     return legup_stats, quartus_stats, fmax
 
 
-results_file_name = 'resources_compare_sharing.pkl'
+results_file_name = 'resources_compare_no_sharing.pkl'
 
 
 def load_results():
@@ -239,6 +239,29 @@ def plot_order(results):
     pyplot.show()
 
 
+def plot_fmax():
+    with open('resources_compare_sharing.pkl', 'rb') as f:
+        sharing = pickle.load(f)
+    with open('resources_compare_no_sharing.pkl', 'rb') as f:
+        no_sharing = pickle.load(f)
+
+    def get_fmax_list(l):
+        return [r['quartus_fmax'] for r in l]
+
+    sharing = sorted(sharing, key=lambda r: r['mir'])
+    no_sharing = sorted(no_sharing, key=lambda r: r['mir'])
+
+    imps = [(b['quartus_fmax'] - a['quartus_fmax']) / a['quartus_fmax']
+            for a, b in zip(sharing, no_sharing)]
+    imps_avg = sum(imps) / len(imps) * 100
+    print(imps_avg)
+
+    figure = pyplot.figure()
+    plot = figure.add_subplot(111)
+    plot.scatter(get_fmax_list(sharing), get_fmax_list(no_sharing), marker='+')
+    figure.savefig('fmax.pdf')
+
+
 def main():
     try:
         results = load_results()
@@ -254,8 +277,9 @@ def main():
 
 
 if __name__ == '__main__':
-    results = main()
-    # results = load_results()
+    # results = main()
+    results = load_results()
     plot_scatter(results)
     plot_percentage_difference(results)
     plot_order(results)
+    plot_fmax()
