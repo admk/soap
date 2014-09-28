@@ -1,123 +1,17 @@
 import itertools
 import os
 import pickle
-import re
-import shutil
-import tempfile
 from glob import glob
 
-import sh
 from matplotlib import pyplot, rc
-from akpytemp.utils import code_gobble
 
 from soap.common.parallel import pool
 from soap.context import context
-from soap.flopoco.common import cd
-from soap.program.generator.c import generate_function
 from soap.semantics.functions.label import resources
-from soap.semantics.label import s
-from soap.shell.utils import parse
+from soap.shell.utils import parse, legup_and_quartus
 
 
 rc('font', family='serif', size=20, serif='Times')
-
-
-def wrap_in_main(iv, func):
-    code = code_gobble(
-        """
-        {}
-
-        int main() {{
-            float rv = func({});
-            return 0;
-        }}
-        """).format(func, ', '.join('1' for _ in iv))
-    return code
-
-
-legup_path = os.path.expanduser('~/legup/examples')
-
-makefile = code_gobble(
-    """
-    NAME=test
-    TOP=func
-    FAMILY=StratixIV
-    NO_OPT=1
-    NO_INLINE=1
-    LEVEL={}
-    include $(LEVEL)/Makefile.common
-    """).format(legup_path)
-
-
-def _extract(key, file):
-    val = re.search(key + ': ([,\d]+)', file)
-    if not val:
-        return
-    val = val.groups()[0]
-    val = val.replace(',', '')
-    return int(val)
-
-
-def get_legup_stats():
-    with open('resources.legup.rpt') as f:
-        file = f.read()
-    dsp = _extract('DSP Elements', file)
-    ff = _extract('Registers', file)
-    lut = _extract('Combinational', file)
-    return s(dsp, ff, lut)
-
-
-def get_quartus_stats():
-    with open('func.fit.summary') as f:
-        file = f.read()
-    dsp = _extract('DSP block 18-bit elements ', file)
-    ff = _extract('logic registers ', file)
-    lut = _extract('Combinational ALUTs ', file)
-    return s(dsp, ff, lut)
-
-
-def get_quartus_fmax():
-    with open('func.sta.rpt') as f:
-        file = f.readlines()
-    for line_no, line in enumerate(file):
-        if 'Slow 900mV 85C Model Fmax Summary' not in line:
-            continue
-        fmax_line_no = line_no + 4
-        if fmax_line_no >= len(file):
-            continue
-        fmax_line = file[fmax_line_no]
-        val = re.search('([.\d]+) MHz', fmax_line)
-        if not val:
-            continue
-        return(float(val.groups()[0]))
-
-
-def legup_and_quartus(code):
-    d = tempfile.mktemp(suffix='/')
-    legup_stats = quartus_stats = fmax = None
-    try:
-        with cd(d):
-            with open('test.c', 'w') as f:
-                f.write(code)
-            with open('Makefile', 'w') as f:
-                f.write(makefile)
-            print('LegUp...')
-            sh.make(_out='legup.out', _err='legup.err')
-            legup_stats = get_legup_stats()
-            print('LegUp done {}, Quartus mapping...'.format(legup_stats))
-            sh.make('p')
-            sh.make('q')
-            print('Quartus fitting & timing...')
-            sh.make('f', _out='quartus.out', _err='quartus.err')
-            quartus_stats = get_quartus_stats()
-            fmax = get_quartus_fmax()
-            print('Quartus fitting & timing done {}, {}.'
-                  .format(quartus_stats, fmax))
-    except Exception as e:
-        print(d, e)
-    else:
-        shutil.rmtree(d)
-    return legup_stats, quartus_stats, fmax
 
 
 results_file_name = 'resources_compare_no_sharing.pkl'
@@ -141,9 +35,7 @@ def worker(args):
     try:
         mir = r.expression
         print('Generating code...')
-        func = generate_function(mir, iv, rv, 'func')
-        func = wrap_in_main(iv, func)
-        legup_stats, quartus_stats, fmax = legup_and_quartus(func)
+        code, legup_stats, quartus_stats, fmax = legup_and_quartus(mir, iv, rv)
         soap_stats = resources(mir, iv, rv, context.precision)
         result = {
             'soap_area': soap_stats,
@@ -152,7 +44,7 @@ def worker(args):
             'quartus_fmax': fmax,
             'mir': r.expression,
             'name': name,
-            'code': func,
+            'code': code,
         }
         print('{}/{}'.format(i + 1, n), result['soap_area'],
               result['legup_area'], result['quartus_area'],

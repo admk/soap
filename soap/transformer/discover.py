@@ -106,9 +106,9 @@ class BaseDiscoverer(base_dispatcher('discover')):
 
         iterer = itertools.product(true_expr_set, false_expr_set)
         true_false_set = set()
-        for true_expr, false_expr in iterer:
+        for each_true_expr, each_false_expr in iterer:
             true_false_set.add(expression_factory(
-                operators.BARRIER_OP, true_expr, false_expr))
+                operators.BARRIER_OP, each_true_expr, each_false_expr))
         true_false_set = self.filter(true_false_set, state, out_vars)
 
         logger.info('Discovered: {}, {}, Frontier: {}'.format(

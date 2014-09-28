@@ -6,7 +6,7 @@ import math
 import itertools
 
 from soap import logger
-from soap.analysis.core import Analysis
+from soap.analysis.core import Analysis, pareto_frontier
 
 
 def analyze(expr_set, state, out_vars=None, **kwargs):
@@ -246,10 +246,10 @@ class Plot(object):
     scatter_forbidden = ['linestyle', 'alpha', 'color']
 
     def _colors(self):
-        return itertools.cycle('kbgrcmy')
+        return itertools.cycle('rgbkcmy')
 
     def _markers(self):
-        return itertools.cycle('xso+.v^<>')
+        return itertools.cycle('x+.osv^<>')
 
     def _auto_scale(self, plot, xlim, ylim):
         # FIXME log scale
@@ -261,7 +261,6 @@ class Plot(object):
         plot.locator_params(axis='x', nbins=7)
 
     def _plot(self):
-        from soap.analysis.core import pareto_frontier
         try:
             return self.figure
         except AttributeError:
@@ -294,9 +293,10 @@ class Plot(object):
                 for k in self.plot_forbidden:
                     if k in plot_kwargs:
                         del plot_kwargs[k]
-                result = sorted(pareto_frontier(r['result']))
+                result = [(s.lut, s.error, s.expression) for s in r['result']]
+                result = sorted(pareto_frontier(result))
                 try:
-                    lut, dsp, error, expr = zip(*result)
+                    lut, error, expr = zip(*result)
                     logger.debug('legend', r['legend'])
                     lx, ly = _insert_region_frontier(lut, error)
                 except ValueError:

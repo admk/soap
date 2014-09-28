@@ -238,6 +238,9 @@ def bool_eval(expr, state):
                 _comparison_eval(cmp_expr, state)
                 for cmp_expr in _bool_transform(cmp_expr)]
             cstr_list += cmp_eval_list
+        if not cstr_list:
+            # empty, don't know how to constraint values
+            return state, state
         true, false = zip(*cstr_list)
         true_list.append(meet(true))
         false_list.append(join(false))

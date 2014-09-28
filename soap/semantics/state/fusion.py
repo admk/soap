@@ -185,6 +185,19 @@ def inner_meta_fusion(env, var):
     return env
 
 
+def _input_vars(state):
+    # FIXME bug in here for Gauss-Seidel
+    var_set = set()
+    for v in state.values():
+        if isinstance(v, External):
+            v = v.var
+        if is_variable(v):
+            var_set.add(v)
+        elif isinstance(v, FixExpr):
+            var_set |= _input_vars(v.init_state)
+    return var_set
+
+
 def outer_scope_fusion(env, var):
     var, expr = _ensure_fix_expr(env, var)
 
@@ -223,20 +236,9 @@ def outer_scope_fusion(env, var):
                     filter_vars |= set(arg)
 
     # dependencies in bool_expr and loop_state
-    def input_vars(state):
-        var_set = set()
-        for v in state.values():
-            if isinstance(v, External):
-                v = v.var
-            if is_variable(v):
-                var_set.add(v)
-            elif isinstance(v, FixExpr):
-                var_set |= input_vars(v.init_state)
-        return var_set
     loop_state = expr.loop_state
     _, bool_state = expr.bool_expr
-    filter_vars |= input_vars(loop_state)
-    filter_vars |= input_vars(bool_state)
+    filter_vars |= _input_vars(loop_state) | _input_vars(bool_state)
 
     # prune dependencies by filtering init_state with filter_vars
     init_state = MetaState(

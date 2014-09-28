@@ -88,6 +88,9 @@ class IdentityFlow(Flow):
     def __repr__(self):
         return '{cls}()'.format(cls=self.__class__.__name__)
 
+    def __hash__(self):
+        return hash('skip;')
+
 
 class InputFlow(IdentityFlow):
     def __init__(self, inputs):
