@@ -24,7 +24,8 @@ class CodeGenerator(object):
             self.graph = graph
         else:
             logger.info(
-                'Partitioning dependency graph for {}'.format(out_vars))
+                'Partitioning dependency graph for {}'.format(
+                    ', '.join(str(v) for v in out_vars)))
             self.graph = DependencyGraph(env, out_vars)
         if not env:
             self.env = self.graph.env
@@ -104,7 +105,6 @@ class CodeGenerator(object):
         if not expr:
             if isinstance(var, HierarchicalDependencyGraph):
                 expr = var
-        logger.debug('Generating var: {!r}, expr: {!r}'.format(var, expr))
         emit_func_name = 'emit_{}'.format(expr.__class__.__name__)
         emit = getattr(self, emit_func_name, self.generic_emit)
         return self._flatten(emit(var, expr, order))

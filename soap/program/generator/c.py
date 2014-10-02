@@ -3,7 +3,9 @@ from soap.common import base_dispatcher
 from soap.expression import is_variable, is_expression
 from soap.program.flow import _indent
 from soap.program.generator.flow import CodeGenerator
-from soap.semantics import ErrorSemantics, IntegerInterval, Label, label
+from soap.semantics import (
+    ErrorSemantics, FloatInterval, IntegerInterval, Label, label
+)
 
 
 def _bound_type(bound):
@@ -13,6 +15,9 @@ def _bound_type(bound):
         return 'float'
     if bound == 'input':
         return bound
+    if isinstance(bound, FloatInterval):
+        logger.error('Why is bound type FloatInterval?')
+        return 'float'
     raise TypeError('Unrecognized bound type {}'.format(repr(bound)))
 
 
@@ -125,18 +130,9 @@ def generate(meta_state, state, out_vars):
 def generate_function(meta_state, state, out_vars, func_name):
     code, int_set, float_set = _generate(meta_state, state, out_vars)
 
-    if len(out_vars) > 1:
-        raise ValueError('C allows only one return variable.')
-    out_var = list(out_vars).pop()
-    if is_variable(out_var):
-        out_var = out_var.name
-    if out_var in int_set:
-        out_type = 'int'
-    elif out_var in float_set:
-        out_type = 'float'
-    else:
-        raise TypeError('No type for return variable {}'.format(out_var))
-    code = code + 'return {};\n'.format(out_var)
+    out_type = 'float'
+    code = code + 'return {};\n'.format(
+        ' && '.join(v.name + '< 0' for v in out_vars))
 
     inputs = {v.name for v in state}
     int_set -= inputs

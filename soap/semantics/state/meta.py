@@ -78,7 +78,7 @@ class MetaState(BaseState, map(None, Expression)):
         while next_vars:
             var = next_vars.pop()
             expr = meta_state.get(var)
-            if expr is None:
+            if expr is None or is_numeral(expr):
                 continue
             expr_vars = expr.vars()
             next_vars |= expr_vars - in_vars

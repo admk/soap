@@ -229,6 +229,12 @@ constant_reduction = (
     'constant_reduction'
 )
 
+same_expression_reduction_ifelse = (
+    compile('a if b else a'),
+    compile('a'),
+    'same_expression_reduction_ifelse'
+)
+
 
 def boolean_mirror_func(op, a1, a2):
     op = operators.COMPARISON_MIRROR_DICT[op]
@@ -366,6 +372,9 @@ class ArithTreeTransformer(TreeTransformer):
         operators.UNARY_SUBTRACT_OP: [
             double_negation_reduction,
             zero_reduction_subtraction,
+        ],
+        operators.TERNARY_SELECT_OP: [
+            same_expression_reduction_ifelse,
         ],
     }
 

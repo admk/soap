@@ -17,6 +17,7 @@ context = dict(
     norm='mse_error',   # function for computing multiple variable avg error
     # transform related
     rand_seed=0,
+    reduce_limit=2000,
     size_limit=1000,
     loop_size_limit=100,
     algorithm='thick',

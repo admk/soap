@@ -11,8 +11,8 @@ from soap.semantics.functions.label import resources
 from soap.shell.utils import parse, legup_and_quartus
 
 
-rc('font', family='serif', size=20, serif='Times')
-
+rc('font', family='serif', size=15, serif='Times')
+rc('text', usetex=True)
 
 results_file_name = 'resources_compare_no_sharing.pkl'
 
@@ -83,15 +83,24 @@ def data_points(results):
 
 
 def plot_scatter(results):
+    from scipy import stats
     points = data_points(results)
     soap, legup, quartus = zip(*points)
+    k, m, r, p, e = stats.linregress(soap, quartus)
+    print(k, m, r, p, e)
+    m = 0
+    k = sum(quartus) / sum(soap)
+    print(k)
     figure = pyplot.figure()
     plot = figure.add_subplot(111)
-    plot.scatter(soap, quartus, label='Quartus', marker='+', color='b')
-    plot.scatter(soap, legup, label='LegUp', marker='x', color='r')
+    plot.scatter(soap, quartus, label='Quartus', marker='.', color='b')
+    plot.plot([0, max(soap)], [m, k * max(soap) + m])
+    plot.set_xlim(0, max(soap))
+    plot.set_ylim(0, max(quartus))
+    # plot.scatter(soap, legup, label='LegUp', marker='x', color='r')
     plot.set_xlabel('Estimated (No of LUTs)')
-    plot.set_ylabel('Statistics from other tools (No of LUTs)')
-    plot.legend(bbox_to_anchor=(0.4, 1.0), fontsize='small', scatterpoints=1)
+    plot.set_ylabel('Actual (No of LUTs)')
+    # plot.legend(bbox_to_anchor=(0.4, 1.0), fontsize='small', scatterpoints=1)
     figure.savefig('resource.pdf')
     pyplot.show()
 
@@ -120,14 +129,17 @@ def plot_order(results):
     quartus = sorted(range(len(quartus)), key=lambda i: (quartus[i], soap[i]))
     soap = sorted(range(len(soap)), key=lambda i: (soap[i], old_quartus[i]))
     legup = sorted(range(len(legup)), key=lambda i: (legup[i], old_quartus[i]))
-    figure = pyplot.figure()
+    figure = pyplot.figure(figsize=(4,3))
     plot = figure.add_subplot(111)
+    # plot.scatter(soap, legup, label='LegUp', marker='x', color='r')
+    plot.plot([0, max(soap)], [0, max(soap)], color='k')
     plot.scatter(soap, quartus, label='Quartus', marker='+', color='b')
-    plot.scatter(soap, legup, label='LegUp', marker='x', color='r')
-    plot.set_xlabel('Estimated LUTs Rank')
-    plot.set_ylabel('Acutal LUTs Rank')
-    plot.legend(bbox_to_anchor=(0.4, 1.0), fontsize='small', scatterpoints=1)
-    figure.savefig('resource_rank.pdf')
+    plot.set_xlabel('Rank of Actual LUTs')
+    plot.set_ylabel('Rank of Estimated LUTs')
+    plot.set_xlim(0, max(soap))
+    plot.set_ylim(0, max(quartus))
+    # plot.legend(bbox_to_anchor=(0.4, 1.0), fontsize='small', scatterpoints=1)
+    figure.savefig('resource_rank.pdf', bbox_inches='tight', pad_inches=2)
     pyplot.show()
 
 
@@ -172,6 +184,6 @@ if __name__ == '__main__':
     # results = main()
     results = load_results()
     plot_scatter(results)
-    plot_percentage_difference(results)
+    # plot_percentage_difference(results)
     plot_order(results)
-    plot_fmax()
+    # plot_fmax()

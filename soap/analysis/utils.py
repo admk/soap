@@ -266,9 +266,9 @@ class Plot(object):
         except AttributeError:
             pass
         from matplotlib import rc, pyplot
-        rc('font', family='serif', size=24, serif='Times')
+        rc('font', family='serif', size=15, serif='Times')
         rc('text', usetex=True)
-        self.figure = pyplot.figure()
+        self.figure = pyplot.figure(figsize=(4, 3))
         plot = self.figure.add_subplot(111)
         colors = self._colors()
         color_groups = {}

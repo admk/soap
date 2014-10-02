@@ -5,6 +5,7 @@
 import functools
 import itertools
 import multiprocessing
+import random
 import sys
 
 from soap import logger
@@ -107,6 +108,16 @@ class TreeTransformer(TreeFarmer):
         trees = set(self._harvest(trees))
         return trees
 
+    def _sample(self, expr_set):
+        limit = context.size_limit
+        if limit >= 0 and len(expr_set) > limit:
+            logger.debug(
+                'Equivalent structures over limit, '
+                'reduces population size by sampling.')
+            random.seed(context.rand_seed)
+            expr_set = random.sample(expr_set, limit)
+        return set(expr_set)
+
     def _step(self, expressions, closure=False, depth=None):
         """One step of the transitive closure."""
         rules = self.transform_rules if closure else self.reduction_rules
@@ -142,6 +153,7 @@ class TreeTransformer(TreeFarmer):
             logger.persistent('Trees', len(done_trees))
             logger.persistent('Todo', len(todo_trees))
             if not reduced:
+                todo_trees = self._sample(todo_trees)
                 _, step_trees = \
                     self._step(todo_trees, not reduced, None)
                 step_trees -= done_trees

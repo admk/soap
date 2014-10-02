@@ -72,6 +72,7 @@ def _run_simulation(program, samples, rv):
                 max(abs(error.e.min), abs(error.e.max))
                 for var, error in result_state.items() if var in rv)
             max_error = max(error, max_error)
+        logger.unpersistent('Sim')
     except KeyboardInterrupt:
         pass
     return max_error
@@ -261,7 +262,7 @@ def legup_and_quartus(meta_state, state, out_vars):
             logger.info(
                 'Quartus fitting & timing done {}, {}.'
                 .format(quartus_stats, fmax))
-    except Exception as e:
+    except (Exception, KeyboardInterrupt) as e:
         logger.error(d, e)
     else:
         shutil.rmtree(d)
