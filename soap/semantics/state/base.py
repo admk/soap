@@ -24,7 +24,7 @@ class BaseState(base_dispatcher('visit')):
 
     def visit_IfFlow(self, flow):
         bool_expr = flow.conditional_expr
-        true_split, false_split = bool_eval(self, bool_expr)
+        true_split, false_split = bool_eval(bool_expr, self)
         true_split = true_split.transition(flow.true_flow)
         false_split = false_split.transition(flow.false_flow)
         return true_split | false_split

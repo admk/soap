@@ -101,7 +101,7 @@ semicolon   = _ ';'  _
 question    = _ '?'  _
 colon       = _ ':'  _
 
-compare_operator = lt / le / ge / gt / eq / ne
+compare_operator = le / lt / ge / gt / eq / ne
 
 lt = _ '<'  _
 le = _ '<=' _

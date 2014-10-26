@@ -18,7 +18,7 @@ class TestFusion(unittest.TestCase):
                     yield k
         state = flow_to_meta_state(case['program'])
         label = _label(state, BoxState(bottom=True))[1]
-        new_state = fusion(label, case['out_vars'])
+        new_state = fusion(label, case['outputs'])
         pprint(dict(new_state))
         out_vars = list(find_output_variable_tuple(new_state))
         fusion_count = case['fusion_count']

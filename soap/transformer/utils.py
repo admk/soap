@@ -132,4 +132,4 @@ def parsings(expr):
         expr, None, {
             operators.ADD_OP: [associativity_addition],
             operators.MULTIPLY_OP: [associativity_multiplication]
-        })
+        }, depth=1000)

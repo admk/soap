@@ -27,9 +27,9 @@ class _Context(dict):
 
     @contextmanager
     def no_invalidate_cache(self):
-        self.should_invalidate_cache = False
+        super().__setattr__('_invalidate_cache', False)
         yield
-        del self.should_invalidate_cache
+        super().__delattr__('_invalidate_cache')
 
     def __setattr__(self, key, value):
         hook = getattr(self, key + '_hook', lambda v: v)
@@ -38,7 +38,7 @@ class _Context(dict):
             value = self._cast_dict(value)
         old_value = self.get(key)
         self[key] = value
-        if self.get('should_invalidate_cache', True):
+        if getattr(self, '_invalidate_cache', True):
             if old_value != value:
                 invalidate_cache()
 

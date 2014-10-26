@@ -15,7 +15,7 @@ test_programs = {
             """),
         'fusion_count': 0,
         'fusion_vartup_len': 0,
-        'out_vars': [Variable('x')],
+        'outputs': [Variable('x')],
         'inputs': BoxState(x=0, n=1),
     },
     'while': {
@@ -26,7 +26,7 @@ test_programs = {
             """),
         'fusion_count': 0,
         'fusion_vartup_len': 0,
-        'out_vars': [Variable('x')],
+        'outputs': [Variable('x')],
         'inputs': BoxState(x=0, n=5),
     },
     'if_fusion': {
@@ -39,7 +39,7 @@ test_programs = {
             """),
         'fusion_count': 1,
         'fusion_vartup_len': 2,
-        'out_vars': [Variable('x'), Variable('y')],
+        'outputs': [Variable('x'), Variable('y')],
         'inputs': BoxState(a=0, x=0, y=0),
     },
     'while_fusion': {
@@ -55,7 +55,7 @@ test_programs = {
             """),
         'fusion_count': 1,
         'fusion_vartup_len': 2,
-        'out_vars': [Variable('x'), Variable('y')],
+        'outputs': [Variable('x'), Variable('y')],
         'inputs': BoxState(x=0, y=1, n=5),
     },
     'nested_if': {
@@ -70,7 +70,7 @@ test_programs = {
             """),
         'fusion_count': 1,
         'fusion_vartup_len': 2,
-        'out_vars': [Variable('x'), Variable('y')],
+        'outputs': [Variable('x'), Variable('y')],
         'inputs': BoxState(a=-1, b=-1, x=0, y=0),
     },
     'nested_while': {
@@ -84,7 +84,7 @@ test_programs = {
             """),
         'fusion_count': 1,
         'fusion_vartup_len': 2,
-        'out_vars': [Variable('x'), Variable('y')],
+        'outputs': [Variable('x'), Variable('y')],
         'inputs': BoxState(x=1, y=0, n=5),
     },
 }
