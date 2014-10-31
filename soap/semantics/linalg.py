@@ -14,26 +14,6 @@ class Matrix(Lattice, collections.Sequence):
             return
         self._set_items(items)
 
-    def is_top(self):
-        return False
-
-    def is_bottom(self):
-        return False
-
-    def join(self, other):
-        new_items = []
-        for self_row, other_row in zip(self, other):
-            row = [x.join(y) for x, y in zip(self_row, other_row)]
-            new_items.append(row)
-        return self.__class__(new_items)
-
-    def meet(self, other):
-        new_items = []
-        for self_row, other_row in zip(self, other):
-            row = [x.meet(y) for x, y in zip(self_row, other_row)]
-            new_items.append(row)
-        return self.__class__(new_items)
-
     def _set_items(self, items):
         cls = self.value_class
         new_items = []
@@ -48,6 +28,38 @@ class Matrix(Lattice, collections.Sequence):
                 raise ValueError('Row shape mismatch.')
             new_items.append(row)
         self._items = tuple(new_items)
+
+    def transpose(self):
+        no_of_rows, no_of_cols = self.shape
+        new_items = [[] for _ in range(no_of_cols)]
+        for col_idx in range(no_of_cols):
+            for row in self._items:
+                new_items[col_idx].append(row[col_idx])
+        return self.__class__(new_items)
+
+    @property
+    def T(self):
+        return self.transpose()
+
+    def is_top(self):
+        return False
+
+    def is_bottom(self):
+        return False
+
+    def join(self, other):
+        new_items = []
+        for self_row, other_row in zip(self._items, other._items):
+            row = [x.join(y) for x, y in zip(self_row, other_row)]
+            new_items.append(row)
+        return self.__class__(new_items)
+
+    def meet(self, other):
+        new_items = []
+        for self_row, other_row in zip(self._items, other._items):
+            row = [x.meet(y) for x, y in zip(self_row, other_row)]
+            new_items.append(row)
+        return self.__class__(new_items)
 
     def __getitem__(self, index):
         top = self.is_top()
@@ -86,10 +98,15 @@ class Matrix(Lattice, collections.Sequence):
     def shape(self):
         return (len(self._items), len(self._items[0]))
 
+    def tuple(self):
+        return self._items
+
     def __len__(self):
         return len(self._items)
 
     def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
         return self._items == other._items
 
     def __hash__(self):

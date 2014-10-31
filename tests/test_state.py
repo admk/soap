@@ -9,66 +9,41 @@ from soap.parser.program import parse
 from soap.semantics import BoxState
 
 
-class TestIdentityFlow(unittest.TestCase):
-    """Unittesting for :class:`soap.program.IdentityFlow`."""
-    def setUp(self):
-        self.flow = IdentityFlow()
-        self.state = BoxState(x=[1, 2])
+class TestBoxState(unittest.TestCase):
+    def test_visit_IdentityFlow(self):
+        flow = IdentityFlow()
+        state = BoxState(x=[1, 2])
+        self.assertEqual(state.visit_IdentityFlow(flow), state)
 
-    def test_flow(self):
-        self.assertEqual(self.flow.flow(self.state), self.state)
-
-
-class TestAssignFlow(unittest.TestCase):
-    """Unittesting for :class:`soap.program.AssignFlow`."""
-    def setUp(self):
-        self.flow = AssignFlow(parse('y'), parse('x'))
-        self.expr_flow = AssignFlow(parse('x'), parse('x + 1'))
-        self.state = BoxState(x=[1, 2])
-
-    def test_flow(self):
+    def test_visit_AssignFlow(self):
+        flow = AssignFlow(parse('y'), parse('x + 1'))
+        state = BoxState(x=[1, 2])
         self.assertEqual(
-            self.flow.flow(self.state), BoxState(x=[1, 2], y=[1, 2]))
-        self.assertEqual(self.expr_flow.flow(self.state), BoxState(x=[2, 3]))
+            state.visit_AssignFlow(flow), BoxState(x=[1, 2], y=[2, 3]))
 
-
-class TestIfFlow(unittest.TestCase):
-    """Unittesting for :class:`soap.program.IfFlow`."""
-    def setUp(self):
-        self.flow = IfFlow(
+    def test_visit_IfFlow(self):
+        flow = IfFlow(
             parse('x < 2'),
             AssignFlow(parse('x'), parse('x + 1')),
             AssignFlow(parse('x'), parse('x - 1')))
-        self.state = BoxState(x=[1, 3])
+        state = BoxState(x=[1, 3])
+        self.assertEqual(state.visit_IfFlow(flow), BoxState(x=[1, 2]))
 
-    def test_flow(self):
-        self.assertEqual(self.flow.flow(self.state), BoxState(x=[1, 2]))
-
-
-class TestWhileFlow(unittest.TestCase):
-    """Unittesting for :class:`soap.program.WhileFlow`."""
-    def setUp(self):
-        self.flow = WhileFlow(
+    def test_visit_WhileFlow(self):
+        flow = WhileFlow(
             parse('x < 3'), AssignFlow(parse('x'), parse('x + 1')))
-        self.state = BoxState(x=[1, 4])
+        state = BoxState(x=[1, 4])
+        self.assertEqual(state.visit_WhileFlow(flow), BoxState(x=[3, 4]))
 
-    def test_flow(self):
-        self.assertEqual(self.flow.flow(self.state), BoxState(x=[3, 4]))
-
-
-class TestCompositionalFlow(unittest.TestCase):
-    """Unittesting for :class:`soap.program.CompositionalFlow`."""
-    def setUp(self):
-        self.flow = CompositionalFlow()
-        self.flow += AssignFlow(parse('x'), parse('x + 1'))
-        self.flow += AssignFlow(parse('x'), parse('x - 1'))
-        self.state = BoxState(x=[1, 4])
-
-    def test_flow(self):
-        self.assertEqual(self.flow.flow(self.state), self.state)
+    def test_compositional_flow(self):
+        flow = CompositionalFlow()
+        flow += AssignFlow(parse('x'), parse('x + 1'))
+        flow += AssignFlow(parse('x'), parse('x - 1'))
+        state = BoxState(x=[1, 4])
+        self.assertEqual(state.visit_CompositionalFlow(flow), state)
 
 
-class TestExampleFlow(unittest.TestCase):
+class TestBoxStateExampleTransitions(unittest.TestCase):
     """Unittesting for :class:`soap.program.flow`."""
     def setUp(self):
         self.simple_if = code_gobble(
