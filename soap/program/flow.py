@@ -71,7 +71,7 @@ class Flow(object):
         return Label(id(self))
 
     def __eq__(self, other):
-        return type(self) is type(other)
+        raise NotImplementedError('Override this method')
 
     def __str__(self):
         return self.format().replace('    ', '').replace('\n', '').strip()
@@ -88,6 +88,9 @@ class IdentityFlow(Flow):
     def __repr__(self):
         return '{cls}()'.format(cls=self.__class__.__name__)
 
+    def __eq__(self, other):
+        return type(self) is type(other)
+
     def __hash__(self):
         return hash('skip;')
 
@@ -95,7 +98,7 @@ class IdentityFlow(Flow):
 class InputFlow(IdentityFlow):
     def __init__(self, inputs):
         super().__init__()
-        self.inputs = inputs
+        self.inputs = dict(inputs)
 
     def format(self, state=None):
         inputs = ', '.join(
@@ -106,11 +109,19 @@ class InputFlow(IdentityFlow):
         return '{cls}({inputs!r})'.format(
             cls=self.__class__.__name__, inputs=self.inputs)
 
+    def __hash__(self):
+        raise NotImplementedError
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        return self.inputs == other.inputs
+
 
 class OutputFlow(IdentityFlow):
     def __init__(self, outputs):
         super().__init__()
-        self.outputs = outputs
+        self.outputs = tuple(outputs)
 
     def format(self, state=None):
         outputs = ', '.join(str(v) for v in self.outputs)
@@ -119,6 +130,14 @@ class OutputFlow(IdentityFlow):
     def __repr__(self):
         return '{cls}({outputs!r})'.format(
             cls=self.__class__.__name__, outputs=self.outputs)
+
+    def __hash__(self):
+        return hash(self.outputs)
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        return self.outputs == other.outputs
 
 
 class AssignFlow(Flow):
@@ -139,7 +158,7 @@ class AssignFlow(Flow):
         return s
 
     def __eq__(self, other):
-        if not super().__eq__(other):
+        if type(self) is not type(other):
             return False
         return (self.var == other.var and self.expr == other.expr)
 
@@ -199,7 +218,7 @@ class IfFlow(Flow):
             join_format=join_format)
 
     def __eq__(self, other):
-        if not super().__eq__(other):
+        if type(self) is not type(other):
             return False
         return (self.conditional_expr == other.conditional_expr and
                 self.true_flow == other.true_flow and
@@ -247,7 +266,7 @@ class WhileFlow(Flow):
         return template.render(render_kwargs, loop_format=loop_format)
 
     def __eq__(self, other):
-        if not super().__eq__(other):
+        if type(self) is not type(other):
             return False
         return (self.conditional_expr == other.conditional_expr and
                 self.loop_flow == other.loop_flow)
@@ -288,7 +307,7 @@ class CompositionalFlow(Flow):
         return '\n'.join(flow.format(state) for flow in self.flows)
 
     def __eq__(self, other):
-        if not super().__eq__(other):
+        if type(self) is not type(other):
             return False
         return (self.flows == other.flows)
 
