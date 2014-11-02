@@ -12,6 +12,7 @@ from soap.semantics import cast, ErrorSemantics
 
 _lift_child = nodes.NodeVisitor.lift_child
 _lift_first = lambda self, node, children: children[0]
+_lift_second = lambda self, node, children: children[1]
 _lift_children = lambda self, node, children: children
 _lift_text = lambda self, node, children: node.text
 _lift_dontcare = lambda self, node, children: None
@@ -94,10 +95,7 @@ class _ProgramParser(object):
         return input_list
 
     visit_maybe_input_list = _lift_child
-
-    def visit_comma_input_list(self, node, children):
-        comma, input_list = children
-        return input_list
+    visit_comma_input_list = _lift_second
 
     def visit_input_expr(self, node, children):
         variable, colon, number = children
@@ -107,18 +105,9 @@ class _ProgramParser(object):
         output_lit, left_paren, output_list, right_paren, semicolon = children
         return OutputFlow(output_list)
 
-    def visit_output_list(self, node, children):
-        output_var, maybe_output_list = children
-        output_list = [output_var]
-        if maybe_output_list:
-            output_list += maybe_output_list
-        return output_list
-
-    visit_maybe_output_list = _lift_child
-
-    def visit_comma_output_list(self, node, children):
-        comma, output_list = children
-        return output_list
+    visit_output_list = _visit_list
+    visit_maybe_output_list = _visit_maybe_list
+    visit_comma_output_list = _lift_second
 
 
 class _ExpressionParser(object):
@@ -158,6 +147,16 @@ class _ExpressionParser(object):
     visit_maybe_sum_list = visit_maybe_prod_list = _visit_maybe_list
     visit_sum_list = visit_prod_list = _visit_list
     visit_sum_expr = visit_prod_expr = _lift_children
+
+    visit_variable_subscript = _lift_child
+
+    def visit_variable_with_subscript(self, node, children):
+        var, _1, subscript, _2 = children
+        return expression_factory(operators.INDEX_OP, var, subscript)
+
+    visit_subscript_list = _visit_list
+    visit_maybe_subscript_list = _visit_maybe_list
+    visit_comma_subscript_list = _lift_second
 
     def visit_number(self, node, children):
         child = _lift_child(self, node, children)

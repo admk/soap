@@ -60,7 +60,7 @@ def split_multi_expr(e):
 @cached
 def expression_factory(op, *args):
     from soap.expression import operators
-    from soap.expression.variable import Variable
+    from soap.expression.variable import Variable, VariableSubscript
     from soap.expression.arithmetic import (
         UnaryArithExpr, BinaryArithExpr, TernaryArithExpr, SelectExpr
     )
@@ -76,6 +76,9 @@ def expression_factory(op, *args):
             return Variable(op)
         raise ValueError(
             'Do not know how to construct expression from {!r}'.format(op))
+
+    if op == operators.INDEX_OP:
+        return VariableSubscript(*args)
 
     if op == operators.FIXPOINT_OP:
         return FixExpr(*args)

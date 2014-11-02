@@ -23,9 +23,10 @@ OR_OP = 'or'
 # special operators
 TERNARY_SELECT_OP = '?'
 FIXPOINT_OP = 'fix'
-STATE_GETTER_OP = '[]'
+STATE_GETTER_OP = '()'
 BARRIER_OP = ','
 UNROLL_OP = '@'
+INDEX_OP = '[]'
 
 
 ARITHMETIC_OPERATORS = [

@@ -4,9 +4,10 @@
 """
 import collections
 
-from soap.expression.base import Expression, UnaryExpression
-from soap.expression.arithmetic import ArithmeticMixin
+from soap.expression.base import Expression, UnaryExpression, BinaryExpression
 from soap.expression.boolean import BooleanMixin
+from soap.expression.arithmetic import ArithmeticMixin
+from soap.expression.operators import INDEX_OP
 
 
 class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
@@ -38,6 +39,44 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
 
     def __hash__(self):
         self._hash = hash_val = hash((self.name))
+        return hash_val
+
+
+class VariableSubscript(ArithmeticMixin, BooleanMixin, BinaryExpression):
+
+    __slots__ = ()
+
+    def __init__(self, var=None, subscript=None, top=False, bottom=False):
+        super().__init__(
+            op=INDEX_OP, a1=var, a2=tuple(subscript), top=top, bottom=bottom)
+
+    @property
+    def var(self):
+        return self.a1
+
+    @property
+    def subscript(self):
+        return self.a2
+
+    def __str__(self):
+        subscript = ', '.join(str(i) for i in self.subscript)
+        return '{}[{}]'.format(self.var, subscript)
+
+    def __repr__(self):
+        return '{cls}({var}, {subscript})'.format(
+            cls=self.__class__.__name__, var=self.var,
+            subscript=self.subscript)
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.var == other.var and self.subscript == other.subscript
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __hash__(self):
+        self._hash = hash_val = hash((self.name, self.subscript))
         return hash_val
 
 

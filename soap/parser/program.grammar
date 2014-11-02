@@ -4,8 +4,8 @@
 
 statement =
     compound_statement /
-    boolean_expression /
     arithmetic_expression /
+    boolean_expression /
     _  # empty
 compound_statement = single_statement statement
 single_statement =
@@ -19,7 +19,7 @@ single_statement =
 skip_statement = skip semicolon
 
 assign_statement =
-    variable assign arithmetic_expression semicolon
+    variable_subscript assign arithmetic_expression semicolon
 
 if_statement = if_block semicolon
 if_block = if_else_block / if_then_block
@@ -67,7 +67,7 @@ arithmetic_expression = select / term
 select  = boolean_expression question term colon term
 term    = factor maybe_sum_list
 factor  = atom maybe_prod_list
-atom    = parened / unary_expr / number / variable
+atom    = parened / unary_expr / number / variable_subscript
 parened = left_paren arithmetic_expression right_paren
 
 unary_expr      = sub atom
@@ -78,10 +78,16 @@ maybe_prod_list = prod_list / _
 prod_list       = prod_expr maybe_prod_list
 prod_expr       = prod_operator atom
 
-number = error / interval / scalar
-error = interval interval
+variable_subscript      = variable_with_subscript / variable
+variable_with_subscript = variable left_brac subscript_list right_brac
+subscript_list          = arithmetic_expression maybe_subscript_list
+maybe_subscript_list    = comma_subscript_list / _
+comma_subscript_list    = comma subscript_list
+
+number   = error / interval / scalar
+error    = interval interval
 interval = left_brac scalar comma scalar right_brac
-scalar = float / integer
+scalar   = float / integer
 
 
 # ==========
