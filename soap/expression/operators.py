@@ -26,7 +26,9 @@ FIXPOINT_OP = 'fix'
 STATE_GETTER_OP = '()'
 BARRIER_OP = ','
 UNROLL_OP = '@'
-INDEX_OP = '[]'
+INDEX_ACCESS_OP = 'access'
+INDEX_UPDATE_OP = 'update'
+INDEX_SUBSCRIPT_OP = 'subscript'
 
 
 ARITHMETIC_OPERATORS = [

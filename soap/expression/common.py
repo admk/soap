@@ -57,10 +57,12 @@ def split_multi_expr(e):
     return split_multi_expr(e.a1) + split_multi_expr(e.a2)
 
 
+op_expr_cls_map = None
+
+
 @cached
 def expression_factory(op, *args):
     from soap.expression import operators
-    from soap.expression.variable import Variable, VariableSubscript
     from soap.expression.arithmetic import (
         UnaryArithExpr, BinaryArithExpr, TernaryArithExpr, SelectExpr
     )
@@ -68,6 +70,8 @@ def expression_factory(op, *args):
         UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr
     )
     from soap.expression.fixpoint import FixExpr, UnrollExpr
+    from soap.expression.linalg import Subscript, AccessExpr, UpdateExpr
+    from soap.expression.variable import Variable
 
     if not args:
         if isinstance(op, Variable):
@@ -77,17 +81,19 @@ def expression_factory(op, *args):
         raise ValueError(
             'Do not know how to construct expression from {!r}'.format(op))
 
-    if op == operators.INDEX_OP:
-        return VariableSubscript(*args)
-
-    if op == operators.FIXPOINT_OP:
-        return FixExpr(*args)
-
-    if op == operators.TERNARY_SELECT_OP:
-        return SelectExpr(*args)
-
-    if op == operators.UNROLL_OP:
-        return UnrollExpr(*args)
+    global op_expr_cls_map
+    if not op_expr_cls_map:
+        op_expr_cls_map = {
+            operators.INDEX_SUBSCRIPT_OP: Subscript,
+            operators.INDEX_ACCESS_OP: AccessExpr,
+            operators.INDEX_UPDATE_OP: UpdateExpr,
+            operators.FIXPOINT_OP: FixExpr,
+            operators.TERNARY_SELECT_OP: SelectExpr,
+            operators.UNROLL_OP: UnrollExpr,
+        }
+    cls = op_expr_cls_map.get(op)
+    if cls:
+        return cls(*args)
 
     if op in operators.ARITHMETIC_OPERATORS:
         class_list = [UnaryArithExpr, BinaryArithExpr, TernaryArithExpr]

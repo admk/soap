@@ -152,7 +152,7 @@ class _ExpressionParser(object):
 
     def visit_variable_with_subscript(self, node, children):
         var, _1, subscript, _2 = children
-        return expression_factory(operators.INDEX_OP, var, subscript)
+        return expression_factory(operators.INDEX_ACCESS_OP, var, subscript)
 
     visit_subscript_list = _visit_list
     visit_maybe_subscript_list = _visit_maybe_list
