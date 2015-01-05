@@ -4,7 +4,7 @@ from soap.expression.base import (
 )
 from soap.expression.boolean import BooleanMixin
 from soap.expression.operators import (
-    INDEX_ACCESS_OP, INDEX_UPDATE_OP, INDEX_SUBSCRIPT_OP
+    INDEX_ACCESS_OP, INDEX_UPDATE_OP, SUBSCRIPT_OP
 )
 
 
@@ -14,7 +14,7 @@ class Subscript(Expression):
 
     def __init__(self, *subscript, top=False, bottom=False):
         super().__init__(
-            INDEX_SUBSCRIPT_OP, *subscript, top=top, bottom=bottom)
+            SUBSCRIPT_OP, *subscript, top=top, bottom=bottom)
 
     def __iter__(self):
         return iter(self.args)

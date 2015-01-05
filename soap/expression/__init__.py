@@ -27,3 +27,4 @@ from soap.expression.boolean import (
     BoolExpr, UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr
 )
 from soap.expression.fixpoint import FixExpr, UnrollExpr
+from soap.expression.linalg import Subscript, AccessExpr, UpdateExpr

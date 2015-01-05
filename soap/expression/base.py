@@ -115,7 +115,7 @@ class Expression(FlatLattice, Flyweight):
             return False
         if id(self) == id(other):
             return True
-        if hash(self) != hash(other):
+        if hash(self) != hash(other) or type(self) is not type(other):
             return False
         return self._attr() == other._attr()
 

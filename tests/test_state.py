@@ -23,7 +23,7 @@ class TestBoxState(unittest.TestCase):
 
     def test_visit_IfFlow(self):
         flow = IfFlow(
-            parse('x < 2'),
+            parse('(x < 2)'),
             AssignFlow(parse('x'), parse('x + 1')),
             AssignFlow(parse('x'), parse('x - 1')))
         state = BoxState(x=[1, 3])
@@ -31,7 +31,7 @@ class TestBoxState(unittest.TestCase):
 
     def test_visit_WhileFlow(self):
         flow = WhileFlow(
-            parse('x < 3'), AssignFlow(parse('x'), parse('x + 1')))
+            parse('(x < 3)'), AssignFlow(parse('x'), parse('x + 1')))
         state = BoxState(x=[1, 4])
         self.assertEqual(state.visit_WhileFlow(flow), BoxState(x=[3, 4]))
 

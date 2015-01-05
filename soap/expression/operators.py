@@ -28,7 +28,7 @@ BARRIER_OP = ','
 UNROLL_OP = '@'
 INDEX_ACCESS_OP = 'access'
 INDEX_UPDATE_OP = 'update'
-INDEX_SUBSCRIPT_OP = 'subscript'
+SUBSCRIPT_OP = 'subscript'
 
 
 ARITHMETIC_OPERATORS = [

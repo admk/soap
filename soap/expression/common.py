@@ -84,7 +84,7 @@ def expression_factory(op, *args):
     global op_expr_cls_map
     if not op_expr_cls_map:
         op_expr_cls_map = {
-            operators.INDEX_SUBSCRIPT_OP: Subscript,
+            operators.SUBSCRIPT_OP: Subscript,
             operators.INDEX_ACCESS_OP: AccessExpr,
             operators.INDEX_UPDATE_OP: UpdateExpr,
             operators.FIXPOINT_OP: FixExpr,

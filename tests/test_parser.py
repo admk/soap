@@ -1,6 +1,6 @@
 import unittest
 
-from soap.expression import expression_factory, operators, Variable
+from soap.expression import expression_factory, operators, Variable, Subscript
 from soap.semantics import IntegerInterval, ErrorSemantics
 from soap.program import (
     AssignFlow, IdentityFlow, IfFlow, WhileFlow, InputFlow, OutputFlow,
@@ -54,22 +54,22 @@ class TestProgramParser(unittest.TestCase):
 
     def test_variable_subscript(self):
         expr = expression_factory(
-            operators.INDEX_OP, self.x, [self.i1])
+            operators.INDEX_ACCESS_OP, self.x, Subscript(self.i1))
         self.assertEqual(parse('x[1]'), expr)
 
         expr = expression_factory(
-            operators.INDEX_OP, self.x,
-            [expression_factory(operators.ADD_OP, self.y, self.i1)])
+            operators.INDEX_ACCESS_OP, self.x,
+            Subscript(expression_factory(operators.ADD_OP, self.y, self.i1)))
         self.assertEqual(parse('x[y + 1]'), expr)
 
         expr = expression_factory(
-            operators.INDEX_OP, self.x, [self.y, self.i1])
+            operators.INDEX_ACCESS_OP, self.x, Subscript(self.y, self.i1))
         self.assertEqual(parse('x[y, 1]'), expr)
 
         expr = expression_factory(
-            operators.INDEX_OP, self.x,
-            [expression_factory(
-                operators.INDEX_OP, self.y, [self.i1])])
+            operators.INDEX_ACCESS_OP, self.x,
+            Subscript(expression_factory(
+                operators.INDEX_ACCESS_OP, self.y, Subscript(self.i1))))
         self.assertEqual(parse('x[y[1]]'), expr)
 
     def test_skip_statement(self):
