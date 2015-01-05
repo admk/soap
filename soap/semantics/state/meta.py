@@ -1,5 +1,6 @@
 from soap.expression import (
-    Expression, SelectExpr, FixExpr, Variable, OutputVariableTuple
+    AccessExpr, Expression, SelectExpr, FixExpr, Variable, OutputVariableTuple,
+    UpdateExpr
 )
 from soap.lattice import Lattice, map
 from soap.semantics.error import cast
@@ -47,7 +48,11 @@ class MetaState(BaseState, map(None, Expression)):
         return self
 
     def visit_AssignFlow(self, flow):
-        return self[flow.var:expand_expr(flow.expr, self)]
+        var, expr = flow.var, flow.expr
+        if isinstance(var, AccessExpr):
+            var, subscript = var.var, var.subscript
+            expr = UpdateExpr(var, subscript, expr)
+        return self[var:expand_expr(expr, self)]
 
     def visit_IfFlow(self, flow):
         def get(state, var):

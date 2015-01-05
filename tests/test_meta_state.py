@@ -49,9 +49,25 @@ class TestMetaState(unittest.TestCase):
             x=AccessExpr(parse('y'), [parse('i')]), y='y', i='i')
         self.assertEqual(state, compare_state)
 
+    def test_access_expr_multi(self):
+        flow = parse('x := y[i, j];')
+        state = MetaState(x='x', y='y', i='i', j='j').visit_AssignFlow(flow)
+        subs = [parse('i'), parse('j')]
+        compare_state = MetaState(
+            x=AccessExpr(parse('y'), subs), y='y', i='i', j='j')
+        self.assertEqual(state, compare_state)
+
     def test_update_expr(self):
         flow = parse('x[i] := 1;')
-        state = MetaState(x='x', i='i').visit_AssignFlow(flow)
+        state = MetaState(x='x', i='y').visit_AssignFlow(flow)
         compare_state = MetaState(
-            x=UpdateExpr(parse('x'), [parse('i')], parse('1')), y='y')
+            x=UpdateExpr(parse('x'), [parse('y')], parse('1')), i='y')
+        self.assertEqual(state, compare_state)
+
+    def test_update_expr_multi(self):
+        flow = parse('x[i, j] := 1;')
+        state = MetaState(x='x', i='i', j='j').visit_AssignFlow(flow)
+        subs = [parse('i'), parse('j')]
+        compare_state = MetaState(
+            x=UpdateExpr(parse('x'), subs, parse('1')), i='i', j='j')
         self.assertEqual(state, compare_state)
