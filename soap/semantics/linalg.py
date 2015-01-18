@@ -1,122 +1,190 @@
 import collections
+import itertools
 
 from soap.lattice.base import Lattice
+from soap.lattice.common import join
 from soap.semantics.error import ErrorSemantics, FloatInterval, IntegerInterval
 
 
-class Matrix(Lattice, collections.Sequence):
-    __slots__ = ('_items', )
+class MultiDimensionalArray(Lattice, collections.Sequence):
+    __slots__ = ('_flat_items', )
     value_class = None
 
-    def __init__(self, items=None, bottom=False, top=False):
+    def __init__(self, items=None, _flat_items=None, _shape=None,
+                 bottom=False, top=False):
         super().__init__(bottom=bottom, top=top)
         if top or bottom:
             return
-        self._set_items(items)
+        self._init_flat_items(items, _flat_items, _shape)
 
-    def _set_items(self, items):
-        cls = self.value_class
-        new_items = []
-        shape = None
-        for row in items:
-            if not isinstance(row, collections.Sequence):
-                row = (row, )
-            row = tuple(cls(item) for item in row)
-            if shape is None:
-                shape = len(row)
-            elif shape != len(row):
-                raise ValueError('Row shape mismatch.')
-            new_items.append(row)
-        self._items = tuple(new_items)
+    def _init_flat_items(self, items, _flat_items, _shape):
+
+        def append_flat_items(flattened_flat_items, items):
+            n = [len(items)]
+            if not isinstance(items[0], (list, tuple)):
+                flattened_flat_items += items
+                return n
+            first_len_list = None
+            for each in items:
+                each_len_list = append_flat_items(flattened_flat_items, each)
+                if first_len_list is None:
+                    first_len_list = each_len_list
+                if each_len_list != first_len_list:
+                    raise ValueError('Shape mismatch.')
+            return n + first_len_list
+
+        if _flat_items is not None:
+            self.shape = _shape
+            self._flat_items = _flat_items
+        else:
+            flattened_flat_items = []
+            self.shape = tuple(append_flat_items(flattened_flat_items, items))
+            self._flat_items = tuple(
+                item if isinstance(item, self.value_class) else
+                self.value_class(item) for item in flattened_flat_items)
+
+        # set up shape_prod for index translation
+        shape_prod = []
+        prod = 1
+        for size in reversed(self.shape):
+            shape_prod.append(prod)
+            prod *= size
+        self._shape_prod = tuple(reversed(shape_prod))
+
+    @property
+    def size(self):
+        return itertools.reduce(lambda x, y: x * y, self.shape)
+
+    def is_top(self):
+        return all(i.is_top() for i in self._flat_items)
+
+    def is_bottom(self):
+        return all(i.is_bottom() for i in self._flat_items)
+
+    def join(self, other):
+        if self.shape != other.shape:
+            raise ValueError('Shape mismatch.')
+        items = tuple(
+            x.join(y) for x, y in zip(self._flat_items, other._flat_items))
+        return self.__class__(_flat_items=items, _shape=self.shape)
+
+    def meet(self, other):
+        if self.shape != other.shape:
+            raise ValueError('Shape mismatch.')
+        items = tuple(
+            x.meet(y) for x, y in zip(self._flat_items, other._flat_items))
+        return self.__class__(_flat_items=items, _shape=self.shape)
+
+    def _to_flat_index(self, index):
+        return sum([i * p for i, p in zip(index, self._shape_prod)])
+
+    def to_nested_list(self):
+        items = self._flat_items
+        # woah?
+        for s in reversed(self.shape[1:]):
+            items = [list(items[i:i + s]) for i in range(0, len(items), s)]
+        return items
 
     def transpose(self):
-        no_of_rows, no_of_cols = self.shape
-        new_items = [[] for _ in range(no_of_cols)]
-        for col_idx in range(no_of_cols):
-            for row in self._items:
-                new_items[col_idx].append(row[col_idx])
-        return self.__class__(new_items)
+        if len(self.shape) != 2:
+            raise TypeError('The array being transposed is not a matrix.')
+        raise NotImplementedError
 
     @property
     def T(self):
         return self.transpose()
 
-    def is_top(self):
-        return False
+    def _normalize_index(self, index):
+        if isinstance(index, tuple):
+            index = list(index)
+        else:
+            index = [index]
 
-    def is_bottom(self):
-        return False
-
-    def join(self, other):
-        new_items = []
-        for self_row, other_row in zip(self._items, other._items):
-            row = [x.join(y) for x, y in zip(self_row, other_row)]
-            new_items.append(row)
-        return self.__class__(new_items)
-
-    def meet(self, other):
-        new_items = []
-        for self_row, other_row in zip(self._items, other._items):
-            row = [x.meet(y) for x, y in zip(self_row, other_row)]
-            new_items.append(row)
-        return self.__class__(new_items)
+        index_iterer = []
+        for (i, s) in zip(index, self.shape):
+            if isinstance(i, int):
+                if not (0 <= i < s):
+                    raise IndexError('Index out of range')
+                index_iterer.append([i])
+            elif isinstance(i, (list, IntegerInterval)):
+                min_val, max_val = i
+                if not (0 <= min_val <= max_val < s):
+                    raise IndexError('Index interval out of range')
+                index_iterer.append(range(min_val, max_val + 1))
+            else:
+                raise TypeError(
+                    'Index must be an integer or an IntegerInterval.')
+        return tuple(itertools.product(*index_iterer))
 
     def __getitem__(self, index):
         top = self.is_top()
         bottom = self.is_bottom()
+
+        if top or bottom:
+            return self.value_class(top=top, bottom=bottom)
+
+        # fast path for one-dimensional arrays
         if isinstance(index, int):
-            if top or bottom:
-                return self.value_class(top=top, bottom=bottom)
-            row = self._items[index]
-            if len(row) == 1:
-                return row[0]
-            else:
-                return self.__class__([row])
-        if isinstance(index, slice):
-            if top or bottom:
-                return self.__class__(top=top, bottom=bottom)
-            return self.__class__(self._items[index])
-        if isinstance(index, tuple):
-            is_slice = any(isinstance(i, slice) for i in index)
-            if top or bottom:
-                if is_slice:
-                    return self.__class__(top=top, bottom=bottom)
-                else:
-                    return self.value_class(top=top, bottom=bottom)
-            row_index, col_index = index
-            if not is_slice:
-                return self._items[row_index][col_index]
-            rows = self._items[row_index]
-            if not isinstance(row_index, slice):
-                rows = [rows]
-            rows = tuple(row[col_index] for row in rows)
-            return self.__class__(rows)
-        raise IndexError('Do not know how to get item with index {}'
-                         .format(index))
+            return self._flat_items[index]
 
-    @property
-    def shape(self):
-        return (len(self._items), len(self._items[0]))
+        items = []
+        for i in self._normalize_index(index):
+            item = self._flat_items[self._to_flat_index(i)]
+            items.append(item)
+        return join(items)
 
-    def tuple(self):
-        return self._items
+    def update(self, index, value):
+        top = self.is_top()
+        bottom = self.is_bottom()
+        shape = self.shape
+
+        if top or bottom:
+            # extrapolate items in the matrix
+            other_value = self.value_class(top=top, bottom=bottom)
+            items = [other_value] * self.size
+            base_array = self.__class__(_flat_items=items, _shape=shape)
+            return base_array.update(index, value)
+
+        cls = self.value_class
+        if not isinstance(value, cls):
+            value = cls(value)
+
+        items = list(self._flat_items)
+
+        # fast path for one-dimensional arrays
+        if isinstance(index, int):
+            items[index] = value
+            return self.__class__(_flat_items=items, _shape=shape)
+
+        indices = self._normalize_index(index)
+
+        # only a specific item is changed
+        if len(indices) == 1:
+            items[self._to_flat_index(indices[0])] = value
+            return self.__class__(_flat_items=items, _shape=shape)
+
+        for index in indices:
+            index = self._to_flat_index(index)
+            items[index] |= value
+
+        return self.__class__(_flat_items=items, _shape=shape)
 
     def __len__(self):
-        return len(self._items)
+        return len(self._flat_items)
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
-        return self._items == other._items
+        return self._flat_items == other._flat_items
 
     def __hash__(self):
-        hash_val = self._hash = hash(self._items)
+        hash_val = self._hash = hash(self._flat_items)
         return hash_val
 
-    def __str__(self):
+    def _format_matrix(self):
         items = []
         widths = [0] * self.shape[1]
-        for row in self._items:
+        for row in self.to_nested_list():
             new_row = []
             for idx, val in enumerate(row):
                 val = str(val)
@@ -135,17 +203,22 @@ class Matrix(Lattice, collections.Sequence):
                     for i, v in enumerate(row)))
                 for row in items))
 
+    def __str__(self):
+        if len(self.shape) == 2:
+            return self._format_matrix()
+        return str(self.to_nested_list())
+
     def __repr__(self):
-        return '{}({!r})'.format(self.__class__.__name__, self._items)
+        return '{}({!r})'.format(self.__class__.__name__, self._flat_items)
 
 
-class IntegerIntervalMatrix(Matrix):
+class IntegerIntervalArray(MultiDimensionalArray):
     value_class = IntegerInterval
 
 
-class FloatIntervalMatrix(Matrix):
+class FloatIntervalArray(MultiDimensionalArray):
     value_class = FloatInterval
 
 
-class ErrorSemanticsMatrix(Matrix):
+class ErrorSemanticsArray(MultiDimensionalArray):
     value_class = ErrorSemantics

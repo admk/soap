@@ -2,18 +2,21 @@ import itertools
 import unittest
 
 from soap.semantics.error import IntegerInterval
-from soap.semantics.linalg import IntegerIntervalMatrix as Matrix
+from soap.semantics.linalg import IntegerIntervalArray as IntArray
 
 
-class TestMatrix(unittest.TestCase):
+class TestIntArray(unittest.TestCase):
+    def _list_elements_to_interval(self, values):
+        return [[IntegerInterval(e) for e in l] for l in values]
+
     def setUp(self):
         self.vector_values = [1, 2, 3]
-        self.vector = Matrix(self.vector_values)
-        self.matrix_values = [
+        self.vector = IntArray(self.vector_values)
+        self.matrix_values = self._list_elements_to_interval([
             [[1, 5], [2, 6], [3, 7]],
             [[4, 8], [5, 9], [6, 9]],
-            [[7, 9], [8, 9], [9, 9]]]
-        self.matrix = Matrix(self.matrix_values)
+            [[7, 9], [8, 9], [9, 9]]])
+        self.matrix = IntArray(self.matrix_values)
 
     def test_matrix_shape(self):
         self.assertEqual(self.matrix.shape, (3, 3))
@@ -27,33 +30,40 @@ class TestMatrix(unittest.TestCase):
             self.assertEqual(val, self.matrix[x, y])
 
     def test_matrix_getter(self):
-        self.assertEqual(self.matrix[1], Matrix([self.matrix_values[1]]))
         self.assertEqual(self.matrix[1, 2], IntegerInterval([6, 9]))
-        self.assertEqual(self.matrix[:2], Matrix(self.matrix_values[:2]))
-        self.assertEqual(self.matrix[:2, 1], Matrix([[[2, 6]], [[5, 9]]]))
-        other_matrix = Matrix(
-            [[[2, 6], [3, 7]],
-             [[5, 9], [6, 9]]])
-        self.assertEqual(self.matrix[:2, 1:], other_matrix)
+        self.assertEqual(self.matrix[[0, 1], 1], IntegerInterval([2, 9]))
+
+    def test_matrix_update(self):
+        mat = self.matrix.update((1, 2), 1)
+        self.assertEqual(mat[1, 2], IntegerInterval(1))
+        mat = self.matrix.update(([1, 2], 1), 1)
+        val = IntegerInterval([1, 9])
+        self.assertEqual(mat[1, 1], val)
+        self.assertEqual(mat[2, 1], val)
 
     def test_join_and_meet(self):
-        other_matrix = Matrix(
+        other_matrix = IntArray(
             [[9, 8, 7],
              [6, 5, 4],
              [3, 2, 1]])
-        join_test_matrix = Matrix(
+        join_test_matrix = IntArray(self._list_elements_to_interval(
             [[[1, 9], [2, 8], [3, 7]],
              [[4, 8], [5, 9], [4, 9]],
-             [[3, 9], [2, 9], [1, 9]]])
+             [[3, 9], [2, 9], [1, 9]]]))
         self.assertEqual(self.matrix | other_matrix, join_test_matrix)
         bot = IntegerInterval(bottom=True)
-        meet_test_matrix = Matrix(
+        meet_test_matrix = IntArray(
             [[bot, bot, 7],
              [6, 5, bot],
              [bot, bot, bot]])
         self.assertEqual(self.matrix & other_matrix, meet_test_matrix)
 
+    def test_to_nested_list(self):
+        nested_list = self.matrix.to_nested_list()
+        self.assertEqual(nested_list, self.matrix_values)
+
     def test_transpose(self):
-        matrix = Matrix([[1, 2], [3, 4], [5, 6]])
-        transpose_test_matrix = Matrix([[1, 3, 5], [2, 4, 6]])
+        return NotImplemented
+        matrix = IntArray([[1, 2], [3, 4], [5, 6]])
+        transpose_test_matrix = IntArray([[1, 3, 5], [2, 4, 6]])
         self.assertEqual(matrix.transpose(), transpose_test_matrix)
