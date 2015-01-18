@@ -70,7 +70,7 @@ def expression_factory(op, *args):
         UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr
     )
     from soap.expression.fixpoint import FixExpr, UnrollExpr
-    from soap.expression.linalg import Subscript, AccessExpr, UpdateExpr
+    from soap.expression.linalg import AccessExpr, UpdateExpr
     from soap.expression.variable import Variable
 
     if not args:
@@ -84,7 +84,6 @@ def expression_factory(op, *args):
     global op_expr_cls_map
     if not op_expr_cls_map:
         op_expr_cls_map = {
-            operators.SUBSCRIPT_OP: Subscript,
             operators.INDEX_ACCESS_OP: AccessExpr,
             operators.INDEX_UPDATE_OP: UpdateExpr,
             operators.FIXPOINT_OP: FixExpr,
