@@ -2,7 +2,7 @@
 .. module:: soap.expression.base
     :synopsis: The base classes of expressions.
 """
-from soap.common import Flyweight, cached, base_dispatcher
+from soap.common import Flyweight, base_dispatcher
 from soap.expression.common import is_expression
 from soap.lattice.base import Lattice
 from soap.lattice.flat import FlatLattice
@@ -51,34 +51,6 @@ class Expression(FlatLattice, Flyweight):
 
     def vars(self):
         return expression_variables(self)
-
-    @cached
-    def luts(self, var_env, prec):
-        """Computes the area estimation of its evaulation.
-
-        :param var_env: The ranges of input variables.
-        :type var_env: dictionary containing mappings from variables to
-            :class:`soap.semantics.error.Interval`
-        :param prec: Precision used to evaluate the expression, defaults to
-            single precision.
-        :type prec: int
-        """
-        return self.label().luts()
-
-    @cached
-    def real_area(self, var_env, prec):
-        """Computes the actual area by synthesising it using XST with flopoco
-        cores.
-
-        :param var_env: The ranges of input variables.
-        :type var_env: dictionary containing mappings from variables to
-            :class:`soap.semantics.error.Interval`
-        :param prec: Precision used to evaluate the expression, defaults to
-            single precision.
-        :type prec: int
-        """
-        from soap.flopoco.actual import actual_luts
-        return actual_luts(self, var_env, prec)
 
     def __iter__(self):
         return iter([self.op] + list(self.args))
