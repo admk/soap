@@ -22,7 +22,7 @@ class AccessExpr(ArithmeticMixin, BooleanMixin, BinaryExpression):
         return self.a2
 
     def __str__(self):
-        return '{}[{}]'.format(self.var, self.subscript)
+        return '{}[{}]'.format(self.var, ','.join(self.subscript))
 
     def __repr__(self):
         return '{cls}({var!r}, {subscript!r})'.format(

@@ -45,6 +45,10 @@ class ArithmeticEvaluator(base_dispatcher()):
             raise KeyError('Unrecognized operator type {!r}'.format(self.op))
         return op(a1, a2)
 
+    def execute_AccessExpr(self, expr, state):
+        var, subscript = expr
+        return state[var][subscript]
+
     def execute_SelectExpr(self, expr, state):
         from soap.semantics.functions.boolean import bool_eval
         eval_split = lambda split_expr, split_state: self(
