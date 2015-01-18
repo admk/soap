@@ -1,7 +1,29 @@
 from soap.expression.arithmetic import ArithmeticMixin
-from soap.expression.base import BinaryExpression, TernaryExpression
+from soap.expression.base import (
+    BinaryExpression, Expression, TernaryExpression
+)
 from soap.expression.boolean import BooleanMixin
-from soap.expression.operators import INDEX_ACCESS_OP, INDEX_UPDATE_OP
+from soap.expression.operators import (
+    INDEX_ACCESS_OP, INDEX_UPDATE_OP, SUBSCRIPT_OP
+)
+
+
+class Subscript(Expression):
+
+    __slots__ = ()
+
+    def __init__(self, *subscript, top=False, bottom=False):
+        super().__init__(
+            SUBSCRIPT_OP, *subscript, top=top, bottom=bottom)
+
+    def __iter__(self):
+        return iter(self.args)
+
+    def __str__(self):
+        return ', '.join(self._args_to_str())
+
+    def __repr__(self):
+        return '{}({!r})'.format(self.__class__.__name__, self.args)
 
 
 class AccessExpr(ArithmeticMixin, BooleanMixin, BinaryExpression):
@@ -10,7 +32,7 @@ class AccessExpr(ArithmeticMixin, BooleanMixin, BinaryExpression):
 
     def __init__(self, var=None, subscript=None, top=False, bottom=False):
         super().__init__(
-            op=INDEX_ACCESS_OP, a1=var, a2=tuple(subscript),
+            op=INDEX_ACCESS_OP, a1=var, a2=Subscript(*subscript),
             top=top, bottom=bottom)
 
     @property
@@ -38,7 +60,7 @@ class UpdateExpr(ArithmeticMixin, BooleanMixin, TernaryExpression):
             self, var=None, subscript=None, expr=None,
             top=False, bottom=False):
         super().__init__(
-            op=INDEX_UPDATE_OP, a1=var, a2=tuple(subscript), a3=expr,
+            op=INDEX_UPDATE_OP, a1=var, a2=Subscript(*subscript), a3=expr,
             top=top, bottom=bottom)
 
     @property
