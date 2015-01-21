@@ -167,7 +167,7 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
             index = self._to_flat_index(index)
             items[index] |= value
 
-        return self.__class__(_flat_items=items, _shape=shape)
+        return self.__class__(_flat_items=tuple(items), _shape=shape)
 
     def __len__(self):
         return len(self._flat_items)
