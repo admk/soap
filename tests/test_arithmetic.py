@@ -68,9 +68,6 @@ class TestArithmeticEvaluator(unittest.TestCase):
         value = arith_eval(test_expr, self.state)
         self.assertEqual(test_value, value)
 
-    def test_UnrollExpr(self):
-        ...
-
     def test_MetaState(self):
         meta_state = MetaState(x='x + 1', y='x * 2')
         test_state = BoxState(x=[2, 3], y=[2, 4])

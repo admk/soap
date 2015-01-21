@@ -69,7 +69,7 @@ class Lattice(Flyweight, metaclass=LatticeMeta):
     Subclasses of this class must implement the member functions:
     :member:`join`, :member:`meet`, :member:`le`.
     """
-    __slots__ = ('_hash')
+    __slots__ = ('_hash', 'top', 'bottom')
 
     def __init__(self, *args, top=False, bottom=False, **kwargs):
         super().__init__()
