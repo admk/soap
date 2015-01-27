@@ -6,6 +6,7 @@ from soap.expression.boolean import BooleanMixin
 from soap.expression.operators import (
     INDEX_ACCESS_OP, INDEX_UPDATE_OP, SUBSCRIPT_OP
 )
+from soap.semantics.label import Label
 
 
 class Subscript(Expression):
@@ -20,7 +21,7 @@ class Subscript(Expression):
         return iter(self.args)
 
     def __str__(self):
-        return ', '.join(self._args_to_str())
+        return '[{}]'.format(', '.join(self._args_to_str()))
 
     def __repr__(self):
         return '{}({!r})'.format(self.__class__.__name__, self.args)
@@ -31,9 +32,10 @@ class AccessExpr(ArithmeticMixin, BooleanMixin, BinaryExpression):
     __slots__ = ()
 
     def __init__(self, var=None, subscript=None, top=False, bottom=False):
+        if not isinstance(subscript, Label):
+            subscript = Subscript(*subscript)
         super().__init__(
-            op=INDEX_ACCESS_OP, a1=var, a2=Subscript(*subscript),
-            top=top, bottom=bottom)
+            op=INDEX_ACCESS_OP, a1=var, a2=subscript, top=top, bottom=bottom)
 
     @property
     def var(self):
@@ -44,7 +46,7 @@ class AccessExpr(ArithmeticMixin, BooleanMixin, BinaryExpression):
         return self.a2
 
     def __str__(self):
-        return '{}[{}]'.format(self.var, ','.join(self.subscript))
+        return '{}{}'.format(self.var, self.subscript)
 
     def __repr__(self):
         return '{cls}({var!r}, {subscript!r})'.format(
@@ -59,8 +61,10 @@ class UpdateExpr(ArithmeticMixin, BooleanMixin, TernaryExpression):
     def __init__(
             self, var=None, subscript=None, expr=None,
             top=False, bottom=False):
+        if not isinstance(subscript, Label):
+            subscript = Subscript(*subscript)
         super().__init__(
-            op=INDEX_UPDATE_OP, a1=var, a2=Subscript(*subscript), a3=expr,
+            op=INDEX_UPDATE_OP, a1=var, a2=subscript, a3=expr,
             top=top, bottom=bottom)
 
     @property

@@ -37,6 +37,8 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
 
         if _flat_items is not None:
             self.shape = _shape
+            if not isinstance(_flat_items, tuple):
+                _flat_items = tuple(_flat_items)
             self._flat_items = _flat_items
         else:
             flattened_flat_items = []
@@ -152,14 +154,11 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
             # extrapolate items in the matrix
             other_value = self.value_class(top=top, bottom=bottom)
             items = [other_value] * self.size
-            base_array = self.__class__(_flat_items=items, _shape=shape)
-            return base_array.update(index, value)
-
-        cls = self.value_class
-        if not isinstance(value, cls):
-            value = cls(value)
-
-        items = list(self._flat_items)
+        else:
+            cls = self.value_class
+            if not isinstance(value, cls):
+                value = cls(value)
+            items = list(self._flat_items)
 
         # fast path for one-dimensional arrays
         if isinstance(index, int):
@@ -177,7 +176,7 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
             index = self._to_flat_index(index)
             items[index] |= value
 
-        return self.__class__(_flat_items=tuple(items), _shape=shape)
+        return self.__class__(_flat_items=items, _shape=shape)
 
     def __len__(self):
         return len(self._flat_items)
@@ -214,6 +213,8 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
                 for row in items))
 
     def __str__(self):
+        if len(self.shape) == 1:
+            return '[{}]'.format(', '.join(str(v) for v in self._flat_items))
         if len(self.shape) == 2:
             return self._format_matrix()
         return str(self.to_nested_list())
