@@ -3,11 +3,11 @@ import collections
 from soap import logger
 from soap.expression import (
     is_variable, is_expression, expression_factory,
-    Variable, InputVariableTuple, OutputVariableTuple
+    Variable, InputVariable, InputVariableTuple, OutputVariableTuple
 )
 from soap.program.flow import AssignFlow, IfFlow, WhileFlow, CompositionalFlow
 from soap.program.graph import (
-    DependencyGraph, HierarchicalDependencyGraph, sorted_vars, unique
+    DependenceGraph, HierarchicalDependenceGraph
 )
 from soap.semantics import (
     ErrorSemantics, FloatInterval, is_constant, is_numeral, Label
@@ -26,7 +26,7 @@ class CodeGenerator(object):
             logger.info(
                 'Partitioning dependency graph for {}'.format(
                     ', '.join(str(v) for v in out_vars)))
-            self.graph = DependencyGraph(env, out_vars)
+            self.graph = DependenceGraph(env, out_vars)
         if not env:
             self.env = self.graph.env
         self.parent = parent
@@ -86,41 +86,41 @@ class CodeGenerator(object):
         return Variable(name)
 
     def generate(self):
-        if isinstance(self.graph, HierarchicalDependencyGraph):
+        if isinstance(self.graph, HierarchicalDependenceGraph):
             order = self.graph.local_order()
         else:
-            nodes = {n for n, _ in self.graph.edges}
-            order = self.graph.order_by_dependencies(nodes)
+            order = [
+                v for v in self.graph.dfs_postorder()
+                if isinstance(v, Label) or isinstance(v, Variable)]
         logger.info('Generating code for nodes {}'.format(
             ','.join(str(o) for o in order)))
+        print(','.join(str(o) for o in order))
         flows = []
-        while order:
-            var = order.pop()
+        for var in order:
             flows.append(self.emit_dispatcher(var, order))
-        return CompositionalFlow(self._flatten(list(reversed(flows))))
+        return CompositionalFlow(self._flatten(list(flows)))
 
     def emit_dispatcher(self, var, order):
         env = self.graph.env
         expr = env.get(var)
         if not expr:
-            if isinstance(var, HierarchicalDependencyGraph):
+            if isinstance(var, HierarchicalDependenceGraph):
                 expr = var
         emit_func_name = 'emit_{}'.format(expr.__class__.__name__)
         emit = getattr(self, emit_func_name, self.generic_emit)
         return self._flatten(emit(var, expr, order))
 
     def generic_emit(self, var, expr, order):
+        if isinstance(var, InputVariable):
+            return
         if expr is None:
-            if var == self.graph.out_var:
-                if isinstance(var, InputVariableTuple):
-                    return
             raise ValueError(
                 'Node {} has no expression, cannot generate.'.format(var))
         return AssignFlow(
             self._with_infix(var, self.out_var_infix),
             self._with_infix(expr, self.in_var_infix))
 
-    def emit_HierarchicalDependencyGraph(self, var, expr, order):
+    def emit_HierarchicalDependenceGraph(self, var, expr, order):
         return self.__class__(
             var, parent=self.parent,
             label_infix=self.label_infix,
@@ -132,7 +132,7 @@ class CodeGenerator(object):
 
     def emit_SelectExpr(self, var, expr, order):
         graph = self.graph
-        if isinstance(graph, HierarchicalDependencyGraph):
+        if isinstance(graph, HierarchicalDependenceGraph):
             subgraphs = graph.subgraphs
         else:
             subgraphs = {}
@@ -158,7 +158,7 @@ class CodeGenerator(object):
                     flows += generate_branch_locals(each)
                 return flows
             subgraph = subgraphs.get(label, label)
-            if not isinstance(subgraph, HierarchicalDependencyGraph):
+            if not isinstance(subgraph, HierarchicalDependenceGraph):
                 return CompositionalFlow()
             if graph.is_multiply_shared(subgraph):
                 # subgraph is not only used by this branch, so don't generate
@@ -218,11 +218,17 @@ class CodeGenerator(object):
         init_state = expr.init_state
 
         # things to be generated before loop
-        init_vars = sorted_vars(bool_env, bool_label)
-        init_vars += sorted_vars(loop_state, loop_vars)
-        init_vars = unique(init_vars)
+        # find input variables for the loop
+        init_vars = list(DependenceGraph(bool_env, [bool_label]).input_vars())
+        init_vars += list(DependenceGraph(loop_state, loop_vars).input_vars())
+        new_init_vars = []
+        for var in init_vars:
+            if var not in new_init_vars:
+                # because these variables are labelled `InputVariable`
+                # we need to re-label them
+                new_init_vars.append(Variable(var.name))
         init_flow_generator = generator_class(
-            env=init_state, out_vars=init_vars, parent=self,
+            env=init_state, out_vars=new_init_vars, parent=self,
             label_infix=infix, out_var_infix=infix)
         init_flow = init_flow_generator.generate()
 
