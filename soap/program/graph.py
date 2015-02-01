@@ -1,19 +1,35 @@
 import networkx
 
-from soap.expression import (
-    is_expression, Variable, InputVariable, External,
-    InputVariableTuple, OutputVariableTuple, FixExpr
-)
-from soap.semantics import is_numeral, Label, LabelSemantics, MetaState
+from soap.common.base import base_dispatcher
+from soap.expression import InputVariable, External, InputVariableTuple
+from soap.semantics import is_numeral
 
 
-def expression_dependencies(expr):
-    # find dependent variables for the corresponding expression
-    if expr is None:
-        # can't find expression for var or var is an input variable, so
-        # there are no dependencies for it
-        return []
-    if isinstance(expr, FixExpr):
+class ExpressionDependencies(base_dispatcher()):
+    """
+    Find dependent variables for the corresponding expression
+    """
+    def generic_execute(self, expr):
+        raise TypeError(
+            'Do not know how to find dependencies in expression {!r}'
+            .format(expr))
+
+    def _execute_atom(self, expr):
+        return [expr]
+
+    execute_Label = execute_numeral = _execute_atom
+
+    def execute_Variable(self, expr):
+        return [InputVariable(expr.name)]
+
+    def _execute_expression(self, expr):
+        return list(expr.args)
+
+    execute_UnaryArithExpr = execute_BinaryArithExpr = _execute_expression
+    execute_UnaryBoolExpr = execute_BinaryBoolExpr = _execute_expression
+    execute_SelectExpr = _execute_expression
+
+    def execute_FixExpr(self, expr):
         # is fixpoint expression, find external dependencies in init_state
         deps = []
         for v in expr.init_state.values():
@@ -21,31 +37,17 @@ def expression_dependencies(expr):
                 continue
             deps.append(v.var)
         return deps
-    if isinstance(expr, External):
+
+    def execute_External(self, expr):
         # external dependencies taken care of by FixExpr dependencies.
         return []
-    if is_expression(expr):
-        deps = []
-        for arg in expr.args:
-            if isinstance(arg, InputVariableTuple):
-                deps += list(arg)
-            else:
-                deps.append(arg)
-        return deps
-    if isinstance(expr, Label) or is_numeral(expr):
-        # is a label/constant, dependency is itself
-        return [expr]
-    if isinstance(expr, Variable):
-        return [InputVariable(expr.name)]
-    if isinstance(expr, OutputVariableTuple):
-        return list(expr.args)
-    if isinstance(expr, (dict, MetaState)):
-        return [expr]
-    if isinstance(expr, LabelSemantics):
-        return [expr]
-    raise TypeError(
-        'Do not know how to find dependencies in expression {!r}'
-        .format(expr))
+
+    execute_InputVariableTuple = _execute_expression
+    execute_OutputVariableTuple = _execute_atom
+    execute_MetaState = execute_LabelSemantics = _execute_atom
+
+
+expression_dependencies = ExpressionDependencies()
 
 
 class CyclicGraphException(Exception):
@@ -54,50 +56,75 @@ class CyclicGraphException(Exception):
 
 class DependenceGraph(networkx.DiGraph):
     """Discovers the graph of dependences"""
+    class _RootNode(object):
+        def __str__(self):
+            return '<root>'
+        __repr__ = __str__
+
     def __init__(self, env, out_vars, attr_func=None):
         super().__init__()
         self.env = env
-        self.out_vars = OutputVariableTuple(out_vars)
+        new_out_vars = []
+        for var in out_vars:
+            if var not in new_out_vars:
+                new_out_vars.append(var)
+        self.out_vars = new_out_vars
         self.attr_func = attr_func or self._default_attr_func
         self._closure_graph = None
-        self._edges_recursive(self.out_vars)
-
-    def is_cyclic(self):
-        return bool(networkx.simple_cycles(self))
+        self._root_node = self._RootNode()
+        self._edges_recursive(self._root_node)
+        self.is_cyclic = False
 
     def _default_attr_func(self, from_node, to_node):
         return (from_node, to_node, {})
 
+    def add_edges_one_to_many(self, from_node, to_nodes):
+        self.add_edges_from(
+            self.attr_func(from_node, to_node) for to_node in to_nodes)
+
     def _edges_recursive(self, out_vars):
-        if isinstance(out_vars, OutputVariableTuple):
+        prev_nodes = self.nodes()
+        if out_vars == self._root_node:
             # terminal node
-            deps = out_vars.args
-            self.add_edges_from(
-                self.attr_func(out_vars, dep_var) for dep_var in deps)
+            self.add_edges_one_to_many(self._root_node, self.out_vars)
+            deps = self.out_vars
         else:
             deps = []
             for var in out_vars:
                 if is_numeral(var) or isinstance(var, InputVariable):
                     continue
-                expr = self.env.get(var)
+                if isinstance(var, InputVariableTuple):
+                    expr = var
+                else:
+                    expr = self.env[var]
                 local_deps = expression_dependencies(expr)
                 deps += local_deps
-                self.add_edges_from(
-                    self.attr_func(var, dep_var) for dep_var in local_deps)
-        if deps:
-            self._edges_recursive(deps)
+                self.add_edges_one_to_many(var, local_deps)
+        if not deps:
+            return
+        new_deps = []
+        for v in deps:
+            if v in prev_nodes:
+                self.is_cyclic = True
+            else:
+                new_deps.append(v)
+        self._edges_recursive(new_deps)
 
     def input_vars(self):
         return (v for v in self.nodes() if isinstance(v, InputVariable))
 
     def dfs_postorder(self):
-        return networkx.dfs_postorder_nodes(self, self.out_vars)
+        for node in networkx.dfs_postorder_nodes(self, self._root_node):
+            if node == self._root_node:
+                continue
+            yield node
 
     def is_multiply_shared(self, node):
         return len(self.predecessors(node)) > 1
 
 
 class HierarchicalDependenceGraph(DependenceGraph):
+    # FIXME broken
     def __init__(self, env, out_var, _parent_nodes=None):
         super().__init__(env, out_var)
         self._parent_nodes = _parent_nodes
@@ -206,7 +233,7 @@ class HierarchicalDependenceGraph(DependenceGraph):
     def flat_contains(self, node):
         nodes = self.local_nodes
         for each_node in nodes:
-            if isinstance(each_node, HierarchicalDependencyGraph):
+            if isinstance(each_node, HierarchicalDependenceGraph):
                 if each_node.flat_contains(node):
                     return True
             elif node == each_node:

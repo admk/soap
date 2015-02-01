@@ -91,10 +91,10 @@ class CodeGenerator(object):
         else:
             order = [
                 v for v in self.graph.dfs_postorder()
-                if isinstance(v, Label) or isinstance(v, Variable)]
+                if isinstance(v, Label) or isinstance(v, Variable)
+                or isinstance(v, OutputVariableTuple)]
         logger.info('Generating code for nodes {}'.format(
             ','.join(str(o) for o in order)))
-        print(','.join(str(o) for o in order))
         flows = []
         for var in order:
             flows.append(self.emit_dispatcher(var, order))
