@@ -2,6 +2,7 @@ from soap.expression.variable import Variable
 from soap.lattice.map import map
 from soap.semantics.error import cast, ErrorSemantics, IntegerInterval
 from soap.semantics.label import Identifier
+from soap.semantics.linalg import MultiDimensionalArray
 from soap.semantics.state.base import BaseState
 from soap.semantics.state.identifier import IdentifierBaseState
 from soap.semantics.functions import bool_eval, fixpoint_eval
@@ -21,6 +22,8 @@ class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
     def _cast_value(self, value=None, top=False, bottom=False):
         if top or bottom:
             return IntegerInterval(top=top, bottom=bottom)
+        if isinstance(value, MultiDimensionalArray):
+            return value
         return cast(value)
 
     def is_fixpoint(self, other):

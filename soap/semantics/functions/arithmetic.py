@@ -23,14 +23,14 @@ class ArithmeticEvaluator(base_dispatcher()):
     def execute_numeral(self, expr, state):
         return expr
 
-    def _execute_args(self, args, state):
-        return tuple(self(arg, state) for arg in args)
+    def _execute_args(self, expr, state):
+        return tuple(self(arg, state) for arg in expr.args)
 
     def execute_Variable(self, expr, state):
         return state[expr]
 
     def execute_UnaryArithExpr(self, expr, state):
-        a, = self._execute_args(expr.args, state)
+        a, = self._execute_args(expr, state)
         try:
             op = self._unary_operator_function_dictionary[expr.op]
         except KeyError:
@@ -38,16 +38,22 @@ class ArithmeticEvaluator(base_dispatcher()):
         return op(a)
 
     def execute_BinaryArithExpr(self, expr, state):
-        a1, a2 = self._execute_args(expr.args, state)
+        a1, a2 = self._execute_args(expr, state)
         try:
             op = self._binary_operator_function_dictionary[expr.op]
         except KeyError:
             raise KeyError('Unrecognized operator type {!r}'.format(self.op))
         return op(a1, a2)
 
+    execute_Subscript = _execute_args
+
     def execute_AccessExpr(self, expr, state):
-        var, subscript = expr
-        return state[var][subscript]
+        array, subscript = self._execute_args(expr, state)
+        return array[subscript]
+
+    def execute_UpdateExpr(self, expr, state):
+        array, subscript, value = self._execute_args(expr, state)
+        return array.update(subscript, value)
 
     def execute_SelectExpr(self, expr, state):
         from soap.semantics.functions.boolean import bool_eval

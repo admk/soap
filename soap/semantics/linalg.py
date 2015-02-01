@@ -7,7 +7,7 @@ from soap.semantics.error import ErrorSemantics, FloatInterval, IntegerInterval
 
 
 class MultiDimensionalArray(Lattice, collections.Sequence):
-    __slots__ = ('_flat_items', )
+    __slots__ = ('_flat_items', '_c_top', '_c_bottom')
     value_class = None
 
     def __init__(self, items=None, _flat_items=None, _shape=None,
@@ -15,6 +15,8 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
         super().__init__(bottom=bottom, top=top)
         if top or bottom:
             return
+        self._c_top = None
+        self._c_bottom = None
         self._init_flat_items(items, _flat_items, _shape)
 
     def _init_flat_items(self, items, _flat_items, _shape):
@@ -35,6 +37,8 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
 
         if _flat_items is not None:
             self.shape = _shape
+            if not isinstance(_flat_items, tuple):
+                _flat_items = tuple(_flat_items)
             self._flat_items = _flat_items
         else:
             flattened_flat_items = []
@@ -56,10 +60,18 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
         return itertools.reduce(lambda x, y: x * y, self.shape)
 
     def is_top(self):
-        return all(i.is_top() for i in self._flat_items)
+        top = self._c_top
+        if top is not None:
+            return top
+        top = self._c_top = all(i.is_top() for i in self._flat_items)
+        return top
 
     def is_bottom(self):
-        return all(i.is_bottom() for i in self._flat_items)
+        bot = self._c_bottom
+        if bot is not None:
+            return bot
+        bot = self._c_bottom = all(i.is_bottom() for i in self._flat_items)
+        return bot
 
     def join(self, other):
         if self.shape != other.shape:
@@ -142,14 +154,11 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
             # extrapolate items in the matrix
             other_value = self.value_class(top=top, bottom=bottom)
             items = [other_value] * self.size
-            base_array = self.__class__(_flat_items=items, _shape=shape)
-            return base_array.update(index, value)
-
-        cls = self.value_class
-        if not isinstance(value, cls):
-            value = cls(value)
-
-        items = list(self._flat_items)
+        else:
+            cls = self.value_class
+            if not isinstance(value, cls):
+                value = cls(value)
+            items = list(self._flat_items)
 
         # fast path for one-dimensional arrays
         if isinstance(index, int):
@@ -204,6 +213,8 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
                 for row in items))
 
     def __str__(self):
+        if len(self.shape) == 1:
+            return '[{}]'.format(', '.join(str(v) for v in self._flat_items))
         if len(self.shape) == 2:
             return self._format_matrix()
         return str(self.to_nested_list())

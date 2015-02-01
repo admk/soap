@@ -215,6 +215,9 @@ _integer_table = {
     operators.TERNARY_SELECT_OP: s(0, 96, 32),
     operators.FIXPOINT_OP: s(0, 96, 32),
     operators.BARRIER_OP: s(0, 0, 0),
+    operators.SUBTRACT_OP: s(0, 0, 0),
+    operators.INDEX_ACCESS_OP: s(0, 0, 0),
+    operators.INDEX_UPDATE_OP: s(0, 0, 0),
 }
 _single_table = {
     'conversion': s(0, 211, 186),
@@ -227,6 +230,9 @@ _single_table = {
     operators.TERNARY_SELECT_OP: s(0, 96, 32),
     operators.FIXPOINT_OP: s(0, 96, 32),
     operators.BARRIER_OP: s(0, 0, 0),
+    operators.SUBTRACT_OP: s(0, 0, 0),
+    operators.INDEX_ACCESS_OP: s(0, 0, 0),
+    operators.INDEX_UPDATE_OP: s(0, 0, 0),
 }
 _double_table = {}
 """

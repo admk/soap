@@ -48,6 +48,14 @@ class LabelGenerator(base_dispatcher()):
         label_env[label] = label_expr
         return LabelSemantics(label, label_env)
 
+    def execute_Subscript(self, expr, state, context):
+        label_expr, label_env = self._execute_expression(expr, state, context)
+        label = context.Label(label_expr, None)
+        label_env[label] = label_expr
+        return LabelSemantics(label, label_env)
+
+    execute_AccessExpr = execute_UpdateExpr = _execute_arithmetic_expression
+
     def execute_FixExpr(self, expr, state, context):
         from soap.semantics.functions import (
             arith_eval_meta_state, fixpoint_eval
