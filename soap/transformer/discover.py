@@ -15,7 +15,7 @@ from soap.expression import (
     expression_factory, SelectExpr, FixExpr, operators, UnrollExpr
 )
 from soap.program import Flow
-from soap.program.graph import DependencyGraph, unique
+from soap.program.graph import DependenceGraph
 from soap.semantics import BoxState, ErrorSemantics, MetaState
 from soap.semantics.functions import (
     arith_eval_meta_state, equivalent_loop_meta_states, fixpoint_eval,
@@ -195,9 +195,9 @@ class BaseDiscoverer(base_dispatcher('discover')):
             self, var_expr_state, state, out_vars):
 
         _, env = _label(var_expr_state, state)
-        graph = DependencyGraph(env, out_vars)
+        graph = DependenceGraph(env, out_vars)
         var_list = graph.order_by_dependencies(var_expr_state.keys())
-        var_list = unique(out_vars + var_list)
+        var_list = unique(out_vars + var_list)  # FIXME later
 
         logger.info('Discovering state: {}'.format(var_expr_state))
 

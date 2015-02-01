@@ -3,7 +3,7 @@ from soap.expression import (
     is_variable, is_expression,
     External, InputVariableTuple, OutputVariableTuple, SelectExpr, FixExpr
 )
-from soap.program.graph import DependencyGraph, CyclicGraphException
+from soap.program.graph import DependenceGraph, CyclicGraphException
 from soap.semantics import is_numeral, Label, MetaState
 
 
@@ -257,8 +257,8 @@ def recursive_fusion(env, out_vars, done_vars):
         if id(env) == id(new_env) or env == new_env:
             return env
         try:
-            DependencyGraph(new_env, out_vars)
-        except CyclicGraphException:
+            DependenceGraph(new_env, out_vars)
+        except CyclicGraphException:  # FIXME later
             return env
         return new_env
 

@@ -1,25 +1,35 @@
-import collections
+import networkx
 
-from soap import logger
-from soap.expression import (
-    is_variable, is_expression,
-    Variable, InputVariable, External,
-    VariableTuple, InputVariableTuple, OutputVariableTuple,
-    FixExpr
-)
-from soap.semantics import is_numeral, Label, LabelSemantics, MetaState
+from soap.common.base import base_dispatcher
+from soap.expression import InputVariable, External, InputVariableTuple
+from soap.semantics import is_numeral
 
 
-_LEAF = object()
+class ExpressionDependencies(base_dispatcher()):
+    """
+    Find dependent variables for the corresponding expression
+    """
+    def generic_execute(self, expr):
+        raise TypeError(
+            'Do not know how to find dependencies in expression {!r}'
+            .format(expr))
 
+    def _execute_atom(self, expr):
+        return [expr]
 
-def expression_dependencies(expr):
-    # find dependent variables for the corresponding expression
-    if expr is None:
-        # can't find expression for var or var is an input variable, so
-        # there are no dependencies for it
-        return []
-    if isinstance(expr, FixExpr):
+    execute_Label = execute_numeral = _execute_atom
+
+    def execute_Variable(self, expr):
+        return [InputVariable(expr.name)]
+
+    def _execute_expression(self, expr):
+        return list(expr.args)
+
+    execute_UnaryArithExpr = execute_BinaryArithExpr = _execute_expression
+    execute_UnaryBoolExpr = execute_BinaryBoolExpr = _execute_expression
+    execute_SelectExpr = _execute_expression
+
+    def execute_FixExpr(self, expr):
         # is fixpoint expression, find external dependencies in init_state
         deps = []
         for v in expr.init_state.values():
@@ -27,256 +37,94 @@ def expression_dependencies(expr):
                 continue
             deps.append(v.var)
         return deps
-    # DIRTY dummy leaf is to make sure it gets generated
-    if isinstance(expr, External):
+
+    def execute_External(self, expr):
         # external dependencies taken care of by FixExpr dependencies.
-        return [_LEAF]
-    if expr == _LEAF:
         return []
-    if is_expression(expr):
-        deps = []
-        for arg in expr.args:
-            if isinstance(arg, InputVariableTuple):
-                deps += list(arg)
-            else:
-                deps.append(arg)
-        return deps
-    if isinstance(expr, Label) or is_numeral(expr):
-        # is a label/constant, dependency is itself
-        return [expr]
-    if isinstance(expr, Variable):
-        return [InputVariable(expr.name)]
-    if isinstance(expr, OutputVariableTuple):
-        return [expr]
-    if isinstance(expr, (dict, MetaState)):
-        return [expr]
-    if isinstance(expr, LabelSemantics):
-        return [expr]
-    raise TypeError(
-        'Do not know how to find dependencies in expression {!r}'
-        .format(expr))
+
+    execute_InputVariableTuple = _execute_expression
+    execute_OutputVariableTuple = _execute_atom
+    execute_MetaState = execute_LabelSemantics = _execute_atom
 
 
-def unique(bag_list):
-    new_list = []
-    for each in bag_list:
-        if each not in new_list:
-            new_list.append(each)
-    return new_list
-
-
-def sorted_vars(env, out_vars):
-    # TODO.possible sorted dependent input variables, if do get a chance to
-    # create determinism for graph dependency resolution, this may no longer be
-    # necessary, because it can be replaced by a method in DependencyGraph
-    def sort(env, out_vars):
-        if isinstance(out_vars, InputVariable):
-            return [Variable(out_vars.name)]
-        if is_numeral(out_vars):
-            return []
-
-        is_seq = (isinstance(out_vars, collections.Sequence) and
-                  not isinstance(out_vars, (Label, OutputVariableTuple)))
-        if not is_seq:
-            out_vars = [out_vars]
-
-        deps = []
-        for var in out_vars:
-            expr = env.get(var)
-            for dep in expression_dependencies(expr):
-                deps += sort(env, dep)
-        return deps
-
-    return unique(sort(env, out_vars))
+expression_dependencies = ExpressionDependencies()
 
 
 class CyclicGraphException(Exception):
     pass
 
 
-class DependencyGraph(object):
-    """Discovers the graph of dependencies"""
-    def __init__(self, env, out_var):
+class DependenceGraph(networkx.DiGraph):
+    """Discovers the graph of dependences"""
+    class _RootNode(object):
+        def __str__(self):
+            return '<root>'
+        __repr__ = __str__
+
+    def __init__(self, env, out_vars, attr_func=None):
         super().__init__()
-        env = dict(env)
-        self._detect_acyclic(env, out_var)
-        if isinstance(out_var, collections.Sequence):
-            if not isinstance(out_var, (Label, VariableTuple)):
-                out_var = InputVariableTuple(out_var)
-        self.env = dict(env)
-        self.out_var = out_var
-        self._edges = None
-        self._nodes = None
-        self._closure = None
-        self._next_dict = None
-        self._prev_dict = None
-        self._dep_dict = None
-        self._flow_dict = None
+        self.env = env
+        new_out_vars = []
+        for var in out_vars:
+            if var not in new_out_vars:
+                new_out_vars.append(var)
+        self.out_vars = new_out_vars
+        self.attr_func = attr_func or self._default_attr_func
+        self._closure_graph = None
+        self._root_node = self._RootNode()
+        self._edges_recursive(self._root_node)
+        self.is_cyclic = False
 
-    @property
-    def edges(self):
-        def edges_recursive(var_set):
-            edges = set()
-            deps = set()
-            for var in var_set:
-                expr = self.env.get(var)
-                local_deps = expression_dependencies(expr)
-                deps |= set(local_deps)
-                edges |= {(var, dep_var) for dep_var in local_deps}
-            if deps:
-                edges |= edges_recursive(deps)
-            return edges
+    def _default_attr_func(self, from_node, to_node):
+        return (from_node, to_node, {})
 
-        edges = self._edges
-        if edges:
-            return edges
-        out_vars = self.out_var
-        if not isinstance(out_vars, InputVariableTuple):
-            out_vars = [out_vars]
-        self._edges = edges_recursive(out_vars)
-        return self._edges
+    def add_edges_one_to_many(self, from_node, to_nodes):
+        self.add_edges_from(
+            self.attr_func(from_node, to_node) for to_node in to_nodes)
 
-    @edges.setter
-    def edges(self, edges):
-        self._edges = edges
-        self._nodes = None
-        self._closure = None
-        self._next_dict = None
-        self._prev_dict = None
-        self._dep_dict = None
-        self._flow_dict = None
-
-    @property
-    def nodes(self):
-        nodes = self._nodes
-        if nodes:
-            return nodes
-        nodes = set()
-        for x, y in self.edges:
-            nodes |= {x, y}
-        self._nodes = nodes
-        return nodes
-
-    @property
-    def closure(self):
-        closure = self._closure
-        if closure:
-            return closure
-        closure = set(self.edges)
-        while True:
-            local_closure = set(closure)
-            for start_var, mid_var in local_closure:
-                if is_variable(mid_var):
+    def _edges_recursive(self, out_vars):
+        prev_nodes = self.nodes()
+        if out_vars == self._root_node:
+            # terminal node
+            self.add_edges_one_to_many(self._root_node, self.out_vars)
+            deps = self.out_vars
+        else:
+            deps = []
+            for var in out_vars:
+                if is_numeral(var) or isinstance(var, InputVariable):
                     continue
-                for alt_mid_var, end_var in local_closure:
-                    if mid_var != alt_mid_var:
-                        continue
-                    new_edge = (start_var, end_var)
-                    if new_edge in closure:
-                        continue
-                    closure.add(new_edge)
-            if local_closure == closure:
-                break
-        return closure
+                if isinstance(var, InputVariableTuple):
+                    expr = var
+                else:
+                    expr = self.env[var]
+                local_deps = expression_dependencies(expr)
+                deps += local_deps
+                self.add_edges_one_to_many(var, local_deps)
+        if not deps:
+            return
+        new_deps = []
+        for v in deps:
+            if v in prev_nodes:
+                self.is_cyclic = True
+            else:
+                new_deps.append(v)
+        self._edges_recursive(new_deps)
 
-    @property
-    def prev_dict(self):
-        d = self._prev_dict
-        if d:
-            return d
-        self._next_dict, self._prev_dict = self._generate_dictionaries(
-            self.edges)
-        return self.prev_dict
+    def input_vars(self):
+        return (v for v in self.nodes() if isinstance(v, InputVariable))
 
-    @property
-    def next_dict(self):
-        d = self._next_dict
-        if d:
-            return d
-        self._next_dict, self._prev_dict = self._generate_dictionaries(
-            self.edges)
-        return self._next_dict
+    def dfs_postorder(self):
+        for node in networkx.dfs_postorder_nodes(self, self._root_node):
+            if node == self._root_node:
+                continue
+            yield node
 
-    @property
-    def dep_dict(self):
-        d = self._dep_dict
-        if d:
-            return d
-        self._dep_dict, self._flow_dict = self._generate_dictionaries(
-            self.closure)
-        return self._dep_dict
-
-    @property
-    def flow_dict(self):
-        d = self._flow_dict
-        if d:
-            return d
-        self._dep_dict, self._flow_dict = self._generate_dictionaries(
-            self.closure)
-        return self._flow_dict
-
-    def prev(self, y):
-        if isinstance(y, set):
-            return set.union(*(self.prev(var) for var in y))
-        return self.prev_dict.get(y, set())
-
-    def next(self, x):
-        if isinstance(x, set):
-            return set.union(*(self.next(var) for var in x))
-        return self.next_dict.get(x, set())
-
-    def dataflows(self, y):
-        return self.flow_dict.get(y, set())
-
-    def dependencies(self, x):
-        return self.dep_dict.get(x, set())
-
-    def order_by_dependencies(self, variables):
-        if not variables:
-            return []
-        variables = list(variables)
-        for idx, var in enumerate(variables):
-            if not (self.dependencies(var) & set(variables)):
-                # independent on some other
-                break
-        unordered = variables[:idx] + variables[idx + 1:]
-        return [var] + self.order_by_dependencies(unordered)
-
-    def depends_on(self, x, y):
-        return y in self.dep_dict.get(x, set())
-
-    def is_multiply_shared(self, x):
-        return len(self.prev(x)) > 1
-
-    @staticmethod
-    def _generate_dictionaries(edges):
-        dep_dict = {}
-        flow_dict = {}
-        for var, dep_var in edges:
-            deps = dep_dict.setdefault(var, set())
-            deps.add(dep_var)
-            flows = flow_dict.setdefault(dep_var, set())
-            flows.add(var)
-        return dep_dict, flow_dict
-
-    @staticmethod
-    def _detect_acyclic(env, out_var):
-        def walk(var, found_vars):
-            expr = env.get(var)
-            dep_vars = expression_dependencies(expr)
-            for dep_var in dep_vars:
-                if dep_var in found_vars:
-                    raise CyclicGraphException(
-                        'Cycle detected: {}'.format(found_vars + [dep_var]))
-                walk(dep_var, found_vars + [var])
-        if not isinstance(out_var, (Label, VariableTuple)):
-            if not isinstance(out_var, collections.Sequence):
-                out_var = [out_var]
-        for var in out_var:
-            walk(var, [])
+    def is_multiply_shared(self, node):
+        return len(self.predecessors(node)) > 1
 
 
-class HierarchicalDependencyGraph(DependencyGraph):
+class HierarchicalDependenceGraph(DependenceGraph):
+    # FIXME broken
     def __init__(self, env, out_var, _parent_nodes=None):
         super().__init__(env, out_var)
         self._parent_nodes = _parent_nodes
@@ -336,7 +184,7 @@ class HierarchicalDependencyGraph(DependencyGraph):
                     for k, v in self.env.items():
                         if k in var_locals:
                             local_env[k] = v
-                    subgraph = HierarchicalDependencyGraph(
+                    subgraph = HierarchicalDependenceGraph(
                         local_env, var, _parent_nodes=var_locals)
                     subgraphs[var] = subgraph
                 subgraph_deps = subgraph.graph_dependencies()
@@ -385,7 +233,7 @@ class HierarchicalDependencyGraph(DependencyGraph):
     def flat_contains(self, node):
         nodes = self.local_nodes
         for each_node in nodes:
-            if isinstance(each_node, HierarchicalDependencyGraph):
+            if isinstance(each_node, HierarchicalDependenceGraph):
                 if each_node.flat_contains(node):
                     return True
             elif node == each_node:
