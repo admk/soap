@@ -50,36 +50,42 @@ class ExpressionDependencies(base_dispatcher()):
 expression_dependencies = ExpressionDependencies()
 
 
-class CyclicGraphException(Exception):
-    pass
-
-
-class DependenceGraph(networkx.DiGraph):
+class DependenceGraph(object):
     """Discovers the graph of dependences"""
     class _RootNode(object):
         def __str__(self):
             return '<root>'
         __repr__ = __str__
 
-    def __init__(self, env, out_vars, attr_func=None):
+    def __init__(self, env, out_vars):
         super().__init__()
+        self.graph = networkx.DiGraph()
         self.env = env
         new_out_vars = []
         for var in out_vars:
             if var not in new_out_vars:
                 new_out_vars.append(var)
         self.out_vars = new_out_vars
-        self.attr_func = attr_func or self._default_attr_func
         self._closure_graph = None
         self._root_node = self._RootNode()
         self._edges_recursive(self._root_node)
-        self.is_cyclic = False
 
-    def _default_attr_func(self, from_node, to_node):
+    def nodes(self):
+        return self.graph.nodes()
+
+    def edges(self):
+        return self.graph.edges()
+
+    def is_cyclic(self):
+        return bool(list(networkx.simple_cycles(self.graph)))
+
+    def attr_func(self, from_node, to_node):
         return (from_node, to_node, {})
 
+    deps_func = staticmethod(expression_dependencies)
+
     def add_edges_one_to_many(self, from_node, to_nodes):
-        self.add_edges_from(
+        self.graph.add_edges_from(
             self.attr_func(from_node, to_node) for to_node in to_nodes)
 
     def _edges_recursive(self, out_vars):
@@ -97,16 +103,14 @@ class DependenceGraph(networkx.DiGraph):
                     expr = var
                 else:
                     expr = self.env[var]
-                local_deps = expression_dependencies(expr)
+                local_deps = self.deps_func(expr)
                 deps += local_deps
                 self.add_edges_one_to_many(var, local_deps)
         if not deps:
             return
         new_deps = []
         for v in deps:
-            if v in prev_nodes:
-                self.is_cyclic = True
-            else:
+            if v not in prev_nodes:
                 new_deps.append(v)
         self._edges_recursive(new_deps)
 
@@ -114,7 +118,7 @@ class DependenceGraph(networkx.DiGraph):
         return (v for v in self.nodes() if isinstance(v, InputVariable))
 
     def dfs_postorder(self):
-        for node in networkx.dfs_postorder_nodes(self, self._root_node):
+        for node in networkx.dfs_postorder_nodes(self.graph, self._root_node):
             if node == self._root_node:
                 continue
             yield node
