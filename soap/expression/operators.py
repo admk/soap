@@ -21,6 +21,8 @@ AND_OP = 'and'
 OR_OP = 'or'
 
 # special operators
+VARIABLE_OP = 'v'
+EXTERNAL_OP = 'ext'
 TERNARY_SELECT_OP = '?'
 FIXPOINT_OP = 'fix'
 STATE_GETTER_OP = '()'

@@ -5,25 +5,19 @@
 from soap.common import Flyweight, base_dispatcher
 from soap.expression.common import is_expression
 from soap.lattice.base import Lattice
-from soap.lattice.flat import FlatLattice
 
 
-class Expression(FlatLattice, Flyweight):
+class Expression(Flyweight):
     """A base class for expressions."""
 
     __slots__ = ('_op', '_args')
 
-    def __init__(self, op=None, *args, top=False, bottom=False, **kwargs):
-        super().__init__(top=top, bottom=bottom)
-        if top or bottom:
-            return
+    def __init__(self, op, *args):
+        super().__init__()
         if not args and not all(args):
             raise ValueError('There is no arguments.')
         self._op = op
         self._args = args
-
-    def _cast_value(self, value, top=False, bottom=False):
-        return value
 
     @property
     def op(self):
@@ -34,20 +28,8 @@ class Expression(FlatLattice, Flyweight):
         return self._args
 
     @property
-    def ary(self):
+    def arity(self):
         return len(self.args)
-
-    def is_n_ary(self, n):
-        return self.ary == n
-
-    def is_unary(self):
-        return self.is_n_ary(1)
-
-    def is_binary(self):
-        return self.is_n_ary(2)
-
-    def is_ternary(self):
-        return self.is_n_ary(3)
 
     def vars(self):
         return expression_variables(self)
@@ -104,8 +86,8 @@ class UnaryExpression(Expression):
 
     __slots__ = ()
 
-    def __init__(self, op=None, a=None, top=False, bottom=False, **kwargs):
-        super().__init__(op, a, top=top, bottom=bottom, **kwargs)
+    def __init__(self, op, a):
+        super().__init__(op, a)
 
     @property
     def a(self):
@@ -124,9 +106,8 @@ class BinaryExpression(Expression):
 
     __slots__ = ()
 
-    def __init__(self, op=None, a1=None, a2=None, top=False, bottom=False,
-                 **kwargs):
-        super().__init__(op, a1, a2, top=top, bottom=bottom, **kwargs)
+    def __init__(self, op, a1, a2):
+        super().__init__(op, a1, a2)
 
     @property
     def a1(self):
@@ -146,9 +127,8 @@ class TernaryExpression(Expression):
 
     __slots__ = ()
 
-    def __init__(self, op=None, a1=None, a2=None, a3=None,
-                 top=False, bottom=False, **kwargs):
-        super().__init__(op, a1, a2, a3, top=top, bottom=bottom, **kwargs)
+    def __init__(self, op, a1, a2, a3):
+        super().__init__(op, a1, a2, a3)
 
     @property
     def a1(self):
@@ -168,9 +148,8 @@ class QuaternaryExpression(Expression):
 
     __slots__ = ()
 
-    def __init__(self, op=None, a1=None, a2=None, a3=None, a4=None,
-                 top=False, bottom=False, **kwargs):
-        super().__init__(op, a1, a2, a3, a4, top=top, bottom=bottom, **kwargs)
+    def __init__(self, op, a1, a2, a3, a4):
+        super().__init__(op, a1, a2, a3, a4)
 
     @property
     def a1(self):

@@ -194,10 +194,10 @@ class CodeGenerator(object):
         def expand_simple_expression(env, label):
             if is_numeral(label):
                 return label
-            expr = env[label]
+            expr = env.get(label)
             if is_variable(expr) or is_numeral(expr):
                 return expr
-            if expr.is_bottom():
+            if expr is None:
                 return label
             args = [expand_simple_expression(env, l) for l in expr.args]
             return expression_factory(expr.op, *args)

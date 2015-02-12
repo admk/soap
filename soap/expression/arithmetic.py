@@ -15,19 +15,19 @@ from soap.expression.base import (
 class ArithmeticMixin(object):
 
     def __add__(self, other):
-        return BinaryArithExpr(op=ADD_OP, a1=self, a2=other)
+        return BinaryArithExpr(ADD_OP, self, other)
 
     def __sub__(self, other):
-        return BinaryArithExpr(op=SUBTRACT_OP, a1=self, a2=other)
+        return BinaryArithExpr(SUBTRACT_OP, self, other)
 
     def __mul__(self, other):
-        return BinaryArithExpr(op=MULTIPLY_OP, a1=self, a2=other)
+        return BinaryArithExpr(MULTIPLY_OP, self, other)
 
     def __div__(self, other):
-        return BinaryArithExpr(op=DIVIDE_OP, a1=self, a2=other)
+        return BinaryArithExpr(DIVIDE_OP, self, other)
 
     def __neg__(self):
-        return UnaryArithExpr(op=UNARY_SUBTRACT_OP, a=self)
+        return UnaryArithExpr(UNARY_SUBTRACT_OP, self)
 
 
 class ArithExpr(ArithmeticMixin, Expression):
@@ -35,14 +35,11 @@ class ArithExpr(ArithmeticMixin, Expression):
 
     __slots__ = ()
 
-    def __init__(self, op=None, *args, top=False, bottom=False,
-                 _check_args=True):
-        if _check_args:
-            if not top and not bottom and op not in ARITHMETIC_OPERATORS:
-                raise ValueError(
-                    'ArithExpr expression must use an arithmetic operator.')
-        super().__init__(
-            op, *args, top=top, bottom=bottom, _check_args=_check_args)
+    def __init__(self, op, *args):
+        if op not in ARITHMETIC_OPERATORS:
+            raise ValueError(
+                'ArithExpr expression must use an arithmetic operator.')
+        super().__init__(op, *args)
 
 
 class UnaryArithExpr(UnaryExpression, ArithExpr):
@@ -86,9 +83,8 @@ class SelectExpr(TernaryArithExpr):
 
     __slots__ = ()
 
-    def __init__(self, a1=None, a2=None, a3=None, top=False, bottom=False):
-        super().__init__(
-            op=TERNARY_SELECT_OP, a1=a1, a2=a2, a3=a3, top=top, bottom=bottom)
+    def __init__(self, a1, a2, a3):
+        super().__init__(TERNARY_SELECT_OP, a1, a2, a3)
 
     @property
     def bool_expr(self):

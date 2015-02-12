@@ -2,7 +2,6 @@ from soap.expression import (
     AccessExpr, Expression, SelectExpr, FixExpr, Variable, OutputVariableTuple,
     UpdateExpr
 )
-from soap.lattice import Lattice, map
 from soap.semantics.error import cast
 from soap.semantics.common import is_numeral
 from soap.semantics.label import Label
@@ -10,8 +9,17 @@ from soap.semantics.state.base import BaseState
 from soap.semantics.functions import expand_expr, to_meta_state
 
 
-class MetaState(BaseState, map(None, Expression)):
-    __slots__ = ()
+class MetaState(BaseState, dict):
+    __slots__ = ('_hash')
+
+    def __init__(self, dictionary=None, **kwargs):
+        dictionary = dict(dictionary or {}, **kwargs)
+        mapping = {
+            self._cast_key(key): self._cast_value(value)
+            for key, value in dictionary.items()
+        }
+        super().__init__(mapping)
+        self._hash = None
 
     def _cast_key(self, key):
         if isinstance(key, str):
@@ -21,12 +29,8 @@ class MetaState(BaseState, map(None, Expression)):
         raise TypeError(
             'Do not know how to convert {!r} into a variable'.format(key))
 
-    def _cast_value(self, value=None, top=False, bottom=False):
-        if top or bottom:
-            return Expression(top=top, bottom=bottom)
+    def _cast_value(self, value):
         if isinstance(value, (Label, Expression)):
-            return value
-        if isinstance(value, Lattice) and value.is_top():
             return value
         if isinstance(value, str):
             from soap.parser import parse
@@ -37,6 +41,15 @@ class MetaState(BaseState, map(None, Expression)):
             return self.__class__(value)
         raise TypeError(
             'Do not know how to convert {!r} into an expression'.format(value))
+
+    def immu_update(self, key, value):
+        """
+        Generate a new copy of this MetaState, and update the content with a
+        new pair `key`: `value`.
+        """
+        new_mapping = dict(self)
+        new_mapping[self._cast_key(key)] = self._cast_value(value)
+        return self.__class__(new_mapping)
 
     def is_fixpoint(self, other):
         raise RuntimeError('Should not be called.')
@@ -52,13 +65,11 @@ class MetaState(BaseState, map(None, Expression)):
         if isinstance(var, AccessExpr):
             var, subscript = var.var, var.subscript
             expr = UpdateExpr(var, subscript, expr)
-        return self[var:expand_expr(expr, self)]
+        return self.immu_update(var, expand_expr(expr, self))
 
     def visit_IfFlow(self, flow):
         def get(state, var):
             expr = state[var]
-            if expr.is_bottom():
-                return var
             return expr
         bool_expr = expand_expr(flow.conditional_expr, self)
         true_state = self.transition(flow.true_flow)
@@ -116,6 +127,11 @@ class MetaState(BaseState, map(None, Expression)):
                 bool_expr, local_loop_state, var, local_init_state)
 
         return self.__class__(mapping)
+
+    def __hash__(self):
+        if self._hash is None:
+            self._hash = hash(tuple(sorted(self.items(), key=hash)))
+        return self._hash
 
 
 def flow_to_meta_state(flow):
