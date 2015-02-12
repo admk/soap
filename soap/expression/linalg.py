@@ -13,9 +13,8 @@ class Subscript(Expression):
 
     __slots__ = ()
 
-    def __init__(self, *subscript, top=False, bottom=False):
-        super().__init__(
-            SUBSCRIPT_OP, *subscript, top=top, bottom=bottom)
+    def __init__(self, *subscript):
+        super().__init__(SUBSCRIPT_OP, *subscript)
 
     def __iter__(self):
         return iter(self.args)
@@ -31,11 +30,10 @@ class AccessExpr(ArithmeticMixin, BooleanMixin, BinaryExpression):
 
     __slots__ = ()
 
-    def __init__(self, var=None, subscript=None, top=False, bottom=False):
+    def __init__(self, var, subscript):
         if not isinstance(subscript, Label):
             subscript = Subscript(*subscript)
-        super().__init__(
-            op=INDEX_ACCESS_OP, a1=var, a2=subscript, top=top, bottom=bottom)
+        super().__init__(INDEX_ACCESS_OP, var, subscript)
 
     @property
     def var(self):
@@ -58,14 +56,10 @@ class UpdateExpr(ArithmeticMixin, BooleanMixin, TernaryExpression):
 
     __slots__ = ()
 
-    def __init__(
-            self, var=None, subscript=None, expr=None,
-            top=False, bottom=False):
+    def __init__(self, var, subscript, expr):
         if not isinstance(subscript, Label):
             subscript = Subscript(*subscript)
-        super().__init__(
-            op=INDEX_UPDATE_OP, a1=var, a2=subscript, a3=expr,
-            top=top, bottom=bottom)
+        super().__init__(INDEX_UPDATE_OP, var, subscript, expr)
 
     @property
     def var(self):

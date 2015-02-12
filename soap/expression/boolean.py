@@ -11,13 +11,13 @@ from soap.expression.base import (
 class BooleanMixin(object):
 
     def __invert__(self):
-        return UnaryBoolExpr(op=operators.UNARY_NEGATION_OP, a=self)
+        return UnaryBoolExpr(operators.UNARY_NEGATION_OP, self)
 
     def __and__(self, other):
-        return BinaryBoolExpr(op=operators.AND_OP, a1=self, a2=other)
+        return BinaryBoolExpr(operators.AND_OP, self, other)
 
     def __or__(self, other):
-        return BinaryBoolExpr(op=operators.OR_OP, a1=self, a2=other)
+        return BinaryBoolExpr(operators.OR_OP, self, other)
 
 
 class BoolExpr(BooleanMixin, Expression):
@@ -25,15 +25,11 @@ class BoolExpr(BooleanMixin, Expression):
 
     __slots__ = ()
 
-    def __init__(self, op=None, *args, top=False, bottom=False,
-                 _check_args=True):
-        if _check_args:
-            if not top and not bottom:
-                if op not in operators.BOOLEAN_OPERATORS:
-                    raise ValueError(
-                        'BoolExpr expression must use a boolean operator.')
-        super().__init__(
-            op, *args, top=top, bottom=bottom, _check_args=_check_args)
+    def __init__(self, op, *args):
+        if op not in operators.BOOLEAN_OPERATORS:
+            raise ValueError(
+                'BoolExpr expression must use a boolean operator.')
+        super().__init__(op, *args)
 
 
 class UnaryBoolExpr(UnaryExpression, BoolExpr):

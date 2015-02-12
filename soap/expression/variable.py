@@ -4,9 +4,10 @@
 """
 import collections
 
+from soap.expression.arithmetic import ArithmeticMixin
 from soap.expression.base import Expression, UnaryExpression
 from soap.expression.boolean import BooleanMixin
-from soap.expression.arithmetic import ArithmeticMixin
+from soap.expression.operators import EXTERNAL_OP, VARIABLE_OP
 
 
 class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
@@ -14,8 +15,8 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
 
     __slots__ = ()
 
-    def __init__(self, name=None, top=False, bottom=False):
-        super().__init__(op=None, a=name, top=top, bottom=bottom)
+    def __init__(self, name):
+        super().__init__(VARIABLE_OP, name)
 
     @property
     def name(self):
@@ -30,6 +31,7 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
 
 
 class _MagicalMixin(object):
+    # FIXME remove this?
     pass
 
 
@@ -42,8 +44,8 @@ class OutputVariable(_MagicalMixin, Variable):
 
 
 class External(_MagicalMixin, ArithmeticMixin, BooleanMixin, Expression):
-    def __init__(self, var, top=False, bottom=False):
-        super().__init__(None, var, top=top, bottom=bottom)
+    def __init__(self, var):
+        super().__init__(EXTERNAL_OP, var)
 
     @property
     def var(self):
@@ -58,7 +60,7 @@ class VariableTuple(
         Expression):
     """Tuple of variables. """
 
-    def __init__(self, *args, top=False, bottom=False):
+    def __init__(self, *args):
         if len(args) == 1:
             args0 = args[0]
             if isinstance(args0, collections.Iterable):
@@ -70,7 +72,7 @@ class VariableTuple(
                 flat_args += v
             else:
                 flat_args.append(v)
-        super().__init__(None, *flat_args, top=top, bottom=bottom)
+        super().__init__(None, *flat_args)
 
     def __getitem__(self, index):
         return self.args[index]

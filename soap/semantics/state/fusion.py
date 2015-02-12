@@ -55,7 +55,7 @@ def branch_fusion(env, expr):
     new_env = dict(env)
 
     # branch expression labelling
-    keys = OutputVariableTuple(sorted(true_env, key=str))
+    keys = OutputVariableTuple(sorted(true_env, key=hash))
     true_values = InputVariableTuple(list(true_env[k] for k in keys))
     false_values = InputVariableTuple(list(false_env[k] for k in keys))
     branch_expr = SelectExpr(bool_expr, true_values, false_values)
@@ -66,6 +66,18 @@ def branch_fusion(env, expr):
         new_env[each_var] = keys
 
     return new_env
+
+
+def _conflict_update(x, y):
+    """
+    Merge dictionaries x and y, check if conflict key-value pair exists, return
+    False if has conflict.
+    """
+    for key, value in y.items():
+        ori_value = x.setdefault(key, value)
+        if ori_value != value:
+            return False
+    return True
 
 
 def loop_fusion(env, expr):
@@ -109,31 +121,28 @@ def loop_fusion(env, expr):
             return False
         return True
 
-    fused_loop_state = MetaState.empty()
-    fused_init_state = MetaState.empty()
+    fused_loop_state = {}
+    fused_init_state = {}
     loop_vars = []
     out_vars = []
 
-    for each_var, each_expr in sorted(env.items(), key=str):
+    for each_var, each_expr in sorted(env.items(), key=hash):
         if not merge_check(each_var, each_expr):
             continue
         loop_vars.append(each_expr.loop_var)
         out_vars.append(each_var)
-        fused_loop_state |= each_expr.loop_state
-        fused_init_state |= each_expr.init_state
+        success = _conflict_update(fused_loop_state, each_expr.loop_state)
+        if not success:
+            return env
+        success = _conflict_update(fused_init_state, each_expr.init_state)
+        if not success:
+            return env
 
     loop_vars = OutputVariableTuple(loop_vars)
     out_vars = OutputVariableTuple(out_vars)
 
     if len(loop_vars) <= 1:
         # did not merge
-        return env
-
-    # check for merge conflicts
-    conflict_check = lambda state: any(
-        expr.is_top() for expr in state.values())
-    if conflict_check(fused_loop_state) or conflict_check(fused_init_state):
-        # merge conflicts
         return env
 
     new_env = dict(env)
@@ -270,10 +279,7 @@ def recursive_fusion(env, out_vars, done_vars):
             env = recursive_fusion(env, var, done_vars)
             continue
 
-        expr = env.get(var)
-        if expr is None or expr.is_bottom():
-            logger.error('Node {} has no expression'.format(var))
-            continue
+        expr = env[var]
 
         # fusion kernel
         env = acyclic_assign(branch_fusion, env, expr)

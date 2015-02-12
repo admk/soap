@@ -28,11 +28,10 @@ class TestMetaState(unittest.TestCase):
 
     def test_visit_WhileFlow(self):
         flow = parse('while (x < n) (x := x + 1;);')
-        init_state = MetaState(x='x', n='n', y='y')
-        state = init_state.visit_WhileFlow(flow)
+        state = MetaState(x='x', n='n', y='y').visit_WhileFlow(flow)
         fix_expr = FixExpr(
-            parse('(x < n)'), MetaState(x='x + 1', y='y', n='n'), parse('x'),
-            init_state)
+            parse('(x < n)'), MetaState(x='x + 1', n='n'), parse('x'),
+            MetaState(x='x', n='n'))
         compare_state = MetaState(x=fix_expr, y='y', n='n')
         self.assertEqual(state, compare_state)
 

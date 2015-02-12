@@ -16,8 +16,9 @@ def expand_expr(expr, meta_state):
         args = [expand_expr(a, meta_state) for a in expr.args]
         return expression_factory(expr.op, *args)
     if is_variable(expr):
-        new_expr = meta_state[expr]
-        if new_expr.is_bottom():
+        try:
+            new_expr = meta_state[expr]
+        except KeyError:
             raise KeyError(
                 'Cannot expand the expression {expr}, missing variable in '
                 '{state}'.format(expr=expr, state=meta_state))
