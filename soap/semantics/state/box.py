@@ -85,7 +85,7 @@ class IdentifierBoxState(IdentifierBaseState, BoxState):
     def _labeled_transition(self, label):
         mapping = dict(self)
         for k, v in self.items():
-            if not k.label.is_bottom():
+            if not k.is_current():
                 continue
             labeled_key = Identifier(k.variable, label=label)
             v |= mapping.get(labeled_key, self._cast_value(bottom=True))
@@ -122,7 +122,7 @@ class IdentifierBoxState(IdentifierBaseState, BoxState):
         # kernel; if non-termination is possible, last_entry (without labels
         # for program statements, which is not relevant to our analysis),
         # should not be tested bottom.
-        last_entry_predicate = lambda k: k.label.is_bottom()
+        last_entry_predicate = lambda k: k.is_current()
         last_entry = fixpoint['last_entry'].filter(last_entry_predicate)
         last_entry._warn_non_termination(flow)
 
@@ -136,7 +136,7 @@ class IdentifierBoxState(IdentifierBaseState, BoxState):
         # we should not include any current values into this as these values
         # are not relevant after the loop, all relevant loop execution effects
         # are recorded with labels.
-        entry = entry.filter(lambda k: not k.label.is_bottom())
+        entry = entry.filter(lambda k: not k.is_current())
 
         # label loop exit values.
         exit = fixpoint['exit']._labeled_transition(exit_label)
