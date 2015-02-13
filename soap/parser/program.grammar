@@ -43,7 +43,7 @@ output_statement = output left_paren variable_list right_paren semicolon
 
 variable_declaration = data_type new_variable
 
-data_type  = base_type / array_type
+data_type  = array_type / base_type
 array_type = base_type left_brac integer_list right_brac
 
 base_type = int_type / real_type

@@ -259,7 +259,7 @@ class _ProgramVisitor(object):
     def visit_skip_statement(self, node, children):
         return IdentityFlow()
 
-    visit_declaration_statement = _lift_dontcare
+    visit_declaration_statement = visit_skip_statement
 
     def visit_assign_statement(self, node, children):
         var, assign, expr, semicolon = children
