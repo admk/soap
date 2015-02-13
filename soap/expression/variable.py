@@ -30,8 +30,8 @@ class Variable(ArithmeticMixin, BooleanMixin, BinaryExpression):
         return str(self.name)
 
     def __repr__(self):
-        return '{cls}({name!r})'.format(
-            cls=self.__class__.__name__, name=self.name)
+        return '{cls}({name!r}, {dtype!r})'.format(
+            cls=self.__class__.__name__, name=self.name, dtype=self.dtype)
 
 
 class InputVariable(Variable):
