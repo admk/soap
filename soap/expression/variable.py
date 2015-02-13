@@ -30,20 +30,15 @@ class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
             cls=self.__class__.__name__, name=self.name)
 
 
-class _MagicalMixin(object):
-    # FIXME remove this?
+class InputVariable(Variable):
     pass
 
 
-class InputVariable(_MagicalMixin, Variable):
+class OutputVariable(Variable):
     pass
 
 
-class OutputVariable(_MagicalMixin, Variable):
-    pass
-
-
-class External(_MagicalMixin, ArithmeticMixin, BooleanMixin, Expression):
+class External(ArithmeticMixin, BooleanMixin, Expression):
     def __init__(self, var):
         super().__init__(EXTERNAL_OP, var)
 
@@ -56,8 +51,7 @@ class External(_MagicalMixin, ArithmeticMixin, BooleanMixin, Expression):
 
 
 class VariableTuple(
-        _MagicalMixin, collections.Sequence, ArithmeticMixin, BooleanMixin,
-        Expression):
+        collections.Sequence, ArithmeticMixin, BooleanMixin, Expression):
     """Tuple of variables. """
 
     def __init__(self, *args):
