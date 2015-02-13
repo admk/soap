@@ -3,44 +3,53 @@
 # =========
 
 statement =
-    compound_statement /
-    arithmetic_expression /
-    boolean_expression /
+    compound_statement / arithmetic_expression / boolean_expression /
     _  # empty
 compound_statement = single_statement statement
 single_statement =
-    skip_statement /
-    assign_statement /
-    if_statement /
-    while_statement /
-    input_statement /
-    output_statement
+    skip_statement / assign_statement / if_statement / while_statement /
+    input_statement / output_statement / declaration_statement
 
 skip_statement = skip semicolon
 
+declaration_statement = variable_declaration semicolon
+
 assign_statement =
-    variable_subscript assign arithmetic_expression semicolon
+    variable_or_declaration assign arithmetic_expression semicolon
+variable_or_declaration = variable_declaration / variable_subscript
 
 if_statement = if_block semicolon
 if_block = if_else_block / if_then_block
 if_then_block = if boolean_block code_block
-if_else_block = if_then_block code_block
+if_else_block = if_then_block else code_block
 
 while_statement = while boolean_block code_block semicolon
 
 boolean_block = left_paren boolean_expression right_paren
-code_block = left_paren statement right_paren
+code_block = left_curl statement right_curl
 
 input_statement = input left_paren input_list right_paren semicolon
 input_list = input_expr maybe_input_list
 maybe_input_list = comma_input_list / _
 comma_input_list = comma input_list
-input_expr = variable colon number
+input_expr = variable_declaration colon number
 
-output_statement = output left_paren output_list right_paren semicolon
-output_list = variable maybe_output_list
-maybe_output_list = comma_output_list / _
-comma_output_list = comma output_list
+output_statement = output left_paren variable_list right_paren semicolon
+
+
+# ==============
+#  declarations
+# ==============
+
+variable_declaration = data_type new_variable
+
+data_type  = base_type / array_type
+array_type = base_type left_brac integer_list right_brac
+
+base_type = int_type / real_type
+
+int_type  = _ 'int'  _
+real_type = _ 'real' _
 
 
 # =============
@@ -79,15 +88,29 @@ prod_list       = prod_expr maybe_prod_list
 prod_expr       = prod_operator atom
 
 variable_subscript      = variable_with_subscript / variable
-variable_with_subscript = variable left_brac subscript_list right_brac
-subscript_list          = arithmetic_expression maybe_subscript_list
-maybe_subscript_list    = comma_subscript_list / _
-comma_subscript_list    = comma subscript_list
+variable_with_subscript = variable left_brac expression_list right_brac
 
 number   = error / interval / scalar
 error    = interval interval
 interval = left_brac scalar comma scalar right_brac
-scalar   = float / integer
+scalar   = real / integer
+
+
+# ==============
+#  common lists
+# ==============
+
+variable_list = variable maybe_variable_list
+maybe_variable_list = comma_variable_list / _
+comma_variable_list = comma variable_list
+
+integer_list = integer maybe_integer_list
+maybe_integer_list = comma_integer_list / _
+comma_integer_list = comma integer_list
+
+expression_list          = arithmetic_expression maybe_expression_list
+maybe_expression_list    = comma_expression_list / _
+comma_expression_list    = comma expression_list
 
 
 # ==========
@@ -96,16 +119,19 @@ scalar   = float / integer
 
 skip        = _ 'skip'   _
 if          = _ 'if'     _
+else        = _ 'else'   _
 while       = _ 'while'  _
 input       = _ 'input'  _
 output      = _ 'output' _
 
-assign      = _ ':=' _
-left_paren  = _ '('  _
-right_paren = _ ')'  _
-semicolon   = _ ';'  _
-question    = _ '?'  _
-colon       = _ ':'  _
+assign      = _ '=' _
+left_paren  = _ '(' _
+right_paren = _ ')' _
+left_curl   = _ '{' _
+right_curl  = _ '}' _
+semicolon   = _ ';' _
+question    = _ '?' _
+colon       = _ ':' _
 
 compare_operator = le / lt / ge / gt / eq / ne
 
@@ -139,11 +165,12 @@ comma      = _ ',' _
 # =========
 
 variable = _ variable_regex _
+new_variable = _ variable_regex _
 variable_regex = ~'[a-zA-Z_][a-zA-Z_0-9]*'
 
 integer = _ integer_regex _
-float = _ float_regex _
+real    = _ real_regex _
 integer_regex = ~'[0-9]+'
-float_regex = ~'(\+|-)?([0-9]+\.?[0-9]*|\.[0-9]+)([eE](\+|-)?[0-9]+)?'
+real_regex    = ~'(\+|-)?([0-9]+\.?[0-9]*|\.[0-9]+)([eE](\+|-)?[0-9]+)?'
 
 _ = ~r"\s*(?:#[^\r\n]*)?\s*"

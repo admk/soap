@@ -5,22 +5,26 @@
 import collections
 
 from soap.expression.arithmetic import ArithmeticMixin
-from soap.expression.base import Expression, UnaryExpression
+from soap.expression.base import Expression, BinaryExpression
 from soap.expression.boolean import BooleanMixin
 from soap.expression.operators import EXTERNAL_OP, VARIABLE_OP
 
 
-class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
+class Variable(ArithmeticMixin, BooleanMixin, BinaryExpression):
     """The variable class."""
 
     __slots__ = ()
 
-    def __init__(self, name):
-        super().__init__(VARIABLE_OP, name)
+    def __init__(self, name, dtype):
+        super().__init__(VARIABLE_OP, name, dtype)
 
     @property
     def name(self):
         return self.args[0]
+
+    @property
+    def dtype(self):
+        return self.args[1]
 
     def __str__(self):
         return str(self.name)
@@ -50,8 +54,7 @@ class External(ArithmeticMixin, BooleanMixin, Expression):
         return '^{}'.format(self.var)
 
 
-class VariableTuple(
-        collections.Sequence, ArithmeticMixin, BooleanMixin, Expression):
+class VariableTuple(ArithmeticMixin, BooleanMixin, Expression):
     """Tuple of variables. """
 
     def __init__(self, *args):

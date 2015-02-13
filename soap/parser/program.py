@@ -2,7 +2,8 @@ from os import path
 
 from parsimonious import Grammar, nodes
 
-from soap.expression import expression_factory, operators
+from soap.expression import expression_factory, operators, Variable
+from soap.datatype import int_type, real_type, IntegerArrayType, RealArrayType
 from soap.program import (
     IdentityFlow, AssignFlow, IfFlow, WhileFlow, CompositionalFlow,
     InputFlow, OutputFlow,
@@ -43,74 +44,135 @@ def _visit_list(self, node, children):
     return [expr] + expr_list
 
 
-class _ProgramParser(object):
-    visit_statement = visit_single_statement = _lift_child
+class _CommonVisitor(object):
+    visit_variable_subscript = _lift_child
 
-    def visit_compound_statement(self, node, children):
-        single_statement, statement = children
-        if statement is None:
-            return single_statement
-        if isinstance(statement, CompositionalFlow):
-            flows = list(statement.flows)
-        else:
-            flows = [statement]
-        flows = [single_statement] + flows
-        return CompositionalFlow(flows)
+    def visit_variable_with_subscript(self, node, children):
+        var, _1, subscript, _2 = children
+        return expression_factory(operators.INDEX_ACCESS_OP, var, subscript)
 
-    def visit_skip_statement(self, node, children):
-        return IdentityFlow()
+    visit_integer_list = _visit_list
+    visit_maybe_integer_list = _visit_maybe_list
+    visit_comma_integer_list = _lift_second
 
-    def visit_assign_statement(self, node, children):
-        var, assign, expr, semicolon = children
-        return AssignFlow(var, expr)
+    visit_variable_list = _visit_list
+    visit_maybe_variable_list = _visit_maybe_list
+    visit_comma_variable_list = _lift_second
 
-    visit_if_statement = _lift_first
-    visit_if_block = _lift_child
+    visit_expression_list = _visit_list
+    visit_maybe_expression_list = _visit_maybe_list
+    visit_comma_expression_list = _lift_second
 
-    def visit_if_then_block(self, node, children):
-        if_lit, bool_expr, true_flow = children
-        return IfFlow(bool_expr, true_flow, IdentityFlow())
+    def visit_number(self, node, children):
+        child = _lift_child(self, node, children)
+        if isinstance(child, str):
+            return cast(child)
+        return child
 
-    def visit_if_else_block(self, node, children):
-        if_flow, false_flow = children
-        bool_expr = if_flow.conditional_expr
-        true_flow = if_flow.true_flow
-        return IfFlow(bool_expr, true_flow, false_flow)
+    def visit_error(self, node, children):
+        value, error = children
+        if isinstance(value, ErrorSemantics):
+            value = value.v
+        if isinstance(error, ErrorSemantics):
+            error = error.v
+        return ErrorSemantics(value, error)
 
-    def visit_while_statement(self, node, children):
-        while_lit, bool_expr, loop_flow, semicolon = children
-        return WhileFlow(bool_expr, loop_flow)
+    def visit_interval(self, node, children):
+        left_brac, min_val, comma, max_val, right_brac = children
+        if isinstance(min_val, ErrorSemantics):
+            min_val = min_val.v
+        if isinstance(max_val, ErrorSemantics):
+            max_val = max_val.v
+        min_val = min_val.min
+        max_val = max_val.max
+        return cast([min_val, max_val])
 
-    visit_boolean_block = visit_code_block = _lift_middle
+    visit_scalar = _lift_child
 
-    def visit_input_statement(self, node, children):
-        input_lit, left_paren, input_list, right_paren, semicolon = children
-        return InputFlow(input_list)
+    visit_skip = visit_assign = _lift_dontcare
+    visit_if = visit_else = visit_while = _lift_dontcare
+    visit_input = visit_output = _lift_dontcare
 
-    def visit_input_list(self, node, children):
-        input_expr, maybe_input_list = children
-        input_list = input_expr
-        if maybe_input_list:
-            input_list.update(maybe_input_list)
-        return input_list
+    visit_left_brac = visit_right_brac = visit_comma = _lift_dontcare
+    visit_left_paren = visit_right_paren = visit_semicolon = _lift_dontcare
+    visit_left_curl = visit_right_curl = _lift_dontcare
+    visit_question = visit_colon = _lift_dontcare
 
-    visit_maybe_input_list = _lift_child
-    visit_comma_input_list = _lift_second
+    def _visit_number_regex(self, node, children):
+        return cast(node.text)
 
-    def visit_input_expr(self, node, children):
-        variable, colon, number = children
-        return {variable: number}
+    visit_integer_regex = visit_real_regex = _visit_number_regex
 
-    def visit_output_statement(self, node, children):
-        output_lit, left_paren, output_list, right_paren, semicolon = children
-        return OutputFlow(output_list)
+    visit_integer = visit_real = _lift_middle
+    visit_variable_regex = _lift_text
 
-    visit_output_list = _visit_list
-    visit_maybe_output_list = _visit_maybe_list
-    visit_comma_output_list = _lift_second
+    visit__ = _lift_dontcare
 
 
-class _ExpressionParser(object):
+class VariableNotDeclaredError(Exception):
+    """Variable was not declared.  """
+
+
+class VariableAlreadyDeclaredError(Exception):
+    """Variable was already declared.  """
+
+
+class _DeclarationVisitor(object):
+    def __init__(self):
+        super().__init__()
+        self.decl_map = {}
+
+    visit_variable_or_declaration = _lift_child
+
+    def visit_variable_declaration(self, node, children):
+        decl_type, var = children
+        if var.dtype is not None or var in self.decl_map:
+            raise VariableAlreadyDeclaredError(
+                'Variable {} is already declared with type {}'
+                .format(var.name, var.dtype))
+        self.decl_map[var.name] = decl_type
+        return Variable(var.name, decl_type)
+
+    def visit_variable(self, node, children):
+        var = self.visit_new_variable(node, children)
+        if not var.dtype:
+            raise VariableNotDeclaredError(
+                'Variable {} is not declared'.format(var.name))
+        return var
+
+    def visit_new_variable(self, node, children):
+        name = _lift_middle(self, node, children)
+        dtype = self.decl_map.get(name)
+        return Variable(name, dtype)
+
+    visit_data_type = _lift_child
+
+    def visit_array_type(self, node, children):
+        base_type, left_brac, dimension_list, right_brac = children
+        if base_type == int_type:
+            return IntegerArrayType(dimension_list)
+        elif base_type == real_type:
+            return RealArrayType(dimension_list)
+        raise TypeError('Unrecognized data type {}'.format(base_type))
+
+    visit_dimension_list = _visit_list
+    visit_maybe_dimension_list = _visit_maybe_list
+    visit_comma_dimension_list = _lift_second
+
+    visit_base_type = _lift_child
+
+    _type_map = {
+        'int_type': int_type,
+        'real_type': real_type,
+    }
+
+    def _visit_type(self, node, children):
+        return self._type_map[node.expr_name]
+
+    visit_int_type = visit_real_type = _visit_type
+
+
+class _ExpressionVisitor(object):
     visit_boolean_expression = visit_and_factor = _visit_concat_expr
     visit_bool_atom = _lift_child
     visit_bool_parened = _lift_middle
@@ -148,47 +210,6 @@ class _ExpressionParser(object):
     visit_sum_list = visit_prod_list = _visit_list
     visit_sum_expr = visit_prod_expr = _lift_children
 
-    visit_variable_subscript = _lift_child
-
-    def visit_variable_with_subscript(self, node, children):
-        var, _1, subscript, _2 = children
-        return expression_factory(operators.INDEX_ACCESS_OP, var, subscript)
-
-    visit_subscript_list = _visit_list
-    visit_maybe_subscript_list = _visit_maybe_list
-    visit_comma_subscript_list = _lift_second
-
-    def visit_number(self, node, children):
-        child = _lift_child(self, node, children)
-        if isinstance(child, str):
-            return cast(child)
-        return child
-
-    def visit_error(self, node, children):
-        value, error = children
-        if isinstance(value, ErrorSemantics):
-            value = value.v
-        if isinstance(error, ErrorSemantics):
-            error = error.v
-        return ErrorSemantics(value, error)
-
-    def visit_interval(self, node, children):
-        left_brac, min_val, comma, max_val, right_brac = children
-        if isinstance(min_val, ErrorSemantics):
-            min_val = min_val.v
-        if isinstance(max_val, ErrorSemantics):
-            max_val = max_val.v
-        min_val = min_val.min
-        max_val = max_val.max
-        return cast([min_val, max_val])
-
-    visit_scalar = _lift_child
-
-    visit_skip = visit_assign = visit_if = visit_while = _lift_dontcare
-    visit_input = visit_output = _lift_dontcare
-    visit_left_paren = visit_right_paren = visit_semicolon = _lift_dontcare
-    visit_question = visit_colon = _lift_dontcare
-
     visit_compare_operator = _lift_child
 
     _operator_map = {
@@ -220,45 +241,87 @@ class _ExpressionParser(object):
 
     visit_add = visit_sub = visit_mul = visit_div = visit_pow = _visit_operator
 
-    visit_left_brac = visit_right_brac = visit_comma = _lift_dontcare
 
-    def visit_variable(self, node, children):
-        name = _lift_middle(self, node, children)
-        return expression_factory(name)
+class _ProgramVisitor(object):
+    visit_statement = visit_single_statement = _lift_child
 
-    def _visit_number_regex(self, node, children):
-        return cast(node.text)
+    def visit_compound_statement(self, node, children):
+        single_statement, statement = children
+        if statement is None:
+            return single_statement
+        if isinstance(statement, CompositionalFlow):
+            flows = list(statement.flows)
+        else:
+            flows = [statement]
+        flows = [single_statement] + flows
+        return CompositionalFlow(flows)
 
-    visit_integer_regex = visit_float_regex = _visit_number_regex
+    def visit_skip_statement(self, node, children):
+        return IdentityFlow()
 
-    visit_integer = visit_float = _lift_middle
-    visit_variable_regex = _lift_text
+    visit_declaration_statement = _lift_dontcare
 
-    visit__ = _lift_dontcare
+    def visit_assign_statement(self, node, children):
+        var, assign, expr, semicolon = children
+        return AssignFlow(var, expr)
+
+    visit_if_statement = _lift_first
+    visit_if_block = _lift_child
+
+    def visit_if_then_block(self, node, children):
+        if_lit, bool_expr, true_flow = children
+        return IfFlow(bool_expr, true_flow, IdentityFlow())
+
+    def visit_if_else_block(self, node, children):
+        if_flow, else_lit, false_flow = children
+        bool_expr = if_flow.conditional_expr
+        true_flow = if_flow.true_flow
+        return IfFlow(bool_expr, true_flow, false_flow)
+
+    def visit_while_statement(self, node, children):
+        while_lit, bool_expr, loop_flow, semicolon = children
+        return WhileFlow(bool_expr, loop_flow)
+
+    visit_boolean_block = visit_code_block = _lift_middle
+
+    def visit_input_statement(self, node, children):
+        input_lit, left_paren, input_list, right_paren, semicolon = children
+        return InputFlow(input_list)
+
+    def visit_input_list(self, node, children):
+        input_expr, maybe_input_list = children
+        input_list = input_expr
+        if maybe_input_list:
+            input_list.update(maybe_input_list)
+        return input_list
+
+    visit_maybe_input_list = _lift_child
+    visit_comma_input_list = _lift_second
+
+    def visit_input_expr(self, node, children):
+        variable, colon, number = children
+        return {variable: number}
+
+    def visit_output_statement(self, node, children):
+        output_lit, left_paren, output_list, right_paren, semicolon = children
+        return OutputFlow(output_list)
 
 
-class _VisitorParser(nodes.NodeVisitor, _ExpressionParser, _ProgramParser):
-    grammar_file = path.join(path.dirname(__file__), 'program.grammar')
-
-    def __init__(self):
-        super().__init__()
-        with open(self.grammar_file, 'r') as file:
-            self.grammar = Grammar(file.read())
+class _Visitor(
+        nodes.NodeVisitor, _CommonVisitor, _DeclarationVisitor,
+        _ExpressionVisitor, _ProgramVisitor):
 
     def generic_visit(self, node, children):
         if not node.expr_name:
             return
         raise TypeError('Do not recognize node {!r}'.format(node))
 
-    def parse(self, program):
-        tree = self.grammar.parse(program)
-        return self.visit(tree)
 
-_parser = None
+grammar_file = path.join(path.dirname(__file__), 'program.grammar')
+with open(grammar_file, 'r') as file:
+    grammar = Grammar(file.read())
 
 
 def parse(program):
-    global _parser
-    if not _parser:
-        _parser = _VisitorParser()
-    return _parser.parse(program)
+    tree = grammar.parse(program)
+    return _Visitor().visit(tree)

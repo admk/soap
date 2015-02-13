@@ -43,12 +43,15 @@ def raise_parser_error(desc, text, token):
 def ast_to_expr(t, s):
     from soap.expression.arithmetic import SelectExpr
     from soap.expression.common import expression_factory
+    from soap.expression.variable import Variable
     from soap.semantics.common import is_constant
     from soap.semantics.error import cast
     if isinstance(t, ast.Num):
         return cast(t.n)
     if isinstance(t, ast.Name):
-        return expression_factory(t.id)
+        # FIXME remember that because we introduce types to variables,
+        # transform may not work
+        return Variable(t.id, None)
     if isinstance(t, ast.Str):
         return t.s
     if isinstance(t, ast.List):
