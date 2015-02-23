@@ -1,234 +1,135 @@
 """
 .. module:: soap.transformer.utils
     :synopsis: Useful utility functions to simplify calls to
-        BiOpTreeTransformer.
+        ArithTreeTransformer.
 """
-import itertools
+import collections
 
-import soap.logger as logger
-from soap.expr import Expr
+from soap import logger
+from soap.expression import operators, is_expression
+from soap.semantics import MetaState
 from soap.transformer.core import TreeTransformer
-from soap.transformer.biop import (
-    associativity, distribute_for_distributivity, BiOpTreeTransformer
+from soap.transformer.arithmetic import (
+    associativity_addition, associativity_multiplication,
+    distributivity_distribute_multiplication,
+    distributivity_distribute_division, ArithTreeTransformer
 )
-from soap.transformer.martel import MartelBiOpTreeTransformer
-from soap.analysis import expr_frontier
+from soap.analysis import frontier, thick_frontier
 
 
-def closure(tree, **kwargs):
+def closure(expr, **kwargs):
     """The full transitive closure."""
-    return BiOpTreeTransformer(tree, **kwargs).closure()
+    return ArithTreeTransformer(expr, **kwargs).closure()
 
 
-def full_closure(tree, **kwargs):
+def full_closure(expr, **kwargs):
     """The same as :func:`closure`, ignoring the `kwargs` stuff."""
-    return closure(tree)
+    return closure(expr)
 
 
-def greedy_frontier_closure(tree, var_env=None, prec=None, **kwargs):
+def _plugin_closure(plugin, expr, state, out_vars, **kwargs):
+    transformer = ArithTreeTransformer(expr, step_plugin=plugin, **kwargs)
+    return plugin(transformer.closure())
+
+
+def greedy_frontier_closure(expr, state, out_vars=None, **kwargs):
     """Our greedy transitive closure.
 
-    :param tree: The expression(s) under transform.
-    :type tree: :class:`soap.expr.Expr`, set, or str
-    :param var_env: The ranges of input variables.
-    :type var_env: dictionary containing mappings from variables to
+    :param expr: The expression(s) under transform.
+    :type expr:
+        :class:`soap.expression.Expression` or
+        :class:`soap.semantics.state.MetaState`
+    :param state: The ranges of input variables.
+    :type state: dictionary containing mappings from variables to
         :class:`soap.semantics.error.Interval`
-    :param prec: Precision used to evaluate the expression, defaults to
-        single precision.
-    :type prec: int
+    :param out_vars: The output variables of the metastate
+    :type out_vars: :class:`collections.Sequence`
     """
-    if var_env:
-        func = lambda s: expr_frontier(s, var_env, prec)
-    else:
-        func = None
-    closure = BiOpTreeTransformer(tree, step_plugin=func, **kwargs).closure()
-    return expr_frontier(closure, var_env, prec)
+    plugin = lambda exprs: [
+        r.expression for r in frontier(exprs, state, out_vars)]
+    return _plugin_closure(plugin, expr, state, out_vars, **kwargs)
 
 
-def transform(tree,
-              reduction_methods=None, transform_methods=None,
+def thick_frontier_closure(expr, state, out_vars=None, **kwargs):
+    """Our thick frontier transitive closure.
+
+    :param expr: The expression(s) under transform.
+    :type expr:
+        :class:`soap.expression.Expression` or
+        :class:`soap.semantics.state.MetaState`
+    :param state: The ranges of input variables.
+    :type state: dictionary containing mappings from variables to
+        :class:`soap.semantics.error.Interval`
+    :param out_vars: The output variables of the metastate
+    :type out_vars: :class:`collections.Sequence`
+    """
+    plugin = lambda exprs: [
+        r.expression for r in thick_frontier(exprs, state, out_vars)]
+    return _plugin_closure(plugin, expr, state, out_vars, **kwargs)
+
+
+def transform(expr, reduction_rules=None, transform_rules=None,
               step_plugin=None, reduce_plugin=None, depth=None,
               multiprocessing=True):
     """One liner for :class:`soap.transformer.TreeTransformer`."""
-    t = TreeTransformer(
-        tree, step_plugin=step_plugin, reduce_plugin=reduce_plugin,
-        depth=depth, multiprocessing=multiprocessing)
-    t.reduction_methods = reduction_methods or []
-    t.transform_methods = transform_methods or []
-    return t.closure()
+    return TreeTransformer(
+        expr, transform_rules=transform_rules, reduction_rules=reduction_rules,
+        step_plugin=step_plugin, reduce_plugin=reduce_plugin,
+        depth=depth, multiprocessing=multiprocessing).closure()
 
 
-def expand(tree):
-    """Fully expands the expression tree by distributivity.
+def expand(expr):
+    """Fully expands the expression expr by distributivity.
 
-    :param tree: The expression tree.
-    :type tree: :class:`soap.expr.Expr` or str
-    :returns: A fully expanded tree.
+    :param expr: The expression expr.
+    :type expr: :class:`soap.expression.Expression` or str
+    :returns: A fully expanded expr.
     """
     def pop(s):
         if s:
             return [s.pop()]
         return s
-    return transform(tree, reduction_methods=[distribute_for_distributivity],
-                     reduce_plugin=pop, multiprocessing=False).pop()
+    reduction_rules = [
+        distributivity_distribute_multiplication,
+        distributivity_distribute_division,
+    ]
+    return transform(
+        expr, reduction_rules=reduction_rules, reduce_plugin=pop,
+        multiprocessing=False).pop()
 
 
-def reduce(tree):
-    """Transforms tree by reduction rules only.
+def reduce(expr):
+    """Transforms expr by reduction rules only.
 
-    :param tree: The expression tree.
-    :type tree: :class:`soap.expr.Expr` or str
-    :returns: A new expression tree.
+    :param expr: The expression expr.
+    :type expr: :class:`soap.expression.Expression` or str
+    :returns: A new expression expr.
     """
-    try:
-        tree = Expr(tree)
-    except TypeError:
-        with logger.local_context(level=logger.levels.info):
-            return {reduce(t) for t in tree}
-    t = transform(tree, BiOpTreeTransformer.reduction_methods,
-                  multiprocessing=False)
-    s = set(t)
-    if len(s) > 1:
-        s.remove(tree)
-    if len(s) == 1:
-        return s.pop()
-    raise Exception
+    if isinstance(expr, str) or is_expression(expr):
+        t = transform(expr, ArithTreeTransformer.reduction_rules,
+                      multiprocessing=False)
+        s = set(t)
+        if len(s) > 1:
+            s.remove(expr)
+        if len(s) == 1:
+            return s.pop()
+    with logger.local_context(level=logger.levels.info):
+        if isinstance(expr, collections.Mapping):
+            return MetaState({v: reduce(e) for v, e in expr.items()})
+        if isinstance(expr, collections.Iterable):
+            return {reduce(t) for t in expr}
+    raise TypeError('Do not know how to reduce {!r}'.format(expr))
 
 
-def parsings(tree):
-    """Generates all possible parsings of the same tree by associativity.
+def parsings(expr):
+    """Generates all possible parsings of the same expr by associativity.
 
-    :param tree: The expression tree.
-    :type tree: :class:`soap.expr.Expr` or str
-    :returns: A set of trees.
+    :param expr: The expression expr.
+    :type expr: :class:`soap.expression.Expression` or str
+    :returns: A set of exprs.
     """
-    return transform(tree, None, [associativity])
-
-
-def collecting_closure(tree, depth=None):
-    """Fully closure, sans distributing terms.
-
-    :param tree: The expression tree.
-    :type tree: :class:`soap.expr.Expr` or str
-    :param depth: The depth limit.
-    :type depth: int
-    :returns: A set of trees.
-    """
-    t = BiOpTreeTransformer(tree, depth=depth)
-    t.transform_methods.remove(distribute_for_distributivity)
-    return t.closure()
-
-
-class TraceExpr(Expr):
-    """A subclass of :class:`soap.expr.Expr` for bottom-up hierarchical
-    equivalence finding.
-
-    Implements :member:`traces` that finds equivalnent expressions. Subclasses
-    needs to override :member:`closure`.
-    """
-    def traces(self, var_env=None, depth=None, prec=None, **kwargs):
-        _, discovered = self._traces(var_env, depth, prec, **kwargs)
-        return discovered
-
-    def _traces(self, var_env=None, depth=None, prec=None, **kwargs):
-        subtraces = []
-        discovered = []
-        for a in self.args:
-            try:
-                arg_subtraces, arg_discovered = \
-                    self.__class__(a)._traces(var_env, depth, prec, **kwargs)
-            except (ValueError, TypeError):
-                arg_subtraces = arg_discovered = {a}
-            subtraces.append(arg_subtraces)
-            discovered.append(arg_discovered)
-        list_to_expr_set = lambda st: \
-            set(Expr(self.op, args) for args in itertools.product(*st))
-        logger.debug('Generating traces')
-        subtraces = list_to_expr_set(subtraces)
-        logger.debug('Generated %d traces for tree: %s' %
-                     (len(subtraces), str(self)))
-        logger.debug('Finding closure')
-        closure = set(self.closure(
-            subtraces, depth=depth, var_env=var_env, prec=prec, **kwargs))
-        return closure, closure | subtraces | list_to_expr_set(discovered)
-
-    def clousure(self, trees, **kwargs):
-        raise NotImplementedError
-
-    def __repr__(self):
-        return "TraceExpr(op='%s', a1=%s, a2=%s)" % \
-            (self.op, repr(self.a1), repr(self.a2))
-
-
-class MartelTraceExpr(TraceExpr):
-    """A subclass of :class:`TraceExpr` to generate Martel's results."""
-    def closure(self, trees, **kwargs):
-        return MartelBiOpTreeTransformer(
-            trees, depth=kwargs['depth']).closure()
-
-
-class GreedyTraceExpr(TraceExpr):
-    """A subclass of :class:`TraceExpr` to generate our greedy_trace equivalent
-    expressions."""
-    def closure(self, trees, **kwargs):
-        return greedy_frontier_closure(trees, **kwargs)
-
-
-class FrontierTraceExpr(TraceExpr):
-    """A subclass of :class:`TraceExpr` to generate our frontier_trace
-    equivalent expressions."""
-    def closure(self, trees, **kwargs):
-        return expr_frontier(closure(trees, depth=kwargs['depth']),
-                             kwargs['var_env'], prec=kwargs['prec'])
-
-
-def martel_trace(tree, var_env=None, depth=2, prec=None, **kwargs):
-    """Finds Martel's equivalent expressions.
-
-    :param tree: The original expression.
-    :type tree: :class:`soap.expr.Expr` or str
-    :param var_env: The ranges of input variables.
-    :type var_env: dictionary containing mappings from variables to
-        :class:`soap.semantics.error.Interval`
-    :param depth: The depth limit.
-    :type depth: int
-    :param prec: Precision used to evaluate the expression, defaults to
-        single precision.
-    :type prec: int
-    """
-    return reduce(MartelTraceExpr(tree).traces(var_env, depth, prec, **kwargs))
-
-
-def greedy_trace(tree, var_env=None, depth=2, prec=None, **kwargs):
-    """Finds our equivalent expressions using :class:`GreedyTraceExpr`.
-
-    :param tree: The original expression.
-    :type tree: :class:`soap.expr.Expr` or str
-    :param var_env: The ranges of input variables.
-    :type var_env: dictionary containing mappings from variables to
-        :class:`soap.semantics.error.Interval`
-    :param depth: The depth limit.
-    :type depth: int
-    :param prec: Precision used to evaluate the expression, defaults to
-        single precision.
-    :type prec: int
-    """
-    return reduce(GreedyTraceExpr(tree).traces(var_env, depth, prec, **kwargs))
-
-
-def frontier_trace(tree, var_env=None, depth=2, prec=None, **kwargs):
-    """Finds our equivalent expressions using :class:`FrontierTraceExpr`.
-
-    :param tree: The original expression.
-    :type tree: :class:`soap.expr.Expr` or str
-    :param var_env: The ranges of input variables.
-    :type var_env: dictionary containing mappings from variables to
-        :class:`soap.semantics.error.Interval`
-    :param depth: The depth limit.
-    :type depth: int
-    :param prec: Precision used to evaluate the expression, defaults to
-        single precision.
-    :type prec: int
-    """
-    return reduce(FrontierTraceExpr(tree).traces(
-                  var_env, depth, prec, **kwargs))
+    return transform(
+        expr, None, {
+            operators.ADD_OP: [associativity_addition],
+            operators.MULTIPLY_OP: [associativity_multiplication]
+        })

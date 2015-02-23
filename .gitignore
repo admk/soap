@@ -1,5 +1,11 @@
 # Mac OS X
 .DS_Store
 
+# Ubuntu
+*~
+
 # python
 *.py[co]
+
+# soap
+*.soap.*

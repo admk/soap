@@ -2,184 +2,153 @@
 .. module:: soap.analysis.core
     :synopsis: Analysis classes.
 """
-import gmpy2
+import random
+from collections import namedtuple
 
-import soap.logger as logger
-from soap.common import DynamicMethods, Flyweight
-from soap.expr import Expr
-from soap.semantics import mpfr
-import soap.semantics.flopoco as flopoco
+from soap import logger
+from soap.common import Flyweight
+from soap.context import context
+from soap.semantics import error_eval, ErrorSemantics, inf, resources
 
 
-class Analysis(DynamicMethods, Flyweight):
-    """A base class that analyses expressions for the quality metrics.
+def abs_error(expr, state):
+    v = ErrorSemantics(error_eval(expr, state))
+    if v.is_bottom():
+        logger.error(
+            'Cannot compute error for unreachable expression. '
+            'Please run analysis on code to find unreachable statements.')
+        return inf
+    return float(max(abs(v.e.min), abs(v.e.max)))
 
-    This base class is not meant to be instantiated, but to be subclassed
-    with methods to provide proper analysis.
-    """
 
-    def __init__(self, expr_set, var_env, precs=None):
+def _pareto_frontier_2d(expr_set):
+    if not expr_set:
+        return expr_set, expr_set
+    expr_set = sorted(expr_set)
+    head, *tail = expr_set
+    optimal = [head]
+    suboptimal = []
+    for m in tail:
+        if m[1] < optimal[-1][1]:
+            optimal.append(m)
+        else:
+            suboptimal.append(m)
+    return optimal, suboptimal
+
+
+def _pareto_frontier(points):
+    """Last row is always the expression!"""
+
+    dom_func = lambda dominator_row, dominated_row: not any(
+        dominator > dominated
+        for dominator, dominated in zip(dominator_row, dominated_row))
+
+    pareto_points = set()
+    for candidate_row in points:
+        candidate_stat = candidate_row[:-1]
+        to_remove = set()
+        for pareto_row in pareto_points:
+            pareto_stat = pareto_row[:-1]
+            if pareto_stat == candidate_stat:
+                continue
+            if dom_func(candidate_stat, pareto_stat):
+                to_remove.add(pareto_row)
+            if dom_func(pareto_stat, candidate_stat):
+                break
+        else:
+            pareto_points.add(candidate_row)
+        pareto_points -= to_remove
+
+    dominated_points = set(points) - pareto_points
+    return pareto_points, dominated_points
+
+
+def pareto_frontier(points):
+    return _pareto_frontier(points)[0]
+
+
+def thick_frontier(points):
+    frontier = []
+    for _ in range(context.thickness + 1):
+        optimal, points = _pareto_frontier(points)
+        frontier += optimal
+    return frontier
+
+
+_analysis_result_tuple = namedtuple(
+    'AnalysisResult', ['lut', 'dsp', 'error', 'expression'])
+
+
+class AnalysisResult(_analysis_result_tuple):
+    def __str__(self):
+        return '({}, {}, {}, {})'.format(*self)
+
+
+class Analysis(Flyweight):
+
+    def __init__(self, expr_set, state, out_vars=None, size_limit=-1):
         """Analysis class initialisation.
 
         :param expr_set: A set of expressions or a single expression.
-        :type expr_set: `set` or :class:`soap.expr.Expr`
-        :param var_env: The ranges of input variables.
-        :type var_env: dictionary containing mappings from variables to
+        :type expr_set: `set` or :class:`soap.expression.Expression`
+        :param state: The ranges of input variables.
+        :type state: dictionary containing mappings from variables to
             :class:`soap.semantics.error.Interval`
-        :param precs: Precisions used to evaluate the expressions, defaults to
-            the return value of :member:`precisions`.
-        :type precs: list of integers
         """
-        try:
-            expr_set = {Expr(expr_set)}
-        except TypeError:
-            pass
-        self.expr_set = expr_set
-        self.var_env = var_env
-        self.precs = precs if precs else self.precisions()
         super().__init__()
+        self.expr_set = expr_set
+        self.state = state
+        self.out_vars = out_vars
+        self.size_limit = size_limit if size_limit >= 0 else context.size_limit
+        self._results = None
 
-    def precisions(self):
-        """Returns the precisions being used.
-
-        :returns: a list of integers indicating precisions.
-        """
-        return [gmpy2.ieee(32).precision - 1]
-
-    def analyse(self):
-        """Analyses the set of expressions with input ranges and precisions
+    def analyze(self):
+        """Analyzes the set of expressions with input ranges and precisions
         provided in initialisation.
 
         :returns: a list of dictionaries each containing results and the
             expression.
         """
+        results = self._results
+        if results:
+            return results
+
+        expr_set = self.expr_set
+        state = self.state
+        out_vars = self.out_vars
+        precision = context.precision
+
+        limit = context.size_limit
+        if limit >= 0 and len(expr_set) > limit:
+            logger.debug(
+                'Equivalent structures over limit, '
+                'reduces population size by sampling.')
+            random.seed(context.rand_seed)
+            expr_set = random.sample(expr_set, limit)
+
+        results = set()
+        step = 0
+        total = len(expr_set)
         try:
-            return self.result
-        except AttributeError:
-            pass
-        analysis_names, analysis_methods, select_methods = self.methods()
-        logger.debug('Analysing results.')
-        result = []
-        i = 0
-        n = len(self.expr_set) * len(self.precs)
-        for p in self.precs:
-            for t in self.expr_set:
-                i += 1
-                logger.persistent('Analysing', '%d/%d' % (i, n),
-                                  l=logger.levels.debug)
-                analysis_dict = {'expression': t}
-                for name, func in zip(analysis_names, analysis_methods):
-                    analysis_dict[name] = func(t, p)
-                result.append(analysis_dict)
+            for expr in expr_set:
+                step += 1
+                logger.persistent(
+                    'Analysing', '{}/{}'.format(step, total),
+                    l=logger.levels.debug)
+                res = resources(expr, state, out_vars, precision)
+                error = abs_error(expr, state)
+                results.add(AnalysisResult(res.lut, res.dsp, error, expr))
+        except KeyboardInterrupt:
+            logger.warning('Analysis interrupted, completed: {}.'
+                           .format(len(results)))
         logger.unpersistent('Analysing')
-        result = sorted(
-            result, key=lambda k: tuple(k[n] for n in analysis_names))
-        for analysis_dict in result:
-            for n, f in zip(analysis_names, select_methods):
-                analysis_dict[n] = f(analysis_dict[n])
-        self.result = result
-        return self.result
 
-    @classmethod
-    def names(cls):
-        method_list = cls.list_method_names(lambda m: m.endswith('_analysis'))
-        names = []
-        for m in method_list:
-            m = m.replace('_analysis', '')
-            names.append(m)
-        return names
+        self._results = results
+        return results
 
-    def methods(self):
-        method_names = self.names()
-        analysis_methods = []
-        select_methods = []
-        for m in method_names:
-            analysis_methods.append(getattr(self, m + '_analysis'))
-            select_methods.append(getattr(self, m + '_select'))
-        return method_names, analysis_methods, select_methods
-
-
-class ErrorAnalysis(Analysis):
-    """This class provides the analysis of error bounds.
-
-    It is a subclass of :class:`Analysis`.
-    """
-    def error_analysis(self, t, p):
-        return t.error(self.var_env, p)
-
-    def error_select(self, v):
-        with gmpy2.local_context(gmpy2.ieee(64), round=gmpy2.RoundAwayZero):
-            return float(mpfr(max(abs(v.e.min), abs(v.e.max))))
-
-
-class AreaAnalysis(Analysis):
-    """This class provides the analysis of area estimation.
-
-    It is a subclass of :class:`Analysis`.
-    """
-    def area_analysis(self, t, p):
-        return t.area(self.var_env, p)
-
-    def area_select(self, v):
-        return v.area
-
-
-def pareto_frontier_2d(s, keys=None):
-    """Generates the 2D Pareto Frontier from a set of results.
-
-    :param s: A set/list of comparable things.
-    :type s: container
-    :param keys: Keys used to compare items.
-    :type keys: tuple or list
-    """
-    if keys:
-        a = keys[1]
-        sort_key = lambda e: tuple(e[k] for k in keys)
-    else:
-        a = 1
-        sort_key = None
-    s = sorted(s, key=sort_key)
-    frontier = s[:1]
-    for i, m in enumerate(s[1:]):
-        if m[a] < frontier[-1][a]:
-            frontier.append(m)
-    return frontier
-
-
-class AreaErrorAnalysis(ErrorAnalysis, AreaAnalysis):
-    """Collect area and error analysis.
-
-    It is a subclass of :class:`ErrorAnalysis` and :class:`AreaAnalysis`.
-    """
     def frontier(self):
-        """Computes the Pareto frontier from analysed results.
-        """
-        return pareto_frontier_2d(self.analyse(), keys=self.names())
+        """Computes the Pareto frontier from analyzed results."""
+        return pareto_frontier(self.analyze())
 
-
-class VaryWidthAnalysis(AreaErrorAnalysis):
-    """Collect area and error analysis.
-
-    It is a subclass of :class:`ErrorAnalysis` and :class:`AreaAnalysis`.
-    """
-    def precisions(self):
-        """Allow precisions to vary in the range of `flopoco.wf_range`."""
-        return flopoco.wf_range
-
-
-if __name__ == '__main__':
-    from soap.transformer import BiOpTreeTransformer
-    from soap.analysis.utils import plot
-    from soap.common import timed
-    logger.set_context(level=logger.levels.info)
-    e = Expr('(a + b) * (a + b)')
-    v = {
-        'a': ['5', '10'],
-        'b': ['0', '0.001'],
-    }
-    with timed('Analysis'):
-        a = VaryWidthAnalysis(BiOpTreeTransformer(e).closure(), v)
-        a, f = a.analyse(), a.frontier()
-    logger.info('Results', len(a))
-    logger.info('Frontier', len(f))
-    plot(a)
+    def thick_frontier(self):
+        return thick_frontier(self.analyze())
