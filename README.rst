@@ -1,6 +1,14 @@
 Changelog
 =========
 
+Version 2.0
+-----------
+
+Mon 23 Feb 2015 14:25:41 PST
+
+* Full program optimisation
+
+
 Version 1.0
 -----------
 
