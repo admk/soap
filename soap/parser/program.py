@@ -51,12 +51,6 @@ class _CommonVisitor(nodes.NodeVisitor):
             return
         raise TypeError('Do not recognize node {!r}'.format(node))
 
-    visit_variable_subscript = _lift_child
-
-    def visit_variable_with_subscript(self, node, children):
-        var, _1, subscript, _2 = children
-        return expression_factory(operators.INDEX_ACCESS_OP, var, subscript)
-
     visit_integer_list = _visit_list
     visit_maybe_integer_list = _visit_maybe_list
     visit_comma_integer_list = _lift_second
@@ -115,12 +109,20 @@ class _CommonVisitor(nodes.NodeVisitor):
     visit__ = _lift_dontcare
 
 
-class VariableNotDeclaredError(Exception):
+class ParserError(Exception):
+    pass
+
+
+class VariableNotDeclaredError(ParserError):
     """Variable was not declared.  """
 
 
-class VariableAlreadyDeclaredError(Exception):
+class VariableAlreadyDeclaredError(ParserError):
     """Variable was already declared.  """
+
+
+class ArrayDimensionError(ParserError):
+    """Array dimension mismatch.  """
 
 
 class _DeclarationVisitor(object):
@@ -150,6 +152,19 @@ class _DeclarationVisitor(object):
         name = _lift_middle(self, node, children)
         dtype = self.decl_map.get(name)
         return Variable(name, dtype)
+
+    visit_variable_subscript = _lift_child
+
+    def visit_variable_with_subscript(self, node, children):
+        var, _1, subscript, _2 = children
+        dtype = var.dtype
+        if dtype != auto_type and len(dtype.dim) != len(subscript):
+            raise ArrayDimensionError(
+                'Variable {} is a {}-dimensional array of type {}, '
+                'but subscript [{}] is {}-dimensional.'.format(
+                    var, len(dtype.dim), dtype,
+                    ', '.join(str(s) for s in subscript), len(subscript)))
+        return expression_factory(operators.INDEX_ACCESS_OP, var, subscript)
 
     visit_data_type = _lift_child
 
@@ -340,4 +355,9 @@ def parse(program, decl=None):
     return visitor.parse(program)
 
 
-expr_parse = _UntypedExpressionVisitor().parse
+def expr_parse(expression, decl=None):
+    # FIXME temporary hack for broken parser
+    expression = '({})'.format(expression)
+    decl = decl or {}
+    visitor = _UntypedExpressionVisitor(decl)
+    return visitor.parse(expression)

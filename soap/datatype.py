@@ -38,13 +38,14 @@ class ArrayType(TypeBase):
         self.dim = tuple(dim)
 
     def __str__(self):
-        return '{}[{}]'.format(self.num_type, ', '.join(self.dim))
+        return '{}[{}]'.format(
+            self.num_type, ', '.join(str(d) for d in self.dim))
 
     def __eq__(self, other):
         return self.__class__ == other.__class__ and self.dim == other.dim
 
     def __hash__(self):
-        return hash(self.__class__, self.dim)
+        return hash((self.__class__, self.dim))
 
 
 class IntegerArrayType(ArrayType):
