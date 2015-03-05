@@ -24,10 +24,12 @@ real_type = _ 'real' _
 #  expressions
 # =============
 
-boolean_expression = and_factor maybe_or_list
+boolean_expression = boolean_term
+
+boolean_term = and_factor maybe_or_list
 
 and_factor   = bool_atom maybe_and_list
-bool_atom    = bool_parened / binary_bool_expr / unary_bool_expr
+bool_atom    = bool_parened / binary_bool_expr / unary_bool_expr / variable
 bool_parened = left_paren boolean_expression right_paren
 
 binary_bool_expr = term compare_operator term

@@ -187,8 +187,9 @@ class _UntypedDeclarationVisitor(_DeclarationVisitor):
 
 
 class _ExpressionVisitor(object):
-    visit_expression = _lift_child
-    visit_boolean_expression = visit_and_factor = _visit_concat_expr
+    visit_expression = visit_boolean_expression = _lift_child
+
+    visit_boolean_term = visit_and_factor = _visit_concat_expr
     visit_bool_atom = _lift_child
     visit_bool_parened = _lift_middle
 
