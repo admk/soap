@@ -7,6 +7,12 @@ class TypeBase(object):
         return hash(self.__class__)
 
 
+class AutoType(TypeBase):
+    """Don't care type.  """
+    def __str__(self):
+        return 'auto'
+
+
 class IntegerType(TypeBase):
     """Integer data type.  """
     def __str__(self):
@@ -19,6 +25,7 @@ class RealType(TypeBase):
         return 'real'
 
 
+auto_type = AutoType()
 int_type = IntegerType()
 real_type = RealType()
 

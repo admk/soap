@@ -4,6 +4,7 @@
 """
 import collections
 
+from soap.datatype import auto_type
 from soap.expression.arithmetic import ArithmeticMixin
 from soap.expression.base import Expression, BinaryExpression
 from soap.expression.boolean import BooleanMixin
@@ -15,7 +16,7 @@ class Variable(ArithmeticMixin, BooleanMixin, BinaryExpression):
 
     __slots__ = ()
 
-    def __init__(self, name, dtype):
+    def __init__(self, name, dtype=auto_type):
         super().__init__(VARIABLE_OP, name, dtype)
 
     @property

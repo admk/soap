@@ -1,13 +1,14 @@
-from os import path
-
-from parsimonious import Grammar, nodes
+from parsimonious import nodes
 
 from soap.expression import expression_factory, operators, Variable
-from soap.datatype import int_type, real_type, IntegerArrayType, RealArrayType
+from soap.datatype import (
+    auto_type, int_type, real_type, IntegerArrayType, RealArrayType
+)
 from soap.program import (
     IdentityFlow, AssignFlow, IfFlow, WhileFlow, CompositionalFlow,
     InputFlow, OutputFlow,
 )
+from soap.parser.grammar import expression_grammar, program_grammar
 from soap.semantics import cast, ErrorSemantics
 
 
@@ -44,7 +45,12 @@ def _visit_list(self, node, children):
     return [expr] + expr_list
 
 
-class _CommonVisitor(object):
+class _CommonVisitor(nodes.NodeVisitor):
+    def generic_visit(self, node, children):
+        if not node.expr_name:
+            return
+        raise TypeError('Do not recognize node {!r}'.format(node))
+
     visit_variable_subscript = _lift_child
 
     def visit_variable_with_subscript(self, node, children):
@@ -118,15 +124,15 @@ class VariableAlreadyDeclaredError(Exception):
 
 
 class _DeclarationVisitor(object):
-    def __init__(self):
+    def __init__(self, decl=None):
         super().__init__()
-        self.decl_map = {}
+        self.decl_map = decl or {}
 
     visit_variable_or_declaration = _lift_child
 
     def visit_variable_declaration(self, node, children):
         decl_type, var = children
-        if var.dtype is not None or var in self.decl_map:
+        if var.dtype is not None or var.name in self.decl_map:
             raise VariableAlreadyDeclaredError(
                 'Variable {} is already declared with type {}'
                 .format(var.name, var.dtype))
@@ -172,7 +178,16 @@ class _DeclarationVisitor(object):
     visit_int_type = visit_real_type = _visit_type
 
 
+class _UntypedDeclarationVisitor(_DeclarationVisitor):
+    def visit_variable(self, node, children):
+        var = self.visit_new_variable(node, children)
+        if not var.dtype:
+            return Variable(var.name, auto_type)
+        return var
+
+
 class _ExpressionVisitor(object):
+    visit_expression = _lift_child
     visit_boolean_expression = visit_and_factor = _visit_concat_expr
     visit_bool_atom = _lift_child
     visit_bool_parened = _lift_middle
@@ -308,20 +323,20 @@ class _ProgramVisitor(object):
 
 
 class _Visitor(
-        nodes.NodeVisitor, _CommonVisitor, _DeclarationVisitor,
-        _ExpressionVisitor, _ProgramVisitor):
-
-    def generic_visit(self, node, children):
-        if not node.expr_name:
-            return
-        raise TypeError('Do not recognize node {!r}'.format(node))
+        _CommonVisitor, _DeclarationVisitor, _ExpressionVisitor,
+        _ProgramVisitor):
+    grammar = program_grammar
 
 
-grammar_file = path.join(path.dirname(__file__), 'program.grammar')
-with open(grammar_file, 'r') as file:
-    grammar = Grammar(file.read())
+class _UntypedExpressionVisitor(
+        _CommonVisitor, _UntypedDeclarationVisitor, _ExpressionVisitor):
+    grammar = expression_grammar
 
 
-def parse(program):
-    tree = grammar.parse(program)
-    return _Visitor().visit(tree)
+def parse(program, decl=None):
+    decl = decl or {}
+    visitor = _Visitor(decl)
+    return visitor.parse(program)
+
+
+expr_parse = _UntypedExpressionVisitor().parse
