@@ -29,9 +29,7 @@ class TestProgramParser(unittest.TestCase):
             operators.NOT_EQUAL_OP, self.y, self.i1)
         bool_expr = expression_factory(
             operators.AND_OP, bool_expr_1, bool_expr_2)
-        # FIXME the parser is not really meant to parse expressions
-        # so parens are added to make sure it gets parsed correctly
-        self.assertEqual(expr_parse('(not x < 3 and y != 1)'), bool_expr)
+        self.assertEqual(expr_parse('not x < 3 and y != 1'), bool_expr)
 
     def test_operator_precedence(self):
         neg_y = expression_factory(operators.UNARY_SUBTRACT_OP, self.y)
