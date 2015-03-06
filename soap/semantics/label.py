@@ -4,10 +4,10 @@ from collections import namedtuple
 from soap import flopoco
 from soap.common import cached, Comparable, Flyweight, superscript
 from soap.context import context
+from soap.datatype import type_of
 from soap.expression import (
     External, FixExpr, is_expression, operators, OutputVariableTuple
 )
-from soap.lattice.base import Lattice
 from soap.semantics.common import is_numeral
 from soap.semantics.error import ErrorSemantics, IntegerInterval
 
@@ -35,20 +35,7 @@ label_namedtuple_type = namedtuple(
     'Label', ['label_value', 'bound', 'attribute', 'context_id'])
 
 
-class _PseudoLattice(object):
-    def is_bottom(self):
-        return False
-
-    def is_top(self):
-        return False
-
-    def join(self, other):
-        if self == other:
-            return self
-        return Lattice(top=True)
-
-
-class Label(label_namedtuple_type, _PseudoLattice, Flyweight):
+class Label(label_namedtuple_type, Flyweight):
     """Constructs a label for expression or statement `statement`"""
     __slots__ = ()
 
@@ -64,6 +51,10 @@ class Label(label_namedtuple_type, _PseudoLattice, Flyweight):
         return (
             None, self.bound, self.attribute, self.context_id,
             self.label_value)
+
+    @property
+    def dtype(self):
+        return type_of(self.bound)
 
     def attributed(self, attribute):
         return self.__class__(
@@ -129,10 +120,14 @@ class LabelContext(object):
 
 class Identifier(namedtuple('Identifier', ['variable', 'label']), Flyweight):
     __slots__ = ()
+    curr_label = Label(0)
 
     def __new__(cls, variable, label=None):
-        label = label or Lattice(bottom=True)
+        label = label or cls.curr_label
         return super().__new__(cls, variable, label)
+
+    def is_current(self):
+        return self.label == self.curr_label
 
     def __str__(self):
         return '{variable}{label}'.format(

@@ -19,8 +19,7 @@ class MapLattice(Lattice, Mapping):
             return
         mapping = {}
         for k, v in dict(dictionary or {}, **kwargs).items():
-            k = self._cast_key(k)
-            v = self._cast_value(v)
+            k, v = self._init_key_value(k, v)
             if not v.is_bottom():
                 mapping[k] = v
         self._mapping = mapping
@@ -33,10 +32,15 @@ class MapLattice(Lattice, Mapping):
         self.top, self.bottom = state[:2]
         self._mapping = {k: v for k, v in state[2]}
 
-    def _cast_key(self, k):
+    def _init_key_value(self, key, value, top=False, bottom=False):
+        key = self._cast_key(key)
+        value = self._cast_value(value, top=top, bottom=bottom)
+        return key, value
+
+    def _cast_key(self, key):
         raise NotImplementedError
 
-    def _cast_value(self, v=None, top=False, bottom=False):
+    def _cast_value(self, value=None, top=False, bottom=False):
         raise NotImplementedError
 
     def is_top(self):

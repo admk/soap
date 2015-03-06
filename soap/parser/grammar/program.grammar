@@ -1,0 +1,61 @@
+# ======
+#  root
+# ======
+
+statement = compound_statement / _  # empty
+compound_statement = single_statement statement
+single_statement =
+    skip_statement / assign_statement / if_statement / while_statement /
+    input_statement / output_statement / declaration_statement
+
+skip_statement = skip semicolon
+
+declaration_statement = variable_declaration semicolon
+
+assign_statement =
+    variable_or_declaration assign arithmetic_expression semicolon
+variable_or_declaration = variable_declaration / variable_subscript
+
+if_statement = if_block semicolon
+if_block = if_else_block / if_then_block
+if_then_block = if boolean_block code_block
+if_else_block = if_then_block else code_block
+
+while_statement = while boolean_block code_block semicolon
+
+boolean_block = left_paren boolean_expression right_paren
+code_block = left_curl statement right_curl
+
+input_statement = input left_paren input_list right_paren semicolon
+input_list = input_expr maybe_input_list
+maybe_input_list = comma_input_list / _
+comma_input_list = comma input_list
+input_expr = variable_declaration colon number
+
+output_statement = output left_paren variable_list right_paren semicolon
+
+
+# ==============
+#  common lists
+# ==============
+
+variable_list = variable maybe_variable_list
+maybe_variable_list = comma_variable_list / _
+comma_variable_list = comma variable_list
+
+
+# ==========
+#  literals
+# ==========
+
+skip       = _ 'skip'   _
+if         = _ 'if'     _
+else       = _ 'else'   _
+while      = _ 'while'  _
+input      = _ 'input'  _
+output     = _ 'output' _
+
+assign     = _ '=' _
+left_curl  = _ '{' _
+right_curl = _ '}' _
+semicolon  = _ ';' _

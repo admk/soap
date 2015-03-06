@@ -1,4 +1,3 @@
-from soap import logger
 from soap.expression import (
     is_variable, is_expression,
     External, InputVariableTuple, OutputVariableTuple, SelectExpr, FixExpr
@@ -55,9 +54,10 @@ def branch_fusion(env, expr):
     new_env = dict(env)
 
     # branch expression labelling
-    keys = OutputVariableTuple(sorted(true_env, key=str))
-    true_values = InputVariableTuple(list(true_env[k] for k in keys))
-    false_values = InputVariableTuple(list(false_env[k] for k in keys))
+    args = sorted(true_env, key=hash)
+    keys = OutputVariableTuple(args)
+    true_values = InputVariableTuple(list(true_env[k] for k in args))
+    false_values = InputVariableTuple(list(false_env[k] for k in args))
     branch_expr = SelectExpr(bool_expr, true_values, false_values)
     new_env[keys] = branch_expr
 
@@ -66,6 +66,18 @@ def branch_fusion(env, expr):
         new_env[each_var] = keys
 
     return new_env
+
+
+def _conflict_update(x, y):
+    """
+    Merge dictionaries x and y, check if conflict key-value pair exists, return
+    False if has conflict.
+    """
+    for key, value in y.items():
+        ori_value = x.setdefault(key, value)
+        if ori_value != value:
+            return False
+    return True
 
 
 def loop_fusion(env, expr):
@@ -109,41 +121,38 @@ def loop_fusion(env, expr):
             return False
         return True
 
-    fused_loop_state = MetaState.empty()
-    fused_init_state = MetaState.empty()
+    fused_loop_state = {}
+    fused_init_state = {}
     loop_vars = []
     out_vars = []
 
-    for each_var, each_expr in sorted(env.items(), key=str):
+    for each_var, each_expr in sorted(env.items(), key=hash):
         if not merge_check(each_var, each_expr):
             continue
         loop_vars.append(each_expr.loop_var)
         out_vars.append(each_var)
-        fused_loop_state |= each_expr.loop_state
-        fused_init_state |= each_expr.init_state
+        success = _conflict_update(fused_loop_state, each_expr.loop_state)
+        if not success:
+            return env
+        success = _conflict_update(fused_init_state, each_expr.init_state)
+        if not success:
+            return env
 
-    loop_vars = OutputVariableTuple(loop_vars)
-    out_vars = OutputVariableTuple(out_vars)
+    loop_tup = OutputVariableTuple(loop_vars)
+    out_tup = OutputVariableTuple(out_vars)
 
     if len(loop_vars) <= 1:
         # did not merge
         return env
 
-    # check for merge conflicts
-    conflict_check = lambda state: any(
-        expr.is_top() for expr in state.values())
-    if conflict_check(fused_loop_state) or conflict_check(fused_init_state):
-        # merge conflicts
-        return env
-
     new_env = dict(env)
 
     fix_expr = FixExpr(
-        bool_expr, fused_loop_state, loop_vars, fused_init_state)
-    new_env[out_vars] = fix_expr
+        bool_expr, fused_loop_state, loop_tup, fused_init_state)
+    new_env[out_tup] = fix_expr
 
     for var in out_vars:
-        new_env[var] = out_vars
+        new_env[var] = out_tup
 
     return new_env
 
@@ -169,12 +178,17 @@ def _ensure_fix_expr(env, var):
 def inner_meta_fusion(env, var):
     var, expr = _ensure_fix_expr(env, var)
 
-    # recursively fuse inner meta_state objects
     ori_loop_var = loop_var = expr.loop_var
-    if not isinstance(loop_var, OutputVariableTuple):
+    if isinstance(loop_var, OutputVariableTuple):
+        loop_var = loop_var.args
+    else:
         loop_var = [loop_var]
-    loop_state = MetaState(recursive_fusion(expr.loop_state, loop_var, []))
-    init_state = MetaState(recursive_fusion(expr.init_state, loop_var, []))
+
+    # recursively fuse inner meta_state objects
+    loop_state = MetaState(
+        recursive_fusion(expr.loop_state, loop_var, []))
+    init_state = MetaState(
+        recursive_fusion(expr.init_state, loop_var, []))
 
     # update env with new expr, no dependency cycles created
     expr = FixExpr(
@@ -233,7 +247,7 @@ def outer_scope_fusion(env, var):
                 if isinstance(arg, Label):
                     filter_vars.add(arg)
                 if isinstance(arg, InputVariableTuple):
-                    filter_vars |= set(arg)
+                    filter_vars |= set(arg.args)
 
     # dependencies in bool_expr and loop_state
     loop_state = expr.loop_state
@@ -267,13 +281,10 @@ def recursive_fusion(env, out_vars, done_vars):
 
         # InputVariableTuple
         if isinstance(var, InputVariableTuple):
-            env = recursive_fusion(env, var, done_vars)
+            env = recursive_fusion(env, var.args, done_vars)
             continue
 
-        expr = env.get(var)
-        if expr is None or expr.is_bottom():
-            logger.error('Node {} has no expression'.format(var))
-            continue
+        expr = env[var]
 
         # fusion kernel
         env = acyclic_assign(branch_fusion, env, expr)

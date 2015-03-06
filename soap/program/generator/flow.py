@@ -83,6 +83,7 @@ class CodeGenerator(object):
         if infix is not None:
             name = '{}_{}'.format(name, infix)
 
+        # FIXME type
         return Variable(name)
 
     def generate(self):
@@ -143,7 +144,7 @@ class CodeGenerator(object):
                     self._with_infix(var, self.out_var_infix),
                     self._with_infix(label, self.in_var_infix))
             flows = []
-            for var_out, var_in in zip(var, label):
+            for var_out, var_in in zip(var.args, label.args):
                 var_out = self._with_infix(var_out, self.out_var_infix)
                 var_in = self._with_infix(var_in, self.in_var_infix)
                 flows.append(AssignFlow(var_out, var_in))
@@ -194,10 +195,10 @@ class CodeGenerator(object):
         def expand_simple_expression(env, label):
             if is_numeral(label):
                 return label
-            expr = env[label]
+            expr = env.get(label)
             if is_variable(expr) or is_numeral(expr):
                 return expr
-            if expr.is_bottom():
+            if expr is None:
                 return label
             args = [expand_simple_expression(env, l) for l in expr.args]
             return expression_factory(expr.op, *args)
@@ -226,7 +227,7 @@ class CodeGenerator(object):
             if var not in new_init_vars:
                 # because these variables are labelled `InputVariable`
                 # we need to re-label them
-                new_init_vars.append(Variable(var.name))
+                new_init_vars.append(var)
         init_flow_generator = generator_class(
             env=init_state, out_vars=new_init_vars, parent=self,
             label_infix=infix, out_var_infix=infix)

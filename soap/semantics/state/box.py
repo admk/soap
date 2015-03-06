@@ -1,3 +1,4 @@
+from soap.datatype import auto_type, type_of
 from soap.expression.variable import Variable
 from soap.lattice.map import map
 from soap.semantics.error import cast, ErrorSemantics, IntegerInterval
@@ -11,11 +12,27 @@ from soap.semantics.functions import bool_eval, fixpoint_eval
 class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
     __slots__ = ()
 
-    def _cast_key(self, key):
+    def _init_key_value(self, key, value):
+        value = self._cast_value(value)
         if isinstance(key, str):
-            return Variable(key)
+            key = Variable(key, type_of(value))
+        elif isinstance(key, Variable):
+            dtype = key.dtype
+            if dtype is not auto_type and dtype != type_of(value):
+                raise TypeError(
+                    'Variable type is not the same as the type of value '
+                    'to be assigned')
+        return key, value
+
+    def _cast_key(self, key):
         if isinstance(key, Variable):
             return key
+        if isinstance(key, str):
+            var_list = [var for var in self.keys() if var.name == key]
+            if len(var_list) > 1:
+                raise KeyError('Multiple variables with the same name.')
+            var = var_list.pop()
+            return var
         raise TypeError(
             'Do not know how to convert {!r} into a variable'.format(key))
 
@@ -85,7 +102,7 @@ class IdentifierBoxState(IdentifierBaseState, BoxState):
     def _labeled_transition(self, label):
         mapping = dict(self)
         for k, v in self.items():
-            if not k.label.is_bottom():
+            if not k.is_current():
                 continue
             labeled_key = Identifier(k.variable, label=label)
             v |= mapping.get(labeled_key, self._cast_value(bottom=True))
@@ -122,7 +139,7 @@ class IdentifierBoxState(IdentifierBaseState, BoxState):
         # kernel; if non-termination is possible, last_entry (without labels
         # for program statements, which is not relevant to our analysis),
         # should not be tested bottom.
-        last_entry_predicate = lambda k: k.label.is_bottom()
+        last_entry_predicate = lambda k: k.is_current()
         last_entry = fixpoint['last_entry'].filter(last_entry_predicate)
         last_entry._warn_non_termination(flow)
 
@@ -136,7 +153,7 @@ class IdentifierBoxState(IdentifierBaseState, BoxState):
         # we should not include any current values into this as these values
         # are not relevant after the loop, all relevant loop execution effects
         # are recorded with labels.
-        entry = entry.filter(lambda k: not k.label.is_bottom())
+        entry = entry.filter(lambda k: not k.is_current())
 
         # label loop exit values.
         exit = fixpoint['exit']._labeled_transition(exit_label)

@@ -4,46 +4,48 @@
 """
 import collections
 
-from soap.expression.base import Expression, UnaryExpression
-from soap.expression.boolean import BooleanMixin
+from soap.datatype import auto_type
 from soap.expression.arithmetic import ArithmeticMixin
+from soap.expression.base import Expression, BinaryExpression
+from soap.expression.boolean import BooleanMixin
+from soap.expression.operators import EXTERNAL_OP, VARIABLE_OP
 
 
-class Variable(ArithmeticMixin, BooleanMixin, UnaryExpression):
+class Variable(ArithmeticMixin, BooleanMixin, BinaryExpression):
     """The variable class."""
 
     __slots__ = ()
 
-    def __init__(self, name=None, top=False, bottom=False):
-        super().__init__(op=None, a=name, top=top, bottom=bottom)
+    def __init__(self, name, dtype=auto_type):
+        super().__init__(VARIABLE_OP, name, dtype)
 
     @property
     def name(self):
         return self.args[0]
 
+    @property
+    def dtype(self):
+        return self.args[1]
+
     def __str__(self):
-        return str(self.name)
+        return '{}:{}'.format(self.name, self.dtype)
 
     def __repr__(self):
-        return '{cls}({name!r})'.format(
-            cls=self.__class__.__name__, name=self.name)
+        return '{cls}({name!r}, {dtype!r})'.format(
+            cls=self.__class__.__name__, name=self.name, dtype=self.dtype)
 
 
-class _MagicalMixin(object):
+class InputVariable(Variable):
     pass
 
 
-class InputVariable(_MagicalMixin, Variable):
+class OutputVariable(Variable):
     pass
 
 
-class OutputVariable(_MagicalMixin, Variable):
-    pass
-
-
-class External(_MagicalMixin, ArithmeticMixin, BooleanMixin, Expression):
-    def __init__(self, var, top=False, bottom=False):
-        super().__init__(None, var, top=top, bottom=bottom)
+class External(ArithmeticMixin, BooleanMixin, Expression):
+    def __init__(self, var):
+        super().__init__(EXTERNAL_OP, var)
 
     @property
     def var(self):
@@ -53,12 +55,10 @@ class External(_MagicalMixin, ArithmeticMixin, BooleanMixin, Expression):
         return '^{}'.format(self.var)
 
 
-class VariableTuple(
-        _MagicalMixin, collections.Sequence, ArithmeticMixin, BooleanMixin,
-        Expression):
+class VariableTuple(ArithmeticMixin, BooleanMixin, Expression):
     """Tuple of variables. """
 
-    def __init__(self, *args, top=False, bottom=False):
+    def __init__(self, *args):
         if len(args) == 1:
             args0 = args[0]
             if isinstance(args0, collections.Iterable):
@@ -70,7 +70,7 @@ class VariableTuple(
                 flat_args += v
             else:
                 flat_args.append(v)
-        super().__init__(None, *flat_args, top=top, bottom=bottom)
+        super().__init__(None, *flat_args)
 
     def __getitem__(self, index):
         return self.args[index]

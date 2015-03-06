@@ -7,9 +7,8 @@ from soap.expression.arithmetic import TernaryArithExpr, QuaternaryArithExpr
 class FixExpr(QuaternaryArithExpr):
     """Fixpoint expression."""
 
-    def __init__(self, a1=None, a2=None, a3=None, a4=None,
-                 top=False, bottom=False):
-        super().__init__(FIXPOINT_OP, a1, a2, a3, a4, top=top, bottom=bottom)
+    def __init__(self, a1, a2, a3, a4):
+        super().__init__(FIXPOINT_OP, a1, a2, a3, a4)
 
     @property
     def bool_expr(self):
@@ -38,8 +37,8 @@ class FixExpr(QuaternaryArithExpr):
 
 
 class UnrollExpr(TernaryArithExpr):
-    def __init__(self, a1=None, a2=None, a3=None, top=False, bottom=False):
-        super().__init__(UNROLL_OP, a1, a2, a3, top=top, bottom=bottom)
+    def __init__(self, a1, a2, a3):
+        super().__init__(UNROLL_OP, a1, a2, a3)
 
     @property
     def fix_expr(self):

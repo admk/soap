@@ -71,15 +71,6 @@ def expression_factory(op, *args):
     )
     from soap.expression.fixpoint import FixExpr, UnrollExpr
     from soap.expression.linalg import Subscript, AccessExpr, UpdateExpr
-    from soap.expression.variable import Variable
-
-    if not args:
-        if isinstance(op, Variable):
-            return op
-        if isinstance(op, str):
-            return Variable(op)
-        raise ValueError(
-            'Do not know how to construct expression from {!r}'.format(op))
 
     global op_expr_cls_map
     if not op_expr_cls_map:
