@@ -158,11 +158,11 @@ class _DeclarationVisitor(object):
     def visit_variable_with_subscript(self, node, children):
         var, _1, subscript, _2 = children
         dtype = var.dtype
-        if dtype != auto_type and len(dtype.dim) != len(subscript):
+        if dtype != auto_type and len(dtype.shape) != len(subscript):
             raise ArrayDimensionError(
                 'Variable {} is a {}-dimensional array of type {}, '
                 'but subscript [{}] is {}-dimensional.'.format(
-                    var, len(dtype.dim), dtype,
+                    var, len(dtype.shape), dtype,
                     ', '.join(str(s) for s in subscript), len(subscript)))
         return expression_factory(operators.INDEX_ACCESS_OP, var, subscript)
 

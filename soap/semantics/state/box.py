@@ -1,3 +1,4 @@
+from soap.datatype import type_of
 from soap.expression.variable import Variable
 from soap.lattice.map import map
 from soap.semantics.error import cast, ErrorSemantics, IntegerInterval
@@ -11,11 +12,21 @@ from soap.semantics.functions import bool_eval, fixpoint_eval
 class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
     __slots__ = ()
 
-    def _cast_key(self, key):
+    def _init_key_value(self, key, value):
+        value = self._cast_value(value)
         if isinstance(key, str):
-            return Variable(key)
+            key = Variable(key, type_of(value))
+        return key, value
+
+    def _cast_key(self, key):
         if isinstance(key, Variable):
             return key
+        if isinstance(key, str):
+            var_list = [var for var in self.keys() if var.name == key]
+            if len(var_list) > 1:
+                raise KeyError('Multiple variables with the same name.')
+            var = var_list.pop()
+            return var
         raise TypeError(
             'Do not know how to convert {!r} into a variable'.format(key))
 
