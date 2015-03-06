@@ -6,7 +6,7 @@ from soap.semantics.error import cast
 from soap.semantics.common import is_numeral
 from soap.semantics.label import Label
 from soap.semantics.state.base import BaseState
-from soap.semantics.functions import expand_expr, to_meta_state
+from soap.semantics.functions import expand_expr
 
 
 class MetaState(BaseState, dict):
@@ -135,7 +135,5 @@ class MetaState(BaseState, dict):
 
 
 def flow_to_meta_state(flow):
-    if isinstance(flow, str):
-        from soap.parser import pyparse
-        flow = pyparse(flow)
-    return to_meta_state(flow)
+    id_state = MetaState({v: v for v in flow.vars(output=False)})
+    return id_state.transition(flow)

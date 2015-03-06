@@ -17,7 +17,13 @@ class AutoType(TypeBase):
         return 'auto'
 
 
-class IntegerType(TypeBase):
+class BoolType(TypeBase):
+    """Boolean data type.  """
+    def __str__(self):
+        return 'bool'
+
+
+class IntType(TypeBase):
     """Integer data type.  """
     def __str__(self):
         return 'int'
@@ -30,7 +36,8 @@ class RealType(TypeBase):
 
 
 auto_type = AutoType()
-int_type = IntegerType()
+bool_type = BoolType()
+int_type = IntType()
 real_type = RealType()
 
 
@@ -46,10 +53,12 @@ class ArrayType(TypeBase):
             self.num_type, ', '.join(str(d) for d in self.shape))
 
     def __eq__(self, other):
-        return self.__class__ == other.__class__ and self.shape == other.shape
+        return (
+            self.num_type == other.num_type and
+            self.shape == other.shape)
 
     def __hash__(self):
-        return hash((self.__class__, self.shape))
+        return hash((self.num_type, self.shape))
 
 
 class IntegerArrayType(ArrayType):

@@ -583,11 +583,19 @@ class ErrorSemantics(Lattice):
         return hash_val
 
 
+def _is_integer(v):
+    try:
+        int(v)
+    except ValueError:
+        return False
+    return True
+
+
 def cast(v=None):
     if v is None:
         return IntegerInterval(bottom=True)
     if isinstance(v, str):
-        if v.isdigit():
+        if _is_integer(v):
             return IntegerInterval(v)
         return ErrorSemantics(v)
     if isinstance(v, (Interval, ErrorSemantics)):
@@ -601,7 +609,7 @@ def cast(v=None):
             return ErrorSemantics(v)
     else:
         if _are_instance((v_min, v_max), str):
-            if v_min.isdigit() and v_max.isdigit():
+            if _is_integer(v_min) and _is_integer(v_max):
                 return IntegerInterval(v)
             return ErrorSemantics(v)
         if _are_instance((v_min, v_max), (int, mpz_type)):

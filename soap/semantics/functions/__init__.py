@@ -5,5 +5,5 @@ from soap.semantics.functions.fixpoint import (
 )
 from soap.semantics.functions.label import label, luts, resources
 from soap.semantics.functions.meta import (
-    to_meta_state, expand_expr, expand_meta_state, arith_eval_meta_state,
+    expand_expr, expand_meta_state, arith_eval_meta_state,
 )

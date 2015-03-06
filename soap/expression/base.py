@@ -35,9 +35,6 @@ class Expression(Flyweight):
     def vars(self):
         return expression_variables(self)
 
-    def __iter__(self):
-        return iter([self.op] + list(self.args))
-
     def _args_to_str(self):
         from soap.expression.arithmetic import UnaryArithExpr
 

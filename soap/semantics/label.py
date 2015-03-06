@@ -4,10 +4,10 @@ from collections import namedtuple
 from soap import flopoco
 from soap.common import cached, Comparable, Flyweight, superscript
 from soap.context import context
+from soap.datatype import type_of
 from soap.expression import (
     External, FixExpr, is_expression, operators, OutputVariableTuple
 )
-from soap.lattice.base import Lattice
 from soap.semantics.common import is_numeral
 from soap.semantics.error import ErrorSemantics, IntegerInterval
 
@@ -51,6 +51,10 @@ class Label(label_namedtuple_type, Flyweight):
         return (
             None, self.bound, self.attribute, self.context_id,
             self.label_value)
+
+    @property
+    def dtype(self):
+        return type_of(self.bound)
 
     def attributed(self, attribute):
         return self.__class__(

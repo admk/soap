@@ -28,7 +28,7 @@ class Variable(ArithmeticMixin, BooleanMixin, BinaryExpression):
         return self.args[1]
 
     def __str__(self):
-        return str(self.name)
+        return '{}:{}'.format(self.name, self.dtype)
 
     def __repr__(self):
         return '{cls}({name!r}, {dtype!r})'.format(
