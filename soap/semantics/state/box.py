@@ -1,4 +1,4 @@
-from soap.datatype import type_of
+from soap.datatype import auto_type, type_of
 from soap.expression.variable import Variable
 from soap.lattice.map import map
 from soap.semantics.error import cast, ErrorSemantics, IntegerInterval
@@ -16,6 +16,12 @@ class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
         value = self._cast_value(value)
         if isinstance(key, str):
             key = Variable(key, type_of(value))
+        elif isinstance(key, Variable):
+            dtype = key.dtype
+            if dtype is not auto_type and dtype != type_of(value):
+                raise TypeError(
+                    'Variable type is not the same as the type of value '
+                    'to be assigned')
         return key, value
 
     def _cast_key(self, key):
