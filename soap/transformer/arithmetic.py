@@ -68,8 +68,8 @@ distributivity_distribute_unary_subtraction_division = (
     'distributivity_distribute_unary_subtraction_division'
 )
 distributivity_distribute_unary_subtraction_select = (
-    compile('-(b if c else d)'),
-    compile('-b if c else -d'),
+    compile('-(b ? c : d)'),
+    compile('b ? -c : -d'),
     'distributivity_distribute_unary_subtraction_select'
 )
 
@@ -123,34 +123,35 @@ distributivity_collect_division_2 = (
     compile('(a * d + b * c) / (c * d)'),
     'distributivity_collect_division_2'
 )
+# FIXME did I forget about distribute rules?
 distributivity_collect_select_addition = (
-    compile('(a + d) if b else (c + d)'),
-    compile('(a if b else c) + d'),
+    compile('b ? (a + d) : (c + d)'),
+    compile('(b ? a : c) + d'),
     'distributivity_collect_select_addition'
 )
 distributivity_collect_select_subtraction_1 = (
-    compile('(a - d) if b else (c - d)'),
-    compile('(a if b else c) - d'),
+    compile('b ? (a - d) : (c - d)'),
+    compile('(b ? a : c) - d'),
     'distributivity_collect_select_subtraction_1'
 )
 distributivity_collect_select_subtraction_2 = (
-    compile('(d - a) if b else (d - c)'),
-    compile('d - (a if b else c)'),
+    compile('b ? (d - a) : (d - c)'),
+    compile('d - (b ? a : c)'),
     'distributivity_collect_select_subtraction_2'
 )
 distributivity_collect_select_multiplication = (
-    compile('(a * d) if b else (c * d)'),
-    compile('(a if b else c) * d'),
+    compile('b ? (a * d) : (c * d)'),
+    compile('(b ? a : c) * d'),
     'distributivity_collect_select_multiplication'
 )
 distributivity_collect_select_division_1 = (
-    compile('(a / d) if b else (c / d)'),
-    compile('(a if b else c) / d'),
+    compile('b ? (a / d) : (c / d)'),
+    compile('(b ? a : c) / d'),
     'distributivity_collect_select_division_1'
 )
 distributivity_collect_select_division_2 = (
-    compile('(d / a) if b else (d / c)'),
-    compile('d / (a if b else c)'),
+    compile('b ? (d / a) : (d / c)'),
+    compile('d / (b ? a : c)'),
     'distributivity_collect_select_division_2'
 )
 
@@ -160,18 +161,19 @@ inversive_division = (
     'inversive_division'
 )
 
+# FIXME separate rules for complimentaries
 commutativity_select_1 = (
-    compile('(a if b else c) if d else e',
-            '(a if d else e) if b else (c if d else e)'),
-    compile('(a if b else c) if d else e',
-            '(a if d else e) if b else (c if d else e)'),
+    compile('d ? (b ? a : c) : e',
+            'b ? (d ? a : e) : (d ? c : e)'),
+    compile('d ? (b ? a : c) : e',
+            'b ? (d ? a : e) : (d ? c : e)'),
     'commutativity_select_1'
 )
 commutativity_select_2 = (
-    compile('a if b else (c if d else e)',
-            '(a if b else c) if d else (a if b else e)'),
-    compile('a if b else (c if d else e)',
-            '(a if b else c) if d else (a if b else e)'),
+    compile('b ? a : (d ? c : e)',
+            'd ? (b ? a : c) : (b ? a : e)'),
+    compile('b ? a : (d ? c : e)',
+            'd ? (b ? a : c) : (b ? a : e)'),
     'commutativity_select_2'
 )
 
@@ -230,7 +232,7 @@ constant_reduction = (
 )
 
 same_expression_reduction_ifelse = (
-    compile('a if b else a'),
+    compile('b ? a : a'),
     compile('a'),
     'same_expression_reduction_ifelse'
 )

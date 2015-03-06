@@ -1,0 +1,29 @@
+# ==============
+#  common lists
+# ==============
+
+integer_list = integer maybe_integer_list
+maybe_integer_list = comma_integer_list / _
+comma_integer_list = comma integer_list
+
+expression_list          = arithmetic_expression maybe_expression_list
+maybe_expression_list    = comma_expression_list / _
+comma_expression_list    = comma expression_list
+
+
+# ==========
+#  literals
+# ==========
+
+left_paren  = _ '(' _
+right_paren = _ ')' _
+left_brac   = _ '[' _
+right_brac  = _ ']' _
+comma       = _ ',' _
+
+
+# =========
+#  regexes
+# =========
+
+_ = ~r"\s*(?:#[^\r\n]*)?\s*"

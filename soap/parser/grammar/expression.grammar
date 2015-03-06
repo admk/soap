@@ -1,0 +1,110 @@
+# ======
+#  root
+# ======
+
+expression = arithmetic_expression / boolean_expression
+
+
+# ==============
+#  declarations
+# ==============
+
+variable_declaration = data_type new_variable
+
+data_type  = array_type / base_type
+array_type = base_type left_brac integer_list right_brac
+
+base_type = int_type / real_type
+
+int_type  = _ 'int'  _
+real_type = _ 'real' _
+
+
+# =============
+#  expressions
+# =============
+
+boolean_expression = boolean_term
+
+boolean_term = and_factor maybe_or_list
+
+and_factor   = bool_atom maybe_and_list
+bool_atom    = bool_parened / binary_bool_expr / unary_bool_expr / variable
+bool_parened = left_paren boolean_expression right_paren
+
+binary_bool_expr = term compare_operator term
+unary_bool_expr  = not bool_atom
+maybe_or_list    = or_list / _
+or_list          = or_expr maybe_or_list
+or_expr          = or and_factor
+maybe_and_list   = and_list / _
+and_list         = and_expr maybe_and_list
+and_expr         = and bool_atom
+
+arithmetic_expression = select / term
+
+select  = boolean_expression question term colon term
+term    = factor maybe_sum_list
+factor  = atom maybe_prod_list
+atom    = parened / unary_expr / number / variable_subscript
+parened = left_paren arithmetic_expression right_paren
+
+unary_expr      = sub atom
+maybe_sum_list  = sum_list / _
+sum_list        = sum_expr maybe_sum_list
+sum_expr        = sum_operator factor
+maybe_prod_list = prod_list / _
+prod_list       = prod_expr maybe_prod_list
+prod_expr       = prod_operator atom
+
+variable_subscript      = variable_with_subscript / variable
+variable_with_subscript = variable left_brac expression_list right_brac
+
+number   = error / interval / scalar
+error    = interval interval
+interval = left_brac scalar comma scalar right_brac
+scalar   = real / integer
+
+
+# ===========
+#  operators
+# ===========
+
+question    = _ '?' _
+colon       = _ ':' _
+
+compare_operator = le / lt / ge / gt / eq / ne
+
+lt = _ '<'  _
+le = _ '<=' _
+ge = _ '>=' _
+gt = _ '>'  _
+eq = _ '==' _
+ne = _ '!=' _
+
+and = _ 'and' _
+or  = _ 'or'  _
+not = _ 'not' _
+
+sum_operator = add / sub
+prod_operator = mul / div / pow
+
+add = _ '+' _
+sub = _ '-' _
+mul = _ '*' _
+div = _ '/' _
+pow = _ '^' _
+
+
+# =========
+#  regexes
+# =========
+
+variable = _ variable_regex _
+new_variable = _ variable_regex _
+variable_regex = ~'(?!int|real|and|or|not|if|while)([a-zA-Z_][a-zA-Z_0-9]*)'
+
+integer = _ integer_regex _
+real    = _ real_regex _
+integer_regex = ~'(\+|-)?[0-9]+'
+real_regex    = ~'(\+|-)?([0-9]+\.?[0-9]*|\.[0-9]+)([eE](\+|-)?[0-9]+)?'

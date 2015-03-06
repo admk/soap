@@ -10,7 +10,7 @@ from soap.lattice.base import Lattice
 class Expression(Flyweight):
     """A base class for expressions."""
 
-    __slots__ = ('_op', '_args')
+    __slots__ = ('_op', '_args', '_hash')
 
     def __init__(self, op, *args):
         super().__init__()
@@ -18,6 +18,7 @@ class Expression(Flyweight):
             raise ValueError('There is no arguments.')
         self._op = op
         self._args = args
+        self._hash = None
 
     @property
     def op(self):
@@ -33,9 +34,6 @@ class Expression(Flyweight):
 
     def vars(self):
         return expression_variables(self)
-
-    def __iter__(self):
-        return iter([self.op] + list(self.args))
 
     def _args_to_str(self):
         from soap.expression.arithmetic import UnaryArithExpr
@@ -62,7 +60,7 @@ class Expression(Flyweight):
         raise NotImplementedError
 
     def _attr(self):
-        return (self.op, tuple(self.args))
+        return (self.op, self.args)
 
     def __eq__(self, other):
         if not isinstance(other, Expression):
@@ -77,8 +75,10 @@ class Expression(Flyweight):
         return not self == other
 
     def __hash__(self):
-        self._hash = hash_val = hash(self._attr())
-        return hash_val
+        if self._hash:
+            return self._hash
+        self._hash = hash(self._attr())
+        return self._hash
 
 
 class UnaryExpression(Expression):
