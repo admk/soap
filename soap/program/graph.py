@@ -20,7 +20,7 @@ class ExpressionDependencies(base_dispatcher()):
     execute_Label = execute_numeral = _execute_atom
 
     def execute_Variable(self, expr):
-        return [InputVariable(expr.name)]
+        return [InputVariable(expr.name, expr.dtype)]
 
     def _execute_expression(self, expr):
         return list(expr.args)
@@ -79,20 +79,23 @@ class DependenceGraph(object):
     def is_cyclic(self):
         return bool(list(networkx.simple_cycles(self.graph)))
 
-    def attr_func(self, from_node, to_node):
-        return (from_node, to_node, {})
+    def add_edge(self, from_node, to_node, attr_dict=None, **kwargs):
+        self.graph.add_edge(from_node, to_node, attr_dict, **kwargs)
+
+    def add_dep_edges_one_to_many(self, from_node, to_nodes):
+        self.graph.add_edges_from(
+            self.edge_attr(from_node, to_node) for to_node in to_nodes)
+
+    def edge_attr(self, from_node, to_node):
+        return from_node, to_node, {}
 
     deps_func = staticmethod(expression_dependencies)
-
-    def add_edges_one_to_many(self, from_node, to_nodes):
-        self.graph.add_edges_from(
-            self.attr_func(from_node, to_node) for to_node in to_nodes)
 
     def _edges_recursive(self, out_vars):
         prev_nodes = self.nodes()
         if out_vars == self._root_node:
             # terminal node
-            self.add_edges_one_to_many(self._root_node, self.out_vars)
+            self.add_dep_edges_one_to_many(self._root_node, self.out_vars)
             deps = self.out_vars
         else:
             deps = []
@@ -105,7 +108,7 @@ class DependenceGraph(object):
                     expr = self.env[var]
                 local_deps = self.deps_func(expr)
                 deps += local_deps
-                self.add_edges_one_to_many(var, local_deps)
+                self.add_dep_edges_one_to_many(var, local_deps)
         if not deps:
             return
         new_deps = []
