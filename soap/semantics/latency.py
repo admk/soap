@@ -7,6 +7,7 @@ from soap.expression import (
     is_expression, InputVariable, OutputVariable, Variable
 )
 from soap.program.graph import DependenceGraph
+from soap.semantics import is_numeral
 from soap.semantics.label import Label
 
 
@@ -56,21 +57,22 @@ def rec_ii_search(graph, init_ii=1, prec=3):
                     return False
                 dist[from_idx, to_idx] = dist_val
 
-        return False
+        return True
 
     min_ii = max_ii = init_ii
     incr = prec = 2 ** -prec
 
+    # find an upper-bound on MII
     while not rec_ii_check(max_ii):
         max_ii += incr
         incr *= 2
 
+    # binary search for the optimal MII
     last_ii = max_ii
     while max_ii - min_ii > prec:
         mid_ii = (min_ii + max_ii) / 2
         if rec_ii_check(mid_ii):
-            last_ii = mid_ii
-            max_ii = min_ii
+            max_ii = last_ii = mid_ii
         else:
             min_ii = mid_ii
 
@@ -114,7 +116,7 @@ class LatencyDependenceGraph(DependenceGraph):
         for to_node in self.graph.pred:
             if not isinstance(to_node, InputVariable):
                 continue
-            out_var = OutputVariable(to_node.name, to_node.dtype)
+            out_var = Variable(to_node.name, to_node.dtype)
             if out_var not in self.out_vars:
                 continue
             # variable is input & output, should have a self-loop
@@ -125,6 +127,8 @@ class LatencyDependenceGraph(DependenceGraph):
 
     def _node_latency(self, node):
         if isinstance(node, InputVariable):
+            return 0
+        if is_numeral(node):
             return 0
         expr = self.env[node]
         if is_expression(expr):
