@@ -34,7 +34,7 @@ shell = Shell()
 def main(script=None):
     from soap import (
         context, parse, analyze, frontier, Plot, plot, analyze_and_plot,
-        pyparse, parse, Flow, generate, IntegerInterval, FloatInterval,
+        parse, expr_parse, Flow, generate, IntegerInterval, FloatInterval,
         FractionInterval, ErrorSemantics, BoxState, IdentifierBoxState,
         MetaState, flow_to_meta_state, mpz, mpq, mpfr, mpz_type, mpq_type,
         mpfr_type, inf, ulp, cast, arith_eval, error_eval, label, luts,
