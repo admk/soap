@@ -1,14 +1,19 @@
 import itertools
 
+import islpy
 import networkx
 import numpy
 
 from soap.expression import (
-    is_expression, InputVariable, OutputVariable, Variable
+    AccessExpr, expression_factory, InputVariable, is_expression,
+    is_variable, operators, UpdateExpr, Variable
 )
 from soap.program.graph import DependenceGraph
 from soap.semantics import is_numeral
 from soap.semantics.label import Label
+
+
+flow_dependence_only = True
 
 
 def max_latency(graph):
@@ -79,8 +84,102 @@ def rec_ii_search(graph, init_ii=1, prec=3):
     return last_ii
 
 
+def _rename_var_in_expr(expr, var_list, format_str):
+    if is_variable(expr):
+        if expr in var_list:
+            return Variable(format_str.format(expr.name), dtype=expr.dtype)
+        return expr
+    if is_expression(expr):
+        args = (_rename_var_in_expr(a, var_list, format_str)
+                for a in expr.args)
+        return expression_factory(expr.op, *args)
+    return expr
+
+
+class ISLExpressionError(Exception):
+    """Expression is mal-formed.  """
+
+
+class ISLIndependenceException(Exception):
+    """No dependence.  """
+
+
+def _check_isl_expr(expr):
+    variables = expr.vars()
+    try:
+        islpy.Set('{{ [{vars}]: {expr} > 0 }}'.format(
+            vars=', '.join(v.name for v in variables), expr=expr))
+    except islpy.Error:
+        raise ISLExpressionError(
+            'Expression {} is written in a format not expected by ISL.'
+            .format(expr))
+
+
+def dependence_distance(iter_vars, iter_bounds, loop_state, source, sink):
+    """
+    Uses ISL for dependence testing.
+
+        source, sink: Subscript objects
+    """
+    if len(source.args) != len(sink.args):
+        raise ValueError('Source/sink subscript length mismatch.')
+
+    dist_vars = []
+    constraints = []
+    exists_vars = set()
+    for var in iter_vars:
+        dist_var = '__dist_{}'.format(var.name)
+        dist_vars.append(dist_var)
+        lower, upper = iter_bounds[var]
+        constraints.append(
+            '{dist_var} = __snk_{iter_var} - __src_{iter_var}'
+            .format(dist_var=dist_var, iter_var=var))
+        constraints.append(
+            '{lower} <= __src_{iter_var} < __snk_{iter_var} <= {upper}'
+            .format(iter_var=var, lower=lower, upper=upper))
+
+    for src_idx, snk_idx in zip(source.args, sink.args):
+        _check_isl_expr(src_idx)
+        _check_isl_expr(snk_idx)
+        src_idx = _rename_var_in_expr(src_idx, iter_vars, '__src_{}')
+        snk_idx = _rename_var_in_expr(snk_idx, iter_vars, '__snk_{}')
+        constraints.append('{} = {}'.format(src_idx, snk_idx))
+        exists_vars |= src_idx.vars() | snk_idx.vars()
+
+    for var in exists_vars:
+        if var.name.startswith('__'):
+            # FIXME terrible hack
+            continue
+        lower, upper = loop_state[var]
+        constraints.append('{lower} <= {var} <= {upper}'.format(
+            lower=lower, var=var, upper=upper))
+
+    problem = '{{ [{dist_vars}] : exists ( {exists_vars} : {constraints} ) }}'
+    problem = problem.format(
+        dist_vars=', '.join(reversed(dist_vars)),
+        iter_vars=', '.join(v.name for v in iter_vars),
+        constraints=' and '.join(constraints),
+        exists_vars=', '.join(v.name for v in exists_vars))
+
+    basic_set = islpy.BasicSet(problem)
+    dist_vect_list = []
+    basic_set.lexmin().foreach_point(dist_vect_list.append)
+    if not dist_vect_list:
+        raise ISLIndependenceException
+    if len(dist_vect_list) != 1:
+        raise ValueError(
+            'The function lexmin() should return a single point.')
+    raw_dist_vect = dist_vect_list.pop()
+    dist_vect = []
+    for i in range(len(dist_vars)):
+        val = raw_dist_vect.get_coordinate_val(islpy.dim_type.set, i)
+        dist_vect.append(val.to_python())
+    return tuple(reversed(dist_vect))
+
+
 class DependenceType(object):
-    true = 1
+    independent = 0
+    flow = 1
     anti = 2
     output = 3
 
@@ -106,7 +205,7 @@ class LatencyDependenceGraph(DependenceGraph):
 
     def _add_variable_loop(self, from_node, to_node):
         attr_dict = {
-            'type': DependenceType.true,
+            'type': DependenceType.flow,
             'latency': 0,
             'distance': 1,
         }
@@ -117,13 +216,74 @@ class LatencyDependenceGraph(DependenceGraph):
             if not isinstance(to_node, InputVariable):
                 continue
             out_var = Variable(to_node.name, to_node.dtype)
-            if out_var not in self.out_vars:
+            if out_var not in self.env:
                 continue
             # variable is input & output, should have a self-loop
             self._add_variable_loop(to_node, out_var)
 
+    _edge_type_map = {
+        (operators.INDEX_ACCESS_OP, operators.INDEX_ACCESS_OP):
+            DependenceType.independent,
+        (operators.INDEX_ACCESS_OP, operators.INDEX_UPDATE_OP):
+            DependenceType.anti,
+        (operators.INDEX_UPDATE_OP, operators.INDEX_ACCESS_OP):
+            DependenceType.flow,
+        (operators.INDEX_UPDATE_OP, operators.INDEX_UPDATE_OP):
+            DependenceType.output,
+    }
+
+    def _add_array_loop(self, from_node, to_node):
+        dep_type = self._edge_type_map[from_node.op, to_node.op]
+
+        if dep_type == DependenceType.independent:
+            # RAR is not a dependence
+            return
+        elif dep_type == DependenceType.flow:
+            latency = self._node_latency(to_node)
+        elif dep_type == DependenceType.anti:
+            latency = 1 - self._node_latency(from_node)
+        elif dep_type == DependenceType.output:
+            latency = 1 + self._node_latency(to_node)
+            latency -= self._node_latency(from_node)
+        else:
+            raise TypeError('Unrecognized dependence type.')
+
+        try:
+            distance = dependence_distance(
+                self.iter_vars, self.loop_state, self.loop_state,
+                from_node.subscript, to_node.subscript)
+        except ISLNoDependenceException:
+            return
+
+        attr_dict = {
+            'type': dep_type,
+            'latency': latency,
+            'distance': distance,
+        }
+        self.graph.add_edge(from_node, to_node, attr_dict)
+
     def _init_array_loops(self):
-        pass
+        def is_array_op(node):
+            if isinstance(node, InputVariable):
+                return False
+            if is_numeral(node):
+                return False
+            if node == self._root_node:
+                return False
+            expr = self.env[node]
+            return isinstance(expr, (AccessExpr, UpdateExpr))
+
+        nodes = (n for n in self.graph.nodes() if is_array_op(n))
+        for from_node, to_node in itertools.product(nodes, repeat=2):
+            if from_node.var != to_node.var:
+                # access different arrays
+                continue
+            check = flow_dependence_only and not (
+                from_node.op == operators.INDEX_UPDATE_OP and
+                to_node.op == operators.INDEX_ACCESS_OP)
+            if check:
+                continue
+            self._add_array_loop(from_node, to_node)
 
     def _node_latency(self, node):
         if isinstance(node, InputVariable):
@@ -140,7 +300,7 @@ class LatencyDependenceGraph(DependenceGraph):
 
     def edge_attr(self, from_node, to_node):
         attr_dict = {
-            'type': DependenceType.true,
+            'type': DependenceType.flow,
             'latency': self._node_latency(to_node),
             'distance': 0,
         }

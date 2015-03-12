@@ -1,10 +1,86 @@
 import unittest
 
-from soap.datatype import real_type
-from soap.expression import operators, BinaryArithExpr, Variable
+from soap.datatype import int_type, real_type
+from soap.expression import (
+    operators, BinaryArithExpr, Variable, Subscript,
+)
 from soap.semantics.error import IntegerInterval, ErrorSemantics
 from soap.semantics.label import Label
-from soap.semantics.latency import LatencyDependenceGraph
+from soap.semantics.latency import (
+    dependence_distance, LatencyDependenceGraph, ISLIndependenceException,
+)
+
+
+class TestDependenceDistance(unittest.TestCase):
+    def setUp(self):
+        self.x = Variable('x', dtype=int_type)
+        self.y = Variable('y', dtype=int_type)
+        self.bounds = {
+            self.x: IntegerInterval([0, 9]),
+            self.y: IntegerInterval([0, 9])
+        }
+
+    def test_simple_subscripts(self):
+        source = Subscript(
+            BinaryArithExpr(operators.ADD_OP, self.x, IntegerInterval(1)))
+        sink = Subscript(self.x)
+        dist = dependence_distance(
+            [self.x], self.bounds, self.bounds, source, sink)
+        self.assertEqual(dist, (1, ))
+
+    def test_simple_independence(self):
+        source = Subscript(
+            BinaryArithExpr(operators.ADD_OP, self.x, IntegerInterval(20)))
+        sink = Subscript(self.x)
+        self.assertRaises(
+            ISLIndependenceException, dependence_distance,
+            [self.x], self.bounds, self.bounds, source, sink)
+
+    def test_multi_dim_subscripts(self):
+        expr = BinaryArithExpr(
+            operators.ADD_OP, self.x, IntegerInterval(2))
+        source = Subscript(expr, self.y)
+        expr = BinaryArithExpr(
+            operators.SUBTRACT_OP, self.y, IntegerInterval(1))
+        sink = Subscript(self.x, expr)
+        dist = dependence_distance(
+            [self.x, self.y], self.bounds, self.bounds, source, sink)
+        self.assertEqual(dist, (2, 1))
+
+    def test_multi_dim_coupled_subscripts_independence(self):
+        """
+        for (x in 0...9) {
+            a[x + 1, x + 2] = a[x, x]
+        }
+        """
+        expr_1 = BinaryArithExpr(
+            operators.ADD_OP, self.x, IntegerInterval(1))
+        expr_2 = BinaryArithExpr(
+            operators.ADD_OP, self.x, IntegerInterval(2))
+        source = Subscript(expr_1, expr_2)
+        sink = Subscript(self.x, self.x)
+        self.assertRaises(
+            ISLIndependenceException, dependence_distance,
+            [self.x], self.bounds, self.bounds, source, sink)
+
+    def test_multi_dim_coupled_subscripts_dependence(self):
+        """
+        for (x in 0...9) {
+            a[x + 1, x + 1] = a[x, x]
+        }
+        """
+        expr_1 = BinaryArithExpr(
+            operators.ADD_OP, self.x, IntegerInterval(1))
+        expr_2 = BinaryArithExpr(
+            operators.ADD_OP, self.x, IntegerInterval(1))
+        source = Subscript(expr_1, expr_2)
+        sink = Subscript(self.x, self.x)
+        dist = dependence_distance(
+            [self.x], self.bounds, self.bounds, source, sink)
+        self.assertEqual(dist, (1, ))
+
+    def test_complex_subscripts(self):
+        pass
 
 
 class TestLatencyDependenceGraph(unittest.TestCase):
@@ -71,3 +147,15 @@ class TestLatencyDependenceGraph(unittest.TestCase):
         ii = graph.initiation_interval
         expect_ii = self.latency_table[real_type, operators.ADD_OP]
         self.assertAlmostEqual(ii, expect_ii, places=1)
+
+    def test_array_none_dependence_initiation(self):
+        pass
+
+    def test_simple_array_initiation(self):
+        pass
+
+    def test_multi_dim_array_initiation(self):
+        pass
+
+    def test_mixed_initiation(self):
+        pass
