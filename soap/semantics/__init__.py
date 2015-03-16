@@ -5,7 +5,7 @@ from soap.semantics.error import (
     inf, ulp, round_off_error, cast
 )
 from soap.semantics.functions import (
-    arith_eval, error_eval, label, luts, resources,
+    arith_eval, error_eval, label, luts, resource_eval,
 )
 from soap.semantics.label import (
     Label, LabelContext, Identifier, LabelSemantics
@@ -13,3 +13,4 @@ from soap.semantics.label import (
 from soap.semantics.state import (
     BoxState, IdentifierBoxState, MetaState, flow_to_meta_state
 )
+from soap.semantics.latency import latency_eval

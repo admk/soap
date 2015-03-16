@@ -106,7 +106,7 @@ class Flyweight(object):
             return object.__new__(cls)
         key = pickle.dumps((cls, args, list(kwargs.items())))
         v = cls._cache.get(key, None)
-        if v:
+        if v is not None:
             return v
         v = object.__new__(cls)
         cls._cache[key] = v

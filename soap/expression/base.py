@@ -195,11 +195,11 @@ class VariableSetGenerator(base_dispatcher()):
             input_vars |= self(expr)
         return input_vars
 
-    execute_Label = _execute_atom
-    execute_Variable = _execute_atom
+    execute_Label = execute_Variable = _execute_atom
     execute_UnaryArithExpr = execute_BinaryArithExpr = _execute_expression
-    execute_BinaryBoolExpr = _execute_expression
-    execute_SelectExpr = _execute_expression
+    execute_BinaryBoolExpr = execute_SelectExpr = _execute_expression
+    execute_AccessExpr = execute_UpdateExpr = _execute_expression
+    execute_Subscript = _execute_expression
 
 
 expression_variables = VariableSetGenerator()

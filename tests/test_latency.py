@@ -5,15 +5,17 @@ from soap.datatype import int_type, real_type, RealArrayType, ArrayType
 from soap.expression import (
     operators, Variable, Subscript, expression_factory,
 )
+from soap.parser import parse
 from soap.semantics.error import IntegerInterval, ErrorSemantics
 from soap.semantics.label import Label, LabelSemantics
 from soap.semantics.latency import (
     dependence_vector, dependence_distance,
     SequentialLatencyDependenceGraph, LoopLatencyDependenceGraph,
-    ISLIndependenceException, _extract_for_loop,
+    ISLIndependenceException, _extract_for_loop, latency_eval,
 )
 from soap.semantics.linalg import ErrorSemanticsArray
 from soap.semantics.state import BoxState, MetaState
+from soap.semantics.state.meta import flow_to_meta_state
 
 
 context.ii_precision = 30
@@ -131,8 +133,8 @@ class _VariableLabelMixin(unittest.TestCase):
         self.x = Variable('x', real_type)
         self.y = Variable('y', real_type)
         self.z = Variable('z', real_type)
-        self.a = Variable('a', RealArrayType([10]))
-        self.b = Variable('b', RealArrayType([10, 10]))
+        self.a = Variable('a', RealArrayType([30]))
+        self.b = Variable('b', RealArrayType([30, 30]))
         self.i = Variable('i', int_type)
         self.j = Variable('j', int_type)
         self.dummy_error = ErrorSemantics(1)
@@ -140,8 +142,8 @@ class _VariableLabelMixin(unittest.TestCase):
         self.lx = Label(self.x, self.dummy_error)
         self.ly = Label(self.y, self.dummy_error)
         self.lz = Label(self.z, self.dummy_error)
-        self.dummy_array = ErrorSemanticsArray([1] * 10)
-        self.dummy_multi_array = ErrorSemanticsArray([[1] * 10] * 10)
+        self.dummy_array = ErrorSemanticsArray([1] * 30)
+        self.dummy_multi_array = ErrorSemanticsArray([[1] * 30] * 30)
         self.la = Label(self.a, self.dummy_array)
         self.lb = Label(self.b, self.dummy_multi_array)
         self.dummy_int = IntegerInterval(1)
@@ -178,7 +180,7 @@ class TestSequentialLatencyDependenceGraph(_VariableLabelMixin):
             self.lz: self.z,
         }
 
-        graph = self.Graph(env, [self.x, self.y])
+        graph = self.Graph(env, None, [self.x, self.y])
         latency = graph.latency()
         expect_latency = self.latency_table[real_type, operators.ADD_OP]
         expect_latency += self.latency_table[real_type, operators.SUBTRACT_OP]
@@ -297,6 +299,26 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
     def test_mixed_initiation(self):
         pass
 
+    def test_full_flow(self):
+        program = """
+        real[20] a;
+        int i = 0;
+        real x = 0.0;
+        while (i < 10) {
+            x = x + (a[i] + a[i + 1] + a[i + 2] + a[i + 3]);
+            i = i + 1;
+        };
+        """
+        meta_state = flow_to_meta_state(parse(program))
+        state = BoxState({
+            self.a: ErrorSemanticsArray(
+                [ErrorSemantics([0, 10 * i], [0, 0]) for i in range(30)]),
+        })
+        latency = latency_eval(meta_state, state, [self.x])
+        print(latency)
+        expect_latency = 1
+        self.assertEqual(latency, expect_latency)
+
 
 class TestLoopNestExtraction(_VariableLabelMixin):
     def test_simple_loop(self):
@@ -351,5 +373,5 @@ class TestLoopNestExtraction(_VariableLabelMixin):
             'iter_slice': slice(1, 9, 1),
             'loop_var': self.a,
         }
-        print(for_loop)
-        self.assertEqual(for_loop, expect_for_loop)
+        for key, expect_val in expect_for_loop.items():
+            self.assertEqual(for_loop[key], expect_val)

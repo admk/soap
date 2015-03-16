@@ -8,7 +8,9 @@ from collections import namedtuple
 from soap import logger
 from soap.common import Flyweight
 from soap.context import context
-from soap.semantics import error_eval, ErrorSemantics, inf, resources
+from soap.semantics import (
+    error_eval, ErrorSemantics, inf, resource_eval, latency_eval
+)
 
 
 def abs_error(expr, state):
@@ -76,7 +78,7 @@ def thick_frontier(points):
 
 
 _analysis_result_tuple = namedtuple(
-    'AnalysisResult', ['lut', 'dsp', 'error', 'expression'])
+    'AnalysisResult', ['lut', 'dsp', 'error', 'latency', 'expression'])
 
 
 class AnalysisResult(_analysis_result_tuple):
@@ -135,9 +137,12 @@ class Analysis(Flyweight):
                 logger.persistent(
                     'Analysing', '{}/{}'.format(step, total),
                     l=logger.levels.debug)
-                res = resources(expr, state, out_vars, precision)
+                resource = resource_eval(expr, state, out_vars, precision)
                 error = abs_error(expr, state)
-                results.add(AnalysisResult(res.lut, res.dsp, error, expr))
+                latency = latency_eval(expr, state, out_vars)
+                result = AnalysisResult(
+                    resource.lut, resource.dsp, error, latency, expr)
+                results.add(result)
         except KeyboardInterrupt:
             logger.warning('Analysis interrupted, completed: {}.'
                            .format(len(results)))
