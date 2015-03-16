@@ -49,7 +49,14 @@ class ArrayType(TypeBase):
 
     def __init__(self, shape):
         super().__init__()
-        self.shape = tuple(shape)
+        new_shape = []
+        for s in shape:
+            if isinstance(s, IntegerInterval):
+                if s.min != s.max:
+                    raise ValueError('Array size must be a constant.')
+                s = int(s.min)
+            new_shape.append(s)
+        self.shape = tuple(new_shape)
 
     def __str__(self):
         return '{}[{}]'.format(
@@ -62,7 +69,7 @@ class ArrayType(TypeBase):
             self.shape == other.shape)
 
     def __hash__(self):
-        return hash((self.num_type, self.shape))
+        return hash((self.__class__, self.num_type, self.shape))
 
 
 class IntegerArrayType(ArrayType):

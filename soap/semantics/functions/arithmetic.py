@@ -1,7 +1,6 @@
 from soap.common import base_dispatcher, cached
-from soap.datatype import cast as type_cast
 from soap.expression import operators
-from soap.semantics.error import ErrorSemantics, FloatInterval, error_norm
+from soap.semantics.error import error_norm
 
 
 class ArithmeticEvaluator(base_dispatcher()):
@@ -96,19 +95,20 @@ class ArithmeticEvaluator(base_dispatcher()):
 arith_eval = ArithmeticEvaluator()
 
 
-class ErrorEvaluator(ArithmeticEvaluator):
+class ErrorEvaluator(base_dispatcher()):
 
-    def execute_Variable(self, expr, state):
-        value = state[expr]
-        if isinstance(value, FloatInterval):
-            value = ErrorSemantics(value, 0)
-        return value
+    def generic_execute(self, expr, state):
+        return arith_eval(expr, state)
 
-    def execute_BinaryBoolExpr(self, expr, state):
+    def execute_dont_care(self, expr, state):
         return 0
 
     def execute_MetaState(self, meta_state, state):
-        return error_norm([self(expr, state) for expr in meta_state.values()])
+        state = arith_eval(meta_state, state)
+        return error_norm(state.values())
+
+    execute_BinaryBoolExpr = execute_dont_care
+    execute_Subscript = execute_dont_care
 
 
 error_eval = ErrorEvaluator()

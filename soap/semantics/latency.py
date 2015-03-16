@@ -241,6 +241,7 @@ class DependenceType(object):
 class SequentialLatencyDependenceGraph(DependenceGraph):
 
     latency_table = {
+        (int_type, operators.LESS_OP): 1,
         (int_type, operators.ADD_OP): 1,
         (real_type, operators.ADD_OP): 7,
         (real_type, operators.INDEX_ACCESS_OP): 2,
@@ -489,10 +490,14 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
         return self._latency
 
 
-def latency_eval(expr, state, out_vars):
+def latency_eval(expr, state, out_vars=None):
     from soap.semantics import BoxState, label
     if not state:
         state = BoxState(bottom=True)
-    _, env = label(expr, state, out_vars)
+    label, env = label(expr, state, out_vars)
+    if is_expression(expr):
+        # expressions do not have out_vars, but have an output, in this case
+        # ``label`` is its output variable
+        out_vars = [label]
     graph = SequentialLatencyDependenceGraph(env, state, out_vars)
     return graph.latency()

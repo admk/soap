@@ -123,6 +123,9 @@ class BaseDiscoverer(base_dispatcher('discover')):
         expr_set = self.filter(expr_set, state, out_vars)
         return self.closure(expr_set, state, out_vars)
 
+    discover_AccessExpr = discover_UpdateExpr = _discover_expression
+    discover_Subscript = _discover_expression
+
     def discover_FixExpr(self, expr, state, out_vars):
         bool_expr = expr.bool_expr
         init_meta_state = expr.init_state
@@ -195,9 +198,7 @@ class BaseDiscoverer(base_dispatcher('discover')):
             self, var_expr_state, state, out_vars):
 
         _, env = _label(var_expr_state, state)
-        graph = DependenceGraph(env, out_vars)
-        var_list = graph.order_by_dependencies(var_expr_state.keys())
-        var_list = unique(out_vars + var_list)  # FIXME later
+        var_list = sorted(set(var_expr_state.keys()) | set(out_vars), key=hash)
 
         logger.info('Discovering state: {}'.format(var_expr_state))
 

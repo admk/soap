@@ -95,10 +95,7 @@ class MapLattice(Lattice, Mapping):
             return self.__class__(new_map)
         if self.is_bottom():
             return self._cast_value(key=key, bottom=True)
-        try:
-            return self._mapping[self._cast_key(key)]
-        except KeyError:
-            return self._cast_value(key=key, bottom=True)
+        return self._mapping[self._cast_key(key)]
 
     def __hash__(self):
         self._hash = hash_val = hash(tuple(sorted(self.items(), key=hash)))

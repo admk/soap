@@ -131,6 +131,8 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
 
     def __getitem__(self, index):
         top = self.is_top()
+        if not isinstance(index, tuple):
+            index = [index]
         bottom = self.is_bottom() or all(i.is_bottom() for i in index)
 
         if top or bottom:
