@@ -15,6 +15,7 @@ context = dict(
     widen_factor=100,   # how many steps before widening in static analysis
     precision='single',
     norm='mse_error',   # function for computing multiple variable avg error
+    ii_precision=3,
     # transform related
     rand_seed=0,
     reduce_limit=2000,

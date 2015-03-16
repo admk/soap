@@ -27,7 +27,8 @@ class ExpressionDependencies(base_dispatcher()):
 
     execute_UnaryArithExpr = execute_BinaryArithExpr = _execute_expression
     execute_UnaryBoolExpr = execute_BinaryBoolExpr = _execute_expression
-    execute_SelectExpr = _execute_expression
+    execute_SelectExpr = execute_Subscript = _execute_expression
+    execute_AccessExpr = execute_UpdateExpr = _execute_expression
 
     def execute_FixExpr(self, expr):
         # is fixpoint expression, find external dependencies in init_state

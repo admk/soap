@@ -2,6 +2,7 @@ from soap.expression.arithmetic import ArithmeticMixin
 from soap.expression.base import (
     BinaryExpression, Expression, TernaryExpression
 )
+from soap.expression.common import is_variable
 from soap.expression.boolean import BooleanMixin
 from soap.expression.operators import (
     INDEX_ACCESS_OP, INDEX_UPDATE_OP, SUBSCRIPT_OP
@@ -26,7 +27,16 @@ class Subscript(Expression):
         return '{}({!r})'.format(self.__class__.__name__, self.args)
 
 
-class AccessExpr(ArithmeticMixin, BooleanMixin, BinaryExpression):
+class _TrueVarMixin(object):
+    def true_var(self):
+        var = self.var
+        while not is_variable(var):
+            var = var.var
+        return var
+
+
+class AccessExpr(
+        ArithmeticMixin, BooleanMixin, BinaryExpression, _TrueVarMixin):
 
     __slots__ = ()
 
@@ -52,7 +62,8 @@ class AccessExpr(ArithmeticMixin, BooleanMixin, BinaryExpression):
             subscript=self.subscript)
 
 
-class UpdateExpr(ArithmeticMixin, BooleanMixin, TernaryExpression):
+class UpdateExpr(
+        ArithmeticMixin, BooleanMixin, TernaryExpression, _TrueVarMixin):
 
     __slots__ = ()
 

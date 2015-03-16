@@ -1,67 +1,86 @@
 import unittest
 
-from soap.datatype import int_type, real_type
+from soap.context import context
+from soap.datatype import int_type, real_type, RealArrayType, ArrayType
 from soap.expression import (
-    operators, BinaryArithExpr, Variable, Subscript,
+    operators, Variable, Subscript, expression_factory,
 )
 from soap.semantics.error import IntegerInterval, ErrorSemantics
-from soap.semantics.label import Label
+from soap.semantics.label import Label, LabelSemantics
 from soap.semantics.latency import (
-    dependence_distance, LatencyDependenceGraph, ISLIndependenceException,
+    dependence_vector, dependence_distance,
+    SequentialLatencyDependenceGraph, LoopLatencyDependenceGraph,
+    ISLIndependenceException, _extract_for_loop,
 )
+from soap.semantics.linalg import ErrorSemanticsArray
+from soap.semantics.state import BoxState, MetaState
 
 
-class TestDependenceDistance(unittest.TestCase):
+context.ii_precision = 30
+
+
+class TestDependenceTest(unittest.TestCase):
     def setUp(self):
         self.x = Variable('x', dtype=int_type)
         self.y = Variable('y', dtype=int_type)
-        self.bounds = {
-            self.x: IntegerInterval([0, 9]),
-            self.y: IntegerInterval([0, 9])
-        }
+        self.z = Variable('z', dtype=int_type)
+        self.sx = slice(0, 9, 1)
+        self.sy = slice(1, 10, 1)
 
     def test_simple_subscripts(self):
         source = Subscript(
-            BinaryArithExpr(operators.ADD_OP, self.x, IntegerInterval(1)))
+            expression_factory(operators.ADD_OP, self.x, IntegerInterval(1)))
         sink = Subscript(self.x)
-        dist = dependence_distance(
-            [self.x], self.bounds, self.bounds, source, sink)
-        self.assertEqual(dist, (1, ))
+        dist_vect = dependence_vector([self.x], [self.sx], {}, source, sink)
+        self.assertEqual(dist_vect, (1, ))
+        dist = dependence_distance(dist_vect, [self.sx])
+        self.assertEqual(dist, 1)
 
     def test_simple_independence(self):
         source = Subscript(
-            BinaryArithExpr(operators.ADD_OP, self.x, IntegerInterval(20)))
+            expression_factory(operators.ADD_OP, self.x, IntegerInterval(20)))
         sink = Subscript(self.x)
         self.assertRaises(
-            ISLIndependenceException, dependence_distance,
-            [self.x], self.bounds, self.bounds, source, sink)
+            ISLIndependenceException, dependence_vector,
+            [self.x], [self.sx], {}, source, sink)
 
     def test_multi_dim_subscripts(self):
-        expr = BinaryArithExpr(
-            operators.ADD_OP, self.x, IntegerInterval(2))
+        """
+        Test case::
+            for (x in 0...9) {
+                for (y in 1...9) {
+                    a[x + 2, y] = ... a[x, y - 1] ...
+                }
+            }
+        """
+        expr = expression_factory(operators.ADD_OP, self.x, IntegerInterval(2))
         source = Subscript(expr, self.y)
-        expr = BinaryArithExpr(
+        expr = expression_factory(
             operators.SUBTRACT_OP, self.y, IntegerInterval(1))
         sink = Subscript(self.x, expr)
-        dist = dependence_distance(
-            [self.x, self.y], self.bounds, self.bounds, source, sink)
-        self.assertEqual(dist, (2, 1))
+        iter_slices = [self.sx, self.sy]
+        dist_vect = dependence_vector(
+            [self.x, self.y], iter_slices, {}, source, sink)
+        self.assertEqual(dist_vect, (2, 1))
+        dist = dependence_distance(dist_vect, iter_slices)
+        self.assertEqual(dist, 21)
 
     def test_multi_dim_coupled_subscripts_independence(self):
         """
-        for (x in 0...9) {
-            a[x + 1, x + 2] = a[x, x]
-        }
+        Test case::
+            for (x in 0...9) {
+                a[x + 1, x + 2] = a[x, x]
+            }
         """
-        expr_1 = BinaryArithExpr(
+        expr_1 = expression_factory(
             operators.ADD_OP, self.x, IntegerInterval(1))
-        expr_2 = BinaryArithExpr(
+        expr_2 = expression_factory(
             operators.ADD_OP, self.x, IntegerInterval(2))
         source = Subscript(expr_1, expr_2)
         sink = Subscript(self.x, self.x)
         self.assertRaises(
-            ISLIndependenceException, dependence_distance,
-            [self.x], self.bounds, self.bounds, source, sink)
+            ISLIndependenceException, dependence_vector,
+            [self.x], [self.sx], {}, source, sink)
 
     def test_multi_dim_coupled_subscripts_dependence(self):
         """
@@ -69,93 +88,268 @@ class TestDependenceDistance(unittest.TestCase):
             a[x + 1, x + 1] = a[x, x]
         }
         """
-        expr_1 = BinaryArithExpr(
+        expr_1 = expression_factory(
             operators.ADD_OP, self.x, IntegerInterval(1))
-        expr_2 = BinaryArithExpr(
+        expr_2 = expression_factory(
             operators.ADD_OP, self.x, IntegerInterval(1))
         source = Subscript(expr_1, expr_2)
         sink = Subscript(self.x, self.x)
-        dist = dependence_distance(
-            [self.x], self.bounds, self.bounds, source, sink)
-        self.assertEqual(dist, (1, ))
+        dist_vect = dependence_vector([self.x], [self.sx], {}, source, sink)
+        self.assertEqual(dist_vect, (1, ))
 
-    def test_complex_subscripts(self):
-        pass
+    def test_variable_in_subscripts(self):
+        """
+        for (x in 0...9) {
+            a[x + z] = a[x]
+        }
+        """
+        expr = expression_factory(operators.ADD_OP, self.x, self.z)
+        source = Subscript(expr)
+        sink = Subscript(self.x)
+        invariant = {
+            self.z: IntegerInterval([3, 10])
+        }
+        dist_vect = dependence_vector(
+            [self.x], [self.sx], invariant, source, sink)
+        self.assertEqual(dist_vect, (3, ))
 
 
-class TestLatencyDependenceGraph(unittest.TestCase):
+class _VariableLabelMixin(unittest.TestCase):
     def setUp(self):
         self.latency_table = {
+            (int_type, operators.ADD_OP): 1,
+            (int_type, operators.SUBTRACT_OP): 1,
             (real_type, operators.ADD_OP): 7,
-            (real_type, operators.MULTIPLY_OP): 5,
             (real_type, operators.SUBTRACT_OP): 8,
+            (real_type, operators.MULTIPLY_OP): 5,
+            (real_type, operators.INDEX_ACCESS_OP): 1,
+            (int_type, operators.INDEX_ACCESS_OP): 1,
+            (ArrayType, operators.INDEX_UPDATE_OP): 2,
+            (None, operators.SUBSCRIPT_OP): 0,
         }
+        self.w = Variable('w', real_type)
+        self.x = Variable('x', real_type)
+        self.y = Variable('y', real_type)
+        self.z = Variable('z', real_type)
+        self.a = Variable('a', RealArrayType([10]))
+        self.b = Variable('b', RealArrayType([10, 10]))
+        self.i = Variable('i', int_type)
+        self.j = Variable('j', int_type)
+        self.dummy_error = ErrorSemantics(1)
+        self.lw = Label(self.w, self.dummy_error)
+        self.lx = Label(self.x, self.dummy_error)
+        self.ly = Label(self.y, self.dummy_error)
+        self.lz = Label(self.z, self.dummy_error)
+        self.dummy_array = ErrorSemanticsArray([1] * 10)
+        self.dummy_multi_array = ErrorSemanticsArray([[1] * 10] * 10)
+        self.la = Label(self.a, self.dummy_array)
+        self.lb = Label(self.b, self.dummy_multi_array)
+        self.dummy_int = IntegerInterval(1)
+        self.li = Label(self.i, self.dummy_int)
+        self.lj = Label(self.j, self.dummy_int)
 
-        class Graph(LatencyDependenceGraph):
+
+class TestSequentialLatencyDependenceGraph(_VariableLabelMixin):
+    def setUp(self):
+        super().setUp()
+
+        class Graph(SequentialLatencyDependenceGraph):
             latency_table = self.latency_table
 
         self.Graph = Graph
-        self.variables = {x: Variable(x, real_type) for x in 'abcdxy'}
-        self.labels = {
-            x: Label(v, bound=ErrorSemantics(1))
-            for x, v in self.variables.items()}
-        self.base_env = {
-            self.variables[n]: self.labels[n] for n in self.labels}
-        self.base_env.update({
-            self.labels[n]: self.variables[n] for n in self.labels})
 
     def test_simple_dag_latency(self):
-        dummy_interval = ErrorSemantics(1)
-        expr_1 = BinaryArithExpr(
-            operators.MULTIPLY_OP, self.labels['a'], self.labels['b'])
-        expr_2 = BinaryArithExpr(
-            operators.ADD_OP, self.labels['c'], self.labels['d'])
-        label_1 = Label(expr_1, bound=dummy_interval)
-        label_2 = Label(expr_2, bound=dummy_interval)
-        expr_3 = BinaryArithExpr(
-            operators.SUBTRACT_OP, label_1, label_2)
-        label_3 = Label(expr_3, bound=dummy_interval)
+        expr_1 = expression_factory(operators.MULTIPLY_OP, self.lw, self.lx)
+        expr_2 = expression_factory(operators.ADD_OP, self.ly, self.lz)
+        label_1 = Label(expr_1, bound=self.dummy_error)
+        label_2 = Label(expr_2, bound=self.dummy_error)
+        expr_3 = expression_factory(operators.SUBTRACT_OP, label_1, label_2)
+        label_3 = Label(expr_3, bound=self.dummy_error)
 
-        env = dict(self.base_env)
-        env.update({
-            self.variables['y']: label_1,
-            self.labels['x']: label_3,
+        env = {
+            self.x: label_3,
+            self.y: label_1,
             label_1: expr_1,
             label_2: expr_2,
             label_3: expr_3,
-        })
+            self.lw: self.w,
+            self.lx: self.x,
+            self.ly: self.y,
+            self.lz: self.z,
+        }
 
-        graph = self.Graph(env, [self.variables['x'], self.variables['y']])
-        latency = graph.depth
+        graph = self.Graph(env, [self.x, self.y])
+        latency = graph.latency()
         expect_latency = self.latency_table[real_type, operators.ADD_OP]
         expect_latency += self.latency_table[real_type, operators.SUBTRACT_OP]
         self.assertEqual(latency, expect_latency)
 
+
+class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
+    def setUp(self):
+        super().setUp()
+
+        class Graph(LoopLatencyDependenceGraph):
+            latency_table = self.latency_table
+
+        self.Graph = Graph
+
     def test_variable_initiation(self):
-        dummy_interval = ErrorSemantics(1)
-        expr = BinaryArithExpr(
-            operators.ADD_OP, self.labels['x'], dummy_interval)
-        label = Label(expr, bound=dummy_interval)
-        env = dict(self.base_env)
-        env.update({
-            self.variables['x']: label,
+        expr = expression_factory(operators.ADD_OP, self.lx, self.dummy_error)
+        label = Label(expr, bound=ErrorSemantics(1))
+        env = {
+            self.x: label,
             label: expr,
-        })
-
-        out_vars = [self.variables['x']]
-        graph = self.Graph(env, out_vars, iter_vars=out_vars)
-        ii = graph.initiation_interval
+            self.lx: self.x,
+        }
+        graph = self.Graph(env, [self.x], [self.x], [slice(0, 9, 1)], {})
+        ii = graph.initiation_interval()
         expect_ii = self.latency_table[real_type, operators.ADD_OP]
-        self.assertAlmostEqual(ii, expect_ii, places=1)
+        self.assertAlmostEqual(ii, expect_ii)
+        trip_count = graph.latency()
+        expect_trip_count = 9 * ii + expect_ii
+        self.assertEqual(trip_count, expect_trip_count)
 
-    def test_array_none_dependence_initiation(self):
-        pass
+    def test_array_independence_initiation(self):
+        sub_expr = expression_factory(operators.SUBSCRIPT_OP, self.li)
+        sub_label = Label(sub_expr, bound=None)
+        acc_expr = expression_factory(
+            operators.INDEX_ACCESS_OP, self.la, sub_label)
+        acc_label = Label(acc_expr, bound=self.dummy_error)
+        inc_expr = expression_factory(operators.ADD_OP, acc_label, self.li)
+        inc_label = Label(inc_expr, bound=self.dummy_error)
+        upd_expr = expression_factory(
+            operators.INDEX_UPDATE_OP, self.la, sub_label, inc_label)
+        upd_label = Label(upd_expr, bound=self.dummy_array)
+        step_expr = expression_factory(
+            operators.ADD_OP, self.li, IntegerInterval(1))
+        step_label = Label(step_expr, bound=self.dummy_int)
+        env = {
+            self.a: upd_label,
+            self.i: step_label,
+            sub_label: sub_expr,
+            upd_label: upd_expr,
+            inc_label: inc_expr,
+            acc_label: acc_expr,
+            step_label: step_expr,
+            self.la: self.a,
+            self.li: self.i,
+        }
+        graph = self.Graph(
+            env, [self.a], [self.i], [slice(0, 9, 1)], {})
+        ii = graph.initiation_interval()
+        expect_ii = 1
+        self.assertEqual(ii, expect_ii)
 
     def test_simple_array_initiation(self):
-        pass
+        """
+        for (i in ...) {
+            a[i] = a[i - j] + i
+        }
+        """
+        idx_expr = expression_factory(operators.SUBTRACT_OP, self.li, self.lj)
+        idx_label = Label(idx_expr, bound=self.dummy_int)
+        snk_expr = expression_factory(operators.SUBSCRIPT_OP, idx_label)
+        snk_label = Label(snk_expr, bound=None)
+        src_expr = expression_factory(operators.SUBSCRIPT_OP, self.li)
+        src_label = Label(src_expr, bound=None)
+        acc_expr = expression_factory(
+            operators.INDEX_ACCESS_OP, self.la, snk_label)
+        acc_label = Label(acc_expr, bound=self.dummy_error)
+        inc_expr = expression_factory(operators.ADD_OP, acc_label, self.li)
+        inc_label = Label(inc_expr, bound=self.dummy_error)
+        upd_expr = expression_factory(
+            operators.INDEX_UPDATE_OP, self.la, src_label, inc_label)
+        upd_label = Label(upd_expr, bound=self.dummy_array)
+        step_expr = expression_factory(
+            operators.ADD_OP, self.li, IntegerInterval(1))
+        step_label = Label(step_expr, bound=self.dummy_int)
+        env = {
+            self.a: upd_label,
+            self.i: step_label,
+            self.j: self.lj,
+            snk_label: snk_expr,
+            src_label: src_expr,
+            idx_label: idx_expr,
+            upd_label: upd_expr,
+            inc_label: inc_expr,
+            acc_label: acc_expr,
+            step_label: step_expr,
+            self.la: self.a,
+            self.li: self.i,
+            self.lj: self.j,
+        }
+        invariant = {
+            self.j: IntegerInterval([3, 5]),
+        }
+        graph = self.Graph(
+            env, [self.a], [self.i], [slice(0, 9, 1)], invariant)
+        ii = graph.initiation_interval()
+        expect_ii = self.latency_table[real_type, operators.INDEX_ACCESS_OP]
+        expect_ii += self.latency_table[real_type, operators.ADD_OP]
+        expect_ii += self.latency_table[ArrayType, operators.INDEX_UPDATE_OP]
+        expect_ii /= float(invariant[self.j].min)
+        self.assertAlmostEqual(ii, expect_ii)
 
     def test_multi_dim_array_initiation(self):
         pass
 
     def test_mixed_initiation(self):
         pass
+
+
+class TestLoopNestExtraction(_VariableLabelMixin):
+    def test_simple_loop(self):
+        sub_expr = expression_factory(operators.SUBSCRIPT_OP, self.li)
+        sub_label = Label(sub_expr, bound=None)
+        acc_expr = expression_factory(
+            operators.INDEX_ACCESS_OP, self.la, sub_label)
+        acc_label = Label(acc_expr, bound=self.dummy_error)
+        inc_expr = expression_factory(operators.ADD_OP, acc_label, self.li)
+        inc_label = Label(inc_expr, bound=self.dummy_error)
+        upd_expr = expression_factory(
+            operators.INDEX_UPDATE_OP, self.la, sub_label, inc_label)
+        upd_label = Label(upd_expr, bound=self.dummy_array)
+        step_expr = expression_factory(
+            operators.ADD_OP, self.li, IntegerInterval(1))
+        step_label = Label(step_expr, bound=self.dummy_int)
+        loop_state = MetaState({
+            self.a: upd_label,
+            self.i: step_label,
+            sub_label: sub_expr,
+            upd_label: upd_expr,
+            inc_label: inc_expr,
+            acc_label: acc_expr,
+            step_label: step_expr,
+            self.la: self.a,
+            self.li: self.i,
+        })
+        bool_expr = expression_factory(
+            operators.LESS_OP, self.i, IntegerInterval(10))
+        bool_label = Label(bool_expr, bound=None)
+        bool_env = MetaState({
+            bool_label: bool_expr,
+            self.i: self.li,
+            self.li: self.i,
+        })
+        bool_sem = LabelSemantics(bool_label, bool_env)
+        init_state = MetaState({
+            self.a: self.la,
+            self.la: self.a,
+            self.i: self.li,
+            self.li: self.i,
+        })
+        fix_expr = expression_factory(
+            operators.FIXPOINT_OP, bool_sem, loop_state, self.a, init_state)
+        state = BoxState({
+            self.a: self.dummy_array,
+            self.i: 1,
+        })
+        for_loop = _extract_for_loop(fix_expr, state)
+        expect_for_loop = {
+            'iter_var': self.i,
+            'iter_slice': slice(1, 9, 1),
+            'loop_var': self.a,
+        }
+        print(for_loop)
+        self.assertEqual(for_loop, expect_for_loop)

@@ -1,9 +1,14 @@
-from soap.datatype import auto_type, type_of
+from soap.datatype import (
+    auto_type, type_of, int_type, real_type, IntegerArrayType, RealArrayType
+)
+from soap.datatype import cast as type_cast
 from soap.expression.variable import Variable
 from soap.lattice.map import map
 from soap.semantics.error import cast, ErrorSemantics, IntegerInterval
 from soap.semantics.label import Identifier
-from soap.semantics.linalg import MultiDimensionalArray
+from soap.semantics.linalg import (
+    IntegerIntervalArray, ErrorSemanticsArray, MultiDimensionalArray
+)
 from soap.semantics.state.base import BaseState
 from soap.semantics.state.identifier import IdentifierBaseState
 from soap.semantics.functions import bool_eval, fixpoint_eval
@@ -13,7 +18,7 @@ class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
     __slots__ = ()
 
     def _init_key_value(self, key, value):
-        value = self._cast_value(value)
+        value = self._cast_value(key, value)
         if isinstance(key, str):
             key = Variable(key, type_of(value))
         elif isinstance(key, Variable):
@@ -24,7 +29,7 @@ class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
                     'to be assigned')
         return key, value
 
-    def _cast_key(self, key):
+    def _cast_key(self, key, value=None):
         if isinstance(key, Variable):
             return key
         if isinstance(key, str):
@@ -36,9 +41,9 @@ class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
         raise TypeError(
             'Do not know how to convert {!r} into a variable'.format(key))
 
-    def _cast_value(self, value=None, top=False, bottom=False):
+    def _cast_value(self, key=None, value=None, top=False, bottom=False):
         if top or bottom:
-            return IntegerInterval(top=top, bottom=bottom)
+            return type_cast(key.dtype, value=value, top=top, bottom=bottom)
         if isinstance(value, MultiDimensionalArray):
             return value
         return cast(value)

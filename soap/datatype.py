@@ -57,6 +57,7 @@ class ArrayType(TypeBase):
 
     def __eq__(self, other):
         return (
+            self.__class__ == other.__class__ and
             self.num_type == other.num_type and
             self.shape == other.shape)
 
@@ -73,6 +74,8 @@ class RealArrayType(ArrayType):
 
 
 def type_of(value):
+    if value is None:
+        return
     if isinstance(value, IntegerInterval):
         return int_type
     if isinstance(value, ErrorSemantics):
@@ -82,3 +85,22 @@ def type_of(value):
     if isinstance(value, ErrorSemanticsArray):
         return RealArrayType(value.shape)
     raise TypeError('Unrecognized type {}'.format(type(value)))
+
+
+def cast(dtype, value=None, top=False, bottom=False):
+    if dtype == int_type:
+        return IntegerInterval(value, top=top, bottom=bottom)
+    if dtype == real_type:
+        return ErrorSemantics(value, top=top, bottom=bottom)
+    if isinstance(dtype, IntegerArrayType):
+        cls = IntegerIntervalArray
+    elif isinstance(dtype, RealArrayType):
+        cls = ErrorSemanticsArray
+    else:
+        raise TypeError('Do not recognize type.')
+    shape = None if value is not None else dtype.shape
+    array = cls(value, _shape=shape, top=top, bottom=bottom)
+    if shape != array.shape:
+        raise ValueError(
+            'Array shape is not the same as the shape specified by data type.')
+    return array

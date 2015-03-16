@@ -1,4 +1,5 @@
 from soap.common import base_dispatcher, cached
+from soap.datatype import cast as type_cast
 from soap.expression import operators
 from soap.semantics.error import ErrorSemantics, FloatInterval, error_norm
 
@@ -49,10 +50,14 @@ class ArithmeticEvaluator(base_dispatcher()):
 
     def execute_AccessExpr(self, expr, state):
         array, subscript = self._execute_args(expr, state)
+        if array.is_bottom():
+            return array.value_class(bottom=True)
         return array[subscript]
 
     def execute_UpdateExpr(self, expr, state):
         array, subscript, value = self._execute_args(expr, state)
+        if array.is_bottom():
+            return array
         return array.update(subscript, value)
 
     def execute_SelectExpr(self, expr, state):

@@ -33,14 +33,14 @@ class MapLattice(Lattice, Mapping):
         self._mapping = {k: v for k, v in state[2]}
 
     def _init_key_value(self, key, value, top=False, bottom=False):
-        key = self._cast_key(key)
-        value = self._cast_value(value, top=top, bottom=bottom)
+        key = self._cast_key(key, value)
+        value = self._cast_value(key, value, top=top, bottom=bottom)
         return key, value
 
-    def _cast_key(self, key):
+    def _cast_key(self, key, value=None):
         raise NotImplementedError
 
-    def _cast_value(self, value=None, top=False, bottom=False):
+    def _cast_value(self, key=None, value=None, top=False, bottom=False):
         raise NotImplementedError
 
     def is_top(self):
@@ -87,17 +87,18 @@ class MapLattice(Lattice, Mapping):
 
     def __getitem__(self, key):
         if self.is_top():
-            return self._cast_value(top=True)
+            return self._cast_value(key=key, top=True)
         if isinstance(key, slice):
             new_map = dict(self)
-            new_map[self._cast_key(key.start)] = self._cast_value(key.stop)
+            value = self._cast_value(key=key, value=key.stop)
+            new_map[self._cast_key(key.start)] = value
             return self.__class__(new_map)
         if self.is_bottom():
-            return self._cast_value(bottom=True)
+            return self._cast_value(key=key, bottom=True)
         try:
             return self._mapping[self._cast_key(key)]
         except KeyError:
-            return self._cast_value(bottom=True)
+            return self._cast_value(key=key, bottom=True)
 
     def __hash__(self):
         self._hash = hash_val = hash(tuple(sorted(self.items(), key=hash)))
