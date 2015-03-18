@@ -1,8 +1,7 @@
 import collections
 import itertools
 
-from soap.lattice.base import Lattice
-from soap.lattice.common import join
+from soap.lattice.base import Lattice, join
 from soap.semantics.error import ErrorSemantics, FloatInterval, IntegerInterval
 
 
@@ -131,10 +130,7 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
 
     def __getitem__(self, index):
         top = self.is_top()
-        if not isinstance(index, tuple):
-            index = [index]
-        bottom = self.is_bottom() or all(i.is_bottom() for i in index)
-
+        bottom = self.is_bottom()
         if top or bottom:
             return self.value_class(top=top, bottom=bottom)
 

@@ -6,6 +6,7 @@ from akpytemp import Template
 from akpytemp.utils import code_gobble
 
 from soap.common import base_dispatcher, superscript
+from soap.expression.linalg import AccessExpr
 from soap.semantics import BoxState, is_numeral, Label
 
 
@@ -336,7 +337,10 @@ class _VariableSetGenerator(base_dispatcher()):
         if input and not is_numeral(expr):
             in_vars = expr.vars()
         if output:
-            out_vars = {flow.var}
+            var = flow.var
+            if isinstance(var, AccessExpr):
+                var = var.var
+            out_vars = {var}
         return in_vars | out_vars
 
     def execute_IfFlow(self, flow, input, output):

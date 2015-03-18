@@ -5,7 +5,6 @@
 from collections import Mapping
 
 from soap.lattice import Lattice
-from soap.lattice.common import _lattice_factory
 
 
 class MapLattice(Lattice, Mapping):
@@ -20,8 +19,7 @@ class MapLattice(Lattice, Mapping):
         mapping = {}
         for k, v in dict(dictionary or {}, **kwargs).items():
             k, v = self._init_key_value(k, v)
-            if not v.is_bottom():
-                mapping[k] = v
+            mapping[k] = v
         self._mapping = mapping
 
     def __getstate__(self):
@@ -34,7 +32,7 @@ class MapLattice(Lattice, Mapping):
 
     def _init_key_value(self, key, value, top=False, bottom=False):
         key = self._cast_key(key, value)
-        value = self._cast_value(key, value, top=top, bottom=bottom)
+        value = self._cast_value(key, value, top, bottom)
         return key, value
 
     def _cast_key(self, key, value=None):
@@ -109,24 +107,3 @@ class MapLattice(Lattice, Mapping):
     def __repr__(self):
         return '{cls}({items!r})'.format(
             cls=self.__class__.__name__, items=dict(self))
-
-
-def map(from_cls=None, to_lattice=None, name=None):
-    """Returns a mapping lattice which orders the partial maps from a class
-    `from_cls` to a lattice `to_lattice`.
-
-    :param from_cls: The domain of the function.
-    :type cls: type
-    :param to_lattice: The range of the function, must be a lattice.
-    :type name: :class:`soap.lattice.Lattice`
-    """
-    if not name and from_cls and to_lattice:
-        try:
-            to_lattice_name = to_lattice.__name__
-        except AttributeError:
-            to_lattice_name = type(to_lattice).__name__
-        name = 'MapLattice_{}_to_{}'.format(from_cls.__name__, to_lattice_name)
-    cls = _lattice_factory(to_lattice, MapLattice, name)
-    if from_cls:
-        cls._cast_key = lambda self, key: from_cls(key)
-    return cls

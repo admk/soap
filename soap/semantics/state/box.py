@@ -1,20 +1,16 @@
-from soap.datatype import (
-    auto_type, type_of, int_type, real_type, IntegerArrayType, RealArrayType
-)
+from soap.datatype import auto_type, type_of
 from soap.datatype import cast as type_cast
 from soap.expression.variable import Variable
-from soap.lattice.map import map
-from soap.semantics.error import cast, ErrorSemantics, IntegerInterval
+from soap.lattice.map import MapLattice
+from soap.semantics.error import cast, ErrorSemantics
 from soap.semantics.label import Identifier
-from soap.semantics.linalg import (
-    IntegerIntervalArray, ErrorSemanticsArray, MultiDimensionalArray
-)
+from soap.semantics.linalg import MultiDimensionalArray
 from soap.semantics.state.base import BaseState
 from soap.semantics.state.identifier import IdentifierBaseState
 from soap.semantics.functions import bool_eval, fixpoint_eval
 
 
-class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
+class BoxState(BaseState, MapLattice):
     __slots__ = ()
 
     def _init_key_value(self, key, value):
@@ -34,6 +30,8 @@ class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
             return key
         if isinstance(key, str):
             var_list = [var for var in self.keys() if var.name == key]
+            if not var_list:
+                raise KeyError(key)
             if len(var_list) > 1:
                 raise KeyError('Multiple variables with the same name.')
             var = var_list.pop()

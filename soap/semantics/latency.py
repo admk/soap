@@ -15,7 +15,7 @@ from soap.expression import (
 from soap.program.graph import DependenceGraph
 from soap.semantics import is_numeral, IntegerInterval, Label, arith_eval
 from soap.semantics.error import inf
-from soap.semantics.functions import expand_expr, fixpoint_eval
+from soap.semantics.functions import expand_expr
 
 
 def max_latency(graph):
@@ -119,6 +119,13 @@ def _stitch_expr(expr, env):
     if isinstance(expr, InputVariable):
         return Variable(expr.name, expr.dtype)
     raise TypeError('Do not know how to stitch expression {}.'.format(expr))
+
+
+def _stitch_env(env):
+    mapping = {
+        v: _stitch_expr(e, env) for v, e in env.items() if is_variable(v)
+    }
+    return env.__class__(mapping)
 
 
 def _check_isl_expr(expr):
@@ -267,7 +274,7 @@ class SequentialLatencyDependenceGraph(DependenceGraph):
             if expr.op != operators.FIXPOINT_OP:
                 return self.latency_table[dtype, expr.op]
             # FixExpr
-            for_loop = _extract_for_loop(expr, self.state)
+            for_loop = _extract_for_loop(expr)
             graph = LoopLatencyDependenceGraph(
                 expr.loop_state, [expr.loop_var], [for_loop['iter_var']],
                 [for_loop['iter_slice']], for_loop['invariant'])
@@ -301,18 +308,14 @@ class ForLoopExtractionFailureException(Exception):
     """Failed to extract for loop.  """
 
 
-def _extract_for_loop(fix_expr, state):
+def _extract_for_loop(fix_expr):
     bool_expr, loop_state, loop_var, init_state = fix_expr.args
 
     label, env = bool_expr
     bool_expr = _stitch_expr(label, env)
 
-    loop_state = loop_state.__class__({
-        var: _stitch_expr(expr, loop_state)
-        for var, expr in loop_state.items() if is_variable(var)})
-
-    invariant = fixpoint_eval(
-        state, bool_expr, loop_meta_state=loop_state)['entry']
+    invariant = loop_state['__invariant']
+    loop_state = _stitch_env(loop_state)
 
     iter_var, stop = bool_expr.args
     if not is_variable(iter_var):
@@ -336,15 +339,12 @@ def _extract_for_loop(fix_expr, state):
     else:
         raise ForLoopExtractionFailureException
 
-    start = init_state[iter_var].bound.min
-    stop = arith_eval(stop, invariant).max
+    start = invariant[iter_var].min
+    stop = invariant[iter_var].max
     step = arith_eval(step, invariant)
     if step.min != step.max:
         raise ForLoopExtractionFailureException
     step = step.min
-
-    if bool_expr.op == operators.LESS_OP:
-        stop -= 1
 
     for_loop = {
         'iter_var': iter_var,
@@ -477,17 +477,22 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
             self._depth = max_latency(self.graph)
             return self._depth
 
+    def trip_count(self):
+        trip_counts = [_iter_point_count(s, False) for s in self.iter_slices]
+        return functools.reduce(lambda x, y: x * y, trip_counts)
+
     def latency(self):
         try:
             return self._latency
         except AttributeError:
             pass
-        trip_counts = [_iter_point_count(s, False) for s in self.iter_slices]
-        trip_count = functools.reduce(lambda x, y: x * y, trip_counts)
         ii = self.initiation_interval()
-        print(ii, trip_count, self.depth())
-        self._latency = (trip_count - 1) * ii + self.depth()
+        self._latency = (self.trip_count() - 1) * ii + self.depth()
         return self._latency
+
+    def true_latency(self):
+        ii = math.ceil(self.initiation_interval())
+        return (self.trip_count() - 1) * ii + self.depth()
 
 
 def latency_eval(expr, state, out_vars=None):

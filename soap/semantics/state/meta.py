@@ -15,7 +15,7 @@ class MetaState(BaseState, dict):
     def __init__(self, dictionary=None, **kwargs):
         dictionary = dict(dictionary or {}, **kwargs)
         mapping = {
-            self._cast_key(key): self._cast_value(value)
+            self._cast_key(key): self._cast_value(key, value)
             for key, value in dictionary.items()
         }
         super().__init__(mapping)
@@ -23,13 +23,22 @@ class MetaState(BaseState, dict):
 
     def _cast_key(self, key):
         if isinstance(key, str):
-            return Variable(key)
+            if key.startswith('__'):
+                # internal data
+                return key
+            var_list = [var for var in self.keys() if var.name == key]
+            if not var_list:
+                raise KeyError(key)
+            if len(var_list) > 1:
+                raise KeyError('Multiple variables with the same name.')
+            var = var_list.pop()
+            return var
         if isinstance(key, (Variable, Label, OutputVariableTuple)):
             return key
         raise TypeError(
             'Do not know how to convert {!r} into a variable'.format(key))
 
-    def _cast_value(self, value):
+    def _cast_value(self, key, value):
         if isinstance(value, (Label, Expression)):
             return value
         if isinstance(value, str):
@@ -39,6 +48,9 @@ class MetaState(BaseState, dict):
             return cast(value)
         if isinstance(value, dict):
             return self.__class__(value)
+        if key.startswith('__'):
+            # internal data
+            return value
         raise TypeError(
             'Do not know how to convert {!r} into an expression'.format(value))
 
@@ -48,7 +60,7 @@ class MetaState(BaseState, dict):
         new pair `key`: `value`.
         """
         new_mapping = dict(self)
-        new_mapping[self._cast_key(key)] = self._cast_value(value)
+        new_mapping[self._cast_key(key)] = self._cast_value(key, value)
         return self.__class__(new_mapping)
 
     def is_fixpoint(self, other):

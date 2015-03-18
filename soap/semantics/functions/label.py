@@ -71,6 +71,7 @@ class LabelGenerator(base_dispatcher()):
         loop_bound = fixpoint_eval(init_bound, bool_expr, loop_state)['entry']
         loop_state_labsem = self(loop_state, loop_bound, context)
         loop_state_label, loop_state_env = loop_state_labsem
+        loop_state_env.update(__invariant=loop_bound)
 
         bool_expr_labsem = self(bool_expr, loop_bound, context)
         bool_expr_label, _ = bool_expr_labsem

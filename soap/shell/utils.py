@@ -19,7 +19,7 @@ from soap.semantics import (
     arith_eval, BoxState, ErrorSemantics, flow_to_meta_state, MetaState,
     IntegerInterval, luts
 )
-from soap.semantics.functions import error_eval, resources
+from soap.semantics.functions import error_eval, resource_eval
 from soap.semantics.label import s
 from soap.transformer import (
     closure, expand, frontier, greedy, parsings, reduce, thick
@@ -139,7 +139,7 @@ def _reanalyze_error_estimate(result, emir):
 
 def _reanalyze_resource_estimates(result, emir):
     _, inputs, outputs = parse(emir['file'])
-    return resources(
+    return resource_eval(
         result.expression, inputs, outputs, emir['context'].precision)
 
 

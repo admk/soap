@@ -21,4 +21,6 @@ def is_numeral(e):
     from soap.semantics.error import (
         mpz_type, mpfr_type, Interval, ErrorSemantics
     )
-    return isinstance(e, (mpz_type, mpfr_type, Interval, ErrorSemantics))
+    from soap.semantics.linalg import MultiDimensionalArray
+    return isinstance(e, (
+        mpz_type, mpfr_type, Interval, ErrorSemantics, MultiDimensionalArray))

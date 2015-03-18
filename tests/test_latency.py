@@ -18,10 +18,7 @@ from soap.semantics.state import BoxState, MetaState
 from soap.semantics.state.meta import flow_to_meta_state
 
 
-context.ii_precision = 30
-
-
-class TestDependenceTest(unittest.TestCase):
+class TestDependenceCheck(unittest.TestCase):
     def setUp(self):
         self.x = Variable('x', dtype=int_type)
         self.y = Variable('y', dtype=int_type)
@@ -69,10 +66,7 @@ class TestDependenceTest(unittest.TestCase):
 
     def test_multi_dim_coupled_subscripts_independence(self):
         """
-        Test case::
-            for (x in 0...9) {
-                a[x + 1, x + 2] = a[x, x]
-            }
+        for (x in 0...9) { a[x + 1, x + 2] = a[x, x]; }
         """
         expr_1 = expression_factory(
             operators.ADD_OP, self.x, IntegerInterval(1))
@@ -86,9 +80,7 @@ class TestDependenceTest(unittest.TestCase):
 
     def test_multi_dim_coupled_subscripts_dependence(self):
         """
-        for (x in 0...9) {
-            a[x + 1, x + 1] = a[x, x]
-        }
+        for (x in 0...9) { a[x + 1, x + 1] = a[x, x]; }
         """
         expr_1 = expression_factory(
             operators.ADD_OP, self.x, IntegerInterval(1))
@@ -101,9 +93,7 @@ class TestDependenceTest(unittest.TestCase):
 
     def test_variable_in_subscripts(self):
         """
-        for (x in 0...9) {
-            a[x + z] = a[x]
-        }
+        for (x in 0...9) { a[x + z] = a[x]; }
         """
         expr = expression_factory(operators.ADD_OP, self.x, self.z)
         source = Subscript(expr)
@@ -118,6 +108,8 @@ class TestDependenceTest(unittest.TestCase):
 
 class _VariableLabelMixin(unittest.TestCase):
     def setUp(self):
+        self.ori_ii_prec = context.ii_precision
+        context.ii_precision = 30
         self.latency_table = {
             (int_type, operators.ADD_OP): 1,
             (int_type, operators.SUBTRACT_OP): 1,
@@ -149,6 +141,9 @@ class _VariableLabelMixin(unittest.TestCase):
         self.dummy_int = IntegerInterval(1)
         self.li = Label(self.i, self.dummy_int)
         self.lj = Label(self.j, self.dummy_int)
+
+    def tearDown(self):
+        context.ii_precision = self.ori_ii_prec
 
 
 class TestSequentialLatencyDependenceGraph(_VariableLabelMixin):
@@ -245,9 +240,7 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
 
     def test_simple_array_initiation(self):
         """
-        for (i in ...) {
-            a[i] = a[i - j] + i
-        }
+        for (i in ...) { a[i] = a[i - j] + i; }
         """
         idx_expr = expression_factory(operators.SUBTRACT_OP, self.li, self.lj)
         idx_label = Label(idx_expr, bound=self.dummy_int)
@@ -301,11 +294,10 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
 
     def test_full_flow(self):
         program = """
-        real[20] a;
+        real[30] a;
         int i = 0;
-        real x = 0.0;
         while (i < 10) {
-            x = x + (a[i] + a[i + 1] + a[i + 2] + a[i + 3]);
+            a[i + 3] = a[i] + i;
             i = i + 1;
         };
         """
@@ -314,10 +306,15 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
             self.a: ErrorSemanticsArray(
                 [ErrorSemantics([0, 10 * i], [0, 0]) for i in range(30)]),
         })
-        latency = latency_eval(meta_state, state, [self.x])
-        print(latency)
-        expect_latency = 1
-        self.assertEqual(latency, expect_latency)
+        distance = 3
+        trip_count = 10
+        latency = latency_eval(meta_state, state, [self.a])
+        depth = self.latency_table[real_type, operators.INDEX_ACCESS_OP]
+        depth += self.latency_table[real_type, operators.ADD_OP]
+        depth += self.latency_table[ArrayType, operators.INDEX_UPDATE_OP]
+        expect_ii = depth / distance
+        expect_latency = expect_ii * (trip_count - 1) + depth
+        self.assertAlmostEqual(latency, expect_latency)
 
 
 class TestLoopNestExtraction(_VariableLabelMixin):
@@ -345,6 +342,9 @@ class TestLoopNestExtraction(_VariableLabelMixin):
             step_label: step_expr,
             self.la: self.a,
             self.li: self.i,
+            '__invariant': {
+                self.i: IntegerInterval([1, 9]),
+            }
         })
         bool_expr = expression_factory(
             operators.LESS_OP, self.i, IntegerInterval(10))
@@ -363,11 +363,7 @@ class TestLoopNestExtraction(_VariableLabelMixin):
         })
         fix_expr = expression_factory(
             operators.FIXPOINT_OP, bool_sem, loop_state, self.a, init_state)
-        state = BoxState({
-            self.a: self.dummy_array,
-            self.i: 1,
-        })
-        for_loop = _extract_for_loop(fix_expr, state)
+        for_loop = _extract_for_loop(fix_expr)
         expect_for_loop = {
             'iter_var': self.i,
             'iter_slice': slice(1, 9, 1),

@@ -10,7 +10,6 @@ from soap.semantics.state.meta import MetaState
 
 class TestMetaState(unittest.TestCase):
     def setUp(self):
-        self.bot = MetaState(bottom=True)
         array_type = IntegerArrayType([3])
         multi_array_type = IntegerArrayType([2, 3])
         self.decl = {
@@ -26,8 +25,9 @@ class TestMetaState(unittest.TestCase):
         self.parse = lambda prog: parse(prog, self.decl)
 
     def test_visit_IdentityFlow(self):
-        bot = self.bot.visit_IdentityFlow(parse('skip;'))
-        self.assertEqual(bot, self.bot)
+        state = MetaState({self.x: self.x})
+        compare_state = state.visit_IdentityFlow(parse('skip;'))
+        self.assertEqual(state, compare_state)
 
     def test_visit_AssignFlow(self):
         flow = self.parse('z = x * y;')

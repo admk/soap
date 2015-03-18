@@ -59,7 +59,7 @@ class Label(label_namedtuple_type, Flyweight):
     def attributed(self, attribute):
         return self.__class__(
             label_value=self.label_value, bound=self.bound,
-            attribute=attribute)
+            attribute=attribute, context_id=self.context_id)
 
     def attributed_true(self):
         return self.attributed('tt')
@@ -81,8 +81,6 @@ class Label(label_namedtuple_type, Flyweight):
 
     def __str__(self):
         s = 'l{}'.format(self.label_value)
-        if self.attribute:
-            s += str(self.attribute)
         return s
 
     def __repr__(self):
