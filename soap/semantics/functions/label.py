@@ -111,6 +111,7 @@ class LabelGenerator(base_dispatcher()):
 _label = LabelGenerator()
 
 
+@cached
 def label(expr, state, out_vars, context=None):
     from soap.semantics.state.meta import MetaState
     if isinstance(expr, MetaState):
@@ -122,13 +123,10 @@ def label(expr, state, out_vars, context=None):
     return LabelSemantics(lab, env)
 
 
-_luts_context = LabelContext('luts_count')
-
-
 @cached
 def resource_eval(expr, state, out_vars, mantissa=None):
     mantissa = mantissa or context.precision
-    return label(expr, state, out_vars, _luts_context).resources(mantissa)
+    return label(expr, state, out_vars).resources(mantissa)
 
 
 def luts(expr, state, out_vars, mantissa=None):

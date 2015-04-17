@@ -23,9 +23,6 @@ class MetaState(BaseState, dict):
 
     def _cast_key(self, key):
         if isinstance(key, str):
-            if key.startswith('__'):
-                # internal data
-                return key
             var_list = [var for var in self.keys() if var.name == key]
             if not var_list:
                 raise KeyError(key)
@@ -48,9 +45,6 @@ class MetaState(BaseState, dict):
             return cast(value)
         if isinstance(value, dict):
             return self.__class__(value)
-        if key.startswith('__'):
-            # internal data
-            return value
         raise TypeError(
             'Do not know how to convert {!r} into an expression'.format(value))
 

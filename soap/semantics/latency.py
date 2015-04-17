@@ -190,6 +190,7 @@ def dependence_vector(iter_vars, iter_slices, invariant, source, sink):
 
     for var in exists_vars:
         if var.name.startswith('__'):
+            # __src_*, __snk_*, __stride_*
             continue
         lower, upper = invariant[var]
         if lower != -inf:
