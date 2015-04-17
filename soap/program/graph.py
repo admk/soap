@@ -10,6 +10,7 @@ class ExpressionDependencies(base_dispatcher()):
     Find dependent variables for the corresponding expression
     """
     def generic_execute(self, expr):
+        import ipdb; ipdb.set_trace()
         raise TypeError(
             'Do not know how to find dependencies in expression {!r}'
             .format(expr))

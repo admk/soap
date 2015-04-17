@@ -342,9 +342,6 @@ class TestLoopNestExtraction(_VariableLabelMixin):
             step_label: step_expr,
             self.la: self.a,
             self.li: self.i,
-            '__invariant': {
-                self.i: IntegerInterval([1, 9]),
-            }
         })
         bool_expr = expression_factory(
             operators.LESS_OP, self.i, IntegerInterval(10))
@@ -363,7 +360,8 @@ class TestLoopNestExtraction(_VariableLabelMixin):
         })
         fix_expr = expression_factory(
             operators.FIXPOINT_OP, bool_sem, loop_state, self.a, init_state)
-        for_loop = _extract_for_loop(fix_expr)
+        label = Label(fix_expr, None, {self.i: IntegerInterval([1, 9])})
+        for_loop = _extract_for_loop(label, fix_expr)
         expect_for_loop = {
             'iter_var': self.i,
             'iter_slice': slice(1, 9, 1),

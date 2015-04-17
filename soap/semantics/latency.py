@@ -6,6 +6,7 @@ import islpy
 import networkx
 import numpy
 
+from soap.common.cache import cached
 from soap.context import context
 from soap.datatype import ArrayType, int_type, real_type
 from soap.expression import (
@@ -274,7 +275,7 @@ class SequentialLatencyDependenceGraph(DependenceGraph):
             if expr.op != operators.FIXPOINT_OP:
                 return self.latency_table[dtype, expr.op]
             # FixExpr
-            for_loop = _extract_for_loop(expr)
+            for_loop = _extract_for_loop(node, expr)
             graph = LoopLatencyDependenceGraph(
                 expr.loop_state, [expr.loop_var], [for_loop['iter_var']],
                 [for_loop['iter_slice']], for_loop['invariant'])
@@ -308,13 +309,13 @@ class ForLoopExtractionFailureException(Exception):
     """Failed to extract for loop.  """
 
 
-def _extract_for_loop(fix_expr):
+def _extract_for_loop(label, fix_expr):
     bool_expr, loop_state, loop_var, init_state = fix_expr.args
 
-    label, env = bool_expr
-    bool_expr = _stitch_expr(label, env)
+    bool_label, bool_env = bool_expr
+    bool_expr = _stitch_expr(bool_label, bool_env)
 
-    invariant = loop_state['__invariant']
+    invariant = label.invariant
     loop_state = _stitch_env(loop_state)
 
     iter_var, stop = bool_expr.args
@@ -495,7 +496,8 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
         return (self.trip_count() - 1) * ii + self.depth()
 
 
-def latency_eval(expr, state, out_vars=None):
+@cached
+def latency_graph(expr, state, out_vars=None):
     from soap.semantics import BoxState, label
     if not state:
         state = BoxState(bottom=True)
@@ -504,5 +506,8 @@ def latency_eval(expr, state, out_vars=None):
         # expressions do not have out_vars, but have an output, in this case
         # ``label`` is its output variable
         out_vars = [label]
-    graph = SequentialLatencyDependenceGraph(env, state, out_vars)
-    return graph.latency()
+    return SequentialLatencyDependenceGraph(env, state, out_vars)
+
+
+def latency_eval(expr, state, out_vars=None):
+    return latency_graph(expr, state, out_vars).latency()

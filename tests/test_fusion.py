@@ -1,4 +1,3 @@
-from pprint import pprint
 import unittest
 
 from soap.expression import OutputVariableTuple
@@ -21,7 +20,6 @@ class TestFusion(unittest.TestCase):
         state = flow_to_meta_state(flow)
         label = _label(state, BoxState(bottom=True))[1]
         new_state = fusion(label, flow.outputs())
-        pprint(dict(new_state))
         out_vars = list(find_output_variable_tuple(new_state))
         fusion_count = case['fusion_count']
         self.assertEqual(len(out_vars), fusion_count)

@@ -7,7 +7,6 @@ from soap.expression.boolean import BooleanMixin
 from soap.expression.operators import (
     INDEX_ACCESS_OP, INDEX_UPDATE_OP, SUBSCRIPT_OP
 )
-from soap.semantics.label import Label
 
 
 class Subscript(Expression):
@@ -41,6 +40,7 @@ class AccessExpr(
     __slots__ = ()
 
     def __init__(self, var, subscript):
+        from soap.semantics.label import Label
         if not isinstance(subscript, Label):
             subscript = Subscript(*subscript)
         super().__init__(INDEX_ACCESS_OP, var, subscript)
@@ -68,6 +68,7 @@ class UpdateExpr(
     __slots__ = ()
 
     def __init__(self, var, subscript, expr):
+        from soap.semantics.label import Label
         if not isinstance(subscript, Label):
             subscript = Subscript(*subscript)
         super().__init__(INDEX_UPDATE_OP, var, subscript, expr)

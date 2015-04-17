@@ -2,7 +2,7 @@ import math
 from collections import namedtuple
 
 from soap import flopoco
-from soap.common import cached, Comparable, Flyweight, superscript
+from soap.common import cached, Comparable, Flyweight
 from soap.context import context
 from soap.datatype import type_of
 from soap.expression import (
@@ -21,57 +21,44 @@ class _Dummy(object):
         return id(self)
 
 
-def fresh_int(hashable, lmap=_label_map):
+def fresh_int(hashable, _lmap=_label_map):
     """
     Generates a fresh int for the label of `statement`, within the known
     label mapping `lmap`.
     """
     if hashable is None:
         hashable = _Dummy()
-    return lmap.setdefault(hashable, len(lmap) + 1)
+    return _lmap.setdefault(hashable, len(_lmap) + 1)
 
 
 label_namedtuple_type = namedtuple(
-    'Label', ['label_value', 'bound', 'attribute', 'context_id'])
+    'Label', ['label_value', 'bound', 'invariant', 'context_id'])
 
 
 class Label(label_namedtuple_type, Flyweight):
     """Constructs a label for expression or statement `statement`"""
     __slots__ = ()
 
-    def __new__(cls, statement=None, bound=None, attribute=None,
-                context_id=None, label_value=None):
-        if statement is None and label_value is None:
-            raise ValueError(
-                'Either statement or label_value must be specified.')
-        label_value = label_value or fresh_int(statement)
-        return super().__new__(cls, label_value, bound, attribute, context_id)
+    def __new__(cls, statement, bound,
+                invariant=None, context_id=None, _label_value=None):
+        label_value = _label_value or fresh_int(statement)
+        return super().__new__(cls, label_value, bound, invariant, context_id)
+
+    def immu_update(self, bound=None, invariant=None):
+        label = self.label_value
+        bound = bound or self.bound
+        invariant = invariant or self.invariant
+        context_id = self.context_id
+        return self.__class__(label, bound, invariant, context_id)
 
     def __getnewargs__(self):
         return (
-            None, self.bound, self.attribute, self.context_id,
+            None, self.bound, self.invariant, self.context_id,
             self.label_value)
 
     @property
     def dtype(self):
         return type_of(self.bound)
-
-    def attributed(self, attribute):
-        return self.__class__(
-            label_value=self.label_value, bound=self.bound,
-            attribute=attribute, context_id=self.context_id)
-
-    def attributed_true(self):
-        return self.attributed('tt')
-
-    def attributed_false(self):
-        return self.attributed('ff')
-
-    def attributed_entry(self):
-        return self.attributed('en')
-
-    def attributed_exit(self):
-        return self.attributed('ex')
 
     def signal_name(self):
         return 's_{}'.format(self.label_value)
@@ -84,10 +71,10 @@ class Label(label_namedtuple_type, Flyweight):
         return s
 
     def __repr__(self):
-        formatter = '{cls}({label!r}, {attribute!r}, {bound!r}, {context!r})'
+        formatter = '{cls}({label!r}, {bound!r}, {invariant!r}, {context!r})'
         return formatter.format(
             cls=self.__class__.__name__, label=self.label_value,
-            attribute=self.attribute, bound=self.bound,
+            bound=self.bound, invariant=self.invariant,
             context=self.context_id)
 
 
@@ -95,16 +82,17 @@ class LabelContext(object):
     def __init__(self, description, out_vars=None):
         super().__init__()
         if not isinstance(description, str):
-            description = 'c{}'.format(Label(description).label_value)
+            description = 'c{}'.format(
+                Label(description, None, None).label_value)
         self.description = description
         self.out_vars = out_vars
 
-    def Label(self, statement=None, bound=None, attribute=None):
+    def Label(self, statement, bound, invariant):
         lmap = _label_context_maps.setdefault(self.description, {})
-        label_value = fresh_int(statement, lmap=lmap)
+        label_value = fresh_int(statement, _lmap=lmap)
         return Label(
-            label_value=label_value, bound=bound, attribute=attribute,
-            context_id=self.description)
+            statement, bound=bound, invariant=invariant,
+            context_id=self.description, _label_value=label_value)
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -114,27 +102,6 @@ class LabelContext(object):
     def __repr__(self):
         return '<{cls}:{description}>'.format(
             cls=self.__class__, description=self.description)
-
-
-class Identifier(namedtuple('Identifier', ['variable', 'label']), Flyweight):
-    __slots__ = ()
-    curr_label = Label(0)
-
-    def __new__(cls, variable, label=None):
-        label = label or cls.curr_label
-        return super().__new__(cls, variable, label)
-
-    def is_current(self):
-        return self.label == self.curr_label
-
-    def __str__(self):
-        return '{variable}{label}'.format(
-            variable=self.variable, label=superscript(self.label))
-
-    def __repr__(self):
-        return '{cls}({variable!r}, {label!r})'.format(
-            cls=self.__class__.__name__,
-            variable=self.variable, label=self.label)
 
 
 _FILTER_OPERATORS = operators.TRADITIONAL_OPERATORS + [
@@ -270,13 +237,11 @@ _double_table = {
 
 class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
     """The semantics that captures the area of an expression."""
-
     def __new__(cls, label, env):
         from soap.semantics.state import MetaState
-        return super().__new__(cls, label, MetaState(env))
-
-    def __init__(self, label, env):
-        super().__init__()
+        if not isinstance(env, MetaState):
+            env = MetaState(env)
+        return super().__new__(cls, label, env)
 
     @cached
     def resources(self, precision=None):

@@ -2,31 +2,13 @@
 .. module:: soap.program.flow
     :synopsis: Program flow graphs.
 """
-from akpytemp import Template
-from akpytemp.utils import code_gobble
-
-from soap.common import base_dispatcher, superscript
+from soap.common import base_dispatcher
 from soap.expression.linalg import AccessExpr
-from soap.semantics import BoxState, is_numeral, Label
-
-
-def _code_gobble(s):
-    return code_gobble(s).strip()
+from soap.semantics import BoxState, is_numeral
 
 
 def _indent(code):
     return '\n'.join('    ' + c for c in code.split('\n')).rstrip() + '\n'
-
-
-def _state_with_label(state, label):
-    if state is None:
-        return
-    try:
-        state = state.filter(lambda k: k.label == label)
-        state = BoxState({k.variable: v for k, v in state.items()})
-    except AttributeError:
-        pass
-    return str(state)
 
 
 class Flow(object):
@@ -54,22 +36,8 @@ class Flow(object):
         """Evaluates the flow with state."""
         return state.transition(self)
 
-    def debug(self, state=None):
-        """Debug flow transitions at each step."""
-        from soap.semantics.state import (
-            IdentifierBaseState, IdentifierBoxState
-        )
-        state = state or self.inputs()
-        if not isinstance(state, IdentifierBaseState):
-            state = IdentifierBoxState(state or {})
-        return self.format(self.flow(state))
-
-    def format(self, state=None):
+    def format(self):
         raise NotImplementedError
-
-    @property
-    def label(self):
-        return Label(id(self))
 
     def __eq__(self, other):
         raise NotImplementedError('Override this method')
@@ -80,7 +48,7 @@ class Flow(object):
 
 class IdentityFlow(Flow):
     """Identity flow, does nothing."""
-    def format(self, state=None):
+    def format(self):
         return 'skip; '
 
     def __bool__(self):
@@ -101,7 +69,7 @@ class InputFlow(IdentityFlow):
         super().__init__()
         self.inputs = dict(inputs)
 
-    def format(self, state=None):
+    def format(self):
         inputs = ', '.join(
             '{}: {}'.format(k, v) for k, v in self.inputs.items())
         return 'input ({}); '.format(inputs)
@@ -124,7 +92,7 @@ class OutputFlow(IdentityFlow):
         super().__init__()
         self.outputs = tuple(outputs)
 
-    def format(self, state=None):
+    def format(self):
         outputs = ', '.join(str(v) for v in self.outputs)
         return 'output ({}); '.format(outputs)
 
@@ -152,11 +120,8 @@ class AssignFlow(Flow):
         self.var = var
         self.expr = expr
 
-    def format(self, state=None):
-        s = '{var} = {expr}; '.format(var=self.var, expr=self.expr)
-        if state:
-            s += '\n' + _state_with_label(state, self.label)
-        return s
+    def format(self):
+        return '{var} = {expr}; '.format(var=self.var, expr=self.expr)
 
     def __eq__(self, other):
         if type(self) is not type(other):
@@ -179,44 +144,15 @@ class IfFlow(Flow):
         self.true_flow = true_flow
         self.false_flow = false_flow
 
-    def format(self, state=None):
-        render_kwargs = {
-            'flow': self,
-            'state': state,
-            'label': superscript(self.label),
-        }
-        branch_template = Template(_code_gobble("""
-            {% if state %}{# split_format #}
-            {% end %}{# split_flow_format #}"""))
-
-        formats = []
-        zipper = [(self.true_flow,
-                   self.label.attributed_true()),
-                  (self.false_flow,
-                   self.label.attributed_false())]
-        for flow, label in zipper:
-            split_format = _state_with_label(state, label)
-            f = branch_template.render(
-                render_kwargs, split_format=split_format,
-                split_flow_format=flow.format(state))
-            formats.append(_indent(f))
-        true_format, false_format = formats
-
-        if state:
-            exit_label = self.label.attributed_exit()
-            join_format = _state_with_label(state, exit_label)
-        else:
-            join_format = None
-
-        template = Template(_code_gobble("""
-            if ({# flow.conditional_expr #}) {
-            {# true_format #}}{% if flow.false_flow %} else {
-            {# false_format #}}{% end %}; {% if state %}
-            {# join_format #}{% end %}
-            """))
-        return template.render(
-            render_kwargs, true_format=true_format, false_format=false_format,
-            join_format=join_format)
+    def format(self):
+        template = 'if ({conditional_expr}) {{\n{true_format}}}'
+        if self.false_flow:
+            template += ' else {{\n{false_format}}}'
+        template += '; '
+        return template.format(
+            conditional_expr=self.conditional_expr,
+            true_format=_indent(self.true_flow.format()),
+            false_format=_indent(self.false_flow.format()))
 
     def __eq__(self, other):
         if type(self) is not type(other):
@@ -246,25 +182,11 @@ class WhileFlow(Flow):
         self.conditional_expr = conditional_expr
         self.loop_flow = loop_flow
 
-    def format(self, state=None):
-        entry_label = self.label.attributed_entry()
-        exit_label = self.label.attributed_exit()
-        render_kwargs = {
-            'flow': self,
-            'state': state,
-            'entry_format': _state_with_label(state, entry_label),
-            'exit_format': _state_with_label(state, exit_label),
-            'label': superscript(self.label),
-        }
-        loop_format = _indent(Template(_code_gobble("""
-            {% if state %}{# entry_format #}
-            {% end %}{# flow.loop_flow.format(state) #}
-            """)).render(render_kwargs))
-        template = Template(_code_gobble("""
-            while ({# flow.conditional_expr #}) {
-            {# loop_format #}}; {% if state %}
-            {# exit_format #}{% end %}"""))
-        return template.render(render_kwargs, loop_format=loop_format)
+    def format(self):
+        loop_format = _indent(self.loop_flow.format())
+        template = 'while ({conditional_expr}) {{\n{loop_format}}}; '
+        return template.format(
+            conditional_expr=self.conditional_expr, loop_format=loop_format)
 
     def __eq__(self, other):
         if type(self) is not type(other):
@@ -304,8 +226,8 @@ class CompositionalFlow(Flow):
     def __bool__(self):
         return any(self.flows)
 
-    def format(self, state=None):
-        return '\n'.join(flow.format(state) for flow in self.flows)
+    def format(self):
+        return '\n'.join(flow.format() for flow in self.flows)
 
     def __eq__(self, other):
         if type(self) is not type(other):

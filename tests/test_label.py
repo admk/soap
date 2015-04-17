@@ -17,22 +17,25 @@ class TestLabel(unittest.TestCase):
     def setUp(self):
         self.context = LabelContext('test_context')
         mat = IntegerIntervalArray([1, 2, 3, 4])
-        self.state = BoxState(x=[1, 2], y=3, z=mat)
         self.x = Variable('x', int_type)
         self.y = Variable('y', int_type)
         self.z = Variable('z', IntegerArrayType([4]))
+        self.state = BoxState({
+            self.x: [1, 2],
+            self.y: 3,
+            self.z: mat,
+        })
         self.x_label = self.context.Label(
-            self.x, bound=IntegerInterval([1, 2]))
-        self.y_label = self.context.Label(
-            self.y, bound=IntegerInterval(3))
-        self.z_label = self.context.Label(self.z, bound=mat)
+            self.x, IntegerInterval([1, 2]), None)
+        self.y_label = self.context.Label(self.y, IntegerInterval(3), None)
+        self.z_label = self.context.Label(self.z, mat, None)
 
     def label(self, expr):
         return _label(expr, self.state, self.context)
 
     def test_numeral(self):
         expr = IntegerInterval(1)
-        label = self.context.Label(expr, bound=expr)
+        label = self.context.Label(expr, expr, None)
         test_value = LabelSemantics(label, {label: expr})
         value = self.label(expr)
         self.assertEqual(test_value, value)
@@ -47,7 +50,7 @@ class TestLabel(unittest.TestCase):
         expr = UnaryArithExpr(operators.UNARY_SUBTRACT_OP, self.x)
         label_expr = UnaryArithExpr(
             operators.UNARY_SUBTRACT_OP, self.x_label)
-        label = self.context.Label(label_expr, bound=IntegerInterval([-2, -1]))
+        label = self.context.Label(label_expr, IntegerInterval([-2, -1]), None)
         env = {label: label_expr, self.x_label: self.x}
         test_value = LabelSemantics(label, env)
         value = self.label(expr)
@@ -57,7 +60,7 @@ class TestLabel(unittest.TestCase):
         expr = BinaryArithExpr(operators.ADD_OP, self.x, self.y)
         label_expr = BinaryArithExpr(
             operators.ADD_OP, self.x_label, self.y_label)
-        label = self.context.Label(label_expr, bound=IntegerInterval([4, 5]))
+        label = self.context.Label(label_expr, IntegerInterval([4, 5]), None)
         env = {
             label: label_expr,
             self.x_label: self.x,
@@ -71,7 +74,7 @@ class TestLabel(unittest.TestCase):
         expr = BinaryBoolExpr(
             operators.LESS_OP, self.x_label, self.y_label)
         # FIXME bound for bool_expr does not make sense
-        label = self.context.Label(expr, bound=IntegerInterval([-2, -1]))
+        label = self.context.Label(expr, IntegerInterval([-2, -1]), None)
         return expr, label
 
     def test_BinaryBoolExpr(self):
@@ -89,9 +92,10 @@ class TestLabel(unittest.TestCase):
     def test_AccessExpr(self):
         expr = AccessExpr(self.z, Subscript(self.y))
         label_subscript_expr = Subscript(self.y_label)
-        subscript_label = self.context.Label(label_subscript_expr, None)
+        subscript_label = self.context.Label(
+            label_subscript_expr, None, None)
         label_expr = AccessExpr(self.z_label, subscript_label)
-        label = self.context.Label(label_expr, IntegerInterval(4))
+        label = self.context.Label(label_expr, IntegerInterval(4), None)
         env = {
             label: label_expr,
             subscript_label: label_subscript_expr,
@@ -105,10 +109,10 @@ class TestLabel(unittest.TestCase):
     def test_UpdateExpr(self):
         expr = UpdateExpr(self.z, Subscript(self.y), self.x)
         label_subscript_expr = Subscript(self.y_label)
-        subscript_label = self.context.Label(label_subscript_expr, None)
+        subscript_label = self.context.Label(label_subscript_expr, None, None)
         label_expr = UpdateExpr(self.z_label, subscript_label, self.x_label)
         new_bound = IntegerIntervalArray([1, 2, 3, IntegerInterval([1, 2])])
-        label = self.context.Label(label_expr, new_bound)
+        label = self.context.Label(label_expr, new_bound, None)
         env = {
             label: label_expr,
             subscript_label: label_subscript_expr,
@@ -125,7 +129,7 @@ class TestLabel(unittest.TestCase):
             BinaryBoolExpr(operators.LESS_OP, self.x, self.y), self.x, self.y)
         bool_expr, bool_expr_label = self.bool_expr()
         label_expr = SelectExpr(bool_expr_label, self.x_label, self.y_label)
-        label = self.context.Label(label_expr, bound=IntegerInterval([1, 2]))
+        label = self.context.Label(label_expr, IntegerInterval([1, 2]), None)
         env = {
             label: label_expr,
             bool_expr_label: bool_expr,
@@ -147,7 +151,8 @@ class TestLabel(unittest.TestCase):
             self.x_label: self.x,
             self.y_label: self.y,
         }
-        label = self.context.Label(MetaState(env), None)
+        bound = BoxState(x=self.state[self.x], y=self.state[self.y])
+        label = self.context.Label(MetaState(env), bound, None)
         test_value = LabelSemantics(label, env)
         value = self.label(meta_state)
         self.assertEqual(test_value, value)

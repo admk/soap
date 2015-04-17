@@ -14,7 +14,7 @@ class LabelGenerator(base_dispatcher()):
 
     def _execute_atom(self, expr, state, context):
         bound = error_eval(expr, state)
-        label = context.Label(expr, bound)
+        label = context.Label(expr, bound, None)
         env = {label: expr}
         return LabelSemantics(label, env)
 
@@ -32,7 +32,7 @@ class LabelGenerator(base_dispatcher()):
     def _execute_arithmetic_expression(self, expr, state, context):
         label_expr, label_env = self._execute_expression(expr, state, context)
         bound = error_eval(expr, state)
-        label = context.Label(label_expr, bound)
+        label = context.Label(label_expr, bound, None)
         label_env[label] = label_expr
         return LabelSemantics(label, label_env)
 
@@ -44,13 +44,13 @@ class LabelGenerator(base_dispatcher()):
         label_expr, label_env = self._execute_expression(expr, state, context)
         sub_expr = expression_factory(operators.SUBTRACT_OP, expr.a1, expr.a2)
         bound = error_eval(sub_expr, state)
-        label = context.Label(label_expr, bound)
+        label = context.Label(label_expr, bound, None)
         label_env[label] = label_expr
         return LabelSemantics(label, label_env)
 
     def execute_Subscript(self, expr, state, context):
         label_expr, label_env = self._execute_expression(expr, state, context)
-        label = context.Label(label_expr, None)
+        label = context.Label(label_expr, None, None)
         label_env[label] = label_expr
         return LabelSemantics(label, label_env)
 
@@ -68,17 +68,18 @@ class LabelGenerator(base_dispatcher()):
         init_bound = arith_eval_meta_state(init_state, state)
         init_state_label, init_state_env = self(init_state, state, context)
 
-        loop_bound = fixpoint_eval(init_bound, bool_expr, loop_state)['entry']
-        loop_state_labsem = self(loop_state, loop_bound, context)
+        loop_invar = fixpoint_eval(init_bound, bool_expr, loop_state)['entry']
+        loop_state_labsem = self(loop_state, loop_invar, context)
         loop_state_label, loop_state_env = loop_state_labsem
-        loop_state_env.update(__invariant=loop_bound)
+        loop_bound = loop_state_label.bound
 
-        bool_expr_labsem = self(bool_expr, loop_bound, context)
+        bool_expr_labsem = self(bool_expr, loop_invar, context)
         bool_expr_label, _ = bool_expr_labsem
 
         label_expr = expr.__class__(
             bool_expr_label, loop_state_label, expr.loop_var, init_state_label)
-        label = context.Label(label_expr, loop_bound[expr.loop_var])
+        loop_var_bound = loop_bound[expr.loop_var]
+        label = context.Label(label_expr, loop_var_bound, loop_invar)
 
         expr = expr.__class__(
             bool_expr_labsem, loop_state_env, expr.loop_var, init_state_env)
@@ -90,13 +91,15 @@ class LabelGenerator(base_dispatcher()):
 
     def execute_MetaState(self, expr, state, context):
         from soap.semantics.state.meta import MetaState
+        from soap.semantics.functions import arith_eval_meta_state
         env = {}
         for each_var, each_expr in sorted(expr.items(), key=hash):
             expr_label, expr_env = self(each_expr, state, context)
             env.update(expr_env)
             env[each_var] = expr_label
-        label = context.Label(MetaState(env), None)
 
+        bound = arith_eval_meta_state(expr, state)
+        label = context.Label(MetaState(env), bound, None)
         return LabelSemantics(label, env)
 
     @cached

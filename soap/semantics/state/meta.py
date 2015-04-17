@@ -54,6 +54,9 @@ class MetaState(BaseState, dict):
         raise TypeError(
             'Do not know how to convert {!r} into an expression'.format(value))
 
+    def update(self, key, value):
+        raise AttributeError('Immutable object has no "update" method.')
+
     def immu_update(self, key, value):
         """
         Generate a new copy of this MetaState, and update the content with a

@@ -235,8 +235,14 @@ class CodeGenerator(object):
 
         # while loop generation
         bool_expr = self._with_infix(bool_expr, infix)
+        loop_out_vars = []
+        for var in loop_state.keys():
+            if is_variable(var) and var.name.startswith('__'):
+                continue
+            loop_out_vars.append(var)
+        loop_out_vars = sorted(loop_out_vars, key=str)
         loop_flow_generator = generator_class(
-            env=loop_state, out_vars=sorted(loop_state.keys(), key=str),
+            env=loop_state, out_vars=loop_out_vars,
             parent=self, label_infix=infix, in_var_infix=infix,
             out_var_infix=infix)
         loop_flow = loop_flow_generator.generate()

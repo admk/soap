@@ -42,7 +42,7 @@ from soap.parser import parse, expr_parse
 from soap.program import Flow, generate
 from soap.semantics import (
     IntegerInterval, FloatInterval, FractionInterval, ErrorSemantics,
-    BoxState, IdentifierBoxState, MetaState, flow_to_meta_state,
+    BoxState, MetaState, flow_to_meta_state,
     mpz, mpq, mpfr, mpz_type, mpq_type, mpfr_type, inf, ulp, cast,
     arith_eval, error_eval, label, luts
 )

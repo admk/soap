@@ -100,15 +100,14 @@ class ErrorEvaluator(base_dispatcher()):
     def generic_execute(self, expr, state):
         return arith_eval(expr, state)
 
-    def execute_dont_care(self, expr, state):
+    def _execute_dont_care(self, expr, state):
         return 0
+
+    execute_BinaryBoolExpr = execute_Subscript = _execute_dont_care
 
     def execute_MetaState(self, meta_state, state):
         state = arith_eval(meta_state, state)
         return error_norm(state.values())
-
-    execute_BinaryBoolExpr = execute_dont_care
-    execute_Subscript = execute_dont_care
 
 
 error_eval = ErrorEvaluator()

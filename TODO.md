@@ -1,43 +1,23 @@
 # Ultra Short Term FIXMEs
 
-* [ ] Use Xilinx statistics, update it to support int to float conversion.
+* [ ] Latency analysis
 
 
 # Ugliness, fix if have the time to
 
-* [ ] Fix some constant analysis bug found in `basal.soap`.
-    - [X] Temporary fix: avoid constant errors
-* [ ] Fix caching because pickling is non-deterministic.
 * [ ] Consider what is a reasonable thing to do with non-terminating
   expressions
-* [ ] Fix improper `out_vars` usage, workaround: use full variable list
-    - [ ] Codegen not generating part of loop body because of
-      improper `out_vars` analysis
-    - [ ] Resource usage analysis should not count unnecessary part of the
-      program, specified by `out_vars`
-  Example::
-        greedy(
-            flow_to_meta_state(
-                'y = 1\nwhile y < 10:\n x = x + 1 / y\n y = y + 1'),
-            s['x':[0.0, 1.1]])
-* [ ] Get rid of identifier based analysis, no longer required.
-* [ ] Generated code has boolean expressions assigned to variables, consider
-  other approaches to analysing conditionals because of this.
 * [ ] {Possible} Better code generation by expanding expressions with locals
     - [ ] Instead of sets of edges, consider using bags of edges to model
       dependency graph.
-* [ ] {Possible} Add dependency ordering utility function
-    - [ ] For labelling determinism
-    - [ ] For code generation node ordering determinism
-    - [ ] For loop merging
 
 
 # Future Considerations
 
+* [ ] Boolean-typed variables
 * [ ] Relational domain (if possible), because currently branch constraints
   could be too restrictive to be useful, and sometimes constraints cannot
   be discovered
-* [ ] Latency analysis
 * [ ] Multiple mantissa widths
 * [ ] Fixed point format
 * [ ] Fix and write more test cases
@@ -53,8 +33,33 @@
 * [ ] Deprecate prec arguments, because of context support
 
 
+# Can't remember / No longer relevant
+
+* [ ] Use Xilinx statistics, update it to support int to float conversion.
+* [?] Fix caching because pickling is non-deterministic.
+* [?] Fix some constant analysis bug found in `basal.soap`.
+    - [X] Temporary fix: avoid constant errors
+* [-] Generated code has boolean expressions assigned to variables, consider
+  other approaches to analysing conditionals because of this.
+* [-] {Possible} Add dependency ordering utility function
+    - [ ] For labelling determinism
+    - [ ] For code generation node ordering determinism
+    - [ ] For loop merging
+* [ ] Fix improper `out_vars` usage, workaround: use full variable list
+    - [ ] Codegen not generating part of loop body because of
+      improper `out_vars` analysis
+    - [ ] Resource usage analysis should not count unnecessary part of the
+      program, specified by `out_vars`
+  Example::
+        greedy(
+            flow_to_meta_state(
+                'y = 1\nwhile y < 10:\n x = x + 1 / y\n y = y + 1'),
+            s['x':[0.0, 1.1]])
+
+
 # Completed
 
+* [X] Get rid of identifier based analysis, no longer required.
 * [X] Code generation
     - [X] Hierarchical dependency graph
         - [X] SSA code generation
