@@ -10,7 +10,6 @@ class ExpressionDependencies(base_dispatcher()):
     Find dependent variables for the corresponding expression
     """
     def generic_execute(self, expr):
-        import ipdb; ipdb.set_trace()
         raise TypeError(
             'Do not know how to find dependencies in expression {!r}'
             .format(expr))
@@ -61,6 +60,7 @@ class DependenceGraph(object):
 
     def __init__(self, env, out_vars):
         super().__init__()
+        self._invalidate_cache()
         self.graph = networkx.DiGraph()
         self.env = env
         new_out_vars = []
@@ -72,19 +72,29 @@ class DependenceGraph(object):
         self._root_node = self._RootNode()
         self._edges_recursive(self._root_node)
 
+    def _invalidate_cache(self):
+        self._nodes = None
+        self._edges = None
+
     def nodes(self):
-        return self.graph.nodes()
+        if self._nodes is None:
+            self._nodes = self.graph.nodes()
+        return self._nodes
 
     def edges(self):
-        return self.graph.edges()
+        if self._edges is None:
+            self._edges = self.graph.edges()
+        return self._edges
 
     def is_cyclic(self):
         return bool(list(networkx.simple_cycles(self.graph)))
 
     def add_edge(self, from_node, to_node, attr_dict=None, **kwargs):
+        self._invalidate_cache()
         self.graph.add_edge(from_node, to_node, attr_dict, **kwargs)
 
     def add_dep_edges_one_to_many(self, from_node, to_nodes):
+        self._invalidate_cache()
         self.graph.add_edges_from(
             self.edge_attr(from_node, to_node) for to_node in to_nodes)
 

@@ -8,10 +8,12 @@ from soap.expression import (
 from soap.parser import parse
 from soap.semantics.error import IntegerInterval, ErrorSemantics
 from soap.semantics.label import Label, LabelSemantics
-from soap.semantics.latency import (
-    dependence_vector, dependence_distance,
-    SequentialLatencyDependenceGraph, LoopLatencyDependenceGraph,
-    ISLIndependenceException, _extract_for_loop, latency_eval,
+from soap.semantics.latency.extract import extract_for_loop
+from soap.semantics.latency.distance import (
+    dependence_vector, dependence_distance, ISLIndependenceException
+)
+from soap.semantics.latency.graph import (
+    SequentialLatencyDependenceGraph, LoopLatencyDependenceGraph, latency_eval
 )
 from soap.semantics.linalg import ErrorSemanticsArray
 from soap.semantics.state import BoxState, MetaState
@@ -361,7 +363,7 @@ class TestLoopNestExtraction(_VariableLabelMixin):
         fix_expr = expression_factory(
             operators.FIXPOINT_OP, bool_sem, loop_state, self.a, init_state)
         label = Label(fix_expr, None, {self.i: IntegerInterval([1, 9])})
-        for_loop = _extract_for_loop(label, fix_expr)
+        for_loop = extract_for_loop(label, fix_expr)
         expect_for_loop = {
             'iter_var': self.i,
             'iter_slice': slice(1, 9, 1),
