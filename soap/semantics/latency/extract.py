@@ -11,13 +11,12 @@ class ForLoopExtractionFailureException(Exception):
     """Failed to extract for loop.  """
 
 
-def extract_for_loop(label, fix_expr):
+def extract_for_loop(fix_expr, invariant):
     bool_expr, loop_state, loop_var, init_state = fix_expr.args
 
     bool_label, bool_env = bool_expr
     bool_expr = stitch_expr(bool_label, bool_env)
 
-    invariant = label.invariant
     loop_state = stitch_env(loop_state)
 
     iter_var, stop = bool_expr.args
@@ -49,10 +48,21 @@ def extract_for_loop(label, fix_expr):
         raise ForLoopExtractionFailureException
     step = step.min
 
-    for_loop = {
+    loop_info = {
         'iter_var': iter_var,
         'iter_slice': slice(start, stop, step),
         'loop_var': loop_var,
         'invariant': invariant,
     }
-    return for_loop
+    return loop_info
+
+
+def extract_loop_nest(fix_expr, invariant):
+    loop = extract_for_loop(fix_expr, invariant)
+    loop_info = {
+        'iter_vars': [loop['iter_var']],
+        'iter_slices': [loop['iter_slice']],
+        'loop_var': loop['loop_var'],
+        'invariant': loop['invariant'],
+    }
+    return loop_info

@@ -39,8 +39,8 @@ class Label(label_namedtuple_type, Flyweight):
     """Constructs a label for expression or statement `statement`"""
     __slots__ = ()
 
-    def __new__(cls, statement, bound,
-                invariant=None, context_id=None, _label_value=None):
+    def __new__(cls, statement, bound, invariant,
+                context_id=None, _label_value=None):
         label_value = _label_value or fresh_int(statement)
         return super().__new__(cls, label_value, bound, invariant, context_id)
 

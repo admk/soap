@@ -2,10 +2,23 @@ import math
 
 import islpy
 
+from soap.datatype import ArrayType, int_type, real_type
 from soap.expression import (
     expression_factory, InputVariable, is_expression, is_variable, Variable,
+    operators,
 )
 from soap.semantics import is_numeral, Label, IntegerInterval
+
+
+LATENCY_TABLE = {
+    (int_type, operators.LESS_OP): 1,
+    (int_type, operators.ADD_OP): 1,
+    (real_type, operators.ADD_OP): 7,
+    (real_type, operators.INDEX_ACCESS_OP): 2,
+    (int_type, operators.INDEX_ACCESS_OP): 2,
+    (ArrayType, operators.INDEX_UPDATE_OP): 1,
+    (None, operators.SUBSCRIPT_OP): 0,
+}
 
 
 class DependenceType(object):

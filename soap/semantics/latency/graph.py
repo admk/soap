@@ -5,16 +5,16 @@ import math
 import networkx
 
 from soap.common.cache import cached
-from soap.datatype import ArrayType, int_type, real_type
+from soap.datatype import ArrayType
 from soap.expression import (
     AccessExpr, InputVariable, is_expression, operators, UpdateExpr, Variable,
 )
 from soap.program.graph import DependenceGraph
 from soap.semantics import is_numeral, Label
 from soap.semantics.latency.common import (
-    stitch_expr, DependenceType, iter_point_count
+    stitch_expr, DependenceType, iter_point_count, LATENCY_TABLE
 )
-from soap.semantics.latency.extract import extract_for_loop
+from soap.semantics.latency.extract import extract_loop_nest
 from soap.semantics.latency.distance import dependence_eval
 from soap.semantics.latency.ii import rec_init_int_search
 
@@ -32,15 +32,7 @@ def max_latency(graph):
 
 class SequentialLatencyDependenceGraph(DependenceGraph):
 
-    latency_table = {
-        (int_type, operators.LESS_OP): 1,
-        (int_type, operators.ADD_OP): 1,
-        (real_type, operators.ADD_OP): 7,
-        (real_type, operators.INDEX_ACCESS_OP): 2,
-        (int_type, operators.INDEX_ACCESS_OP): 2,
-        (ArrayType, operators.INDEX_UPDATE_OP): 1,
-        (None, operators.SUBSCRIPT_OP): 0,
-    }
+    latency_table = LATENCY_TABLE
 
     def __init__(self, env, state, out_vars):
         self.state = state
@@ -59,10 +51,7 @@ class SequentialLatencyDependenceGraph(DependenceGraph):
             if expr.op != operators.FIXPOINT_OP:
                 return self.latency_table[dtype, expr.op]
             # FixExpr
-            for_loop = extract_for_loop(node, expr)
-            graph = LoopLatencyDependenceGraph(
-                expr.loop_state, [expr.loop_var], [for_loop['iter_var']],
-                [for_loop['iter_slice']], for_loop['invariant'])
+            graph = LoopLatencyDependenceGraph(expr, node.invariant)
             return graph.latency()
         if is_numeral(expr) or isinstance(expr, (Label, Variable)):
             return 0
@@ -86,15 +75,19 @@ class SequentialLatencyDependenceGraph(DependenceGraph):
 
 
 class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
-    def __init__(self, env, out_vars, iter_vars, iter_slices, invariant):
-        super().__init__(env, invariant, out_vars)
-        self.iter_vars = iter_vars
-        self.iter_slices = iter_slices
+    def __init__(self, fix_expr, invariant):
+        loop = extract_loop_nest(fix_expr, invariant)
+        invariant = loop['invariant']
+        out_vars = [loop['loop_var']]
+        self.iter_vars = loop['iter_vars']
+        self.iter_slices = loop['iter_slices']
         self.invariant = invariant
-        self._init_loop_graph(self.graph)
+        env = fix_expr.loop_state
+        super().__init__(env, invariant, out_vars)
+        self._init_loop_graph()
 
-    def _init_loop_graph(self, graph):
-        loop_graph = graph.copy()
+    def _init_loop_graph(self):
+        loop_graph = self.graph.copy()
         self._init_variable_loops(loop_graph)
         self._init_array_loops(loop_graph)
         self.loop_graph = loop_graph

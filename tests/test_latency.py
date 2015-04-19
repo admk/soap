@@ -1,9 +1,11 @@
 import unittest
 
 from soap.context import context
-from soap.datatype import int_type, real_type, RealArrayType, ArrayType
+from soap.datatype import (
+    int_type, real_type, RealArrayType, ArrayType
+)
 from soap.expression import (
-    operators, Variable, Subscript, expression_factory,
+    operators, Variable, Subscript, expression_factory, FixExpr, BinaryBoolExpr
 )
 from soap.parser import parse
 from soap.semantics.error import IntegerInterval, ErrorSemantics
@@ -15,9 +17,19 @@ from soap.semantics.latency.distance import (
 from soap.semantics.latency.graph import (
     SequentialLatencyDependenceGraph, LoopLatencyDependenceGraph, latency_eval
 )
-from soap.semantics.linalg import ErrorSemanticsArray
+from soap.semantics.linalg import IntegerIntervalArray, ErrorSemanticsArray
 from soap.semantics.state import BoxState, MetaState
 from soap.semantics.state.meta import flow_to_meta_state
+
+
+class _DontCare(object):
+    def __eq__(self, other):
+        return self.__class__ == other.__class__
+
+    def __hash__(self):
+        return hash(self.__class__)
+
+_ = _DontCare()
 
 
 class TestDependenceCheck(unittest.TestCase):
@@ -121,7 +133,7 @@ class _VariableLabelMixin(unittest.TestCase):
             (real_type, operators.INDEX_ACCESS_OP): 1,
             (int_type, operators.INDEX_ACCESS_OP): 1,
             (ArrayType, operators.INDEX_UPDATE_OP): 2,
-            (None, operators.SUBSCRIPT_OP): 0,
+            (ArrayType, operators.SUBSCRIPT_OP): 0,
         }
         self.w = Variable('w', real_type)
         self.x = Variable('x', real_type)
@@ -132,17 +144,18 @@ class _VariableLabelMixin(unittest.TestCase):
         self.i = Variable('i', int_type)
         self.j = Variable('j', int_type)
         self.dummy_error = ErrorSemantics(1)
-        self.lw = Label(self.w, self.dummy_error)
-        self.lx = Label(self.x, self.dummy_error)
-        self.ly = Label(self.y, self.dummy_error)
-        self.lz = Label(self.z, self.dummy_error)
+        self.lw = Label(self.w, self.dummy_error, _)
+        self.lx = Label(self.x, self.dummy_error, _)
+        self.ly = Label(self.y, self.dummy_error, _)
+        self.lz = Label(self.z, self.dummy_error, _)
         self.dummy_array = ErrorSemanticsArray([1] * 30)
         self.dummy_multi_array = ErrorSemanticsArray([[1] * 30] * 30)
-        self.la = Label(self.a, self.dummy_array)
-        self.lb = Label(self.b, self.dummy_multi_array)
+        self.la = Label(self.a, self.dummy_array, _)
+        self.lb = Label(self.b, self.dummy_multi_array, _)
         self.dummy_int = IntegerInterval(1)
-        self.li = Label(self.i, self.dummy_int)
-        self.lj = Label(self.j, self.dummy_int)
+        self.li = Label(self.i, self.dummy_int, _)
+        self.lj = Label(self.j, self.dummy_int, _)
+        self.dummy_subscript = IntegerIntervalArray([1])
 
     def tearDown(self):
         context.ii_precision = self.ori_ii_prec
@@ -160,10 +173,10 @@ class TestSequentialLatencyDependenceGraph(_VariableLabelMixin):
     def test_simple_dag_latency(self):
         expr_1 = expression_factory(operators.MULTIPLY_OP, self.lw, self.lx)
         expr_2 = expression_factory(operators.ADD_OP, self.ly, self.lz)
-        label_1 = Label(expr_1, bound=self.dummy_error)
-        label_2 = Label(expr_2, bound=self.dummy_error)
+        label_1 = Label(expr_1, self.dummy_error, _)
+        label_2 = Label(expr_2, self.dummy_error, _)
         expr_3 = expression_factory(operators.SUBTRACT_OP, label_1, label_2)
-        label_3 = Label(expr_3, bound=self.dummy_error)
+        label_3 = Label(expr_3, self.dummy_error, _)
 
         env = {
             self.x: label_3,
@@ -193,15 +206,32 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
 
         self.Graph = Graph
 
+        bool_label = Label(_, _, _)
+        bool_env = {
+            bool_label: BinaryBoolExpr(
+                operators.LESS_OP, self.li, IntegerInterval(10)),
+            self.li: self.i,
+        }
+        self.bool_expr = LabelSemantics(bool_label, bool_env)
+        self.invariant = {self.i: IntegerInterval([0, 9])}
+
     def test_variable_initiation(self):
-        expr = expression_factory(operators.ADD_OP, self.lx, self.dummy_error)
-        label = Label(expr, bound=ErrorSemantics(1))
+        expr = expression_factory(
+            operators.ADD_OP, self.lx, self.dummy_error)
+        label = Label(expr, self.dummy_error, _)
+        iter_expr = expression_factory(
+            operators.ADD_OP, self.li, self.dummy_int)
+        iter_label = Label(expr, self.dummy_int, _)
         env = {
             self.x: label,
             label: expr,
             self.lx: self.x,
+            self.i: iter_label,
+            iter_label: iter_expr,
+            self.li: self.i,
         }
-        graph = self.Graph(env, [self.x], [self.x], [slice(0, 9, 1)], {})
+        fix_expr = FixExpr(self.bool_expr, env, self.x, _)
+        graph = self.Graph(fix_expr, self.invariant)
         ii = graph.initiation_interval()
         expect_ii = self.latency_table[real_type, operators.ADD_OP]
         self.assertAlmostEqual(ii, expect_ii)
@@ -211,18 +241,18 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
 
     def test_array_independence_initiation(self):
         sub_expr = expression_factory(operators.SUBSCRIPT_OP, self.li)
-        sub_label = Label(sub_expr, bound=None)
+        sub_label = Label(sub_expr, self.dummy_subscript, _)
         acc_expr = expression_factory(
             operators.INDEX_ACCESS_OP, self.la, sub_label)
-        acc_label = Label(acc_expr, bound=self.dummy_error)
+        acc_label = Label(acc_expr, self.dummy_error, _)
         inc_expr = expression_factory(operators.ADD_OP, acc_label, self.li)
-        inc_label = Label(inc_expr, bound=self.dummy_error)
+        inc_label = Label(inc_expr, self.dummy_error, _)
         upd_expr = expression_factory(
             operators.INDEX_UPDATE_OP, self.la, sub_label, inc_label)
-        upd_label = Label(upd_expr, bound=self.dummy_array)
+        upd_label = Label(upd_expr, self.dummy_array, _)
         step_expr = expression_factory(
             operators.ADD_OP, self.li, IntegerInterval(1))
-        step_label = Label(step_expr, bound=self.dummy_int)
+        step_label = Label(step_expr, self.dummy_int, _)
         env = {
             self.a: upd_label,
             self.i: step_label,
@@ -234,8 +264,8 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
             self.la: self.a,
             self.li: self.i,
         }
-        graph = self.Graph(
-            env, [self.a], [self.i], [slice(0, 9, 1)], {})
+        fix_expr = FixExpr(self.bool_expr, env, self.a, _)
+        graph = self.Graph(fix_expr, self.invariant)
         ii = graph.initiation_interval()
         expect_ii = 1
         self.assertEqual(ii, expect_ii)
@@ -245,22 +275,22 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
         for (i in ...) { a[i] = a[i - j] + i; }
         """
         idx_expr = expression_factory(operators.SUBTRACT_OP, self.li, self.lj)
-        idx_label = Label(idx_expr, bound=self.dummy_int)
+        idx_label = Label(idx_expr, self.dummy_int, _)
         snk_expr = expression_factory(operators.SUBSCRIPT_OP, idx_label)
-        snk_label = Label(snk_expr, bound=None)
+        snk_label = Label(snk_expr, self.dummy_subscript, _)
         src_expr = expression_factory(operators.SUBSCRIPT_OP, self.li)
-        src_label = Label(src_expr, bound=None)
+        src_label = Label(src_expr, self.dummy_subscript, _)
         acc_expr = expression_factory(
             operators.INDEX_ACCESS_OP, self.la, snk_label)
-        acc_label = Label(acc_expr, bound=self.dummy_error)
+        acc_label = Label(acc_expr, self.dummy_error, _)
         inc_expr = expression_factory(operators.ADD_OP, acc_label, self.li)
-        inc_label = Label(inc_expr, bound=self.dummy_error)
+        inc_label = Label(inc_expr, self.dummy_error, _)
         upd_expr = expression_factory(
             operators.INDEX_UPDATE_OP, self.la, src_label, inc_label)
-        upd_label = Label(upd_expr, bound=self.dummy_array)
+        upd_label = Label(upd_expr, self.dummy_array, _)
         step_expr = expression_factory(
             operators.ADD_OP, self.li, IntegerInterval(1))
-        step_label = Label(step_expr, bound=self.dummy_int)
+        step_label = Label(step_expr, self.dummy_int, _)
         env = {
             self.a: upd_label,
             self.i: step_label,
@@ -276,11 +306,12 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
             self.li: self.i,
             self.lj: self.j,
         }
+        fix_expr = FixExpr(self.bool_expr, env, self.a, _)
         invariant = {
+            self.i: IntegerInterval([0, 9]),
             self.j: IntegerInterval([3, 5]),
         }
-        graph = self.Graph(
-            env, [self.a], [self.i], [slice(0, 9, 1)], invariant)
+        graph = self.Graph(fix_expr, invariant)
         ii = graph.initiation_interval()
         expect_ii = self.latency_table[real_type, operators.INDEX_ACCESS_OP]
         expect_ii += self.latency_table[real_type, operators.ADD_OP]
@@ -322,18 +353,18 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
 class TestLoopNestExtraction(_VariableLabelMixin):
     def test_simple_loop(self):
         sub_expr = expression_factory(operators.SUBSCRIPT_OP, self.li)
-        sub_label = Label(sub_expr, bound=None)
+        sub_label = Label(sub_expr, _, _)
         acc_expr = expression_factory(
             operators.INDEX_ACCESS_OP, self.la, sub_label)
-        acc_label = Label(acc_expr, bound=self.dummy_error)
+        acc_label = Label(acc_expr, self.dummy_error, _)
         inc_expr = expression_factory(operators.ADD_OP, acc_label, self.li)
-        inc_label = Label(inc_expr, bound=self.dummy_error)
+        inc_label = Label(inc_expr, self.dummy_error, _)
         upd_expr = expression_factory(
             operators.INDEX_UPDATE_OP, self.la, sub_label, inc_label)
-        upd_label = Label(upd_expr, bound=self.dummy_array)
+        upd_label = Label(upd_expr, self.dummy_array, _)
         step_expr = expression_factory(
             operators.ADD_OP, self.li, IntegerInterval(1))
-        step_label = Label(step_expr, bound=self.dummy_int)
+        step_label = Label(step_expr, self.dummy_int, _)
         loop_state = MetaState({
             self.a: upd_label,
             self.i: step_label,
@@ -347,7 +378,7 @@ class TestLoopNestExtraction(_VariableLabelMixin):
         })
         bool_expr = expression_factory(
             operators.LESS_OP, self.i, IntegerInterval(10))
-        bool_label = Label(bool_expr, bound=None)
+        bool_label = Label(bool_expr, _, _)
         bool_env = MetaState({
             bool_label: bool_expr,
             self.i: self.li,
@@ -362,8 +393,8 @@ class TestLoopNestExtraction(_VariableLabelMixin):
         })
         fix_expr = expression_factory(
             operators.FIXPOINT_OP, bool_sem, loop_state, self.a, init_state)
-        label = Label(fix_expr, None, {self.i: IntegerInterval([1, 9])})
-        for_loop = extract_for_loop(label, fix_expr)
+        for_loop = extract_for_loop(
+            fix_expr, {self.i: IntegerInterval([1, 9])})
         expect_for_loop = {
             'iter_var': self.i,
             'iter_slice': slice(1, 9, 1),
