@@ -10,7 +10,8 @@ from soap.expression import (
 from soap.parser import parse
 from soap.semantics.error import IntegerInterval, ErrorSemantics
 from soap.semantics.label import Label, LabelSemantics
-from soap.semantics.latency.extract import extract_for_loop
+from soap.semantics.latency.extract import ForLoopExtractor
+from soap.semantics.latency.common import LATENCY_TABLE
 from soap.semantics.latency.distance import (
     dependence_vector, dependence_distance, ISLIndependenceException
 )
@@ -124,17 +125,6 @@ class _VariableLabelMixin(unittest.TestCase):
     def setUp(self):
         self.ori_ii_prec = context.ii_precision
         context.ii_precision = 30
-        self.latency_table = {
-            (int_type, operators.ADD_OP): 1,
-            (int_type, operators.SUBTRACT_OP): 1,
-            (real_type, operators.ADD_OP): 7,
-            (real_type, operators.SUBTRACT_OP): 8,
-            (real_type, operators.MULTIPLY_OP): 5,
-            (real_type, operators.INDEX_ACCESS_OP): 1,
-            (int_type, operators.INDEX_ACCESS_OP): 1,
-            (ArrayType, operators.INDEX_UPDATE_OP): 2,
-            (ArrayType, operators.SUBSCRIPT_OP): 0,
-        }
         self.w = Variable('w', real_type)
         self.x = Variable('x', real_type)
         self.y = Variable('y', real_type)
@@ -162,14 +152,6 @@ class _VariableLabelMixin(unittest.TestCase):
 
 
 class TestSequentialLatencyDependenceGraph(_VariableLabelMixin):
-    def setUp(self):
-        super().setUp()
-
-        class Graph(SequentialLatencyDependenceGraph):
-            latency_table = self.latency_table
-
-        self.Graph = Graph
-
     def test_simple_dag_latency(self):
         expr_1 = expression_factory(operators.MULTIPLY_OP, self.lw, self.lx)
         expr_2 = expression_factory(operators.ADD_OP, self.ly, self.lz)
@@ -190,22 +172,16 @@ class TestSequentialLatencyDependenceGraph(_VariableLabelMixin):
             self.lz: self.z,
         }
 
-        graph = self.Graph(env, None, [self.x, self.y])
+        graph = SequentialLatencyDependenceGraph(env, None, [self.x, self.y])
         latency = graph.latency()
-        expect_latency = self.latency_table[real_type, operators.ADD_OP]
-        expect_latency += self.latency_table[real_type, operators.SUBTRACT_OP]
+        expect_latency = LATENCY_TABLE[real_type, operators.ADD_OP]
+        expect_latency += LATENCY_TABLE[real_type, operators.SUBTRACT_OP]
         self.assertEqual(latency, expect_latency)
 
 
 class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
     def setUp(self):
         super().setUp()
-
-        class Graph(LoopLatencyDependenceGraph):
-            latency_table = self.latency_table
-
-        self.Graph = Graph
-
         bool_label = Label(_, _, _)
         bool_env = {
             bool_label: BinaryBoolExpr(
@@ -231,9 +207,9 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
             self.li: self.i,
         }
         fix_expr = FixExpr(self.bool_expr, env, self.x, _)
-        graph = self.Graph(fix_expr, self.invariant)
+        graph = LoopLatencyDependenceGraph(fix_expr, self.invariant)
         ii = graph.initiation_interval()
-        expect_ii = self.latency_table[real_type, operators.ADD_OP]
+        expect_ii = LATENCY_TABLE[real_type, operators.ADD_OP]
         self.assertAlmostEqual(ii, expect_ii)
         trip_count = graph.latency()
         expect_trip_count = 9 * ii + expect_ii
@@ -265,7 +241,7 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
             self.li: self.i,
         }
         fix_expr = FixExpr(self.bool_expr, env, self.a, _)
-        graph = self.Graph(fix_expr, self.invariant)
+        graph = LoopLatencyDependenceGraph(fix_expr, self.invariant)
         ii = graph.initiation_interval()
         expect_ii = 1
         self.assertEqual(ii, expect_ii)
@@ -311,11 +287,11 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
             self.i: IntegerInterval([0, 9]),
             self.j: IntegerInterval([3, 5]),
         }
-        graph = self.Graph(fix_expr, invariant)
+        graph = LoopLatencyDependenceGraph(fix_expr, invariant)
         ii = graph.initiation_interval()
-        expect_ii = self.latency_table[real_type, operators.INDEX_ACCESS_OP]
-        expect_ii += self.latency_table[real_type, operators.ADD_OP]
-        expect_ii += self.latency_table[ArrayType, operators.INDEX_UPDATE_OP]
+        expect_ii = LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
+        expect_ii += LATENCY_TABLE[real_type, operators.ADD_OP]
+        expect_ii += LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
         expect_ii /= float(invariant[self.j].min)
         self.assertAlmostEqual(ii, expect_ii)
 
@@ -342,12 +318,33 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
         distance = 3
         trip_count = 10
         latency = latency_eval(meta_state, state, [self.a])
-        depth = self.latency_table[real_type, operators.INDEX_ACCESS_OP]
-        depth += self.latency_table[real_type, operators.ADD_OP]
-        depth += self.latency_table[ArrayType, operators.INDEX_UPDATE_OP]
+        depth = LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
+        depth += LATENCY_TABLE[real_type, operators.ADD_OP]
+        depth += LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
         expect_ii = depth / distance
         expect_latency = expect_ii * (trip_count - 1) + depth
         self.assertAlmostEqual(latency, expect_latency)
+
+    def test_loop_nest_flow(self):
+        program = """
+        real[30] a;
+        int j = 0;
+        int i = 0;
+        while (j < 10) {
+            while (i < 10) {
+                a[i + j] = a[i] + i;
+                i = i + 1;
+            };
+            j = j + 1;
+        };
+        """
+        meta_state = flow_to_meta_state(parse(program))
+        state = BoxState({
+            self.a: ErrorSemanticsArray(
+                [ErrorSemantics([0, 10 * i], [0, 0]) for i in range(30)]),
+        })
+        latency = latency_eval(meta_state[self.a], state, [self.a])
+        print(latency)
 
 
 class TestLoopNestExtraction(_VariableLabelMixin):
@@ -393,7 +390,7 @@ class TestLoopNestExtraction(_VariableLabelMixin):
         })
         fix_expr = expression_factory(
             operators.FIXPOINT_OP, bool_sem, loop_state, self.a, init_state)
-        for_loop = extract_for_loop(
+        for_loop = ForLoopExtractor(
             fix_expr, {self.i: IntegerInterval([1, 9])})
         expect_for_loop = {
             'iter_var': self.i,
@@ -401,4 +398,4 @@ class TestLoopNestExtraction(_VariableLabelMixin):
             'loop_var': self.a,
         }
         for key, expect_val in expect_for_loop.items():
-            self.assertEqual(for_loop[key], expect_val)
+            self.assertEqual(getattr(for_loop, key), expect_val)

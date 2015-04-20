@@ -255,14 +255,16 @@ class _VariableSetGenerator(base_dispatcher()):
 
     def execute_AssignFlow(self, flow, input, output):
         in_vars = out_vars = set()
-        expr = flow.expr
+        var, expr = flow.var, flow.expr
         if input and not is_numeral(expr):
             in_vars = expr.vars()
-        if output:
-            var = flow.var
             if isinstance(var, AccessExpr):
-                var = var.var
-            out_vars = {var}
+                in_vars |= var.subscript.vars()
+        if output:
+            out_var = var
+            if isinstance(var, AccessExpr):
+                out_var = var.var
+            out_vars = {out_var}
         return in_vars | out_vars
 
     def execute_IfFlow(self, flow, input, output):

@@ -1,5 +1,6 @@
 import islpy
 
+from soap.expression import Variable
 from soap.semantics.error import inf
 from soap.semantics.latency.common import (
     is_isl_expr, rename_var_in_expr, iter_point_count
@@ -59,6 +60,10 @@ def dependence_vector(iter_vars, iter_slices, invariant, source, sink):
         snk_idx = rename_var_in_expr(snk_idx, iter_vars, '__snk_{}')
         constraints.append('{} = {}'.format(src_idx, snk_idx))
         exists_vars |= src_idx.vars() | snk_idx.vars()
+        exists_vars |= {
+            Variable('__src_{}'.format(v.name), v.dtype) for v in iter_vars}
+        exists_vars |= {
+            Variable('__snk_{}'.format(v.name), v.dtype) for v in iter_vars}
 
     for var in exists_vars:
         if var.name.startswith('__'):

@@ -10,14 +10,21 @@ from soap.expression import (
 from soap.semantics import is_numeral, Label, IntegerInterval
 
 
+# 150 MHz
 LATENCY_TABLE = {
     (int_type, operators.LESS_OP): 1,
     (int_type, operators.ADD_OP): 1,
-    (real_type, operators.ADD_OP): 7,
-    (real_type, operators.INDEX_ACCESS_OP): 2,
-    (int_type, operators.INDEX_ACCESS_OP): 2,
+    (int_type, operators.SUBTRACT_OP): 1,
+    (int_type, operators.MULTIPLY_OP): 1,
+    (real_type, operators.UNARY_SUBTRACT_OP): 0,
+    (real_type, operators.ADD_OP): 3,
+    (real_type, operators.SUBTRACT_OP): 3,
+    (real_type, operators.MULTIPLY_OP): 2,
+    (real_type, operators.DIVIDE_OP): 7,
+    (real_type, operators.INDEX_ACCESS_OP): 1,
+    (int_type, operators.INDEX_ACCESS_OP): 1,
     (ArrayType, operators.INDEX_UPDATE_OP): 1,
-    (None, operators.SUBSCRIPT_OP): 0,
+    (ArrayType, operators.SUBSCRIPT_OP): 0,
 }
 
 

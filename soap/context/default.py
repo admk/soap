@@ -7,7 +7,7 @@ context = dict(
     # interactive shell
     autocall=True,
     xmode='context',
-    repr=repr,
+    repr=str,
     # general
     multiprocessing=True,
     # analysis related

@@ -8,13 +8,15 @@ from soap.common.cache import cached
 from soap.datatype import ArrayType
 from soap.expression import (
     AccessExpr, InputVariable, is_expression, operators, UpdateExpr, Variable,
+    InputVariableTuple, OutputVariableTuple,
 )
+from soap.lattice import join
 from soap.program.graph import DependenceGraph
 from soap.semantics import is_numeral, Label
 from soap.semantics.latency.common import (
     stitch_expr, DependenceType, iter_point_count, LATENCY_TABLE
 )
-from soap.semantics.latency.extract import extract_loop_nest
+from soap.semantics.latency.extract import ForLoopExtractor
 from soap.semantics.latency.distance import dependence_eval
 from soap.semantics.latency.ii import rec_init_int_search
 
@@ -38,6 +40,14 @@ class SequentialLatencyDependenceGraph(DependenceGraph):
         self.state = state
         super().__init__(env, out_vars)
 
+    def _loop_latency(self, node, expr):
+        if isinstance(node, OutputVariableTuple):
+            invariant = join(l.invariant for l in node)
+        else:
+            invariant = node.invariant
+        graph = LoopLatencyDependenceGraph(expr, invariant)
+        return graph.latency()
+
     def _node_latency(self, node):
         if isinstance(node, InputVariable):
             return 0
@@ -45,15 +55,17 @@ class SequentialLatencyDependenceGraph(DependenceGraph):
             return 0
         expr = self.env[node]
         if is_expression(expr):
+            if expr.op == operators.FIXPOINT_OP:
+                # FixExpr
+                return self._loop_latency(node, expr)
             dtype = node.dtype
             if isinstance(dtype, ArrayType):
                 dtype = ArrayType
-            if expr.op != operators.FIXPOINT_OP:
-                return self.latency_table[dtype, expr.op]
-            # FixExpr
-            graph = LoopLatencyDependenceGraph(expr, node.invariant)
-            return graph.latency()
-        if is_numeral(expr) or isinstance(expr, (Label, Variable)):
+            return self.latency_table[dtype, expr.op]
+        if is_numeral(expr):
+            return 0
+        if isinstance(expr, (
+                Label, Variable, InputVariableTuple, OutputVariableTuple)):
             return 0
         raise TypeError(
             'Do not know how to compute latency for node {}'.format(node))
@@ -76,14 +88,22 @@ class SequentialLatencyDependenceGraph(DependenceGraph):
 
 class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
     def __init__(self, fix_expr, invariant):
-        loop = extract_loop_nest(fix_expr, invariant)
-        invariant = loop['invariant']
-        out_vars = [loop['loop_var']]
-        self.iter_vars = loop['iter_vars']
-        self.iter_slices = loop['iter_slices']
+        loop = ForLoopExtractor(fix_expr, invariant)
+        loop_var = loop.loop_var
+        if isinstance(loop_var, OutputVariableTuple):
+            out_vars = loop_var.args
+        else:
+            out_vars = [loop.loop_var]
+        kernel = loop.label_kernel
+        super().__init__(kernel, invariant, out_vars)
+
         self.invariant = invariant
-        env = fix_expr.loop_state
-        super().__init__(env, invariant, out_vars)
+        self.is_pipelined = loop.is_for_loop and not loop.has_inner_loops
+
+        if loop.is_for_loop:
+            self.iter_vars = [loop.iter_var]
+            self.iter_slices = [loop.iter_slice]
+
         self._init_loop_graph()
 
     def _init_loop_graph(self):
@@ -189,8 +209,14 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
         try:
             return self._initiation_interval
         except AttributeError:
+            pass
+        if self.is_pipelined:
             self._initiation_interval = rec_init_int_search(self.loop_graph)
-            return self._initiation_interval
+        else:
+            from soap import logger
+            logger.warning('Cannot pipeline loop.')
+            self._initiation_interval = self.depth()
+        return self._initiation_interval
 
     def depth(self):
         try:

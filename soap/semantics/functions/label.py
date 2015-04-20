@@ -5,6 +5,7 @@ from soap.context import context
 from soap.expression import expression_factory, operators
 from soap.semantics.functions import error_eval
 from soap.semantics.label import LabelContext, LabelSemantics
+from soap.semantics.linalg import IntegerIntervalArray
 
 
 class LabelGenerator(base_dispatcher()):
@@ -50,7 +51,8 @@ class LabelGenerator(base_dispatcher()):
 
     def execute_Subscript(self, expr, state, context):
         label_expr, label_env = self._execute_expression(expr, state, context)
-        label = context.Label(label_expr, None, None)
+        bound = IntegerIntervalArray([b.bound for b in label_expr.args])
+        label = context.Label(label_expr, bound, None)
         label_env[label] = label_expr
         return LabelSemantics(label, label_env)
 
