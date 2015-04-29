@@ -2,6 +2,8 @@
 .. module:: soap.program.flow
     :synopsis: Program flow graphs.
 """
+from collections import OrderedDict
+
 from soap.common import base_dispatcher
 from soap.expression.linalg import AccessExpr
 from soap.semantics import BoxState, is_numeral
@@ -46,6 +48,61 @@ class Flow(object):
         return self.format().replace('    ', '').replace('\n', '').strip()
 
 
+class FunctionFlow(Flow):
+    def __init__(self, name, inputs, flow):
+        super().__init__()
+        self.name = name
+        self.inputs = OrderedDict(inputs)
+        self.flow = flow
+        if not isinstance(flow, CompositionalFlow) or \
+           not isinstance(flow.flows[-1], ReturnFlow):
+            raise ValueError('Function must return a value.')
+
+    def format(self):
+        inputs = ', '.join('{dtype} {var}:{value}'.format(
+            dtype=var.dtype, name=var.name, value=value)
+            for var, value in self.inputs.items())
+        return 'def {name} ({inputs}) {{\n{flow}}}'.format(
+            name=self.name, inputs=inputs, flow=_indent(self.flow.format()))
+
+    def __repr__(self):
+        return '{cls}({name!r}, {inputs!r}, {flow!r})'.format(
+            cls=self.__class__.__name__, name=self.name, inputs=self.inputs,
+            flow=self.flow)
+
+    def __hash__(self):
+        return hash(
+            (self.__class__, self.name, tuple(self.inputs.items()), self.flow))
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        return (self.name == other.name and self.inputs == other.inputs and
+                self.flow == other.flow)
+
+
+class ReturnFlow(Flow):
+    def __init__(self, outputs):
+        super().__init__()
+        self.outputs = tuple(outputs)
+
+    def format(self):
+        outputs = ', '.join(str(v) for v in self.outputs)
+        return 'return {}; '.format(outputs)
+
+    def __repr__(self):
+        return '{cls}({outputs!r})'.format(
+            cls=self.__class__.__name__, outputs=self.outputs)
+
+    def __hash__(self):
+        return hash(self.outputs)
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        return self.outputs == other.outputs
+
+
 class IdentityFlow(Flow):
     """Identity flow, does nothing."""
     def format(self):
@@ -62,51 +119,6 @@ class IdentityFlow(Flow):
 
     def __hash__(self):
         return hash('skip;')
-
-
-class InputFlow(IdentityFlow):
-    def __init__(self, inputs):
-        super().__init__()
-        self.inputs = dict(inputs)
-
-    def format(self):
-        inputs = ', '.join(
-            '{}: {}'.format(k, v) for k, v in self.inputs.items())
-        return 'input ({}); '.format(inputs)
-
-    def __repr__(self):
-        return '{cls}({inputs!r})'.format(
-            cls=self.__class__.__name__, inputs=self.inputs)
-
-    def __hash__(self):
-        raise NotImplementedError
-
-    def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        return self.inputs == other.inputs
-
-
-class OutputFlow(IdentityFlow):
-    def __init__(self, outputs):
-        super().__init__()
-        self.outputs = tuple(outputs)
-
-    def format(self):
-        outputs = ', '.join(str(v) for v in self.outputs)
-        return 'output ({}); '.format(outputs)
-
-    def __repr__(self):
-        return '{cls}({outputs!r})'.format(
-            cls=self.__class__.__name__, outputs=self.outputs)
-
-    def __hash__(self):
-        return hash(self.outputs)
-
-    def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        return self.outputs == other.outputs
 
 
 class AssignFlow(Flow):

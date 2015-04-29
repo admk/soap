@@ -274,6 +274,13 @@ class _ExpressionVisitor(object):
 
 
 class _ProgramVisitor(object):
+    visit_program = _lift_child
+
+    def visit_function(self, node, children):
+        (def_lit, new_variable, left_paren,
+         input_list, right_paren, code_block) = children
+        return FunctionFlow(new_variable, input_list, code_block)
+
     visit_statement = visit_single_statement = _lift_child
 
     def visit_compound_statement(self, node, children):
@@ -296,8 +303,7 @@ class _ProgramVisitor(object):
         var, assign, expr, semicolon = children
         return AssignFlow(var, expr)
 
-    visit_if_statement = _lift_first
-    visit_if_block = _lift_child
+    visit_if_statement = _lift_child
 
     def visit_if_then_block(self, node, children):
         if_lit, bool_expr, true_flow = children
@@ -310,7 +316,7 @@ class _ProgramVisitor(object):
         return IfFlow(bool_expr, true_flow, false_flow)
 
     def visit_while_statement(self, node, children):
-        while_lit, bool_expr, loop_flow, semicolon = children
+        while_lit, bool_expr, loop_flow = children
         return WhileFlow(bool_expr, loop_flow)
 
     visit_boolean_block = visit_code_block = _lift_middle

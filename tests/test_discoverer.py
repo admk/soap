@@ -60,6 +60,10 @@ class TestUnroller(unittest.TestCase):
         test_expr = flow_to_meta_state(parse(program))[x]
         for u in unrolled:
             import pprint; pprint.pprint(u)
+        print('.....')
+        print(test_expr)
+        print('.....')
+        print(unrolled[2])
         self.assertEqual(test_expr, unrolled[2])
 
 

@@ -86,14 +86,14 @@ class TestProgramParser(unittest.TestCase):
         bool_expr = expression_factory(operators.LESS_OP, self.x, self.i3)
         assign_flow = AssignFlow(self.y, self.x)
         flow = IfFlow(bool_expr, assign_flow, IdentityFlow())
-        self.assertEqual(self.parse('if (x < 3) {y = x;};'), flow)
-        self.assertEqual(self.parse('if (x < 3) {y = x;} else {skip;};'), flow)
+        self.assertEqual(self.parse('if (x < 3) {y = x;}'), flow)
+        self.assertEqual(self.parse('if (x < 3) {y = x;} else {skip;}'), flow)
 
     def test_while_statement(self):
         bool_expr = expression_factory(operators.LESS_OP, self.x, self.i3)
         assign_flow = AssignFlow(self.y, self.x)
         flow = WhileFlow(bool_expr, assign_flow)
-        self.assertEqual(self.parse('while (x < 3) {y = x;};'), flow)
+        self.assertEqual(self.parse('while (x < 3) {y = x;}'), flow)
 
     def test_input_statement(self):
         flow = InputFlow({Variable('x', int_type): IntegerInterval([1, 2])})

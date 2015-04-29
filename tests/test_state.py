@@ -1,7 +1,5 @@
 import unittest
 
-from akpytemp.utils import code_gobble
-
 from soap.datatype import int_type
 from soap.expression import (
     operators, Variable, BinaryArithExpr, BinaryBoolExpr,
@@ -59,37 +57,33 @@ class TestBoxState(unittest.TestCase):
 class TestBoxStateExampleTransitions(unittest.TestCase):
     """Unittesting for :class:`soap.program.flow`."""
     def setUp(self):
-        self.simple_if = code_gobble(
-            """
+        self.simple_if = """
             int x = 0;
             if (x <= 1) {
                 x = x + 1;
             } else {
                 x = x - 1;
             };
-            """)
-        self.simple_while = code_gobble(
             """
+        self.simple_while = """
             int x = 0;
             while (x < 5) {
                 x = x + 1;
             };
-            """)
-        self.factorial = code_gobble(
             """
+        self.factorial = """
             int x; int y;
             while (x <= 3) {
                 y = y * x;
                 x = x + 1;
             };
-            """)
-        self.fixpoint = code_gobble(
             """
+        self.fixpoint = """
             real x;
             while (x > 1) {
                 x = 0.9 * x;
             };
-            """)
+            """
 
     def test_simple_if(self):
         env = BoxState(bottom=True)
