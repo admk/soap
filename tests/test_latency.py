@@ -343,7 +343,25 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
             self.a: ErrorSemanticsArray(
                 [ErrorSemantics([0, 10 * i], [0, 0]) for i in range(30)]),
         })
-        latency = latency_eval(meta_state[self.a], state, [self.a])
+        # latency = latency_eval(meta_state[self.a], state, [self.a])
+        # print(latency)
+
+    def test_multi_dim_flow(self):
+        program = """
+        real[30, 30] b;
+        int i = 0;
+        int j = 3;
+        while (i < 10) {
+            b[i + j, j] = b[i, j] + j;
+            i = i + 1;
+        };
+        """
+        meta_state = flow_to_meta_state(parse(program))
+        state = BoxState({
+            self.b: ErrorSemanticsArray(30 * [
+                [ErrorSemantics([0, 10 * i], [0, 0]) for i in range(30)]]),
+        })
+        latency = latency_eval(meta_state[self.b], state, [self.b])
         print(latency)
 
 

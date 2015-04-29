@@ -93,7 +93,8 @@ class TestLabel(unittest.TestCase):
         expr = AccessExpr(self.z, Subscript(self.y))
         label_subscript_expr = Subscript(self.y_label)
         subscript_label = self.context.Label(
-            label_subscript_expr, None, None)
+            label_subscript_expr, IntegerIntervalArray([self.state[self.y]]),
+            None)
         label_expr = AccessExpr(self.z_label, subscript_label)
         label = self.context.Label(label_expr, IntegerInterval(4), None)
         env = {
@@ -109,7 +110,9 @@ class TestLabel(unittest.TestCase):
     def test_UpdateExpr(self):
         expr = UpdateExpr(self.z, Subscript(self.y), self.x)
         label_subscript_expr = Subscript(self.y_label)
-        subscript_label = self.context.Label(label_subscript_expr, None, None)
+        subscript_label = self.context.Label(
+            label_subscript_expr, IntegerIntervalArray([self.state[self.y]]),
+            None)
         label_expr = UpdateExpr(self.z_label, subscript_label, self.x_label)
         new_bound = IntegerIntervalArray([1, 2, 3, IntegerInterval([1, 2])])
         label = self.context.Label(label_expr, new_bound, None)

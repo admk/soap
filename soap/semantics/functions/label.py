@@ -14,7 +14,7 @@ class LabelGenerator(base_dispatcher()):
         raise TypeError('Do not know how to label {!r}'.format(expr))
 
     def _execute_atom(self, expr, state, context):
-        bound = error_eval(expr, state)
+        bound = error_eval(expr, state, preserve_array=True)
         label = context.Label(expr, bound, None)
         env = {label: expr}
         return LabelSemantics(label, env)
@@ -32,7 +32,7 @@ class LabelGenerator(base_dispatcher()):
 
     def _execute_arithmetic_expression(self, expr, state, context):
         label_expr, label_env = self._execute_expression(expr, state, context)
-        bound = error_eval(expr, state)
+        bound = error_eval(expr, state, preserve_array=True)
         label = context.Label(label_expr, bound, None)
         label_env[label] = label_expr
         return LabelSemantics(label, label_env)
@@ -44,7 +44,7 @@ class LabelGenerator(base_dispatcher()):
     def execute_BinaryBoolExpr(self, expr, state, context):
         label_expr, label_env = self._execute_expression(expr, state, context)
         sub_expr = expression_factory(operators.SUBTRACT_OP, expr.a1, expr.a2)
-        bound = error_eval(sub_expr, state)
+        bound = error_eval(sub_expr, state, preserve_array=True)
         label = context.Label(label_expr, bound, None)
         label_env[label] = label_expr
         return LabelSemantics(label, label_env)

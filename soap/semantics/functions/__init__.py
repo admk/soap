@@ -1,7 +1,7 @@
 from soap.semantics.functions.arithmetic import arith_eval, error_eval
 from soap.semantics.functions.boolean import bool_eval
 from soap.semantics.functions.fixpoint import (
-    fixpoint_eval, equivalent_loop_meta_states, fix_expr_eval, unroll_eval,
+    fixpoint_eval, unroll_fix_expr, fix_expr_eval, unroll_eval,
 )
 from soap.semantics.functions.label import label, luts, resource_eval
 from soap.semantics.functions.meta import (

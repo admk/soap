@@ -1,4 +1,6 @@
+from soap.datatype import int_type
 from soap.expression import operators, is_variable, is_expression
+from soap.semantics.error import IntegerInterval
 from soap.semantics.latency.common import stitch_expr, stitch_env
 from soap.semantics.functions import arith_eval, expand_expr
 
@@ -11,7 +13,7 @@ class ForLoopExtractor(object):
 
     def __init__(self, fix_expr, invariant):
         super().__init__()
-        bool_expr, loop_state, self.loop_var, _ = fix_expr.args
+        bool_expr, loop_state, self.loop_var, self.init_state = fix_expr.args
         bool_label, bool_env = bool_expr
         self.bool_expr = stitch_expr(bool_label, bool_env)
         self.invariant = invariant
@@ -72,23 +74,23 @@ class ForLoopExtractor(object):
         else:
             raise ForLoopExtractionFailureException
         step = arith_eval(step, invariant)
+        if not isinstance(step, IntegerInterval):
+            raise ForLoopExtractionFailureException
         if step.min != step.max:
+            raise ForLoopExtractionFailureException
+        if step <= 0:
             raise ForLoopExtractionFailureException
 
         start = invariant[iter_var].min
         stop = invariant[iter_var].max
         step = step.min
 
+        # TODO support these features
+        if iter_var.dtype != int_type:
+            raise ForLoopExtractionFailureException
+
         self.iter_slice = slice(start, stop, step)
 
 
-def extract_loop_nest(fix_expr, invariant):
-    loop = ForLoopExtractor(fix_expr, invariant)
-    loop_info = {
-        'iter_vars': [loop.iter_var],
-        'iter_slices': [loop.iter_slice],
-        'loop_var': loop.loop_var,
-        'invariant': loop.invariant,
-        'kernel': loop.kernel,
-    }
-    return loop_info
+class ForLoopNestExtractor(object):
+    pass

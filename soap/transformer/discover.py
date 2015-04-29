@@ -15,10 +15,9 @@ from soap.expression import (
     expression_factory, SelectExpr, FixExpr, operators, UnrollExpr
 )
 from soap.program import Flow
-from soap.program.graph import DependenceGraph
 from soap.semantics import BoxState, ErrorSemantics, MetaState
 from soap.semantics.functions import (
-    arith_eval_meta_state, equivalent_loop_meta_states, fixpoint_eval,
+    arith_eval_meta_state, unroll_fix_expr, fixpoint_eval,
 )
 from soap.semantics.functions.label import _label
 from soap.transformer.arithmetic import MartelTreeTransformer
@@ -42,7 +41,8 @@ class Unroller(base_dispatcher('unroll')):
 
     unroll_UnaryArithExpr = unroll_BinaryArithExpr = _unroll_expression
     unroll_UnaryBoolExpr = unroll_BinaryBoolExpr = _unroll_expression
-    unroll_SelectExpr = _unroll_expression
+    unroll_Subscript = unroll_AccessExpr = _unroll_expression
+    unroll_SelectExpr = unroll_UpdateExpr = _unroll_expression
 
     def unroll_FixExpr(self, expr):
         init_state = self(expr.init_state)
@@ -151,42 +151,35 @@ class BaseDiscoverer(base_dispatcher('discover')):
             null_error_state[var] = error
         loop_value_state = state.__class__(null_error_state)
 
-        # transform bool_expr
-        frontier_bool_expr_set = self(bool_expr, loop_value_state, None)
-
         logger.info('Discovering loop: {}'.format(loop_meta_state))
 
-        loop_meta_state_list = list(equivalent_loop_meta_states(
-            expr, context.unroll_depth))
-        frontier = {UnrollExpr(expr, expr.loop_state, context.unroll_depth)}
-        total = len(loop_meta_state_list)
+        fix_expr_list = list(unroll_fix_expr(
+            expr, init_value_state, context.unroll_depth))
+        frontier = {expr}
+        total = len(fix_expr_list)
 
-        # transform loop_meta_state
-        for depth, unrolled_loop_meta_state in enumerate(loop_meta_state_list):
+        for depth, fix_expr in enumerate(fix_expr_list):
             logger.persistent('Unroll', '{}/{}'.format(depth, total - 1))
 
-            remaining_depth = context.unroll_depth - depth
+            bool_expr = fix_expr.bool_expr
 
             frontier_loop_meta_state_set = self(
-                unrolled_loop_meta_state, loop_value_state, [loop_var])
+                fix_expr.loop_state, loop_value_state, [loop_var])
 
             iterer = itertools.product(
-                frontier_bool_expr_set, frontier_loop_meta_state_set,
-                frontier_init_meta_state_set)
+                frontier_loop_meta_state_set, frontier_init_meta_state_set)
             each_frontier = set()
-            for bool_expr, each_loop_meta_state, init_meta_state in iterer:
+            for each_loop_state, each_init_state in iterer:
                 fix_expr = FixExpr(
-                    bool_expr, each_loop_meta_state, loop_var, init_meta_state)
-                unroll_expr = UnrollExpr(
-                    fix_expr, loop_meta_state, remaining_depth)
-                each_frontier.add(unroll_expr)
+                    bool_expr, each_loop_state, loop_var, each_init_state)
+                each_frontier.add(fix_expr)
 
             each_frontier = set(self.filter(
                 each_frontier, state, out_vars,
                 size_limit=context.loop_size_limit))
             frontier |= each_frontier
 
-        logger.unpersistent('LoopTr')
+        logger.unpersistent('Unroll')
 
         frontier = self.filter(frontier, state, out_vars, size_limit=0)
 

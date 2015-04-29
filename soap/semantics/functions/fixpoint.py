@@ -1,9 +1,17 @@
+import math
+
 from soap import logger
 from soap.context import context
 from soap.common.cache import cached
-from soap.expression import FixExpr, SelectExpr
+from soap.expression import (
+    operators, BinaryArithExpr, BinaryBoolExpr, FixExpr, SelectExpr
+)
+from soap.semantics.error import IntegerInterval
 from soap.semantics.functions.boolean import bool_eval
-from soap.semantics.functions.meta import arith_eval_meta_state, expand_expr
+from soap.semantics.functions.label import label
+from soap.semantics.functions.meta import (
+    arith_eval_meta_state, expand_expr, expand_meta_state
+)
 
 
 def _is_fixpoint(state, prev_state, curr_join_state, prev_join_state,
@@ -103,11 +111,11 @@ def fix_expr_eval(expr, state):
     return fixpoint['exit'][expr.loop_var]
 
 
-def _equivalent_loop_meta_state(expr, outer_state, depth):
+def _unroll_fix_expr(fix_expr, outer_state, depth):
     from soap.semantics.state.meta import MetaState
 
-    unroll_state = expr.loop_state
-    expanded_bool_expr = expand_expr(expr.bool_expr, outer_state)
+    unroll_state = fix_expr.loop_state
+    expanded_bool_expr = expand_expr(fix_expr.bool_expr, outer_state)
 
     for _ in range(depth):
         new_unroll_state = {}
@@ -122,17 +130,73 @@ def _equivalent_loop_meta_state(expr, outer_state, depth):
                 new_unroll_state[var] = expr
         unroll_state = new_unroll_state
 
-    return MetaState(unroll_state)
+    loop_state = MetaState(unroll_state)
+    fix_expr = FixExpr(
+        fix_expr.bool_expr, loop_state, fix_expr.loop_var, fix_expr.init_state)
+    return fix_expr
 
 
-def equivalent_loop_meta_states(expr, depth):
-    for d in range(depth + 1):
-        yield _equivalent_loop_meta_state(expr, expr.loop_state, d)
+def _unroll_for_loop(expr, extractor, depth):
+    from soap.semantics.state.meta import MetaState
+
+    yield expr
+    loop_state = expr.loop_state
+    init_state = expr.init_state
+    loop_var = expr.loop_var
+    iter_var = extractor.iter_var
+    iter_slice = extractor.iter_slice
+    start, stop, step = iter_slice.start, iter_slice.stop, iter_slice.step
+
+    for d in range(1, depth + 1):
+        # FIXME non-constant bounds
+        count = int(math.floor((stop - start) / step))
+        new_step = step * d
+        new_count = int(math.floor(count / d))
+        new_stop = start + (new_count * d - 1) * step
+        prologue_start = new_stop + step
+
+        new_loop_state = loop_state
+        for _ in range(d):
+            new_loop_state = expand_meta_state(new_loop_state, loop_state)
+
+        step_expr = BinaryArithExpr(
+            operators.ADD_OP, iter_var, IntegerInterval(new_step))
+        new_loop_state = new_loop_state.immu_update(iter_var, step_expr)
+
+        bool_expr = BinaryBoolExpr(
+            operators.LESS_EQUAL_OP, iter_var, IntegerInterval(new_stop))
+
+        fix_expr = FixExpr(bool_expr, new_loop_state, iter_var, init_state)
+
+        loop_expr = loop_state[loop_var]
+        id_state = MetaState({var: var for var in loop_expr.vars()})
+        prologue = []
+        for i in range(prologue_start, stop + 1, step):
+            state = id_state.immu_update(iter_var, IntegerInterval(i))
+            prologue.append(expand_expr(loop_expr, state))
+
+        state = MetaState({loop_var: fix_expr})
+        for expr in prologue:
+            expr_state = MetaState({loop_var: expr})
+            state = expand_meta_state(expr_state, state)
+
+        yield state[loop_var]
+
+
+def unroll_fix_expr(expr, state, depth):
+    from soap.semantics.latency.extract import ForLoopExtractor
+    expr_label, env = label(expr, state, None)
+    extractor = ForLoopExtractor(env[expr_label], expr_label.invariant)
+    if extractor.is_for_loop:
+        if extractor.has_inner_loops:
+            yield expr
+        else:
+            yield from _unroll_for_loop(expr, extractor, depth)
+    else:
+        for d in range(depth + 1):
+            yield _unroll_fix_expr(expr, expr.loop_state, d)
 
 
 def unroll_eval(expr, outer, state, depth):
-    bool_expr = expr.bool_expr
-    loop_meta_state = _equivalent_loop_meta_state(expr, outer, depth)
-    unrolled_expr = FixExpr(
-        bool_expr, loop_meta_state, expr.loop_var, expr.init_state)
+    unrolled_expr = _unroll_fix_expr(expr, outer, depth)
     return fix_expr_eval(unrolled_expr, state)

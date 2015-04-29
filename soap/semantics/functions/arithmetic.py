@@ -1,6 +1,7 @@
 from soap.common import base_dispatcher, cached
 from soap.expression import operators
 from soap.semantics.error import error_norm
+from soap.semantics.linalg import ErrorSemanticsArray
 
 
 class ArithmeticEvaluator(base_dispatcher()):
@@ -110,4 +111,11 @@ class ErrorEvaluator(base_dispatcher()):
         return error_norm(state.values())
 
 
-error_eval = ErrorEvaluator()
+_error_eval = ErrorEvaluator()
+
+
+def error_eval(expr, state, preserve_array=False):
+    value = _error_eval(expr, state)
+    if not preserve_array and isinstance(value, ErrorSemanticsArray):
+        value = error_norm(value._flat_items)
+    return value

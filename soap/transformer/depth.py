@@ -15,7 +15,7 @@ class Cropper(base_dispatcher('crop')):
 
     def _crop_expression(self, expr, depth, context):
         if depth <= 0:
-            label = context.Label(expr)
+            label = context.Label(expr, None, None)
             return label, {label: expr}
 
         cropped_args = tuple(
