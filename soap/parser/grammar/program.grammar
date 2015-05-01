@@ -10,9 +10,3 @@ input_list = input_expr maybe_input_list
 maybe_input_list = comma_input_list / _
 comma_input_list = comma input_list
 input_expr = variable_declaration colon number
-
-return_statement = return expression_list semicolon
-
-expression_list = expression maybe_expression_list
-maybe_expression_list = comma_expression_list / _
-comma_expression_list = comma expression_list

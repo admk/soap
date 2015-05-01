@@ -38,10 +38,17 @@ class RealType(TypeBase):
         return 'real'
 
 
+class FunctionType(TypeBase):
+    """Function data type.  """
+    def __str__(self):
+        return 'func'
+
+
 auto_type = AutoType()
 bool_type = BoolType()
 int_type = IntType()
 real_type = RealType()
+function_type = FunctionType()
 
 
 class ArrayType(TypeBase):

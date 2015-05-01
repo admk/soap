@@ -6,7 +6,7 @@ statement = compound_statement / _  # empty
 compound_statement = single_statement statement
 single_statement =
     skip_statement / assign_statement / if_statement / while_statement /
-    declaration_statement / return_statement
+    for_statement / declaration_statement / return_statement
 
 skip_statement = skip semicolon
 
@@ -26,6 +26,8 @@ for_statement = for left_paren
                     assign_statement semicolon boolean_block semicolon
                     assign_statement
                 right_paren code_block
+
+return_statement = return variable_list semicolon
 
 boolean_block = left_paren boolean_expression right_paren
 code_block = left_curl statement right_curl

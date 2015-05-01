@@ -6,7 +6,7 @@ from collections import OrderedDict
 
 from soap.common import base_dispatcher
 from soap.expression.linalg import AccessExpr
-from soap.semantics import BoxState, is_numeral
+from soap.semantics import is_numeral
 
 
 def _indent(code):
@@ -28,12 +28,6 @@ class Flow(object):
     def vars(self, input=True, output=True):
         return flow_variables(self, input, output)
 
-    def inputs(self):
-        return BoxState(input_output_variables(self)['inputs'])
-
-    def outputs(self):
-        return input_output_variables(self)['outputs']
-
     def flow(self, state):
         """Evaluates the flow with state."""
         return state.transition(self)
@@ -46,61 +40,6 @@ class Flow(object):
 
     def __str__(self):
         return self.format().replace('    ', '').replace('\n', '').strip()
-
-
-class FunctionFlow(Flow):
-    def __init__(self, name, inputs, flow):
-        super().__init__()
-        self.name = name
-        self.inputs = OrderedDict(inputs)
-        self.flow = flow
-        if not isinstance(flow, CompositionalFlow) or \
-           not isinstance(flow.flows[-1], ReturnFlow):
-            raise ValueError('Function must return a value.')
-
-    def format(self):
-        inputs = ', '.join('{dtype} {var}:{value}'.format(
-            dtype=var.dtype, name=var.name, value=value)
-            for var, value in self.inputs.items())
-        return 'def {name} ({inputs}) {{\n{flow}}}'.format(
-            name=self.name, inputs=inputs, flow=_indent(self.flow.format()))
-
-    def __repr__(self):
-        return '{cls}({name!r}, {inputs!r}, {flow!r})'.format(
-            cls=self.__class__.__name__, name=self.name, inputs=self.inputs,
-            flow=self.flow)
-
-    def __hash__(self):
-        return hash(
-            (self.__class__, self.name, tuple(self.inputs.items()), self.flow))
-
-    def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        return (self.name == other.name and self.inputs == other.inputs and
-                self.flow == other.flow)
-
-
-class ReturnFlow(Flow):
-    def __init__(self, outputs):
-        super().__init__()
-        self.outputs = tuple(outputs)
-
-    def format(self):
-        outputs = ', '.join(str(v) for v in self.outputs)
-        return 'return {}; '.format(outputs)
-
-    def __repr__(self):
-        return '{cls}({outputs!r})'.format(
-            cls=self.__class__.__name__, outputs=self.outputs)
-
-    def __hash__(self):
-        return hash(self.outputs)
-
-    def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        return self.outputs == other.outputs
 
 
 class IdentityFlow(Flow):
@@ -252,6 +191,68 @@ class CompositionalFlow(Flow):
 
     def __hash__(self):
         return hash(self.flows)
+
+
+class FunctionFlow(Flow):
+    def __init__(self, name, inputs, flow):
+        super().__init__()
+        self.name = name
+        self.inputs = OrderedDict(inputs)
+        self.flow = flow
+        safe = isinstance(flow, ReturnFlow)
+        safe = safe or (
+            isinstance(flow, CompositionalFlow) and
+            isinstance(flow.flows[-1], ReturnFlow))
+        if not safe:
+            raise ValueError('Function must return a value.')
+
+    @property
+    def outputs(self):
+        return self.flow.flows[-1].outputs
+
+    def format(self):
+        inputs = ', '.join('{dtype} {name}: {value}'.format(
+            dtype=var.dtype, name=var.name, value=value)
+            for var, value in self.inputs.items())
+        return 'def {name} ({inputs}) {{\n{flow}}}'.format(
+            name=self.name, inputs=inputs, flow=_indent(self.flow.format()))
+
+    def __repr__(self):
+        return '{cls}({name!r}, {inputs!r}, {flow!r})'.format(
+            cls=self.__class__.__name__, name=self.name, inputs=self.inputs,
+            flow=self.flow)
+
+    def __hash__(self):
+        return hash(
+            (self.__class__, self.name, tuple(self.inputs.items()), self.flow))
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        return (self.name == other.name and self.inputs == other.inputs and
+                self.flow == other.flow)
+
+
+class ReturnFlow(Flow):
+    def __init__(self, outputs):
+        super().__init__()
+        self.outputs = tuple(outputs)
+
+    def format(self):
+        outputs = ', '.join(str(v) for v in self.outputs)
+        return 'return {}; '.format(outputs)
+
+    def __repr__(self):
+        return '{cls}({outputs!r})'.format(
+            cls=self.__class__.__name__, outputs=self.outputs)
+
+    def __hash__(self):
+        return hash(self.outputs)
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        return self.outputs == other.outputs
 
 
 class _VariableSetGenerator(base_dispatcher()):
