@@ -19,7 +19,7 @@ class Subscript(Expression):
     def __iter__(self):
         return iter(self.args)
 
-    def __str__(self):
+    def format(self):
         return '[{}]'.format(', '.join(self._args_to_str()))
 
     def __repr__(self):
@@ -53,7 +53,7 @@ class AccessExpr(
     def subscript(self):
         return self.a2
 
-    def __str__(self):
+    def format(self):
         return '{}{}'.format(self.var, self.subscript)
 
     def __repr__(self):
@@ -85,7 +85,7 @@ class UpdateExpr(
     def expr(self):
         return self.a3
 
-    def __str__(self):
+    def format(self):
         return 'update({}, {}, {})'.format(self.var, self.subscript, self.expr)
 
     def __repr__(self):

@@ -35,14 +35,14 @@ class FixExpr(QuaternaryArithExpr):
     def init_state(self):
         return self.a4
 
-    def __str__(self):
+    def format(self):
         fixpoint_var = underline('e')
         s = ('{op}(λ{fvar}.({bool_expr} ? {fvar} % {loop_state} : {var}))'
              ' % {init_state}')
         return s.format(
             fvar=fixpoint_var, op=self.op, bool_expr=self.bool_expr,
-            loop_state=self.loop_state, var=self.loop_var,
-            init_state=self.init_state)
+            loop_state=self.loop_state.format(), var=self.loop_var,
+            init_state=self.init_state.format())
 
 
 class UnrollExpr(TernaryArithExpr):

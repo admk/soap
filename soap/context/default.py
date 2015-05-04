@@ -7,8 +7,8 @@ context = dict(
     # interactive shell
     autocall=True,
     xmode='context',
-    repr=str,
     # general
+    repr=str,
     multiprocessing=True,
     # analysis related
     unroll_factor=50,   # how many steps before no unrolling in static analysis

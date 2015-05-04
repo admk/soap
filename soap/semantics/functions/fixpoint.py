@@ -147,7 +147,7 @@ def _unroll_for_loop(expr, extractor, depth):
     iter_slice = extractor.iter_slice
     start, stop, step = iter_slice.start, iter_slice.stop, iter_slice.step
 
-    for d in range(1, depth + 1):
+    for d in range(2, depth + 1):
         # FIXME non-constant bounds
         count = int(math.floor((stop - start) / step))
         new_step = step * d
@@ -156,7 +156,7 @@ def _unroll_for_loop(expr, extractor, depth):
         prologue_start = new_stop + step
 
         new_loop_state = loop_state
-        for _ in range(d):
+        for _ in range(d - 1):
             new_loop_state = expand_meta_state(new_loop_state, loop_state)
 
         step_expr = BinaryArithExpr(
@@ -166,17 +166,17 @@ def _unroll_for_loop(expr, extractor, depth):
         bool_expr = BinaryBoolExpr(
             operators.LESS_EQUAL_OP, iter_var, IntegerInterval(new_stop))
 
-        fix_expr = FixExpr(bool_expr, new_loop_state, iter_var, init_state)
+        fix_expr = FixExpr(bool_expr, new_loop_state, loop_var, init_state)
 
         loop_expr = loop_state[loop_var]
         id_state = MetaState({var: var for var in loop_expr.vars()})
-        prologue = []
+        epilogue = []
         for i in range(prologue_start, stop + 1, step):
             state = id_state.immu_update(iter_var, IntegerInterval(i))
-            prologue.append(expand_expr(loop_expr, state))
+            epilogue.append(expand_expr(loop_expr, state))
 
         state = MetaState({loop_var: fix_expr})
-        for expr in prologue:
+        for expr in epilogue:
             expr_state = MetaState({loop_var: expr})
             state = expand_meta_state(expr_state, state)
 

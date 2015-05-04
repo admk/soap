@@ -47,11 +47,11 @@ class UnaryArithExpr(UnaryExpression, ArithExpr):
 
     __slots__ = ()
 
-    def __str__(self):
+    def format(self):
         arg, = self._args_to_str()
         if self.op == UNARY_SUBTRACT_OP:
             return '-{}'.format(arg)
-        return super().__str__()
+        return super().format()
 
 
 class BinaryArithExpr(BinaryExpression, ArithExpr):
@@ -98,5 +98,5 @@ class SelectExpr(TernaryArithExpr):
     def false_expr(self):
         return self.a3
 
-    def __str__(self):
+    def format(self):
         return '{} ? {} : {}'.format(*self._args_to_str())

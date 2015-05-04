@@ -4,13 +4,9 @@
 """
 from collections import OrderedDict
 
-from soap.common import base_dispatcher
+from soap.common import base_dispatcher, indent
 from soap.expression.linalg import AccessExpr
 from soap.semantics import is_numeral
-
-
-def _indent(code):
-    return '\n'.join('    ' + c for c in code.split('\n')).rstrip() + '\n'
 
 
 class Flow(object):
@@ -33,7 +29,7 @@ class Flow(object):
         return state.transition(self)
 
     def format(self):
-        raise NotImplementedError
+        raise NotImplementedError('Override this method')
 
     def __eq__(self, other):
         raise NotImplementedError('Override this method')
@@ -101,8 +97,8 @@ class IfFlow(Flow):
             template += 'else {{\n{false_format}}} '
         return template.format(
             conditional_expr=self.conditional_expr,
-            true_format=_indent(self.true_flow.format()),
-            false_format=_indent(self.false_flow.format()))
+            true_format=indent(self.true_flow.format()),
+            false_format=indent(self.false_flow.format()))
 
     def __repr__(self):
         return ('{cls}(conditional_expr={expr!r}, true_flow={true_flow!r}, '
@@ -131,7 +127,7 @@ class WhileFlow(Flow):
         self.loop_flow = loop_flow
 
     def format(self):
-        loop_format = _indent(self.loop_flow.format())
+        loop_format = indent(self.loop_flow.format())
         template = 'while ({conditional_expr}) {{\n{loop_format}}} '
         return template.format(
             conditional_expr=self.conditional_expr, loop_format=loop_format)
@@ -162,7 +158,7 @@ class ForFlow(Flow):
         self.loop_flow = loop_flow
 
     def format(self):
-        loop_format = _indent(self.loop_flow.format())
+        loop_format = indent(self.loop_flow.format())
         template = ('for ({init_flow}; {conditional_expr}; {incr_flow}) '
                     '{{\n{loop_format}}} ')
         return template.format(
@@ -250,7 +246,7 @@ class FunctionFlow(Flow):
         inputs = ', '.join('{dtype} {name}: {value}'.format(
             dtype=var.dtype, name=var.name, value=value)
             for var, value in self.inputs.items())
-        flow = _indent(self.body_flow.format())
+        flow = indent(self.body_flow.format())
         return 'def {name}({inputs}) {{\n{flow}}} '.format(
             name=self.name, inputs=inputs, flow=flow)
 

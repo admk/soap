@@ -29,6 +29,10 @@ def superscript(value):
     return supped
 
 
+def indent(code):
+    return '\n'.join('    ' + c for c in code.split('\n')).rstrip() + '\n'
+
+
 def code_gobble(code, gobble_count=None, eat_empty_lines=False):
     ws_re = re.compile('^(\s+)')
     new_code_list = []

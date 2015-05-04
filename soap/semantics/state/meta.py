@@ -1,3 +1,4 @@
+from soap.common import indent
 from soap.expression import (
     AccessExpr, Expression, SelectExpr, FixExpr, Variable, OutputVariableTuple,
     UpdateExpr
@@ -136,6 +137,18 @@ class MetaState(BaseState, dict):
                 bool_expr, local_loop_state, var, local_init_state)
 
         return self.__class__(mapping)
+
+    def format(self):
+        items = []
+        for k, v in self.items():
+            if isinstance(v, (Expression, MetaState)):
+                v = v.format()
+            items.append('{}: {}'.format(k, v))
+        items = ',\n'.join(items)
+        return '{{\n{}}}'.format(indent(items))
+
+    def __str__(self):
+        return self.format().replace('    ', '').replace('\n', '').strip()
 
     def __hash__(self):
         if self._hash is None:
