@@ -101,7 +101,7 @@ def type_of(value):
     raise TypeError('Unrecognized type {}'.format(type(value)))
 
 
-def cast(dtype, value=None, top=False, bottom=False):
+def type_cast(dtype, value=None, top=False, bottom=False):
     if dtype == int_type:
         return IntegerInterval(value, top=top, bottom=bottom)
     if dtype == real_type:

@@ -4,7 +4,7 @@ from soap.datatype import int_type, IntegerArrayType
 from soap.expression.fixpoint import FixExpr
 from soap.expression.linalg import AccessExpr, UpdateExpr
 from soap.expression.variable import Variable
-from soap.parser.program import parse, expr_parse
+from soap.parser import stmt_parse, expr_parse
 from soap.semantics.state.meta import MetaState
 
 
@@ -22,15 +22,15 @@ class TestMetaState(unittest.TestCase):
         self.a = Variable('a', array_type)
         self.b = Variable('b', multi_array_type)
         self.expr_parse = lambda expr: expr_parse(expr, self.decl)
-        self.parse = lambda prog: parse(prog, self.decl)
+        self.stmt_parse = lambda prog: stmt_parse(prog, self.decl)
 
-    def test_visit_IdentityFlow(self):
+    def test_visit_SkipFlow(self):
         state = MetaState({self.x: self.x})
-        compare_state = state.visit_IdentityFlow(parse('skip;'))
+        compare_state = state.visit_SkipFlow(stmt_parse('skip;'))
         self.assertEqual(state, compare_state)
 
     def test_visit_AssignFlow(self):
-        flow = self.parse('z = x * y;')
+        flow = self.stmt_parse('z = x * y;')
         state = MetaState({
             self.x: self.expr_parse('x + 1'),
             self.y: self.expr_parse('y + 2'),
@@ -44,7 +44,7 @@ class TestMetaState(unittest.TestCase):
         self.assertEqual(state, compare_state)
 
     def test_visit_IfFlow(self):
-        flow = self.parse('if (x < z) {x = x + 1;} else {x = x - 1;};')
+        flow = self.stmt_parse('if (x < z) {x = x + 1;} else {x = x - 1;}')
         state = MetaState({
             self.x: self.y,
             self.z: self.z,
@@ -56,14 +56,7 @@ class TestMetaState(unittest.TestCase):
         })
         self.assertEqual(state, compare_state)
 
-    def test_visit_WhileFlow(self):
-        flow = self.parse('while (x < z) {x = x + 1;};')
-        state = MetaState({
-            self.x: self.x,
-            self.y: self.y,
-            self.z: self.z,
-        })
-        state = state.visit_WhileFlow(flow)
+    def _loop_compare_state(self):
         init_state = MetaState({
             self.x: self.x,
             self.z: self.z,
@@ -72,23 +65,47 @@ class TestMetaState(unittest.TestCase):
             self.x: self.expr_parse('x + 1'),
             self.z: self.z,
         })
-        fix_expr = FixExpr(
+        fix_expr_x = FixExpr(
             self.expr_parse('x < z'), loop_state, self.x, init_state)
+        init_state = init_state.immu_update(self.y, self.y)
+        loop_state = loop_state.immu_update(self.y, self.expr_parse('y * x'))
+        fix_expr_y = FixExpr(
+            self.expr_parse('x < z'), loop_state, self.y, init_state)
         compare_state = MetaState({
-            self.x: fix_expr,
+            self.x: fix_expr_x,
+            self.y: fix_expr_y,
+            self.z: self.z,
+        })
+        return compare_state
+
+    def test_visit_WhileFlow(self):
+        flow = self.stmt_parse('while (x < z) {y = y * x; x = x + 1;}')
+        state = MetaState({
+            self.x: self.x,
             self.y: self.y,
             self.z: self.z,
         })
-        self.assertEqual(state, compare_state)
+        state = state.visit_WhileFlow(flow)
+        self.assertEqual(state, self._loop_compare_state())
+
+    def test_visit_ForFlow(self):
+        flow = self.stmt_parse('for (skip; x < z; x = x + 1) {y = y * x;}')
+        state = MetaState({
+            self.x: self.x,
+            self.y: self.y,
+            self.z: self.z,
+        })
+        state = state.visit_ForFlow(flow)
+        self.assertEqual(state, self._loop_compare_state())
 
     def test_visit_CompositionalFlow(self):
-        flow = self.parse('x = x + 1; x = x * 2;')
+        flow = self.stmt_parse('x = x + 1; x = x * 2;')
         state = MetaState({self.x: self.x}).visit_CompositionalFlow(flow)
         compare_state = MetaState({self.x: self.expr_parse('(x + 1) * 2')})
         self.assertEqual(state, compare_state)
 
     def test_access_expr(self):
-        flow = self.parse('x = a[y];')
+        flow = self.stmt_parse('x = a[y];')
         state = MetaState({
             self.a: self.a,
             self.x: self.x,
@@ -103,7 +120,7 @@ class TestMetaState(unittest.TestCase):
         self.assertEqual(state, compare_state)
 
     def test_access_expr_multi(self):
-        flow = self.parse('x = b[y, z];')
+        flow = self.stmt_parse('x = b[y, z];')
         state = MetaState({
             self.b: self.b,
             self.x: self.x,
@@ -121,7 +138,7 @@ class TestMetaState(unittest.TestCase):
         self.assertEqual(state, compare_state)
 
     def test_update_expr(self):
-        flow = self.parse('a[x] = 1;')
+        flow = self.stmt_parse('a[x] = 1;')
         state = MetaState({
             self.a: self.a,
             self.x: self.y,
@@ -134,7 +151,7 @@ class TestMetaState(unittest.TestCase):
         self.assertEqual(state, compare_state)
 
     def test_update_expr_multi(self):
-        flow = self.parse('b[x, y] = 1;')
+        flow = self.stmt_parse('b[x, y] = 1;')
         state = MetaState({
             self.b: self.b,
             self.x: self.y,

@@ -12,8 +12,7 @@ skip_statement = skip semicolon
 
 declaration_statement = variable_declaration semicolon
 
-assign_statement =
-    variable_or_declaration assign arithmetic_expression semicolon
+assign_statement = assign_part semicolon
 variable_or_declaration = variable_declaration / variable_subscript
 
 if_statement = if_else_block / if_then_block
@@ -22,12 +21,14 @@ if_else_block = if_then_block else code_block
 
 while_statement = while boolean_block code_block
 
-for_statement = for left_paren
-                    assign_statement semicolon boolean_block semicolon
-                    assign_statement
-                right_paren code_block
+for_statement =
+    for left_paren for_assign_part semicolon boolean_expression semicolon
+    for_assign_part right_paren code_block
 
 return_statement = return variable_list semicolon
+
+for_assign_part = assign_part / skip
+assign_part = variable_or_declaration assign arithmetic_expression
 
 boolean_block = left_paren boolean_expression right_paren
 code_block = left_curl statement right_curl

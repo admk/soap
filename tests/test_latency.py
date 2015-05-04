@@ -303,12 +303,14 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
 
     def test_full_flow(self):
         program = """
-        real[30] a;
-        int i = 0;
-        while (i < 10) {
-            a[i + 3] = a[i] + i;
-            i = i + 1;
-        };
+        def main(real[30] a) {
+            int i = 0;
+            while (i < 10) {
+                a[i + 3] = a[i] + i;
+                i = i + 1;
+            }
+            return a;
+        }
         """
         meta_state = flow_to_meta_state(parse(program))
         state = BoxState({
@@ -327,16 +329,18 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
 
     def test_loop_nest_flow(self):
         program = """
-        real[30] a;
-        int j = 0;
-        int i = 0;
-        while (j < 10) {
-            while (i < 10) {
-                a[i + j] = a[i] + i;
-                i = i + 1;
-            };
-            j = j + 1;
-        };
+        def main(real[30] a) {
+            int j = 0;
+            int i = 0;
+            while (j < 10) {
+                while (i < 10) {
+                    a[i + j] = a[i] + i;
+                    i = i + 1;
+                }
+                j = j + 1;
+            }
+            return a;
+        }
         """
         meta_state = flow_to_meta_state(parse(program))
         state = BoxState({
@@ -348,13 +352,15 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
 
     def test_multi_dim_flow(self):
         program = """
-        real[30, 30] b;
-        int i = 0;
-        int j = 3;
-        while (i < 10) {
-            b[i + j, j] = b[i, j] + j;
-            i = i + 1;
-        };
+        def main(real[30, 30] b) {
+            int i = 0;
+            int j = 3;
+            while (i < 10) {
+                b[i + j, j] = b[i, j] + j;
+                i = i + 1;
+            }
+            return b;
+        }
         """
         meta_state = flow_to_meta_state(parse(program))
         state = BoxState({

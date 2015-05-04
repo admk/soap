@@ -1,6 +1,7 @@
 from soap import logger
 from soap.common import base_dispatcher
 from soap.semantics.functions import arith_eval, bool_eval, fixpoint_eval
+from soap.program.flow import CompositionalFlow, WhileFlow
 
 
 class BaseState(base_dispatcher('visit')):
@@ -14,10 +15,10 @@ class BaseState(base_dispatcher('visit')):
     def generic_visit(self, flow):
         raise TypeError('No method to visit {!r}'.format(flow))
 
-    def visit_IdentityFlow(self, flow):
+    def visit_SkipFlow(self, flow):
         return self
 
-    visit_InputFlow = visit_OutputFlow = visit_IdentityFlow
+    visit_InputFlow = visit_OutputFlow = visit_SkipFlow
 
     def visit_AssignFlow(self, flow):
         return self[flow.var:arith_eval(flow.expr, self)]
@@ -43,12 +44,26 @@ class BaseState(base_dispatcher('visit')):
         fixpoint['last_entry']._warn_non_termination(flow)
         return fixpoint['exit']
 
+    def visit_ForFlow(self, flow):
+        state = self.transition(flow.init_flow)
+        loop_flows = flow.loop_flow
+        if isinstance(loop_flows, CompositionalFlow):
+            loop_flows = loop_flows.flows
+        else:
+            loop_flows = [loop_flows]
+        loop_flow = CompositionalFlow(loop_flows + [flow.incr_flow])
+        while_flow = WhileFlow(flow.conditional_expr, loop_flow)
+        return state.transition(while_flow)
+
     def visit_CompositionalFlow(self, flow):
         """Follows compositionality."""
         state = self
         for f in flow.flows:
             state = state.transition(f)
         return state
+
+    def visit_FunctionFlow(self, flow):
+        return self.transition(flow.body_flow)
 
     def is_fixpoint(self, other):
         """Fixpoint test, defaults to equality."""

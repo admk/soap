@@ -2,7 +2,7 @@ import unittest
 
 from soap.parser import parse
 from soap.program import generate
-from soap.semantics import flow_to_meta_state
+from soap.semantics import flow_to_meta_state, BoxState
 
 from examples import test_programs
 
@@ -16,9 +16,7 @@ class TestCodeGenerator(unittest.TestCase):
         print(program.format())
 
         state = flow_to_meta_state(program)
-        inputs = program.inputs()
-        outputs = program.outputs()
-        code = generate(state, inputs, outputs)
+        code = generate(state, BoxState(program.inputs), program.outputs)
 
         print('Transformed:')
         print(code.format())

@@ -1,5 +1,5 @@
-from soap.datatype import function_type
-from soap.expression import Variable
+from soap.datatype import function_type, type_cast
+from soap.expression import Variable, is_variable
 from soap.program import FunctionFlow
 from soap.parser.common import (
     _lift_child, _lift_dontcare, _lift_second, CommonVisitor
@@ -18,6 +18,10 @@ class ProgramVisitor(object):
         func = Variable(new_variable.name, function_type)
         return FunctionFlow(func, input_list, code_block)
 
+    def visit_input_list_or_empty(self, node, children):
+        input_list = _lift_child(self, node, children)
+        return input_list or []
+
     def visit_input_list(self, node, children):
         input_expr, maybe_input_list = children
         input_list = input_expr
@@ -29,8 +33,15 @@ class ProgramVisitor(object):
     visit_comma_input_list = _lift_second
 
     def visit_input_expr(self, node, children):
+        child = _lift_child(self, node, children)
+        if is_variable(child):
+            top = type_cast(child.dtype, top=True)
+            child = (child, top)
+        return [child]
+
+    def visit_input_assign_expr(self, node, children):
         variable, colon, number = children
-        return [(variable, number)]
+        return variable, number
 
     visit_def = _lift_dontcare
 

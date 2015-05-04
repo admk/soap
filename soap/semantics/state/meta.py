@@ -66,7 +66,7 @@ class MetaState(BaseState, dict):
     def widen(self, other):
         raise RuntimeError('Should not be called.')
 
-    def visit_IdentityFlow(self, flow):
+    def visit_SkipFlow(self, flow):
         return self
 
     def visit_AssignFlow(self, flow):

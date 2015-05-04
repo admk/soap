@@ -6,10 +6,10 @@ import tempfile
 import time
 
 import sh
-from akpytemp.utils import code_gobble
 
 from soap import logger
 from soap.analysis import frontier as analysis_frontier, Plot
+from soap.common.formatting import code_gobble
 from soap.context import context
 from soap.expression import is_expression
 from soap.flopoco.common import cd

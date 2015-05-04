@@ -14,48 +14,60 @@ context.repr = 'str'
 class TestUnroller(unittest.TestCase):
     def test_unroll_fix_expr(self):
         program = """
-        real x = 0.0;
-        while (x < 10) {
-            x = x + 1.0;
-        };
+        def main() {
+            real x = 0.0;
+            while (x < 10) {
+                x = x + 1.0;
+            }
+            return x;
+        }
         """
         x = Variable('x', real_type)
         fix_expr = flow_to_meta_state(parse(program))[x]
         unrolled = list(unroll_fix_expr(fix_expr, BoxState(bottom=True), 2))
         self.assertEqual(fix_expr, unrolled[0])
         program = """
-        real x = 0.0;
-        while (x < 10) {
-            if (x + 1.0 < 10) {
-                x = (x + 1.0) + 1.0;
-            } else {
-                x = x + 1.0;
-            };
-        };
+        def main() {
+            real x = 0.0;
+            while (x < 10) {
+                if (x + 1.0 < 10) {
+                    x = (x + 1.0) + 1.0;
+                } else {
+                    x = x + 1.0;
+                }
+            }
+            return x;
+        }
         """
         test_expr = flow_to_meta_state(parse(program))[x]
         self.assertEqual(test_expr, unrolled[1])
 
     def test_unroll_for_loop(self):
         program = """
-        int i = 0;
-        real x = 1.0;
-        while (i < 9) {
-            x = x * 1.1;
-            i = i + 1;
-        };
+        def main() {
+            int i = 0;
+            real x = 1.0;
+            while (i < 9) {
+                x = x * 1.1;
+                i = i + 1;
+            }
+            return x;
+        }
         """
         x = Variable('x', real_type)
         fix_expr = flow_to_meta_state(parse(program))[x]
         unrolled = list(unroll_fix_expr(fix_expr, BoxState(bottom=True), 2))
         program = """
-        int i = 0;
-        real x = 0.0;
-        while (i <= 7) {
-            x = (x * 1.1) * 1.1;
-            i = i + 2;
-        };
-        x = x * 1.1;
+        def main() {
+            int i = 0;
+            real x = 0.0;
+            while (i <= 7) {
+                x = (x * 1.1) * 1.1;
+                i = i + 2;
+            }
+            x = x * 1.1;
+            return x;
+        }
         """
         test_expr = flow_to_meta_state(parse(program))[x]
         for u in unrolled:

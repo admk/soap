@@ -84,7 +84,7 @@ class CTranspiler(base_dispatcher('transpile')):
 
     _empty = lambda flow: ''
 
-    transpile_IdentityFlow = _empty
+    transpile_SkipFlow = _empty
     transpile_InputFlow = transpile_OutputFlow = _empty
 
     def transpile_AssignFlow(self, flow):
