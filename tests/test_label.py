@@ -3,10 +3,10 @@ import unittest
 from soap.datatype import int_type, IntegerArrayType
 from soap.expression import (
     Variable, BinaryArithExpr, BinaryBoolExpr, operators, UnaryArithExpr,
-    SelectExpr, AccessExpr, UpdateExpr, Subscript,
+    SelectExpr, FixExpr, ForExpr, AccessExpr, UpdateExpr, Subscript,
 )
 from soap.semantics.error import IntegerInterval
-from soap.semantics.functions.label import _label
+from soap.semantics.functions.label import LabelGenerator
 from soap.semantics.label import LabelContext, LabelSemantics
 from soap.semantics.state.box import BoxState
 from soap.semantics.state.meta import MetaState
@@ -30,8 +30,9 @@ class TestLabel(unittest.TestCase):
         self.y_label = self.context.Label(self.y, IntegerInterval(3), None)
         self.z_label = self.context.Label(self.z, mat, None)
 
-    def label(self, expr):
-        return _label(expr, self.state, self.context)
+    def label(self, expr, state=None):
+        state = state or self.state
+        return LabelGenerator(self.context).execute(expr, state)
 
     def test_numeral(self):
         expr = IntegerInterval(1)
@@ -144,7 +145,91 @@ class TestLabel(unittest.TestCase):
         self.assertEqual(test_value, value)
 
     def test_FixExpr(self):
-        ...
+        init_state = MetaState({self.x: IntegerInterval(0)})
+        init_label, init_env = self.label(init_state)
+
+        invar = BoxState({self.x: IntegerInterval([0, 4])})
+        end_invar = BoxState({self.x: IntegerInterval([1, 5])})
+
+        loop_state = MetaState({
+            self.x: BinaryArithExpr(
+                operators.ADD_OP, self.x, IntegerInterval(1)),
+        })
+        loop_label, loop_env = self.label(loop_state, invar)
+
+        bool_expr = BinaryBoolExpr(
+            operators.LESS_OP, self.x, IntegerInterval(5))
+        bool_labsem = self.label(bool_expr, end_invar)
+        bool_label, _ = bool_labsem
+
+        expr = FixExpr(bool_expr, loop_state, self.x, init_state)
+
+        bound = IntegerInterval(5)
+        label = self.context.Label(
+            FixExpr(bool_label, loop_label, self.x, init_label), bound, invar)
+        label_expr = FixExpr(bool_labsem, loop_env, self.x, init_env)
+        env = {label: label_expr}
+        test_value = LabelSemantics(label, env)
+        value = self.label(expr)
+
+        self.assertEqual(test_value, value)
+
+    def test_ForExpr(self):
+        init_state = MetaState({
+            self.x: self.x,
+            self.y: IntegerInterval(2)
+        })
+        init_label, init_env = self.label(init_state)
+
+        iter_var = self.x
+
+        invar = BoxState({
+            self.x: IntegerInterval([0, 4]),
+            self.y: IntegerInterval([2, 14]),
+        })
+        end_invar = BoxState({
+            self.x: IntegerInterval([1, 5]),
+            self.y: IntegerInterval([5, 17]),
+        })
+
+        start_expr = IntegerInterval(0)
+        start_labsem = self.label(start_expr, init_label.bound)
+        start_label, start_env = start_labsem
+
+        stop_expr = IntegerInterval(5)
+        stop_labsem = self.label(stop_expr, end_invar)
+        stop_label, stop_env = stop_labsem
+
+        step_expr = IntegerInterval(1)
+        step_labsem = self.label(step_expr, end_invar)
+        step_label, step_env = step_labsem
+
+        loop_state = MetaState({
+            self.x: self.x,
+            self.y: BinaryArithExpr(
+                operators.ADD_OP, self.y, IntegerInterval(3)),
+        })
+        loop_label, loop_env = self.label(loop_state, invar)
+
+        bound = IntegerInterval(17)
+        label_expr = ForExpr(
+            iter_var, start_label, stop_label, step_label,
+            loop_label, self.y, init_label)
+        label = self.context.Label(label_expr, bound, invar)
+        label_expr = ForExpr(
+            iter_var, start_labsem, stop_labsem, step_labsem,
+            loop_env, self.y, init_env)
+        env = {label: label_expr}
+        test_value = LabelSemantics(label, env)
+
+        expr = ForExpr(
+            iter_var, start_expr, stop_expr, step_expr, loop_state, self.y,
+            init_state)
+        value = self.label(expr)
+
+        print(value)
+        print(test_value)
+        self.assertEqual(test_value, value)
 
     def test_MetaState(self):
         meta_state = MetaState({self.x: self.x, self.y: self.y})

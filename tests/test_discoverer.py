@@ -45,11 +45,10 @@ class TestUnroller(unittest.TestCase):
     def test_unroll_for_loop(self):
         program = """
         def main() {
-            int i = 0;
             real x = 1.0;
-            while (i < 9) {
+            real y = 2.0;
+            for (int i = 0; i < y; i = i + 1) {
                 x = x * 1.1;
-                i = i + 1;
             }
             return x;
         }
@@ -61,17 +60,16 @@ class TestUnroller(unittest.TestCase):
             fix_expr, BoxState(bottom=True), depth))
         program = """
         def main() {
-            int i = 0;
             real x = 1.0;
-            while (i <= 7) {
+            for (int i = 0; i <= 7; i = i + 2) {
                 x = (x * 1.1) * 1.1;
-                i = i + 2;
             }
             x = x * 1.1;
             return x;
         }
         """
         test_expr = flow_to_meta_state(parse(program))[x]
+        print(unrolled[1].format())
         self.assertEqual(test_expr, unrolled[1])
 
 

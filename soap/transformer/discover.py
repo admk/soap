@@ -19,7 +19,6 @@ from soap.semantics import BoxState, ErrorSemantics, MetaState
 from soap.semantics.functions import (
     arith_eval_meta_state, unroll_fix_expr, fixpoint_eval,
 )
-from soap.semantics.functions.label import _label
 from soap.transformer.arithmetic import MartelTreeTransformer
 from soap.transformer.utils import (
     closure, greedy_frontier_closure, thick_frontier_closure
@@ -190,7 +189,6 @@ class BaseDiscoverer(base_dispatcher('discover')):
     def _discover_multiple_expressions(
             self, var_expr_state, state, out_vars):
 
-        _, env = _label(var_expr_state, state)
         var_list = sorted(set(var_expr_state.keys()) | set(out_vars), key=hash)
 
         logger.info('Discovering state: {}'.format(var_expr_state))

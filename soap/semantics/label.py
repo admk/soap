@@ -67,7 +67,7 @@ class Label(label_namedtuple_type, Flyweight):
         return 'p_{}'.format(self.label_value)
 
     def __str__(self):
-        s = 'l{}'.format(self.label_value)
+        s = 'l{}({})'.format(self.label_value, self.bound)
         return s
 
     def __repr__(self):

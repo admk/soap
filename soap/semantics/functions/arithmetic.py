@@ -70,8 +70,11 @@ class ArithmeticEvaluator(base_dispatcher()):
         return true_value | false_value
 
     def execute_FixExpr(self, expr, state):
-        from soap.semantics.functions import fix_expr_eval
+        from soap.semantics.functions.fixpoint import fix_expr_eval
         return fix_expr_eval(expr, state)
+
+    def execute_ForExpr(self, expr, state):
+        return self.execute_FixExpr(expr.to_fix_expr(), state)
 
     def execute_UnrollExpr(self, expr, state):
         from soap.semantics.functions import unroll_eval

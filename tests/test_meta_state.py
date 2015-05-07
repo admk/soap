@@ -1,10 +1,11 @@
 import unittest
 
 from soap.datatype import int_type, IntegerArrayType
-from soap.expression.fixpoint import FixExpr
+from soap.expression.fixpoint import FixExpr, ForExpr
 from soap.expression.linalg import AccessExpr, UpdateExpr
 from soap.expression.variable import Variable
 from soap.parser import stmt_parse, expr_parse
+from soap.semantics.error import IntegerInterval
 from soap.semantics.state.meta import MetaState
 
 
@@ -61,22 +62,41 @@ class TestMetaState(unittest.TestCase):
             self.x: self.x,
             self.z: self.z,
         })
-        loop_state = MetaState({
+        fix_loop_state = MetaState({
             self.x: self.expr_parse('x + 1'),
             self.z: self.z,
         })
+        for_loop_state = init_state
+
         fix_expr_x = FixExpr(
-            self.expr_parse('x < z'), loop_state, self.x, init_state)
+            self.expr_parse('x < z'), fix_loop_state, self.x, init_state)
+        for_expr_x = ForExpr(
+            self.x, self.x, self.z, IntegerInterval(1), for_loop_state, self.x,
+            init_state)
+
         init_state = init_state.immu_update(self.y, self.y)
-        loop_state = loop_state.immu_update(self.y, self.expr_parse('y * x'))
+        fix_loop_state = fix_loop_state.immu_update(
+            self.y, self.expr_parse('y * x'))
+        for_loop_state = for_loop_state.immu_update(
+            self.y, self.expr_parse('y * x'))
+
         fix_expr_y = FixExpr(
-            self.expr_parse('x < z'), loop_state, self.y, init_state)
-        compare_state = MetaState({
+            self.expr_parse('x < z'), fix_loop_state, self.y, init_state)
+        for_expr_y = ForExpr(
+            self.x, self.x, self.z, IntegerInterval(1), for_loop_state, self.y,
+            init_state)
+
+        fix_compare_state = MetaState({
             self.x: fix_expr_x,
             self.y: fix_expr_y,
             self.z: self.z,
         })
-        return compare_state
+        for_compare_state = MetaState({
+            self.x: for_expr_x,
+            self.y: for_expr_y,
+            self.z: self.z,
+        })
+        return fix_compare_state, for_compare_state
 
     def test_visit_WhileFlow(self):
         flow = self.stmt_parse('while (x < z) {y = y * x; x = x + 1;}')
@@ -86,7 +106,7 @@ class TestMetaState(unittest.TestCase):
             self.z: self.z,
         })
         state = state.visit_WhileFlow(flow)
-        self.assertEqual(state, self._loop_compare_state())
+        self.assertEqual(state, self._loop_compare_state()[0])
 
     def test_visit_ForFlow(self):
         flow = self.stmt_parse('for (skip; x < z; x = x + 1) {y = y * x;}')
@@ -96,7 +116,16 @@ class TestMetaState(unittest.TestCase):
             self.z: self.z,
         })
         state = state.visit_ForFlow(flow)
-        self.assertEqual(state, self._loop_compare_state())
+        fix_compare_state, for_compare_state = self._loop_compare_state()
+        self.assertEqual(state, for_compare_state)
+        self.assertFalse(state[self.y].has_inner_loops)
+        self.assertTrue(state[self.y].has_fixed_iter_pattern)
+        self.assertTrue(state[self.y].is_pipelineable)
+        state = MetaState({
+            var: expr.to_fix_expr() if isinstance(expr, ForExpr) else expr
+            for var, expr in state.items()
+        })
+        self.assertEqual(state, fix_compare_state)
 
     def test_visit_CompositionalFlow(self):
         flow = self.stmt_parse('x = x + 1; x = x * 2;')

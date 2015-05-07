@@ -304,10 +304,8 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
     def test_full_flow(self):
         program = """
         def main(real[30] a) {
-            int i = 0;
-            while (i < 10) {
+            for (int i = 0; i < 10; i = i + 1) {
                 a[i + 3] = a[i] + i;
-                i = i + 1;
             }
             return a;
         }

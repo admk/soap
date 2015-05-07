@@ -1,6 +1,20 @@
 # Ultra Short Term FIXMEs
 
 * [ ] Latency analysis
+    - [ ] Resource usage with sharing
+    - [ ] Benchmarks
+    - [ ] Comparison with actual results
+    - [ ] Transform `AccessExpr` and `UpdateExpr`
+
+* [ ] For loop flow complete
+    - [X] Meta state analysis
+    - [X] Error analysis
+    - [X] Label analysis
+    - [ ] Latency analysis
+    - [ ] Discovering
+    - [ ] Unrolling
+    - [ ] Resource usage analysis
+    - [ ] Code generation
 
 
 # Ugliness, fix if have the time to
@@ -15,9 +29,7 @@
 # Future Considerations
 
 * [ ] Boolean-typed variables
-* [ ] Relational domain (if possible), because currently branch constraints
-  could be too restrictive to be useful, and sometimes constraints cannot
-  be discovered
+* [ ] Relational domain (if possible)
 * [ ] Multiple mantissa widths
 * [ ] Fixed point format
 * [ ] Fix and write more test cases

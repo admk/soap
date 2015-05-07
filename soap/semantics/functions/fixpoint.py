@@ -49,7 +49,7 @@ def fixpoint_eval(state, bool_expr, loop_meta_state=None, loop_flow=None):
     # initial state values
     entry_state = entry_join_state = exit_join_state = state.empty()
     prev_entry_state = prev_entry_join_state = state.empty()
-    prev_loop_state = state.empty()
+    prev_loop_state = loop_end_join_state = state.empty()
 
     while True:
         iteration += 1
@@ -90,6 +90,8 @@ def fixpoint_eval(state, bool_expr, loop_meta_state=None, loop_flow=None):
             raise ValueError(
                 'loop_flow and loop_meta_state are both unspecified.')
 
+        loop_end_join_state = loop_state | loop_end_join_state
+
         # widening
         loop_state = _widen(loop_state, prev_loop_state, iteration)
 
@@ -100,6 +102,7 @@ def fixpoint_eval(state, bool_expr, loop_meta_state=None, loop_flow=None):
         'exit': exit_join_state,
         'last_entry': entry_state,
         'last_exit': loop_state,
+        'end': loop_end_join_state,
     }
 
 

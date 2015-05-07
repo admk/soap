@@ -31,6 +31,11 @@ class Flow(object):
     def format(self):
         raise NotImplementedError('Override this method')
 
+    def __add__(self, other):
+        return CompositionalFlow(
+            getattr(self, 'flows', (self, )) +
+            getattr(other, 'flows', (other, )))
+
     def __eq__(self, other):
         raise NotImplementedError('Override this method')
 
@@ -201,12 +206,6 @@ class CompositionalFlow(Flow):
         for flow in self.flows:
             state = flow.transition(state)
         return state
-
-    def __add__(self, other):
-        try:
-            return CompositionalFlow(self.flows + other.flows)
-        except AttributeError:
-            return CompositionalFlow(self.flows + (other, ))
 
     def __bool__(self):
         return any(self.flows)

@@ -75,3 +75,15 @@ class BaseState(base_dispatcher('visit')):
 
     def transition(self, flow):
         return self.__call__(flow)
+
+    def update(self, key, value):
+        raise AttributeError('Immutable object has no "update" method.')
+
+    def immu_update(self, key, value):
+        """
+        Generate a new copy of this MetaState, and update the content with a
+        new pair `key`: `value`.
+        """
+        new_mapping = dict(self)
+        new_mapping[self._cast_key(key)] = self._cast_value(key, value)
+        return self.__class__(new_mapping)

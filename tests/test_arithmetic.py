@@ -3,7 +3,7 @@ import unittest
 from soap.datatype import int_type, real_type, IntegerArrayType
 from soap.expression import (
     operators, UnaryArithExpr, BinaryArithExpr, SelectExpr,
-    FixExpr, AccessExpr, UpdateExpr, BinaryBoolExpr, Variable,
+    FixExpr, ForExpr, AccessExpr, UpdateExpr, BinaryBoolExpr, Variable,
 )
 from soap.semantics.error import IntegerInterval, ErrorSemantics
 from soap.semantics.functions.arithmetic import arith_eval
@@ -85,6 +85,27 @@ class TestArithmeticEvaluator(unittest.TestCase):
         })
         test_expr = FixExpr(bool_expr, loop_state, self.x, init_state)
         test_value = IntegerInterval(3)
+        value = arith_eval(test_expr, self.state)
+        self.assertEqual(test_value, value)
+
+    def test_ForExpr(self):
+        iter_var = self.x
+        start_expr = self.x
+        stop_expr = IntegerInterval(10)
+        step_expr = IntegerInterval(1)
+        loop_state = MetaState({
+            self.y: BinaryArithExpr(
+                operators.ADD_OP, self.y, IntegerInterval(1)),
+            self.x: self.x,
+        })
+        init_state = MetaState({
+            self.x: IntegerInterval(0),
+            self.y: self.y,
+        })
+        test_expr = ForExpr(
+            iter_var, start_expr, stop_expr, step_expr, loop_state, self.y,
+            init_state)
+        test_value = IntegerInterval(13)
         value = arith_eval(test_expr, self.state)
         self.assertEqual(test_value, value)
 
