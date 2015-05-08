@@ -12,7 +12,7 @@ from soap.analysis import (
 from soap.common import base_dispatcher, cached
 from soap.context import context
 from soap.expression import (
-    expression_factory, SelectExpr, FixExpr, operators, UnrollExpr
+    expression_factory, SelectExpr, FixExpr, operators
 )
 from soap.program import Flow
 from soap.semantics import BoxState, ErrorSemantics, MetaState
@@ -23,38 +23,6 @@ from soap.transformer.arithmetic import MartelTreeTransformer
 from soap.transformer.utils import (
     closure, greedy_frontier_closure, thick_frontier_closure
 )
-
-
-class Unroller(base_dispatcher('unroll')):
-    def generic_unroll(self, expr):
-        raise TypeError('Do not know how to unroll {!r}'.format(expr))
-
-    def _unroll_atom(self, expr):
-        return expr
-
-    unroll_numeral = _unroll_atom
-    unroll_Variable = _unroll_atom
-
-    def _unroll_expression(self, expr):
-        return expression_factory(expr.op, *[self(arg) for arg in expr.args])
-
-    unroll_UnaryArithExpr = unroll_BinaryArithExpr = _unroll_expression
-    unroll_UnaryBoolExpr = unroll_BinaryBoolExpr = _unroll_expression
-    unroll_Subscript = unroll_AccessExpr = _unroll_expression
-    unroll_SelectExpr = unroll_UpdateExpr = _unroll_expression
-
-    def unroll_FixExpr(self, expr):
-        init_state = self(expr.init_state)
-        loop_state = self(expr.loop_state)
-        fix_expr = FixExpr(
-            expr.bool_expr, loop_state, expr.loop_var, init_state)
-        return UnrollExpr(fix_expr, loop_state, context.unroll_depth)
-
-    def unroll_MetaState(self, expr):
-        return MetaState({v: self(e) for v, e in expr.items()})
-
-
-unroll = Unroller()
 
 
 class BaseDiscoverer(base_dispatcher('discover')):

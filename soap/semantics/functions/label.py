@@ -90,53 +90,6 @@ class LabelGenerator(base_dispatcher()):
         env = {label: expr}
         return LabelSemantics(label, env)
 
-    def execute_ForExpr(self, expr, state):
-        from soap.semantics.functions import fixpoint_eval, expand_expr
-
-        iter_var = expr.iter_var
-        start = expr.start_expr
-        stop = expr.stop_expr
-        step = expr.step_expr
-        loop_var = expr.loop_var
-
-        init_labsem = self(expr.init_state, state)
-        init_label, init_env = init_labsem
-
-        start_labsem = self(start, init_label.bound)
-        start_label, _ = start_labsem
-
-        loop_init_state = init_label.bound.immu_update(
-            iter_var, start_label.bound)
-        bool_expr = expression_factory(operators.LESS_OP, expr.iter_var, stop)
-        loop_state = expr.loop_state
-        incr_expr = expression_factory(operators.ADD_OP, expr.iter_var, step)
-        incr_expr = expand_expr(incr_expr, loop_state)
-        loop_incr_state = loop_state.immu_update(iter_var, incr_expr)
-        loop_info = fixpoint_eval(loop_init_state, bool_expr, loop_incr_state)
-        loop_labsem = self(loop_state, loop_info['entry'])
-        loop_label, loop_env = loop_labsem
-
-        step_labsem = self(step, loop_info['end'])
-        step_label, _ = step_labsem
-        stop_labsem = self(stop, loop_info['end'])
-        stop_label, _ = stop_labsem
-
-        label_expr = expr.__class__(
-            iter_var, start_label, stop_label, step_label, loop_label,
-            loop_var, init_label)
-
-        loop_var_bound = loop_info['exit'][loop_var]
-        label = self.Label(label_expr, loop_var_bound, loop_info['entry'])
-
-        expr = expr.__class__(
-            iter_var, start_labsem, stop_labsem, step_labsem,
-            loop_env, loop_var, init_env)
-        env = {label: expr}
-        return LabelSemantics(label, env)
-
-    def execute_UnrollExpr(self, expr, state):
-        return self(expr.a1, state)
-
     def execute_MetaState(self, expr, state):
         from soap.semantics.state.meta import MetaState
         from soap.semantics.functions import arith_eval_meta_state

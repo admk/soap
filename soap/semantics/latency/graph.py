@@ -22,6 +22,7 @@ from soap.semantics.latency.ii import rec_init_int_search
 
 
 def max_latency(graph):
+    """Calculates the longest path in an acyclic graph.  """
     dist = {}
     nodes = networkx.topological_sort(graph)
     for to_node in nodes:
@@ -144,8 +145,8 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
     }
 
     def _add_array_loop(self, loop_graph, from_node, to_node):
-        # we do it for flow dependence only WAR and WAW are not true
-        # dependences, as read/write accesses can always be performed
+        # we do it for flow dependence only WAR and WAW are not dependences
+        # that impact II, as read/write accesses can always be performed
         # consecutively.
         from_expr = stitch_expr(from_node, self.env)
         to_expr = stitch_expr(to_node, self.env)

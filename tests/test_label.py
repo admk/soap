@@ -3,7 +3,7 @@ import unittest
 from soap.datatype import int_type, IntegerArrayType
 from soap.expression import (
     Variable, BinaryArithExpr, BinaryBoolExpr, operators, UnaryArithExpr,
-    SelectExpr, FixExpr, ForExpr, AccessExpr, UpdateExpr, Subscript,
+    SelectExpr, FixExpr, AccessExpr, UpdateExpr, Subscript,
 )
 from soap.semantics.error import IntegerInterval
 from soap.semantics.functions.label import LabelGenerator
@@ -172,63 +172,6 @@ class TestLabel(unittest.TestCase):
         test_value = LabelSemantics(label, env)
         value = self.label(expr)
 
-        self.assertEqual(test_value, value)
-
-    def test_ForExpr(self):
-        init_state = MetaState({
-            self.x: self.x,
-            self.y: IntegerInterval(2)
-        })
-        init_label, init_env = self.label(init_state)
-
-        iter_var = self.x
-
-        invar = BoxState({
-            self.x: IntegerInterval([0, 4]),
-            self.y: IntegerInterval([2, 14]),
-        })
-        end_invar = BoxState({
-            self.x: IntegerInterval([1, 5]),
-            self.y: IntegerInterval([5, 17]),
-        })
-
-        start_expr = IntegerInterval(0)
-        start_labsem = self.label(start_expr, init_label.bound)
-        start_label, start_env = start_labsem
-
-        stop_expr = IntegerInterval(5)
-        stop_labsem = self.label(stop_expr, end_invar)
-        stop_label, stop_env = stop_labsem
-
-        step_expr = IntegerInterval(1)
-        step_labsem = self.label(step_expr, end_invar)
-        step_label, step_env = step_labsem
-
-        loop_state = MetaState({
-            self.x: self.x,
-            self.y: BinaryArithExpr(
-                operators.ADD_OP, self.y, IntegerInterval(3)),
-        })
-        loop_label, loop_env = self.label(loop_state, invar)
-
-        bound = IntegerInterval(17)
-        label_expr = ForExpr(
-            iter_var, start_label, stop_label, step_label,
-            loop_label, self.y, init_label)
-        label = self.context.Label(label_expr, bound, invar)
-        label_expr = ForExpr(
-            iter_var, start_labsem, stop_labsem, step_labsem,
-            loop_env, self.y, init_env)
-        env = {label: label_expr}
-        test_value = LabelSemantics(label, env)
-
-        expr = ForExpr(
-            iter_var, start_expr, stop_expr, step_expr, loop_state, self.y,
-            init_state)
-        value = self.label(expr)
-
-        print(value)
-        print(test_value)
         self.assertEqual(test_value, value)
 
     def test_MetaState(self):

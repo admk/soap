@@ -1,19 +1,16 @@
 # Ultra Short Term FIXMEs
 
 * [ ] Latency analysis
-    - [ ] Resource usage with sharing
-    - [ ] Benchmarks
-    - [ ] Comparison with actual results
-    - [ ] Transform `AccessExpr` and `UpdateExpr`
-
-* [ ] For loop flow complete
     - [X] Meta state analysis
     - [X] Error analysis
     - [X] Label analysis
-    - [ ] Latency analysis
-    - [ ] Discovering
-    - [ ] Unrolling
-    - [ ] Resource usage analysis
+    - [X] Latency analysis
+    - [X] Discovering
+    - [-] Unrolling
+    - [ ] Resource usage with sharing
+    - [ ] Transform `AccessExpr` and `UpdateExpr`
+    - [ ] Benchmarks
+    - [ ] Comparison with actual results
     - [ ] Code generation
 
 
