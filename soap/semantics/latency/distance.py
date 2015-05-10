@@ -23,6 +23,7 @@ def dependence_vector(iter_vars, iter_slices, source, sink, invariant=None):
     if len(source.args) != len(sink.args):
         raise ValueError('Source/sink subscript length mismatch.')
 
+    inner_most_iter_var = iter_vars[-1]
     dist_vars = []
     constraints = []
     exists_vars = set()
@@ -38,11 +39,14 @@ def dependence_vector(iter_vars, iter_slices, source, sink, invariant=None):
         bound_cstr = ''
         if lower != -inf:
             bound_cstr += '{lower} <= '
-        bound_cstr += '__src_{iter_var} < __snk_{iter_var}'
+        bound_cstr += '__src_{iter_var} {op} __snk_{iter_var}'
         if upper != inf:
             bound_cstr += ' < {upper}'
-        constraints.append(bound_cstr.format(
-            iter_var=var, lower=iter_slice.start, upper=iter_slice.stop))
+        compare_op = '<' if var == inner_most_iter_var else '<='
+        bound_cstr = bound_cstr.format(
+            iter_var=var, op=compare_op, lower=iter_slice.start,
+            upper=iter_slice.stop)
+        constraints.append(bound_cstr)
 
         step = iter_slice.step
         if step <= 0:
@@ -83,7 +87,7 @@ def dependence_vector(iter_vars, iter_slices, source, sink, invariant=None):
 
     problem = '{{ [{dist_vars}] : exists ( {exists_vars} : {constraints} ) }}'
     problem = problem.format(
-        dist_vars=', '.join(reversed(dist_vars)),
+        dist_vars=', '.join(dist_vars),
         iter_vars=', '.join(v.name for v in iter_vars),
         constraints=' and '.join(constraints),
         exists_vars=', '.join(v.name for v in exists_vars))
@@ -101,7 +105,7 @@ def dependence_vector(iter_vars, iter_slices, source, sink, invariant=None):
     for i in range(len(dist_vars)):
         val = raw_dist_vect.get_coordinate_val(islpy.dim_type.set, i)
         dist_vect.append(val.to_python())
-    return tuple(reversed(dist_vect))
+    return tuple(dist_vect)
 
 
 def dependence_distance(dist_vect, iter_slices):

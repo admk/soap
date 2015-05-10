@@ -14,7 +14,6 @@ from soap.expression import (
 from soap.lattice import join
 from soap.program.graph import DependenceGraph
 from soap.semantics import is_numeral, Label
-from soap.semantics.functions import label
 from soap.semantics.latency.common import (
     DependenceType, iter_point_count, LATENCY_TABLE
 )
@@ -106,8 +105,7 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
         else:
             out_vars = [loop_var]
 
-        _, label_kernel = label(fix_expr.loop_state, None, None, fusion=False)
-        super().__init__(label_kernel, out_vars)
+        super().__init__(extractor.label_kernel, out_vars)
 
         self.is_pipelined = is_pipelined
         self.fix_expr = fix_expr
