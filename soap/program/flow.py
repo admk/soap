@@ -330,6 +330,16 @@ class _VariableSetGenerator(base_dispatcher()):
         flow_vars = self(flow.loop_flow, input, output)
         return in_vars | flow_vars
 
+    def execute_ForFlow(self, flow, input, output):
+        if input:
+            in_vars = flow.conditional_expr.vars()
+        else:
+            in_vars = set()
+        flow_vars = self(flow.init_flow, input, output)
+        flow_vars |= self(flow.loop_flow, input, output)
+        flow_vars |= self(flow.incr_flow, input, output)
+        return in_vars | flow_vars
+
     def execute_CompositionalFlow(self, flow, input, output):
         var_set = set()
         for f in flow.flows:

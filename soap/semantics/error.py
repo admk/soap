@@ -223,6 +223,11 @@ class Interval(Lattice):
     def max(self, v):
         self._max = v
 
+    def to_constant(self):
+        if self.min != self.max:
+            raise ValueError('Value is not a constant.')
+        return self.min
+
     @_decorate_coerce
     def join(self, other, cls):
         if cls is not None:

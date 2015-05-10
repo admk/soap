@@ -46,8 +46,7 @@ class TestUnroller(unittest.TestCase):
         program = """
         def main() {
             real x = 1.0;
-            real y = 2.0;
-            for (int i = 0; i < y; i = i + 1) {
+            for (int i = 0; i < 9; i = i + 1) {
                 x = x * 1.1;
             }
             return x;
@@ -70,6 +69,7 @@ class TestUnroller(unittest.TestCase):
         """
         test_expr = flow_to_meta_state(parse(program))[x]
         print(unrolled[1].format())
+        print(test_expr.format())
         self.assertEqual(test_expr, unrolled[1])
 
 

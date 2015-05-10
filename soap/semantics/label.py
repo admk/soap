@@ -14,11 +14,7 @@ from soap.semantics.error import ErrorSemantics, IntegerInterval
 
 _label_map = {}
 _label_context_maps = {}
-
-
-class _Dummy(object):
-    def __hash__(self):
-        return id(self)
+_label_size = 0
 
 
 def fresh_int(hashable, _lmap=_label_map):
@@ -26,9 +22,14 @@ def fresh_int(hashable, _lmap=_label_map):
     Generates a fresh int for the label of `statement`, within the known
     label mapping `lmap`.
     """
-    if hashable is None:
-        hashable = _Dummy()
-    return _lmap.setdefault(hashable, len(_lmap) + 1)
+    label_value = _lmap.get(hashable)
+    if label_value is not None:
+        return label_value
+    global _label_size
+    _label_size += 1
+    _lmap[hashable] = _label_size
+    _lmap[_label_size] = hashable
+    return _label_size
 
 
 label_namedtuple_type = namedtuple(
@@ -60,6 +61,10 @@ class Label(label_namedtuple_type, Flyweight):
     def dtype(self):
         return type_of(self.bound)
 
+    def expr(self):
+        lmap = _label_context_maps[self.context_id]
+        return lmap[self.label_value]
+
     def signal_name(self):
         return 's_{}'.format(self.label_value)
 
@@ -86,10 +91,10 @@ class LabelContext(object):
                 Label(description, None, None).label_value)
         self.description = description
         self.out_vars = out_vars
+        self.lmap = _label_context_maps.setdefault(self.description, {})
 
     def Label(self, statement, bound, invariant):
-        lmap = _label_context_maps.setdefault(self.description, {})
-        label_value = fresh_int(statement, _lmap=lmap)
+        label_value = fresh_int(statement, _lmap=self.lmap)
         return Label(
             statement, bound=bound, invariant=invariant,
             context_id=self.description, _label_value=label_value)
@@ -307,6 +312,9 @@ class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
             return luts
 
         return accumulate_luts_count(self.env)
+
+    def expr(self):
+        return self.label.expr()
 
     def __iter__(self):
         return iter((self.label, self.env))

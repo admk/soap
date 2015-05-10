@@ -4,6 +4,7 @@ import math
 
 import networkx
 
+from soap import logger
 from soap.common.cache import cached
 from soap.datatype import ArrayType
 from soap.expression import (
@@ -13,10 +14,14 @@ from soap.expression import (
 from soap.lattice import join
 from soap.program.graph import DependenceGraph
 from soap.semantics import is_numeral, Label
+from soap.semantics.functions import label
 from soap.semantics.latency.common import (
-    stitch_expr, DependenceType, iter_point_count, LATENCY_TABLE
+    DependenceType, iter_point_count, LATENCY_TABLE
 )
-from soap.semantics.latency.extract import ForLoopExtractor
+from soap.semantics.latency.extract import (
+    ForLoopNestExtractor, ForLoopExtractionFailureException,
+    ForLoopNestExtractionFailureException
+)
 from soap.semantics.latency.distance import dependence_eval
 from soap.semantics.latency.ii import rec_init_int_search
 
@@ -37,17 +42,16 @@ class SequentialLatencyDependenceGraph(DependenceGraph):
 
     latency_table = LATENCY_TABLE
 
-    def __init__(self, env, state, out_vars):
-        self.state = state
+    def __init__(self, env, out_vars):
         super().__init__(env, out_vars)
 
-    def _loop_latency(self, node, expr):
+    def invariant(self, node):
         if isinstance(node, OutputVariableTuple):
-            invariant = join(l.invariant for l in node)
-        else:
-            invariant = node.invariant
-        graph = LoopLatencyDependenceGraph(expr, invariant)
-        return graph.latency()
+            return join(l.invariant for l in node)
+        return node.invariant
+
+    def _loop_latency(self, node, expr):
+        return LoopLatencyDependenceGraph(node.expr()).latency()
 
     def _node_latency(self, node):
         if isinstance(node, InputVariable):
@@ -88,23 +92,27 @@ class SequentialLatencyDependenceGraph(DependenceGraph):
 
 
 class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
-    def __init__(self, fix_expr, invariant):
-        loop = ForLoopExtractor(fix_expr, invariant)
-        loop_var = loop.loop_var
+    def __init__(self, fix_expr):
+        is_pipelined = True
+        try:
+            extractor = ForLoopNestExtractor(fix_expr)
+        except (ForLoopExtractionFailureException,
+                ForLoopNestExtractionFailureException):
+            is_pipelined = False
+
+        loop_var = fix_expr.loop_var
         if isinstance(loop_var, OutputVariableTuple):
             out_vars = loop_var.args
         else:
-            out_vars = [loop.loop_var]
-        kernel = loop.label_kernel
-        super().__init__(kernel, invariant, out_vars)
+            out_vars = [loop_var]
 
-        self.invariant = invariant
-        self.is_pipelined = loop.is_for_loop and not loop.has_inner_loops
+        _, label_kernel = label(fix_expr.loop_state, None, None, fusion=False)
+        super().__init__(label_kernel, out_vars)
 
-        if loop.is_for_loop:
-            self.iter_vars = [loop.iter_var]
-            self.iter_slices = [loop.iter_slice]
-
+        self.is_pipelined = is_pipelined
+        self.fix_expr = fix_expr
+        self.iter_vars = extractor.iter_vars
+        self.iter_slices = extractor.iter_slices
         self._init_loop_graph()
 
     def _init_loop_graph(self):
@@ -148,8 +156,8 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
         # we do it for flow dependence only WAR and WAW are not dependences
         # that impact II, as read/write accesses can always be performed
         # consecutively.
-        from_expr = stitch_expr(from_node, self.env)
-        to_expr = stitch_expr(to_node, self.env)
+        from_expr = from_node.expr()
+        to_expr = to_node.expr()
         if from_expr.true_var() != to_expr.true_var():
             # access different arrays
             return
@@ -177,8 +185,7 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
         source_expr = to_expr.subscript
         sink_expr = from_expr.subscript
         distance = dependence_eval(
-            self.iter_vars, self.iter_slices, self.invariant,
-            source_expr, sink_expr)
+            self.iter_vars, self.iter_slices, source_expr, sink_expr)
         if distance is None:
             # no dependence
             return
@@ -212,10 +219,9 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
         except AttributeError:
             pass
         if self.is_pipelined:
+            logger.debug('Pipelining ', self.fix_expr)
             self._initiation_interval = rec_init_int_search(self.loop_graph)
         else:
-            from soap import logger
-            logger.warning('Cannot pipeline loop.')
             self._initiation_interval = self.depth()
         return self._initiation_interval
 
@@ -227,7 +233,7 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
             return self._depth
 
     def trip_count(self):
-        trip_counts = [iter_point_count(s, False) for s in self.iter_slices]
+        trip_counts = [iter_point_count(s) for s in self.iter_slices]
         return functools.reduce(lambda x, y: x * y, trip_counts)
 
     def latency(self):
@@ -245,17 +251,15 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
 
 
 @cached
-def latency_graph(expr, state, out_vars=None):
-    from soap.semantics import BoxState, label
-    if not state:
-        state = BoxState(bottom=True)
-    label, env = label(expr, state, out_vars)
+def latency_graph(expr, out_vars=None):
+    from soap.semantics import label
+    label, env = label(expr, None, out_vars)
     if is_expression(expr):
         # expressions do not have out_vars, but have an output, in this case
         # ``label`` is its output variable
         out_vars = [label]
-    return SequentialLatencyDependenceGraph(env, state, out_vars)
+    return SequentialLatencyDependenceGraph(env, out_vars)
 
 
-def latency_eval(expr, state, out_vars=None):
-    return latency_graph(expr, state, out_vars).latency()
+def latency_eval(expr, out_vars=None):
+    return latency_graph(expr, out_vars).latency()

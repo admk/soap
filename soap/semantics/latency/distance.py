@@ -11,14 +11,14 @@ class ISLIndependenceException(Exception):
     """No dependence.  """
 
 
-def dependence_vector(iter_vars, iter_slices, invariant, source, sink):
+def dependence_vector(iter_vars, iter_slices, source, sink, invariant=None):
     """
     Uses ISL for dependence testing and returns the dependence vector.
 
     iter_vars: Iteration variables
     iter_slices: Iteration starts, stops and steps; stop is inclusive!
-    loop_state: Loop invariant
     source, sink: Subscript objects
+    invariant: Loop invariant
     """
     if len(source.args) != len(sink.args):
         raise ValueError('Source/sink subscript length mismatch.')
@@ -34,10 +34,15 @@ def dependence_vector(iter_vars, iter_slices, invariant, source, sink):
         constraints.append(
             '{dist_var} = __snk_{iter_var} - __src_{iter_var}'
             .format(dist_var=dist_var, iter_var=var))
-        constraints.append(
-            '{lower} <= __src_{iter_var} < __snk_{iter_var} <= {upper}'
-            .format(
-                iter_var=var, lower=iter_slice.start, upper=iter_slice.stop))
+
+        bound_cstr = ''
+        if lower != -inf:
+            bound_cstr += '{lower} <= '
+        bound_cstr += '__src_{iter_var} < __snk_{iter_var}'
+        if upper != inf:
+            bound_cstr += ' < {upper}'
+        constraints.append(bound_cstr.format(
+            iter_var=var, lower=iter_slice.start, upper=iter_slice.stop))
 
         step = iter_slice.step
         if step <= 0:
@@ -55,7 +60,7 @@ def dependence_vector(iter_vars, iter_slices, invariant, source, sink):
     for src_idx, snk_idx in zip(source.args, sink.args):
         if not (is_isl_expr(src_idx) and is_isl_expr(snk_idx)):
             raise NotImplementedError(
-                'Handle the case when expressions cannot be handled by ISL.')
+                'Non-linear expression cannot be handled by ISL.')
         src_idx = rename_var_in_expr(src_idx, iter_vars, '__src_{}')
         snk_idx = rename_var_in_expr(snk_idx, iter_vars, '__snk_{}')
         constraints.append('{} = {}'.format(src_idx, snk_idx))
@@ -65,7 +70,8 @@ def dependence_vector(iter_vars, iter_slices, invariant, source, sink):
         exists_vars |= {
             Variable('__snk_{}'.format(v.name), v.dtype) for v in iter_vars}
 
-    for var in exists_vars:
+    do_invar_vars = exists_vars if invariant else []
+    for var in do_invar_vars:
         if var.name.startswith('__'):
             # __src_*, __snk_*, __stride_*
             continue
@@ -86,7 +92,7 @@ def dependence_vector(iter_vars, iter_slices, invariant, source, sink):
     dist_vect_list = []
     basic_set.lexmin().foreach_point(dist_vect_list.append)
     if not dist_vect_list:
-        raise ISLIndependenceException
+        raise ISLIndependenceException('Source and sink is independent.')
     if len(dist_vect_list) != 1:
         raise ValueError(
             'The function lexmin() should return a single point.')
@@ -103,14 +109,15 @@ def dependence_distance(dist_vect, iter_slices):
     dist_sum = 0
     for dist, iter_slice in zip(reversed(dist_vect), reversed(iter_slices)):
         dist_sum += shape_prod * dist
-        shape_prod *= iter_point_count(iter_slice, minimize=True)
+        shape_prod *= iter_point_count(iter_slice)
     return dist_sum
 
 
-def dependence_eval(iter_vars, iter_slices, invariant, source_expr, sink_expr):
+def dependence_eval(
+        iter_vars, iter_slices, source_expr, sink_expr, invariant=None):
     try:
         dist_vect = dependence_vector(
-            iter_vars, iter_slices, invariant, source_expr, sink_expr)
+            iter_vars, iter_slices, source_expr, sink_expr, invariant)
     except ISLIndependenceException:
         return None
     return dependence_distance(dist_vect, iter_slices)

@@ -139,15 +139,14 @@ def _unroll_fix_expr(fix_expr, outer_state, depth):
     return fix_expr
 
 
-def _unroll_for_loop(expr, extractor, depth):
+def _unroll_for_loop(expr, iter_var, iter_slice, depth):
     from soap.semantics.state.meta import MetaState
 
-    yield expr
+    expr_list = [expr]
+
     loop_state = expr.loop_state
     init_state = expr.init_state
     loop_var = expr.loop_var
-    iter_var = extractor.iter_var
-    iter_slice = extractor.iter_slice
     start, stop, step = iter_slice.start, iter_slice.stop, iter_slice.step
 
     for d in range(2, depth + 1):
@@ -183,21 +182,26 @@ def _unroll_for_loop(expr, extractor, depth):
             expr_state = MetaState({loop_var: expr})
             state = expand_meta_state(expr_state, state)
 
-        yield state[loop_var]
+        expr_list.append(state[loop_var])
+
+    return expr_list
 
 
 def unroll_fix_expr(expr, state, depth):
-    from soap.semantics.latency.extract import ForLoopExtractor
-    expr_label, env = label(expr, state, None)
-    extractor = ForLoopExtractor(env[expr_label], expr_label.invariant)
-    if extractor.is_for_loop:
-        if extractor.has_inner_loops:
-            yield expr
-        else:
-            yield from _unroll_for_loop(expr, extractor, depth)
-    else:
-        for d in range(depth + 1):
-            yield _unroll_fix_expr(expr, expr.loop_state, d)
+    from soap.semantics.latency.extract import (
+        ForLoopExtractor, ForLoopExtractionFailureException
+    )
+    try:
+        extractor = ForLoopExtractor(expr)
+        iter_var = extractor.iter_var
+        iter_slice = extractor.iter_slice
+    except ForLoopExtractionFailureException:
+        return [_unroll_fix_expr(expr, expr.loop_state, d)
+                for d in range(depth + 1)]
+
+    if extractor.has_inner_loops:
+        return [expr]
+    return _unroll_for_loop(expr, iter_var, iter_slice, depth)
 
 
 def unroll_eval(expr, outer, state, depth):

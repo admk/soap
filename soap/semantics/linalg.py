@@ -192,6 +192,9 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
+        # FIXME weird bug
+        if (self.bottom and other.bottom) or (self.top and other.top):
+            return True
         return self._flat_items == other._flat_items
 
     def __hash__(self):

@@ -1,8 +1,10 @@
+from soap.common.cache import cached_property
 from soap.datatype import int_type
-from soap.expression import operators, is_variable, is_expression
-from soap.semantics.error import IntegerInterval
-from soap.semantics.latency.common import stitch_expr, stitch_env
-from soap.semantics.functions import arith_eval, expand_expr
+from soap.expression import (
+    operators, is_variable, is_expression, BinaryArithExpr, FixExpr
+)
+from soap.semantics.error import IntegerInterval, inf
+from soap.semantics.functions import expand_expr, label
 
 
 class ForLoopExtractionFailureException(Exception):
@@ -10,22 +12,22 @@ class ForLoopExtractionFailureException(Exception):
 
 
 class ForLoopExtractor(object):
-
-    def __init__(self, fix_expr, invariant):
+    def __init__(self, fix_expr):
         super().__init__()
-        bool_expr, loop_state, self.loop_var, self.init_state = fix_expr.args
-        bool_label, bool_env = bool_expr
-        self.bool_expr = stitch_expr(bool_label, bool_env)
-        self.invariant = invariant
-        self.label_kernel = loop_state
-        self.is_for_loop = True
-        try:
-            self._init_iter_var()
-            self._init_iter_slice()
-        except ForLoopExtractionFailureException:
-            self.is_for_loop = False
+        self.fix_expr = fix_expr
+        self.iter_var
+        self.iter_slice
 
     @property
+    def kernel(self):
+        return self.fix_expr.loop_state
+
+    @cached_property
+    def label_kernel(self):
+        _, kernel = label(self.kernel, None, None, fusion=False)
+        return kernel
+
+    @cached_property
     def has_inner_loops(self):
         for var, expr in self.label_kernel.items():
             if not is_expression(expr):
@@ -35,62 +37,121 @@ class ForLoopExtractor(object):
         return False
 
     @property
-    def kernel(self):
-        try:
-            return self._kernel
-        except AttributeError:
-            pass
-        self._kernel = stitch_env(self.label_kernel)
-        return self._kernel
+    def is_pipelined(self):
+        return not self.has_inner_loops
 
-    def _init_iter_var(self):
-        iter_var, stop_expr = self.bool_expr.args
-
+    @cached_property
+    def iter_var(self):
+        bool_expr = self.fix_expr.bool_expr
+        iter_var, stop = bool_expr.args
         if not is_variable(iter_var):
-            raise ForLoopExtractionFailureException
+            raise ForLoopExtractionFailureException(
+                'Cannot extract iteration variable.')
+        if iter_var.dtype != int_type:
+            raise ForLoopExtractionFailureException(
+                'Iteration variable is not an integer.')
+        return iter_var
 
-        compare_ops = [operators.LESS_OP, operators.LESS_EQUAL_OP]
-        if self.bool_expr.op not in compare_ops:
-            raise ForLoopExtractionFailureException
+    @cached_property
+    def iter_slice(self):
+        start = self.start
+        if isinstance(start, IntegerInterval):
+            start = int(start.to_constant())
+        else:
+            start = -inf
+        stop = self.stop
+        if isinstance(stop, IntegerInterval):
+            stop = int(stop.to_constant())
+        else:
+            stop = inf
+        step = int(self.step.to_constant())
+        return slice(start, stop, step)
 
-        # make sure stop_expr value is not changed throughout loop iterations
-        if stop_expr != expand_expr(stop_expr, self.kernel):
-            raise ForLoopExtractionFailureException
+    @cached_property
+    def start(self):
+        return self.fix_expr.init_state[self.iter_var]
 
-        self.iter_var = iter_var
+    @cached_property
+    def stop(self):
+        bool_expr = self.fix_expr.bool_expr
+        op = bool_expr.op
+        _, stop = bool_expr.args
+        if stop != expand_expr(stop, self.fix_expr.loop_state):
+            raise ForLoopExtractionFailureException(
+                'Stop value changes in loop.')
+        if op == operators.LESS_EQUAL_OP:
+            if isinstance(stop, IntegerInterval):
+                stop += IntegerInterval(1)
+            else:
+                stop = BinaryArithExpr(operators.ADD_OP, stop, 1)
+        elif op not in [operators.LESS_OP, operators.NOT_EQUAL_OP]:
+            raise ForLoopExtractionFailureException(
+                'Unrecognized compare operator.')
+        return stop
 
-    def _init_iter_slice(self):
+    @cached_property
+    def step(self):
         iter_var = self.iter_var
-        invariant = self.invariant
-
-        step_expr = self.kernel[iter_var]
-        if step_expr.op != operators.ADD_OP:
-            raise ForLoopExtractionFailureException
-        arg_1, arg_2 = step_expr.args
+        step = self.fix_expr.loop_state[iter_var]
+        if step.op != operators.ADD_OP:
+            raise ForLoopExtractionFailureException(
+                'Step expression must increment.')
+        arg_1, arg_2 = step.args
         if arg_1 == iter_var:
             step = arg_2
         elif arg_2 == iter_var:
             step = arg_1
         else:
-            raise ForLoopExtractionFailureException
-        step = arith_eval(step, invariant)
-        if not isinstance(step, IntegerInterval):
-            raise ForLoopExtractionFailureException
-        if step.min != step.max:
-            raise ForLoopExtractionFailureException
-        if step <= 0:
-            raise ForLoopExtractionFailureException
-
-        start = invariant[iter_var].min
-        stop = invariant[iter_var].max
-        step = step.min
-
-        # TODO support these features
-        if iter_var.dtype != int_type:
-            raise ForLoopExtractionFailureException
-
-        self.iter_slice = slice(start, stop, step)
+            raise ForLoopExtractionFailureException(
+                'Step expression must contain iteration variable.')
+        if not (isinstance(step, IntegerInterval) and step.min == step.max):
+            raise ForLoopExtractionFailureException(
+                'Step must be constant in a for loop.')
+        if step.min <= 0:
+            raise ForLoopExtractionFailureException(
+                'Step value must be positive.')
+        return step
 
 
-class ForLoopNestExtractor(object):
-    pass
+class ForLoopNestExtractionFailureException(Exception):
+    """Failed to extract for loop nest.  """
+
+
+class ForLoopNestExtractor(ForLoopExtractor):
+    def __init__(self, fix_expr):
+        super().__init__(fix_expr)
+        self.iter_vars = []
+        self.iter_slices = []
+        self._extract_for_loop_nest(fix_expr)
+
+    @property
+    def kernel(self):
+        return self._kernel
+
+    def _extract_for_loop_nest(self, fix_expr):
+        extractor = ForLoopExtractor(fix_expr)
+        loop_var = fix_expr.loop_var
+        iter_var = extractor.iter_var
+        self.iter_vars.append(iter_var)
+        self.iter_slices.append(extractor.iter_slice)
+
+        has_inner_loop = False
+        for var, expr in fix_expr.loop_state.items():
+            if var == iter_var:
+                continue
+            if var == loop_var and isinstance(expr, FixExpr):
+                self._extract_for_loop_nest(expr)
+                has_inner_loop = True
+                break
+
+        if not has_inner_loop:
+            self._kernel = fix_expr.loop_state
+            return
+
+        # if has inner loop, then check the loop is simple
+        for var, expr in fix_expr.loop_state.items():
+            if var == iter_var or var == loop_var:
+                continue
+            if var != expr:
+                raise ForLoopNestExtractionFailureException(
+                    'Loop has logic sandwich.')

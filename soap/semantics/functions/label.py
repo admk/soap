@@ -2,9 +2,12 @@ import collections
 
 from soap.common import base_dispatcher, cached
 from soap.context import context as global_context
-from soap.expression import expression_factory, operators
+from soap.expression import (
+    expression_factory, operators, is_expression, is_variable, Variable
+)
+from soap.semantics.common import is_numeral
 from soap.semantics.functions import error_eval
-from soap.semantics.label import LabelContext, LabelSemantics
+from soap.semantics.label import Label, LabelContext, LabelSemantics
 from soap.semantics.linalg import IntegerIntervalArray
 
 
@@ -39,7 +42,7 @@ class LabelGenerator(base_dispatcher()):
     def _execute_arithmetic_expression(self, expr, state):
         label_expr, label_env = self._execute_expression(expr, state)
         bound = error_eval(expr, state, preserve_array=True)
-        label = self.Label(label_expr, bound, None)
+        label = self.Label(expr, bound, None)
         label_env[label] = label_expr
         return LabelSemantics(label, label_env)
 
@@ -51,14 +54,14 @@ class LabelGenerator(base_dispatcher()):
         label_expr, label_env = self._execute_expression(expr, state)
         sub_expr = expression_factory(operators.SUBTRACT_OP, expr.a1, expr.a2)
         bound = error_eval(sub_expr, state, preserve_array=True)
-        label = self.Label(label_expr, bound, None)
+        label = self.Label(expr, bound, None)
         label_env[label] = label_expr
         return LabelSemantics(label, label_env)
 
     def execute_Subscript(self, expr, state):
         label_expr, label_env = self._execute_expression(expr, state)
         bound = IntegerIntervalArray([b.bound for b in label_expr.args])
-        label = self.Label(label_expr, bound, None)
+        label = self.Label(expr, bound, None)
         label_env[label] = label_expr
         return LabelSemantics(label, label_env)
 
@@ -81,17 +84,14 @@ class LabelGenerator(base_dispatcher()):
         bool_labsem = self(bool_expr, loop_info['end'])
         bool_label, _ = bool_labsem
 
-        label_expr = expr.__class__(
-            bool_label, loop_label, loop_var, init_label)
         loop_var_bound = loop_info['exit'][loop_var]
-        label = self.Label(label_expr, loop_var_bound, loop_info['entry'])
+        label = self.Label(expr, loop_var_bound, loop_info['entry'])
 
         expr = expr.__class__(bool_labsem, loop_env, loop_var, init_env)
         env = {label: expr}
         return LabelSemantics(label, env)
 
     def execute_MetaState(self, expr, state):
-        from soap.semantics.state.meta import MetaState
         from soap.semantics.functions import arith_eval_meta_state
         env = {}
         for each_var, each_expr in sorted(expr.items(), key=hash):
@@ -100,7 +100,7 @@ class LabelGenerator(base_dispatcher()):
             env[each_var] = expr_label
 
         bound = arith_eval_meta_state(expr, state)
-        label = self.Label(MetaState(env), bound, None)
+        label = self.Label(expr, bound, None)
         return LabelSemantics(label, env)
 
     @cached
@@ -112,14 +112,20 @@ class LabelGenerator(base_dispatcher()):
 
 @cached
 def label(expr, state, out_vars, context=None, fusion=True):
-    from soap.semantics.state.meta import MetaState
-    if isinstance(expr, MetaState):
-        expr = MetaState({k: v for k, v in expr.items() if k in out_vars})
+    from soap.semantics.state import BoxState, MetaState
+    state = state or BoxState(bottom=True)
     context = context or LabelContext(expr)
+
+    if isinstance(expr, collections.Mapping):
+        out_vars = out_vars or expr.keys()
+        expr = MetaState({k: v for k, v in expr.items() if k in out_vars})
+
     lab, env = LabelGenerator(context).execute(expr, state)
+
     if fusion and isinstance(expr, collections.Mapping):
         from soap.semantics.state.fusion import fusion
         env = fusion(env, out_vars)
+
     return LabelSemantics(lab, env)
 
 
