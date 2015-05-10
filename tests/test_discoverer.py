@@ -5,10 +5,8 @@ from soap.expression import Variable
 from soap.parser import parse
 from soap.semantics.state.box import BoxState
 from soap.semantics.state.meta import flow_to_meta_state
+from soap.semantics.functions.arithmetic import arith_eval
 from soap.semantics.functions.fixpoint import unroll_fix_expr
-
-from soap.context import context
-context.repr = 'str'
 
 
 class TestUnroller(unittest.TestCase):
@@ -47,7 +45,7 @@ class TestUnroller(unittest.TestCase):
         def main() {
             real x = 1.0;
             for (int i = 0; i < 9; i = i + 1) {
-                x = x * 1.1;
+                x = x + 2.0;
             }
             return x;
         }
@@ -60,17 +58,20 @@ class TestUnroller(unittest.TestCase):
         program = """
         def main() {
             real x = 1.0;
-            for (int i = 0; i <= 7; i = i + 2) {
-                x = (x * 1.1) * 1.1;
+            for (int i = 0; i < 8; i = i + 2) {
+                x = (x + 2.0) + 2.0;
             }
-            x = x * 1.1;
+            x = x + 2.0;
             return x;
         }
         """
         test_expr = flow_to_meta_state(parse(program))[x]
-        print(unrolled[1].format())
-        print(test_expr.format())
         self.assertEqual(test_expr, unrolled[1])
+        inputs = BoxState(bottom=True)
+        for unrolled_expr in unrolled:
+            self.assertEqual(
+                arith_eval(fix_expr, inputs),
+                arith_eval(unrolled_expr, inputs))
 
 
 class TestDiscover(unittest.TestCase):

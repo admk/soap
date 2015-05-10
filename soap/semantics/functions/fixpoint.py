@@ -1,14 +1,11 @@
-import math
-
 from soap import logger
 from soap.context import context
 from soap.common.cache import cached
 from soap.expression import (
     operators, BinaryArithExpr, BinaryBoolExpr, FixExpr, SelectExpr
 )
-from soap.semantics.error import IntegerInterval
+from soap.semantics import IntegerInterval
 from soap.semantics.functions.boolean import bool_eval
-from soap.semantics.functions.label import label
 from soap.semantics.functions.meta import (
     arith_eval_meta_state, expand_expr, expand_meta_state
 )
@@ -141,6 +138,7 @@ def _unroll_fix_expr(fix_expr, outer_state, depth):
 
 def _unroll_for_loop(expr, iter_var, iter_slice, depth):
     from soap.semantics.state.meta import MetaState
+    from soap.semantics.latency.common import iter_point_count
 
     expr_list = [expr]
 
@@ -148,14 +146,15 @@ def _unroll_for_loop(expr, iter_var, iter_slice, depth):
     init_state = expr.init_state
     loop_var = expr.loop_var
     start, stop, step = iter_slice.start, iter_slice.stop, iter_slice.step
+    if any(not isinstance(value, int) for value in (start, stop, step)):
+        # TODO support expression bounds (if Xilinx supports this)
+        logger.warning('Non-constant bounds not supported in unrolling yet.')
+        return expr_list
 
     for d in range(2, depth + 1):
-        # FIXME non-constant bounds
-        count = int(math.floor((stop - start) / step))
         new_step = step * d
-        new_count = int(math.floor(count / d))
-        new_stop = start + (new_count * d - 1) * step
-        prologue_start = new_stop + step
+        new_count = iter_point_count(slice(start, stop, new_step))
+        mid = start + new_count * new_step
 
         new_loop_state = loop_state
         for _ in range(d - 1):
@@ -166,14 +165,14 @@ def _unroll_for_loop(expr, iter_var, iter_slice, depth):
         new_loop_state = new_loop_state.immu_update(iter_var, step_expr)
 
         bool_expr = BinaryBoolExpr(
-            operators.LESS_EQUAL_OP, iter_var, IntegerInterval(new_stop))
+            operators.LESS_OP, iter_var, IntegerInterval(mid))
 
         fix_expr = FixExpr(bool_expr, new_loop_state, loop_var, init_state)
 
         loop_expr = loop_state[loop_var]
         id_state = MetaState({var: var for var in loop_expr.vars()})
         epilogue = []
-        for i in range(prologue_start, stop + 1, step):
+        for i in range(mid, stop, step):
             state = id_state.immu_update(iter_var, IntegerInterval(i))
             epilogue.append(expand_expr(loop_expr, state))
 

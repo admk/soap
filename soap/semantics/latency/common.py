@@ -6,7 +6,7 @@ from soap.datatype import ArrayType, int_type, real_type
 from soap.expression import (
     expression_factory, is_expression, is_variable, Variable, operators,
 )
-from soap.semantics import IntegerInterval
+from soap.semantics.error import inf
 
 
 # 150 MHz
@@ -63,5 +63,11 @@ def rename_var_in_expr(expr, var_list, format_str):
 
 
 def iter_point_count(iter_slice):
-    bound = iter_slice.stop - iter_slice.start - 1
-    return max(0, int(math.floor(bound / iter_slice.step))) + 1
+    start = iter_slice.start
+    stop = iter_slice.stop
+    step = iter_slice.step
+    if start == -inf or stop == inf:
+        raise ValueError('Unbounded iter_slice.')
+    if step == 0:
+        raise ZeroDivisionError('Step is 0.')
+    return max(0, int(math.floor((stop - start) / step)))
