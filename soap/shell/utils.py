@@ -17,14 +17,13 @@ from soap.parser import parse as _parse
 from soap.program.generator.c import generate_function
 from soap.semantics import (
     arith_eval, BoxState, ErrorSemantics, flow_to_meta_state, MetaState,
-    IntegerInterval, luts
+    IntegerInterval
 )
 from soap.semantics.functions import error_eval, resource_eval
 from soap.semantics.label import s
 from soap.transformer import (
     closure, expand, frontier, greedy, parsings, reduce, thick
 )
-from soap.transformer.discover import unroll
 
 
 def parse(program):
@@ -33,14 +32,9 @@ def parse(program):
             with open(program) as file:
                 program = file.read()
         program = _parse(program)
-    state = program.inputs()
-    out_vars = program.outputs()
+    state = BoxState(program.inputs)
+    out_vars = program.outputs
     return program, state, out_vars
-
-
-def analyze_error(program):
-    program, state, _ = parse(program)
-    return program.debug(state)
 
 
 def _generate_samples(iv, population_size):
@@ -84,11 +78,6 @@ def simulate_error(program, population_size):
     return _run_simulation(flow_to_meta_state(program), samples, out_vars)
 
 
-def analyze_resource(program):
-    program, state, out_vars = parse(program)
-    return luts(flow_to_meta_state(program), state, out_vars)
-
-
 _algorithm_map = {
     'closure': lambda s, _1, _2: closure(s),
     'expand': lambda s, _1, _2: expand(s),
@@ -108,8 +97,7 @@ def optimize(program, file_name=None):
             k: v for k, v in program.items() if k in out_vars})
     func = _algorithm_map[context.algorithm]
 
-    unrolled = unroll(program)
-    original = analysis_frontier([unrolled], state, out_vars).pop()
+    original = analysis_frontier([program], state, out_vars).pop()
 
     start_time = time.time()
     expr_set = func(program, state, out_vars)

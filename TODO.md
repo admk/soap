@@ -6,7 +6,7 @@
     - [X] Label analysis
     - [X] Latency analysis
     - [X] Discovering
-    - [-] Unrolling
+    - [X] Unrolling
     - [ ] Resource usage with sharing
     - [ ] Transform `AccessExpr` and `UpdateExpr`
     - [ ] Benchmarks

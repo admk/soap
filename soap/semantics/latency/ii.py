@@ -1,8 +1,12 @@
+import collections
 import itertools
 
 import numpy
 
 from soap.context import context
+from soap.datatype import real_type, ArrayType
+from soap.expression import is_expression, operators
+from soap.semantics import Label
 
 
 neg_inf = -float('inf')
@@ -65,3 +69,39 @@ def rec_init_int_search(graph, init_ii=1, prec=None):
             min_ii = mid_ii
 
     return last_ii
+
+
+def shareable_operators(latency_graph):
+    graph = latency_graph.graph
+    fp_sharing_map = collections.defaultdict(int)
+    resource_per_loop = collections.defaultdict(int)
+    for node in graph.nodes():
+        if not isinstance(node, Label):
+            continue
+        expr = node.expr()
+        if not is_expression(expr):
+            continue
+        dtype = node.dtype
+        if isinstance(dtype, ArrayType):
+            dtype = ArrayType
+        op = expr.op
+        if op == operators.INDEX_ACCESS_OP or op == operators.INDEX_UPDATE_OP:
+            resource_per_loop[expr.true_var()] += 1
+        elif dtype == real_type:
+            fp_sharing_map[op] += 1
+    return {
+        'float': fp_sharing_map,
+        'memory': resource_per_loop,
+    }
+
+
+def res_init_int(latency_graph):
+    port_count = context.port_count
+    access_count_dict = shareable_operators(latency_graph)['memory']
+    if not access_count_dict:
+        return 1
+    ii = None
+    for var, access_count in access_count_dict.items():
+        curr_ii = access_count / port_count
+        ii = curr_ii if ii is None else min(curr_ii, ii)
+    return max(1, ii)

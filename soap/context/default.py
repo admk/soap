@@ -11,6 +11,7 @@ context = dict(
     repr=str,
     multiprocessing=True,
     # analysis related
+    port_count=2,
     unroll_factor=50,   # how many steps before no unrolling in static analysis
     widen_factor=100,   # how many steps before widening in static analysis
     precision='single',

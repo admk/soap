@@ -74,5 +74,5 @@ class TestUnroller(unittest.TestCase):
                 arith_eval(unrolled_expr, inputs))
 
 
-class TestDiscover(unittest.TestCase):
-    pass
+class TestDiscoverer(unittest.TestCase):
+    def 

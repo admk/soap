@@ -1,9 +1,7 @@
-input (a: [0.0, 1.0][0, 0], n: [10, 20]);
-output (y);
-
-x := 1;
-y := 0;
-while (x < n) (
-    y := y + (a / x) / x;
-    x := x + 1;
-);
+def main(real a=[0.0, 1.0][0, 0]) {
+    real y = 0.0;
+    for (int x = 1; x < 20; x = x + 1) {
+        y = y + (a / x) / x;
+    }
+    return y;
+}

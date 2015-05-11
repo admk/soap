@@ -139,13 +139,13 @@ class Analysis(Flyweight):
                     l=logger.levels.debug)
                 resource = resource_eval(expr, state, out_vars, precision)
                 error = abs_error(expr, state)
-                latency = latency_eval(expr, state, out_vars)
+                latency = latency_eval(expr, out_vars)
                 result = AnalysisResult(
                     resource.lut, resource.dsp, error, latency, expr)
                 results.add(result)
         except KeyboardInterrupt:
-            logger.warning('Analysis interrupted, completed: {}.'
-                           .format(len(results)))
+            logger.warning(
+                'Analysis interrupted, completed: {}.'.format(len(results)))
         logger.unpersistent('Analysing')
 
         self._results = results

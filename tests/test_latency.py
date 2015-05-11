@@ -275,6 +275,28 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
         expect_latency = expect_ii * (trip_count - 1) + depth
         self.assertAlmostEqual(latency, expect_latency)
 
+    def test_resource_constraint_on_ii(self):
+        program = """
+        def main(real[30] a) {
+            for (int i = 0; i < 10; i = i + 1) {
+                a[i] = a[i] + a[i + 1] + a[i + 2] + a[i + 3];
+            }
+            return a;
+        }
+        """
+        meta_state = flow_to_meta_state(parse(program))
+        latency = latency_eval(meta_state[self.a], [self.a])
+        trip_count = 10
+        depth = LATENCY_TABLE[int_type, operators.ADD_OP]
+        depth += LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
+        depth += LATENCY_TABLE[real_type, operators.ADD_OP]
+        depth += LATENCY_TABLE[real_type, operators.ADD_OP]
+        depth += LATENCY_TABLE[real_type, operators.ADD_OP]
+        depth += LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
+        expect_ii = 5 / 2
+        expect_latency = (trip_count - 1) * expect_ii + depth
+        self.assertAlmostEqual(latency, expect_latency)
+
 
 class TestExtraction(_VariableLabelMixin):
     def compare(self, for_loop, expect_for_loop):

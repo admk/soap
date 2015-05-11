@@ -22,7 +22,7 @@ from soap.semantics.latency.extract import (
     ForLoopNestExtractionFailureException
 )
 from soap.semantics.latency.distance import dependence_eval
-from soap.semantics.latency.ii import rec_init_int_search
+from soap.semantics.latency.ii import rec_init_int_search, res_init_int
 
 
 def max_latency(graph):
@@ -218,7 +218,9 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
             pass
         if self.is_pipelined:
             logger.debug('Pipelining ', self.fix_expr)
-            self._initiation_interval = rec_init_int_search(self.loop_graph)
+            res_mii = res_init_int(self)
+            self._initiation_interval = rec_init_int_search(
+                self.loop_graph, res_mii)
         else:
             self._initiation_interval = self.depth()
         return self._initiation_interval

@@ -176,12 +176,12 @@ def _unroll_for_loop(expr, iter_var, iter_slice, depth):
             state = id_state.immu_update(iter_var, IntegerInterval(i))
             epilogue.append(expand_expr(loop_expr, state))
 
-        state = MetaState({loop_var: fix_expr})
+        epilogue_state = id_state.immu_update(loop_var, fix_expr)
         for expr in epilogue:
             expr_state = MetaState({loop_var: expr})
-            state = expand_meta_state(expr_state, state)
+            epilogue_state = expand_meta_state(expr_state, epilogue_state)
 
-        expr_list.append(state[loop_var])
+        expr_list.append(epilogue_state[loop_var])
 
     return expr_list
 

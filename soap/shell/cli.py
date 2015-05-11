@@ -6,11 +6,12 @@ from docopt import docopt
 
 import soap
 from soap import logger
+from soap.analysis import analyze
 from soap.context import context
+from soap.semantics import flow_to_meta_state
 from soap.shell import interactive
 from soap.shell.utils import (
-    analyze_error, analyze_resource, optimize, parse, plot, report,
-    simulate_error
+    optimize, parse, plot, report, simulate_error
 )
 
 
@@ -20,8 +21,7 @@ usage = """
 {__author__} ({__email__})
 
 Usage:
-    {__executable__} analyze error [options] (<file> | --command=<str> | -)
-    {__executable__} analyze resource [options] (<file> | --command=<str> | -)
+    {__executable__} analyze [options] (<file> | --command=<str> | -)
     {__executable__} simulate [options] (<file> | --command=<str> | -)
     {__executable__} optimize [options] (<file> | --command=<str> | -)
     {__executable__} plot [options] <file>
@@ -161,12 +161,9 @@ def _analyze(args):
     if not args['analyze']:
         return
     file, out_file = _file(args)
-    if args['error']:
-        result = analyze_error(file)
-        out_file = '{}.acc'.format(out_file)
-    if args['resource']:
-        result = analyze_resource(file)
-        out_file = '{}.res'.format(out_file)
+    prog, inputs, outputs = parse(file)
+    result = analyze([flow_to_meta_state(prog)], inputs, outputs).pop()
+    out_file = '{}.rpt'.format(out_file)
     logger.debug(result)
     with open(out_file, 'w') as f:
         f.write(str(result))

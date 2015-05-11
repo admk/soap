@@ -169,6 +169,7 @@ class s(namedtuple('Statistics', ['dsp', 'ff', 'lut'])):
         return self.__class__(dsp, ff, lut)
 
 
+"""LegUp
 _integer_table = {
     # dsp, ff, lut
     'comparison': s(0, 65, 35),
@@ -201,7 +202,7 @@ _single_table = {
 }
 _double_table = {}
 """
-Xilinx Vivado
+# Xilinx Vivado
 _integer_table = {
     'comparison': s(0, 0, 39),
     operators.ADD_OP: s(0, 0, 32),
@@ -237,7 +238,6 @@ _double_table = {
     operators.FIXPOINT_OP: s(0, 0, 0),
     operators.BARRIER_OP: s(0, 0, 0),
 }
-"""
 
 
 class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
