@@ -1,13 +1,9 @@
 import collections
 
 from soap.common import base_dispatcher, cached
-from soap.context import context as global_context
-from soap.expression import (
-    expression_factory, operators, is_expression, is_variable, Variable
-)
-from soap.semantics.common import is_numeral
+from soap.expression import expression_factory, operators
 from soap.semantics.functions import error_eval
-from soap.semantics.label import Label, LabelContext, LabelSemantics
+from soap.semantics.label import LabelContext, LabelSemantics
 from soap.semantics.linalg import IntegerIntervalArray
 
 
@@ -130,10 +126,9 @@ def label(expr, state, out_vars, context=None, fusion=True):
 
 
 @cached
-def resource_eval(expr, state, out_vars, mantissa=None):
-    mantissa = mantissa or global_context.precision
-    return label(expr, state, out_vars).resources(mantissa)
+def resource_eval(expr, state, out_vars):
+    return label(expr, state, out_vars).resources()
 
 
-def luts(expr, state, out_vars, mantissa=None):
-    return resource_eval(expr, state, out_vars, mantissa).lut
+def luts(expr, state, out_vars):
+    return resource_eval(expr, state, out_vars).lut

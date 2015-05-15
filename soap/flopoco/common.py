@@ -1,9 +1,12 @@
+import math
 import os
 import tempfile
 from contextlib import contextmanager
 
 from soap import logger
-from soap.expression import operators
+from soap.common.cache import cached
+from soap.expression import operators, OutputVariableTuple
+from soap.semantics.error import IntegerInterval, ErrorSemantics
 
 
 flopoco_command_map = {
@@ -131,3 +134,54 @@ def xilinx(file_name, dir_name=None):
         sh.xst(sh.echo(*cmd), _out=out_file_name, _err=err_file_name)
 
         return get_luts(file_base + '.ngc_xst.xrpt')
+
+
+_FILTER_OPERATORS = operators.TRADITIONAL_OPERATORS + [
+    operators.TERNARY_SELECT_OP
+]
+
+
+@cached
+def _datatype_exponent(op, label):
+    if isinstance(label, OutputVariableTuple):
+        exponent = 0
+        for l in label:
+            label_datatype, label_exponent = _datatype_exponent(op, l)
+            exponent += label_exponent
+        return None, exponent
+
+    if op == operators.FIXPOINT_OP:
+        return None, 0
+    if op not in _FILTER_OPERATORS:
+        return None, None
+
+    bound = label.bound
+    datatype = type(bound)
+
+    if datatype is IntegerInterval:
+        if bound.is_top():
+            return datatype, flopoco.wi_max
+        if bound.is_bottom():
+            return datatype, flopoco.wi_min
+        bound_max = max(abs(bound.min), abs(bound.max), 1)
+        width_max = int(math.ceil(math.log(bound_max + 1, 2)) + 1)
+        return datatype, width_max
+
+    if datatype is ErrorSemantics:
+        bound = bound.v
+        if bound.is_top():
+            return datatype, flopoco.we_max
+        if bound.is_bottom():
+            return datatype, flopoco.we_min
+        bound_max = max(abs(bound.min), abs(bound.max), 1)
+        try:
+            exp_max = math.floor(math.log(bound_max, 2))
+        except OverflowError:
+            return datatype, flopoco.we_max
+        try:
+            exponent = int(math.ceil(math.log(exp_max + 1, 2) + 1))
+            return datatype, max(exponent, flopoco.we_min)
+        except ValueError:
+            return datatype, flopoco.we_min
+
+    raise TypeError('Unrecognized type of bound {!r}'.format(bound))

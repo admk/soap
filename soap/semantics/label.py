@@ -1,15 +1,7 @@
-import math
 from collections import namedtuple
 
-from soap import flopoco
-from soap.common import cached, Comparable, Flyweight
-from soap.context import context
+from soap.common import Comparable, Flyweight
 from soap.datatype import type_of
-from soap.expression import (
-    External, FixExpr, is_expression, operators, OutputVariableTuple
-)
-from soap.semantics.common import is_numeral
-from soap.semantics.error import ErrorSemantics, IntegerInterval
 
 
 _label_map = {}
@@ -109,135 +101,7 @@ class LabelContext(object):
             cls=self.__class__, description=self.description)
 
 
-_FILTER_OPERATORS = operators.TRADITIONAL_OPERATORS + [
-    operators.TERNARY_SELECT_OP
-]
-
-
-@cached
-def _datatype_exponent(op, label):
-    if isinstance(label, OutputVariableTuple):
-        exponent = 0
-        for l in label:
-            label_datatype, label_exponent = _datatype_exponent(op, l)
-            exponent += label_exponent
-        return None, exponent
-
-    if op == operators.FIXPOINT_OP:
-        return None, 0
-    if op not in _FILTER_OPERATORS:
-        return None, None
-
-    bound = label.bound
-    datatype = type(bound)
-
-    if datatype is IntegerInterval:
-        if bound.is_top():
-            return datatype, flopoco.wi_max
-        if bound.is_bottom():
-            return datatype, flopoco.wi_min
-        bound_max = max(abs(bound.min), abs(bound.max), 1)
-        width_max = int(math.ceil(math.log(bound_max + 1, 2)) + 1)
-        return datatype, width_max
-
-    if datatype is ErrorSemantics:
-        bound = bound.v
-        if bound.is_top():
-            return datatype, flopoco.we_max
-        if bound.is_bottom():
-            return datatype, flopoco.we_min
-        bound_max = max(abs(bound.min), abs(bound.max), 1)
-        try:
-            exp_max = math.floor(math.log(bound_max, 2))
-        except OverflowError:
-            return datatype, flopoco.we_max
-        try:
-            exponent = int(math.ceil(math.log(exp_max + 1, 2) + 1))
-            return datatype, max(exponent, flopoco.we_min)
-        except ValueError:
-            return datatype, flopoco.we_min
-
-    raise TypeError('Unrecognized type of bound {!r}'.format(bound))
-
-
 _label_semantics_tuple_type = namedtuple('LabelSemantics', ['label', 'env'])
-
-
-class s(namedtuple('Statistics', ['dsp', 'ff', 'lut'])):
-    def __add__(self, other):
-        dsp, ff, lut = [a + b for a, b in zip(self, other)]
-        return self.__class__(dsp, ff, lut)
-
-
-"""LegUp
-_integer_table = {
-    # dsp, ff, lut
-    'comparison': s(0, 65, 35),
-    operators.ADD_OP: s(0, 96, 32),
-    operators.SUBTRACT_OP: s(0, 96, 32),
-    operators.MULTIPLY_OP: s(4, 96, 0),
-    operators.DIVIDE_OP: s(0, 96, 1247),
-    operators.UNARY_SUBTRACT_OP: s(0, 96, 32),
-    operators.TERNARY_SELECT_OP: s(0, 96, 32),
-    operators.FIXPOINT_OP: s(0, 96, 32),
-    operators.BARRIER_OP: s(0, 0, 0),
-    operators.SUBTRACT_OP: s(0, 0, 0),
-    operators.INDEX_ACCESS_OP: s(0, 0, 0),
-    operators.INDEX_UPDATE_OP: s(0, 0, 0),
-}
-_single_table = {
-    'conversion': s(0, 211, 186),
-    'comparison': s(0, 33, 68),
-    operators.ADD_OP: s(0, 540, 505),
-    operators.SUBTRACT_OP: s(0, 540, 505),
-    operators.MULTIPLY_OP: s(4, 222, 141),
-    operators.DIVIDE_OP: s(0, 2788, 3198),
-    operators.UNARY_SUBTRACT_OP: s(0, 0, 1),
-    operators.TERNARY_SELECT_OP: s(0, 96, 32),
-    operators.FIXPOINT_OP: s(0, 96, 32),
-    operators.BARRIER_OP: s(0, 0, 0),
-    operators.SUBTRACT_OP: s(0, 0, 0),
-    operators.INDEX_ACCESS_OP: s(0, 0, 0),
-    operators.INDEX_UPDATE_OP: s(0, 0, 0),
-}
-_double_table = {}
-"""
-# Xilinx Vivado
-_integer_table = {
-    'comparison': s(0, 0, 39),
-    operators.ADD_OP: s(0, 0, 32),
-    operators.SUBTRACT_OP: s(0, 0, 32),
-    operators.MULTIPLY_OP: s(4, 45, 21),
-    operators.DIVIDE_OP: s(0, 1712, 1779),
-    operators.UNARY_SUBTRACT_OP: s(0, 0, 32),
-    operators.TERNARY_SELECT_OP: s(0, 0, 71),
-    operators.FIXPOINT_OP: s(0, 0, 71),
-    operators.BARRIER_OP: s(0, 0, 0),
-}
-_single_table = {
-    'conversion': s(0, 128, 519),
-    'comparison': s(0, 66, 239),
-    operators.ADD_OP: s(2, 227, 400),
-    operators.SUBTRACT_OP: s(2, 227, 400),
-    operators.MULTIPLY_OP: s(3, 128, 324),
-    operators.DIVIDE_OP: s(0, 363, 986),
-    operators.UNARY_SUBTRACT_OP: s(0, 0, 37),
-    operators.TERNARY_SELECT_OP: s(0, 0, 71),
-    operators.FIXPOINT_OP: s(0, 0, 0),
-    operators.BARRIER_OP: s(0, 0, 0),
-}
-_double_table = {
-    'conversion': s(0, 189, 578),
-    'comparison': s(0, 130, 578),
-    operators.ADD_OP: s(3, 445, 1144),
-    operators.SUBTRACT_OP: s(3, 445, 1144),
-    operators.MULTIPLY_OP: s(11, 299, 570),
-    operators.DIVIDE_OP: s(0, 1710, 3623),
-    operators.UNARY_SUBTRACT_OP: s(0, 0, 81),
-    operators.TERNARY_SELECT_OP: s(0, 0, 103),
-    operators.FIXPOINT_OP: s(0, 0, 0),
-    operators.BARRIER_OP: s(0, 0, 0),
-}
 
 
 class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
@@ -248,70 +112,9 @@ class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
             env = MetaState(env)
         return super().__new__(cls, label, env)
 
-    @cached
-    def resources(self, precision=None):
-        """FIXME Emergency luts statistics for now"""
-        precision = precision or context.precision
-        if precision == 23:
-            table = _single_table
-        elif precision == 52:
-            table = _double_table
-        else:
-            raise ValueError('Precision must be single (23) or double (52).')
-
-        def accumulate_luts_count(env):
-            stat = s(0, 0, 0)
-            conversion_set = set()
-            for label, expr in env.items():
-                if is_expression(expr) and not isinstance(expr, External):
-                    op = expr.op
-                    if op in operators.COMPARISON_OPERATORS:
-                        op = 'comparison'
-                    if isinstance(label, Label):
-                        datatype = type(label.bound)
-                    else:
-                        datatype = None
-                    if datatype is IntegerInterval:
-                        stat += _integer_table[op]
-                    elif datatype is ErrorSemantics:
-                        for arg in expr.args:
-                            if not isinstance(arg, Label):
-                                continue
-                            if not isinstance(arg.bound, IntegerInterval):
-                                continue
-                            if is_numeral(env[arg]):
-                                continue
-                            conversion_set.add(arg)
-                        stat += table[op]
-                if isinstance(expr, FixExpr):
-                    stat += accumulate_luts_count(expr.bool_expr[1])
-                    stat += accumulate_luts_count(expr.loop_state)
-                    stat += accumulate_luts_count(expr.init_state)
-            dsp, ff, lut = table['conversion']
-            no_conv = len(conversion_set)
-            stat += s(no_conv * dsp, no_conv * ff, no_conv * lut)
-            return stat
-
-        return accumulate_luts_count(self.env)
-
-    @cached
-    def _alt_luts(self, precision=None):
-        precision = precision or context.precision
-
-        def accumulate_luts_count(env):
-            luts = 0
-            for label, expr in env.items():
-                if is_expression(expr) and not isinstance(expr, External):
-                    datatype, exponent = _datatype_exponent(expr.op, label)
-                    luts += flopoco.operator_luts(
-                        expr.op, datatype, exponent, precision)
-                if isinstance(expr, FixExpr):
-                    luts += accumulate_luts_count(expr.bool_expr[1])
-                    luts += accumulate_luts_count(expr.loop_state)
-                    luts += accumulate_luts_count(expr.init_state)
-            return luts
-
-        return accumulate_luts_count(self.env)
+    def resources(self):
+        from soap.semantics.resource import resource_count
+        return resource_count(self)
 
     def expr(self):
         return self.label.expr()
