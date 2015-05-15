@@ -1,14 +1,10 @@
 import os
 import pickle
-import sys
 from pprint import pprint
 
 import IPython
 
 import soap
-
-
-sys.excepthook = soap.excepthook
 
 
 class Shell(IPython.terminal.embed.InteractiveShellEmbed):
@@ -74,14 +70,21 @@ def main(file=None):
     with context.no_invalidate_cache():
         context.repr = str
 
+    if not file:
+        return shell()
     directory, file_name = os.path.split(file)
     base_name, ext = os.path.splitext(file_name)
     if ext == '.py':
-        exec(open(file, 'r').read())
+        with open(file, 'r') as f:
+            exec(f.read())
         shell.banner1 = ''
     elif ext == '.emir':
         var_name = base_name.replace('.', '_')
-        globals()[var_name] = pickle.loads(open(file, 'rb').read())
+        with open(file, 'rb') as f:
+            globals()[var_name] = pickle.loads(f.read())
+    elif ext == '.soap':
+        with open(file, 'r') as f:
+            globals()[var_name] = parse(f.read())
     else:
         raise ValueError('Unrecognized file extension {}'.format(ext))
     return shell()

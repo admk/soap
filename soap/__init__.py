@@ -3,7 +3,7 @@ import sys
 
 __soap__ = 'SOAP'
 __description__ = """
-Optimising the structure of numerical programs."""
+Numerical program structural optimizer."""
 __version__ = '2.0.1'
 __date__ = '23 Feb 2015'
 __author__ = 'Xitong Gao'
@@ -16,26 +16,9 @@ __doc__ = """
 """.format(**locals())
 
 
-def excepthook(type, value, traceback):
-    rv = ultratb.VerboseTB(include_vars=False)(type, value, traceback)
-    if context.ipdb:
-        from IPython.core.debugger import Pdb
-        from soap.shell import shell
-        pdb = Pdb(shell.colors)
-        pdb.interaction(None, traceback)
-    return rv
-
-
-try:
-    from IPython.core import ultratb
-except ImportError:
-    pass
-else:
-    sys.excepthook = excepthook
-
-
 import gmpy2
 
+from soap import logger
 from soap.context import context
 from soap.analysis import analyze, frontier, Plot, plot
 from soap.parser import parse, expr_parse
@@ -50,3 +33,22 @@ from soap.transformer import (
     closure, greedy_frontier_closure, expand, reduce, parsings,
     martel, greedy, frontier,
 )
+
+
+def excepthook(type, value, traceback):
+    rv = ultratb.VerboseTB(include_vars=False)(type, value, traceback)
+    if context.ipdb:
+        from IPython.core.debugger import Pdb
+        from soap.shell import shell
+        logger.info('Launching Pdb...')
+        pdb = Pdb(shell.colors)
+        pdb.interaction(None, traceback)
+    return rv
+
+
+try:
+    from IPython.core import ultratb
+except ImportError:
+    pass
+else:
+    sys.excepthook = excepthook
