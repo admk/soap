@@ -12,7 +12,7 @@ from soap.analysis import (
 from soap.common import base_dispatcher, cached
 from soap.context import context
 from soap.expression import (
-    expression_factory, SelectExpr, FixExpr, operators
+    expression_factory, UnaryExpression, SelectExpr, FixExpr, operators
 )
 from soap.program import Flow
 from soap.semantics import BoxState, ErrorSemantics, MetaState
@@ -23,6 +23,48 @@ from soap.transformer.arithmetic import MartelTreeTransformer
 from soap.transformer.utils import (
     closure, greedy_frontier_closure, thick_frontier_closure
 )
+
+
+class UnrollExpr(UnaryExpression):
+    def __init__(self, fix_expr):
+        super().__init__('Unroll', fix_expr)
+
+    @property
+    def fix_expr(self):
+        return self.a
+
+    def format(self):
+        return 'unroll_{}'.format(self.fix_expr.format())
+
+
+class MarkUnroll(base_dispatcher('mark')):
+    def generic_mark(self, expr):
+        raise TypeError('Do not know how to mark {!r}'.format(expr))
+
+    def _mark_atom(self, expr):
+        return expr
+
+    mark_numeral = _mark_atom
+    mark_Variable = _mark_atom
+
+    def _mark_expression(self, expr):
+        return expression_factory(expr.op, *(self(a) for a in expr.args))
+
+    mark_UnaryArithExpr = mark_BinaryArithExpr = _mark_expression
+    mark_UnaryBoolExpr = mark_BinaryBoolExpr = _mark_expression
+    mark_AccessExpr = mark_UpdateExpr = _mark_expression
+    mark_SelectExpr = mark_Subscript = _mark_expression
+
+    def _mark_multiple_expressions(self, meta_state):
+        return MetaState({var: self(expr) for var, expr in meta_state.items()})
+
+    mark_MetaState = _mark_multiple_expressions
+
+    def mark_FixExpr(self, expr):
+        return UnrollExpr(expr)
+
+
+mark_unroll = MarkUnroll()
 
 
 class BaseDiscoverer(base_dispatcher('discover')):
@@ -120,39 +162,34 @@ class BaseDiscoverer(base_dispatcher('discover')):
 
         logger.info('Discovering loop: {}'.format(loop_meta_state))
 
-        fix_expr_list = list(unroll_fix_expr(
-            expr, init_value_state, context.unroll_depth))
-        frontier = {expr}
-        total = len(fix_expr_list)
+        frontier_loop_meta_state_set = self(
+            expr.loop_state, loop_value_state, [loop_var])
 
-        for depth, fix_expr in enumerate(fix_expr_list):
-            logger.persistent('Unroll', '{}/{}'.format(depth, total - 1))
+        iterer = itertools.product(
+            frontier_loop_meta_state_set, frontier_init_meta_state_set)
+        frontier = set()
+        for each_loop_state, each_init_state in iterer:
+            fix_expr = FixExpr(
+                bool_expr, each_loop_state, loop_var, each_init_state)
+            frontier.add(fix_expr)
 
-            bool_expr = fix_expr.bool_expr
-
-            frontier_loop_meta_state_set = self(
-                fix_expr.loop_state, loop_value_state, [loop_var])
-
-            iterer = itertools.product(
-                frontier_loop_meta_state_set, frontier_init_meta_state_set)
-            each_frontier = set()
-            for each_loop_state, each_init_state in iterer:
-                fix_expr = FixExpr(
-                    bool_expr, each_loop_state, loop_var, each_init_state)
-                each_frontier.add(fix_expr)
-
-            each_frontier = set(self.filter(
-                each_frontier, state, out_vars,
-                size_limit=context.loop_size_limit))
-            frontier |= each_frontier
-
-        logger.unpersistent('Unroll')
-
-        frontier = self.filter(frontier, state, out_vars, size_limit=0)
+        frontier.add(expr)
+        frontier = self.filter(
+            frontier, state, out_vars, size_limit=context.loop_size_limit)
 
         logger.info('Discovered: {}, Frontier: {}'.format(expr, len(frontier)))
 
         return frontier
+
+    def discover_UnrollExpr(self, expr, state, out_vars):
+        expr_set = unroll_fix_expr(expr.fix_expr, context.unroll_depth)
+        frontier = set()
+        n = len(expr_set)
+        for i, expr in enumerate(expr_set):
+            logger.persistent('Unroll', '{}/{}'.format(i + 1, n))
+            frontier |= set(self(expr, state, out_vars))
+        logger.unpersistent('Unroll')
+        return self.filter(frontier, state, out_vars, size_limit=0)
 
     def _discover_multiple_expressions(
             self, var_expr_state, state, out_vars):
@@ -164,7 +201,6 @@ class BaseDiscoverer(base_dispatcher('discover')):
         frontier = [{}]
         n = len(var_list)
         for i, var in enumerate(var_list):
-            i += 1
             logger.persistent('Merge', '{}/{}'.format(i, n))
             var_expr_set = self(var_expr_state[var], state, out_vars)
             iterer = itertools.product(frontier, var_expr_set)
@@ -173,7 +209,7 @@ class BaseDiscoverer(base_dispatcher('discover')):
                 meta_state = dict(meta_state)
                 meta_state[var] = var_expr
                 new_frontier.append(MetaState(meta_state))
-            frontier = self.filter(new_frontier, state, var_list[:i])
+            frontier = self.filter(new_frontier, state, var_list[:(i + 1)])
         frontier = self.filter(frontier, state, out_vars)
 
         logger.unpersistent('Merge')
@@ -249,6 +285,8 @@ def _discover(discoverer, expr, state, out_vars):
         out_vars = sorted(out_vars, key=hash)
     if isinstance(expr, MetaState):
         expr = MetaState({k: v for k, v in expr.items() if k in out_vars})
+
+    expr = mark_unroll(expr)
 
     if not isinstance(state, BoxState):
         state = BoxState(state)

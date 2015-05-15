@@ -22,7 +22,7 @@ class TestUnroller(unittest.TestCase):
         """
         x = Variable('x', real_type)
         fix_expr = flow_to_meta_state(parse(program))[x]
-        unrolled = list(unroll_fix_expr(fix_expr, BoxState(bottom=True), 2))
+        unrolled = list(unroll_fix_expr(fix_expr, 2))
         self.assertEqual(fix_expr, unrolled[0])
         program = """
         def main() {
@@ -53,8 +53,7 @@ class TestUnroller(unittest.TestCase):
         x = Variable('x', real_type)
         fix_expr = flow_to_meta_state(parse(program))[x]
         depth = 3
-        unrolled = list(unroll_fix_expr(
-            fix_expr, BoxState(bottom=True), depth))
+        unrolled = list(unroll_fix_expr(fix_expr, depth))
         program = """
         def main() {
             real x = 1.0;
@@ -75,4 +74,4 @@ class TestUnroller(unittest.TestCase):
 
 
 class TestDiscoverer(unittest.TestCase):
-    def 
+    pass

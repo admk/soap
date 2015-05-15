@@ -26,7 +26,7 @@ Usage:
     {__executable__} optimize [options] (<file> | --command=<str> | -)
     {__executable__} plot [options] <file>
     {__executable__} report [options] <file>
-    {__executable__} interactive [options] [<file> | --command=<str> | -]
+    {__executable__} interactive [options] [<file>]
     {__executable__} lint [options] (<file> | --command=<str> | -)
     {__executable__} (-h | --help)
     {__executable__} --version
@@ -125,14 +125,6 @@ def _setup_context(args):
         context.multiprocessing = False
 
 
-def _interactive(args):
-    if not args['interactive']:
-        return
-    file, _ = _file(args)
-    interactive.main(file)
-    return 0
-
-
 def _file(args):
     command = args['--command']
     if command:
@@ -155,6 +147,13 @@ def _file(args):
     if not file:
         raise CommandError('Empty input')
     return file, out_file
+
+
+def _interactive(args):
+    if not args['interactive']:
+        return
+    interactive.main(args['<file>'])
+    return 0
 
 
 def _analyze(args):

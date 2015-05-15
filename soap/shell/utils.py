@@ -19,7 +19,6 @@ from soap.semantics import (
     arith_eval, BoxState, ErrorSemantics, flow_to_meta_state, MetaState,
     IntegerInterval
 )
-from soap.semantics.functions import error_eval, resource_eval
 from soap.semantics.label import s
 from soap.transformer import (
     closure, expand, frontier, greedy, parsings, reduce, thick
@@ -116,44 +115,13 @@ def optimize(program, file_name=None):
     return emir
 
 
-def _reanalyze_error_estimate(result, emir):
-    _, inputs, outputs = parse(emir['file'])
-    meta_state = MetaState({
-        k: v for k, v in result.expression.items()
-        if k in outputs})
-    error_min, error_max = error_eval(meta_state, inputs).e
-    return float(max(abs(error_min), abs(error_max)))
-
-
-def _reanalyze_resource_estimates(result, emir):
-    _, inputs, outputs = parse(emir['file'])
-    return resource_eval(
-        result.expression, inputs, outputs, emir['context'].precision)
-
-
-def _reanalyze_results(results, emir):
-    _, inputs, outputs = parse(emir['file'])
-    new_results = []
-    n = len(results)
-    for i, r in enumerate(results):
-        logger.persistent('Reanalyzing', '{}/{}'.format(i + 1, n))
-        error = _reanalyze_error_estimate(r, emir)
-        dsp, ff, lut = _reanalyze_resource_estimates(r, emir)
-        new_results.append(r.__class__(
-            lut=lut, dsp=dsp, error=error, expression=r.expression))
-    return new_results
-
-
 def plot(emir, file_name, reanalyze=False):
-    plot = Plot(legend_time=True)
+    plot = Plot()
     results = emir['results']
-    original = [emir['original']]
-    if reanalyze:
-        results = _reanalyze_results(results, emir)
-        original = _reanalyze_results(original, emir)
+    original = emir['original']
     func_name = emir['context'].algorithm
-    plot.add(results, legend=func_name, time=emir['time'])
-    plot.add(original, marker='o', frontier=False, legend='original')
+    plot.add_original(original)
+    plot.add(results, legend='{} ({:.2f}s)'.format(func_name, emir['time']))
     plot.save('{}.pdf'.format(emir['file']))
     plot.show()
 

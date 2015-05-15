@@ -37,7 +37,7 @@ else:
 import gmpy2
 
 from soap.context import context
-from soap.analysis import analyze, frontier, Plot, plot, analyze_and_plot
+from soap.analysis import analyze, frontier, Plot, plot
 from soap.parser import parse, expr_parse
 from soap.program import Flow, generate
 from soap.semantics import (

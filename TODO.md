@@ -12,6 +12,7 @@
     - [ ] Benchmarks
     - [ ] Comparison with actual results
     - [ ] Code generation
+    - [X] Plotting changes
 
 
 # Ugliness, fix if have the time to
@@ -39,7 +40,7 @@
 # Reminders
 
 * [ ] Actually use `context.window_depth` and `context.precision`
-* [ ] Deprecate prec arguments, because of context support
+* [ ] Deprecate `prec` arguments, because of context support
 
 
 # Can't remember / No longer relevant

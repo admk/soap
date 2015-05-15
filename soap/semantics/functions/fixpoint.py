@@ -186,7 +186,7 @@ def _unroll_for_loop(expr, iter_var, iter_slice, depth):
     return expr_list
 
 
-def unroll_fix_expr(expr, state, depth):
+def unroll_fix_expr(expr, depth):
     from soap.semantics.latency.extract import (
         ForLoopExtractor, ForLoopExtractionFailureException
     )
@@ -201,8 +201,3 @@ def unroll_fix_expr(expr, state, depth):
     if extractor.has_inner_loops:
         return [expr]
     return _unroll_for_loop(expr, iter_var, iter_slice, depth)
-
-
-def unroll_eval(expr, outer, state, depth):
-    unrolled_expr = _unroll_fix_expr(expr, outer, depth)
-    return fix_expr_eval(unrolled_expr, state)

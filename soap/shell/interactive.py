@@ -1,3 +1,5 @@
+import os
+import pickle
 import sys
 from pprint import pprint
 
@@ -27,14 +29,14 @@ class Shell(IPython.terminal.embed.InteractiveShellEmbed):
 shell = Shell()
 
 
-def main(script=None):
+def main(file=None):
     from soap import (
-        context, parse, analyze, frontier, Plot, plot, analyze_and_plot, parse,
-        Flow, generate, IntegerInterval, FloatInterval, FractionInterval,
-        ErrorSemantics, BoxState, MetaState, flow_to_meta_state, mpz, mpq,
-        mpfr, mpz_type, mpq_type, mpfr_type, inf, ulp, cast, arith_eval,
-        error_eval, label, luts, closure, greedy_frontier_closure, expand,
-        reduce, parsings, martel, greedy, frontier,
+        context, parse, analyze, frontier, Plot, plot, parse, Flow, generate,
+        IntegerInterval, FloatInterval, FractionInterval, ErrorSemantics,
+        BoxState, MetaState, flow_to_meta_state, mpz, mpq, mpfr, mpz_type,
+        mpq_type, mpfr_type, inf, ulp, cast, arith_eval, error_eval, label,
+        luts, closure, greedy_frontier_closure, expand, reduce, parsings,
+        martel, greedy, frontier
     )
 
     def pp(*args):
@@ -72,7 +74,14 @@ def main(script=None):
     with context.no_invalidate_cache():
         context.repr = str
 
-    if script:
-        exec(script)
+    directory, file_name = os.path.split(file)
+    base_name, ext = os.path.splitext(file_name)
+    if ext == '.py':
+        exec(open(file, 'r').read())
         shell.banner1 = ''
+    elif ext == '.emir':
+        var_name = base_name.replace('.', '_')
+        globals()[var_name] = pickle.loads(open(file, 'rb').read())
+    else:
+        raise ValueError('Unrecognized file extension {}'.format(ext))
     return shell()

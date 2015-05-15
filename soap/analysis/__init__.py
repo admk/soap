@@ -1,3 +1,2 @@
-from soap.analysis.utils import (
-    analyze, frontier, thick_frontier, Plot, plot, analyze_and_plot
-)
+from soap.analysis.utils import analyze, frontier, thick_frontier
+from soap.analysis.plot import Plot, plot
