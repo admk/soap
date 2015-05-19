@@ -7,6 +7,7 @@
     - [X] Latency analysis
     - [X] Discovering
     - [X] Unrolling
+    - [X] Scheduling and revamp latency
     - [ ] Resource usage with sharing
     - [ ] Transform `AccessExpr` and `UpdateExpr`
     - [ ] Benchmarks

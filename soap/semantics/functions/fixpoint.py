@@ -138,7 +138,7 @@ def _unroll_fix_expr(fix_expr, outer_state, depth):
 
 def _unroll_for_loop(expr, iter_var, iter_slice, depth):
     from soap.semantics.state.meta import MetaState
-    from soap.semantics.latency.common import iter_point_count
+    from soap.semantics.schedule.common import iter_point_count
 
     expr_list = [expr]
 
@@ -187,7 +187,7 @@ def _unroll_for_loop(expr, iter_var, iter_slice, depth):
 
 
 def unroll_fix_expr(expr, depth):
-    from soap.semantics.latency.extract import (
+    from soap.semantics.schedule.extract import (
         ForLoopExtractor, ForLoopExtractionFailureException
     )
     try:

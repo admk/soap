@@ -12,17 +12,17 @@ from soap.expression import (
 )
 from soap.program.graph import DependenceGraph
 from soap.semantics import is_numeral
-from soap.semantics.latency.common import (
+from soap.semantics.schedule.common import (
     DependenceType, iter_point_count,
     LOOP_LATENCY_TABLE, SEQUENTIAL_LATENCY_TABLE
 )
-from soap.semantics.latency.extract import (
+from soap.semantics.schedule.extract import (
     ForLoopNestExtractor, ForLoopExtractionFailureException,
     ForLoopNestExtractionFailureException
 )
 from soap.semantics.label import Label
-from soap.semantics.latency.distance import dependence_eval
-from soap.semantics.latency.ii import rec_init_int_search, res_init_int
+from soap.semantics.schedule.distance import dependence_eval
+from soap.semantics.schedule.ii import rec_init_int_search, res_init_int
 
 
 class SequentialLatencyDependenceGraph(DependenceGraph):

@@ -6,16 +6,16 @@ from soap.expression import operators, Variable, Subscript, expression_factory
 from soap.parser import parse
 from soap.semantics.error import IntegerInterval
 from soap.semantics.functions.label import label
-from soap.semantics.latency.extract import (
+from soap.semantics.schedule.extract import (
     ForLoopExtractor, ForLoopNestExtractor
 )
-from soap.semantics.latency.common import (
+from soap.semantics.schedule.common import (
     SEQUENTIAL_LATENCY_TABLE, LOOP_LATENCY_TABLE
 )
-from soap.semantics.latency.distance import (
+from soap.semantics.schedule.distance import (
     dependence_vector, dependence_distance, ISLIndependenceException
 )
-from soap.semantics.latency.graph import (
+from soap.semantics.schedule.graph import (
     SequentialLatencyDependenceGraph, LoopLatencyDependenceGraph, latency_eval
 )
 from soap.semantics.state import flow_to_meta_state

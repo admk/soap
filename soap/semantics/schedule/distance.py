@@ -2,7 +2,7 @@ import islpy
 
 from soap.expression import Variable
 from soap.semantics.error import inf
-from soap.semantics.latency.common import (
+from soap.semantics.schedule.common import (
     is_isl_expr, rename_var_in_expr, iter_point_count
 )
 
