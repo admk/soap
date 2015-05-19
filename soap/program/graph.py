@@ -52,7 +52,7 @@ expression_dependencies = ExpressionDependencies()
 
 
 class DependenceGraph(object):
-    """Discovers the graph of dependences"""
+    """Graph of dependences"""
     class _RootNode(object):
         def __str__(self):
             return '<root>'

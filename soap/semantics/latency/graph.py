@@ -1,67 +1,48 @@
+import collections
 import functools
 import itertools
 import math
-
-import networkx
 
 from soap import logger
 from soap.common.cache import cached
 from soap.datatype import ArrayType
 from soap.expression import (
     AccessExpr, InputVariable, is_expression, operators, UpdateExpr, Variable,
-    InputVariableTuple, OutputVariableTuple,
+    InputVariableTuple, OutputVariableTuple
 )
-from soap.lattice import join
 from soap.program.graph import DependenceGraph
-from soap.semantics import is_numeral, Label
+from soap.semantics import is_numeral
 from soap.semantics.latency.common import (
-    DependenceType, iter_point_count, LATENCY_TABLE
+    DependenceType, iter_point_count,
+    LOOP_LATENCY_TABLE, SEQUENTIAL_LATENCY_TABLE
 )
 from soap.semantics.latency.extract import (
     ForLoopNestExtractor, ForLoopExtractionFailureException,
     ForLoopNestExtractionFailureException
 )
+from soap.semantics.label import Label
 from soap.semantics.latency.distance import dependence_eval
 from soap.semantics.latency.ii import rec_init_int_search, res_init_int
 
 
-def max_latency(graph):
-    """Calculates the longest path in an acyclic graph.  """
-    dist = {}
-    nodes = networkx.topological_sort(graph)
-    for to_node in nodes:
-        pred_dists = [
-            dist[from_node] + graph[from_node][to_node]['latency']
-            for from_node in graph.pred[to_node]]
-        dist[to_node] = max([0] + pred_dists)
-    return max(dist.values())
-
-
 class SequentialLatencyDependenceGraph(DependenceGraph):
 
-    latency_table = LATENCY_TABLE
+    latency_table = SEQUENTIAL_LATENCY_TABLE
 
     def __init__(self, env, out_vars):
         super().__init__(env, out_vars)
-
-    def invariant(self, node):
-        if isinstance(node, OutputVariableTuple):
-            return join(l.invariant for l in node)
-        return node.invariant
-
-    def _loop_latency(self, node, expr):
-        return LoopLatencyDependenceGraph(node.expr()).latency()
+        self._sequential_latency = None
+        self._schedule = None
+        self._control_point_cache = {}
 
     def _node_latency(self, node):
-        if isinstance(node, InputVariable):
-            return 0
-        if is_numeral(node):
+        if isinstance(node, InputVariable) or is_numeral(node):
             return 0
         expr = self.env[node]
         if is_expression(expr):
             if expr.op == operators.FIXPOINT_OP:
                 # FixExpr
-                return self._loop_latency(node, expr)
+                return self._loop_latency(node)
             dtype = node.dtype
             if isinstance(dtype, ArrayType):
                 dtype = ArrayType
@@ -74,6 +55,9 @@ class SequentialLatencyDependenceGraph(DependenceGraph):
         raise TypeError(
             'Do not know how to compute latency for node {}'.format(node))
 
+    def _loop_latency(self, node):
+        return LoopLatencyDependenceGraph(node.expr()).latency()
+
     def edge_attr(self, from_node, to_node):
         attr_dict = {
             'type': DependenceType.flow,
@@ -82,15 +66,82 @@ class SequentialLatencyDependenceGraph(DependenceGraph):
         }
         return from_node, to_node, attr_dict
 
-    def latency(self):
-        try:
-            return self._latency
-        except AttributeError:
-            self._latency = max_latency(self.graph)
-            return self._latency
+    def _schedule_node(self, schedule_map, node):
+        default_value = (0, 0)
+        max_succ_end = 0
+        for succ_node in self.graph.successors(node):
+            _, succ_end = schedule_map.get(succ_node, default_value)
+            max_succ_end = max(max_succ_end, succ_end)
+        node_lat = self._node_latency(node)
+        schedule_map[node] = (max_succ_end, max_succ_end + node_lat)
+
+    def _asap_schedule(self):
+        schedule_map = {}
+        for node in self.dfs_postorder():
+            if isinstance(node, InputVariable) or is_numeral(node):
+                continue
+            self._schedule_node(schedule_map, node)
+        return schedule_map
+
+    def schedule(self):
+        if self._schedule:
+            return self._schedule
+        self._schedule = self._asap_schedule()
+        return self._schedule
+
+    def _pivot(self, schedule):
+        begin_events = collections.defaultdict(set)
+        end_events = collections.defaultdict(set)
+        for node, (begin, end) in schedule.items():
+            begin_events[begin].add(node)
+            end_events[end].add(node)
+
+        control_point_nodes = []
+        control_point_cycles = []
+        prev_event_cycle = 0
+        active_nodes = set()
+        while end_events:
+            begin_min = min(begin_events)
+            end_min = min(end_events)
+            if begin_min <= end_min:
+                active_nodes |= begin_events[begin_min]
+                del begin_events[begin_min]
+            if end_min <= begin_min:
+                active_nodes -= end_events[end_min]
+                del end_events[end_min]
+
+            curr_event_cycle = min(begin_min, end_min)
+            control_point_cycles.append(curr_event_cycle - prev_event_cycle)
+            control_point_nodes.append(set(active_nodes))
+            prev_event_cycle = curr_event_cycle
+
+        if begin_events or active_nodes:
+            raise ValueError('Unprocessed events.')
+        if curr_event_cycle != self.latency():
+            raise ValueError('End of events should be the total latency.')
+
+        return zip(control_point_nodes[:-1], control_point_cycles[1:])
+
+    def control_points(self):
+        return self._pivot(self.schedule())
+
+    def sequential_latency(self):
+        if self._sequential_latency is not None:
+            return self._sequential_latency
+        schedule = self.schedule()
+        latency = 0
+        for node, (begin, end) in schedule.items():
+            latency = max(latency, end)
+        self._sequential_latency = latency
+        return latency
+
+    latency = sequential_latency
 
 
 class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
+
+    latency_table = LOOP_LATENCY_TABLE
+
     def __init__(self, fix_expr):
         is_pipelined = True
         try:
@@ -106,7 +157,6 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
             out_vars = [loop_var]
 
         super().__init__(extractor.label_kernel, out_vars)
-
         self.is_pipelined = is_pipelined
         self.fix_expr = fix_expr
         self.iter_vars = extractor.iter_vars
@@ -229,7 +279,7 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
         try:
             return self._depth
         except AttributeError:
-            self._depth = max_latency(self.graph)
+            self._depth = self.sequential_latency()
             return self._depth
 
     def trip_count(self):
@@ -246,7 +296,7 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
         return self._latency
 
     def true_latency(self):
-        ii = math.ceil(self.initiation_interval())
+        ii = int(math.ceil(self.initiation_interval()))
         return (self.trip_count() - 1) * ii + self.depth()
 
 

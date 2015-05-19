@@ -19,7 +19,7 @@ from soap.semantics import (
     arith_eval, BoxState, ErrorSemantics, flow_to_meta_state, MetaState,
     IntegerInterval
 )
-from soap.semantics.label import s
+from soap.semantics.resource import s
 from soap.transformer import (
     closure, expand, frontier, greedy, parsings, reduce, thick
 )

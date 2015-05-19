@@ -4,13 +4,13 @@ import islpy
 
 from soap.datatype import ArrayType, int_type, real_type
 from soap.expression import (
-    expression_factory, is_expression, is_variable, Variable, operators,
+    expression_factory, is_expression, is_variable, Variable, operators
 )
 from soap.semantics.error import inf
 
 
 # 150 MHz
-LATENCY_TABLE = {
+LOOP_LATENCY_TABLE = {
     (int_type, operators.UNARY_SUBTRACT_OP): 0,
     (int_type, operators.LESS_OP): 1,
     (int_type, operators.LESS_EQUAL_OP): 1,
@@ -31,6 +31,14 @@ LATENCY_TABLE = {
     (ArrayType, operators.INDEX_UPDATE_OP): 1,
     (ArrayType, operators.SUBSCRIPT_OP): 0,
 }
+SEQUENTIAL_LATENCY_TABLE = dict(LOOP_LATENCY_TABLE)
+SEQUENTIAL_LATENCY_TABLE.update({
+    (real_type, operators.ADD_OP): 4,
+    (real_type, operators.SUBTRACT_OP): 4,
+    (real_type, operators.MULTIPLY_OP): 3,
+    (real_type, operators.DIVIDE_OP): 8,
+    (real_type, operators.INDEX_ACCESS_OP): 2,
+})
 
 
 class DependenceType(object):
