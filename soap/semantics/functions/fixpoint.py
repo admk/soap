@@ -21,12 +21,12 @@ def _is_fixpoint(state, prev_state, curr_join_state, prev_join_state,
     return state.is_fixpoint(prev_state)
 
 
-def _widen(state, prev_state, iteration):
+def _widen(obj, prev_obj, iteration):
     if context.unroll_factor:
         if iteration % context.widen_factor == 0:
             logger.info('Widening', iteration)
-            state = prev_state.widen(state)
-    return state
+            obj = prev_obj.widen(obj)
+    return obj
 
 
 @cached
@@ -39,6 +39,7 @@ def fixpoint_eval(state, bool_expr, loop_meta_state=None, loop_flow=None):
     state_class = state.__class__
 
     iteration = 0
+    trip_count = prev_trip_count = IntegerInterval(0)
 
     # input state
     loop_state = state
@@ -48,8 +49,21 @@ def fixpoint_eval(state, bool_expr, loop_meta_state=None, loop_flow=None):
     prev_entry_state = prev_entry_join_state = state.empty()
     prev_loop_state = loop_end_join_state = state.empty()
 
+    if state.is_bottom():
+        return {
+            'entry': entry_join_state,
+            'exit': exit_join_state,
+            'last_entry': entry_state,
+            'last_exit': loop_state,
+            'end': loop_end_join_state,
+            'trip_count': trip_count,
+        }
+
     while True:
         iteration += 1
+        prev_trip_count = trip_count
+        trip_count += 1
+
         logger.persistent('Iteration', iteration, l=logger.levels.debug)
 
         # split state by the conditional of the while loop
@@ -91,6 +105,7 @@ def fixpoint_eval(state, bool_expr, loop_meta_state=None, loop_flow=None):
 
         # widening
         loop_state = _widen(loop_state, prev_loop_state, iteration)
+        trip_count = _widen(trip_count, prev_trip_count, iteration)
 
     logger.unpersistent('Iteration')
 
@@ -100,6 +115,7 @@ def fixpoint_eval(state, bool_expr, loop_meta_state=None, loop_flow=None):
         'last_entry': entry_state,
         'last_exit': loop_state,
         'end': loop_end_join_state,
+        'trip_count': trip_count,
     }
 
 
@@ -190,13 +206,12 @@ def unroll_fix_expr(expr, depth):
     from soap.semantics.schedule.extract import (
         ForLoopExtractor, ForLoopExtractionFailureException
     )
-    try:
-        extractor = ForLoopExtractor(expr)
-        iter_var = extractor.iter_var
-        iter_slice = extractor.iter_slice
-    except ForLoopExtractionFailureException:
+    extractor = ForLoopExtractor(expr)
+    if not extractor.is_for_loop:
         return [_unroll_fix_expr(expr, expr.loop_state, d)
                 for d in range(depth + 1)]
+    iter_var = extractor.iter_var
+    iter_slice = extractor.iter_slice
 
     if extractor.has_inner_loops:
         return [expr]

@@ -6,6 +6,7 @@ from soap.expression import operators, Variable, Subscript, expression_factory
 from soap.parser import parse
 from soap.semantics.error import IntegerInterval
 from soap.semantics.functions.label import label
+from soap.semantics.label import Label
 from soap.semantics.schedule.extract import (
     ForLoopExtractor, ForLoopNestExtractor
 )
@@ -46,14 +47,7 @@ class TestDependenceCheck(unittest.TestCase):
             [self.x], [self.sx], source, sink)
 
     def test_multi_dim_subscripts(self):
-        """
-        Test case::
-            for (x in 0...9) {
-                for (y in 1...10) {
-                    a[x + 2, y] = ... a[x, y - 1] ...
-                }
-            }
-        """
+        # for (x in 0...9) for (y in 1...10) a[x + 2, y] = ... a[x, y - 1] ...
         expr = expression_factory(operators.ADD_OP, self.x, IntegerInterval(2))
         source = Subscript(expr, self.y)
         expr = expression_factory(
@@ -67,9 +61,7 @@ class TestDependenceCheck(unittest.TestCase):
         self.assertEqual(dist, 21)
 
     def test_multi_dim_coupled_subscripts_independence(self):
-        """
-        for (x in 0...9) { a[x + 1, x + 2] = a[x, x]; }
-        """
+        # for (x in 0...9) { a[x + 1, x + 2] = a[x, x]; }
         expr_1 = expression_factory(
             operators.ADD_OP, self.x, IntegerInterval(1))
         expr_2 = expression_factory(
@@ -81,9 +73,7 @@ class TestDependenceCheck(unittest.TestCase):
             [self.x], [self.sx], source, sink)
 
     def test_multi_dim_coupled_subscripts_dependence(self):
-        """
-        for (x in 0...9) { a[x + 1, x + 1] = a[x, x]; }
-        """
+        # for (x in 0...9) { a[x + 1, x + 1] = a[x, x]; }
         expr_1 = expression_factory(
             operators.ADD_OP, self.x, IntegerInterval(1))
         expr_2 = expression_factory(
@@ -94,7 +84,7 @@ class TestDependenceCheck(unittest.TestCase):
         self.assertEqual(dist_vect, (1, ))
 
 
-class _VariableLabelMixin(unittest.TestCase):
+class _CommonMixin(unittest.TestCase):
     def setUp(self):
         self.ori_ii_prec = context.ii_precision
         context.ii_precision = 40
@@ -108,32 +98,7 @@ class _VariableLabelMixin(unittest.TestCase):
         context.ii_precision = self.ori_ii_prec
 
 
-class TestSequentialLatencyDependenceGraph(_VariableLabelMixin):
-    def test_simple_dag_latency(self):
-        program = """
-        def main(real w, real x, int y, int z) {
-            x = (w + x) * (y + z);
-            return x;
-        }
-        """
-        flow = parse(program)
-        meta_state = flow_to_meta_state(flow)
-        outputs = flow.outputs
-        lab, env = label(meta_state, None, outputs)
-        schedule_graph = SequentialLatencyDependenceGraph(env, outputs)
-        expect_latency = SEQUENTIAL_LATENCY_TABLE[real_type, operators.ADD_OP]
-        expect_latency += SEQUENTIAL_LATENCY_TABLE[
-            real_type, operators.MULTIPLY_OP]
-        self.assertEqual(schedule_graph.latency(), expect_latency)
-        active_node_cycle_count_list = [(2, 1), (1, 3), (1, 3)]
-        zipper = zip(
-            active_node_cycle_count_list, schedule_graph.control_points())
-        for (len_nodes, expect_cycle), (nodes, cycle) in zipper:
-            self.assertEqual(len_nodes, len(nodes))
-            self.assertEqual(expect_cycle, cycle)
-
-
-class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
+class TestLoopLatencyDependenceGraph(_CommonMixin):
     def test_variable_initiation(self):
         program = """
         def main(real x) {
@@ -190,13 +155,9 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
         expect_ii /= 3
         self.assertAlmostEqual(ii, expect_ii)
 
-    def test_multi_dim_array_initiation(self):
-        pass
 
-    def test_mixed_initiation(self):
-        pass
-
-    def test_full_flow(self):
+class TestLatencyEvaluation(_CommonMixin):
+    def test_simple_flow(self):
         program = """
         def main(real[30] a) {
             for (int i = 0; i < 10; i = i + 1) {
@@ -214,6 +175,20 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
         depth += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
         expect_ii = depth / distance
         expect_latency = expect_ii * (trip_count - 1) + depth
+        self.assertAlmostEqual(latency, expect_latency)
+
+    def test_non_pipelineable(self):
+        program = """
+        def main(real[30] a, int j) {
+            for (int i = 0; i < 10; i = i + j) {
+                a[i + 3] = a[i] + i;
+            }
+            return a;
+        }
+        """
+        meta_state = flow_to_meta_state(parse(program))
+        latency = latency_eval(meta_state, [self.a])
+        expect_latency = float('inf')
         self.assertAlmostEqual(latency, expect_latency)
 
     def test_loop_nest_flow(self):
@@ -286,8 +261,38 @@ class TestLoopLatencyDependenceGraph(_VariableLabelMixin):
         expect_latency = (trip_count - 1) * expect_ii + depth
         self.assertAlmostEqual(latency, expect_latency)
 
+    def test_sequence_of_loops(self):
+        program = """
+        def main(real[30] a) {
+            for (int i = 0; i < 10; i = i + 1) {
+                a[i] = a[i - 1] + i;
+            }
+            for (int j = 0; j < 20; j = j + 1) {
+                a[j] = a[j - 2] + a[j];
+            }
+            return a;
+        }
+        """
+        meta_state = flow_to_meta_state(parse(program))
+        latency = latency_eval(meta_state[self.a], [self.a])
+        kernel_lat = LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
+        kernel_lat += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
+        kernel_lat += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
+        depth_1 = LOOP_LATENCY_TABLE[int_type, operators.ADD_OP] + kernel_lat
+        depth_2 = max(
+            LOOP_LATENCY_TABLE[int_type, operators.ADD_OP],
+            LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP])
+        depth_2 += kernel_lat
+        ii_1 = kernel_lat
+        ii_2 = kernel_lat / 2
+        trip_count_1 = 10
+        trip_count_2 = 20
+        latency_1 = (trip_count_1 - 1) * ii_1 + depth_1
+        latency_2 = (trip_count_2 - 1) * ii_2 + depth_2
+        self.assertAlmostEqual(latency, latency_1 + latency_2)
 
-class TestExtraction(_VariableLabelMixin):
+
+class TestExtraction(_CommonMixin):
     def compare(self, for_loop, expect_for_loop):
         for key, expect_val in expect_for_loop.items():
             self.assertEqual(getattr(for_loop, key), expect_val)
@@ -307,10 +312,7 @@ class TestExtraction(_VariableLabelMixin):
         for_loop = ForLoopExtractor(fix_expr)
         expect_for_loop = {
             'iter_var': self.i,
-            'start': IntegerInterval(1),
-            'stop': IntegerInterval(10),
-            'step': IntegerInterval(1),
-            'has_inner_loops': False,
+            'iter_slice': slice(1, 10, 1),
         }
         self.compare(for_loop, expect_for_loop)
 
@@ -340,3 +342,48 @@ class TestExtraction(_VariableLabelMixin):
             'kernel': fix_expr.loop_state[a].loop_state,
         }
         self.compare(for_loop, expect_for_loop)
+
+
+class TestSequentialLatencyDependenceGraph(_CommonMixin):
+    def _simple_dag(self):
+        program = """
+        def main(real w, real x, int y, int z) {
+            x = (w + x) * (y + z) - (w + z);
+            return x;
+        }
+        """
+        flow = parse(program)
+        meta_state = flow_to_meta_state(flow)
+        outputs = flow.outputs
+        lab, env = label(meta_state, None, outputs)
+        return SequentialLatencyDependenceGraph(env, outputs)
+
+    def test_simple_dag_schedule(self):
+        graph = self._simple_dag()
+        op_schedule = []
+        for node, interval in graph.schedule().items():
+            if not isinstance(node, Label):
+                continue
+            op_schedule.append((node.dtype, node.expr().op, interval))
+        op_ints = [
+            (int_type, operators.ADD_OP, (0, 1)),
+            (real_type, operators.ADD_OP, (0, 4)),
+            (real_type, operators.ADD_OP, (0, 4)),
+            (real_type, operators.MULTIPLY_OP, (4, 7)),
+            (real_type, operators.SUBTRACT_OP, (7, 11)),
+        ]
+        for op_int in op_ints:
+            self.assertIn(op_int, op_schedule)
+
+    def test_simple_dag_latency(self):
+        graph = self._simple_dag()
+        expect_latency = SEQUENTIAL_LATENCY_TABLE[real_type, operators.ADD_OP]
+        expect_latency += SEQUENTIAL_LATENCY_TABLE[
+            real_type, operators.MULTIPLY_OP]
+        expect_latency += SEQUENTIAL_LATENCY_TABLE[
+            real_type, operators.SUBTRACT_OP]
+        self.assertEqual(graph.latency(), expect_latency)
+
+    def test_simple_dag_resource(self):
+        graph = self._simple_dag()
+        print(graph.resource())

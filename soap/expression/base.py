@@ -73,7 +73,7 @@ class Expression(Flyweight):
             return False
         if id(self) == id(other):
             return True
-        if hash(self) != hash(other) or type(self) is not type(other):
+        if type(self) is not type(other) or hash(self) != hash(other):
             return False
         return self._attr() == other._attr()
 
