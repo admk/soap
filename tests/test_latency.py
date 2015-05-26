@@ -345,6 +345,13 @@ class TestExtraction(_CommonMixin):
 
 
 class TestSequentialLatencyDependenceGraph(_CommonMixin):
+    def _to_graph(self, program):
+        flow = parse(program)
+        meta_state = flow_to_meta_state(flow)
+        outputs = flow.outputs
+        lab, env = label(meta_state, None, outputs)
+        return SequentialLatencyDependenceGraph(env, outputs)
+
     def _simple_dag(self):
         program = """
         def main(real w, real x, int y, int z) {
@@ -352,11 +359,7 @@ class TestSequentialLatencyDependenceGraph(_CommonMixin):
             return x;
         }
         """
-        flow = parse(program)
-        meta_state = flow_to_meta_state(flow)
-        outputs = flow.outputs
-        lab, env = label(meta_state, None, outputs)
-        return SequentialLatencyDependenceGraph(env, outputs)
+        return self._to_graph(program)
 
     def test_simple_dag_schedule(self):
         graph = self._simple_dag()
@@ -366,9 +369,9 @@ class TestSequentialLatencyDependenceGraph(_CommonMixin):
                 continue
             op_schedule.append((node.dtype, node.expr().op, interval))
         op_ints = [
-            (int_type, operators.ADD_OP, (0, 1)),
+            (int_type, operators.ADD_OP, (3, 4)),
             (real_type, operators.ADD_OP, (0, 4)),
-            (real_type, operators.ADD_OP, (0, 4)),
+            (real_type, operators.ADD_OP, (3, 7)),
             (real_type, operators.MULTIPLY_OP, (4, 7)),
             (real_type, operators.SUBTRACT_OP, (7, 11)),
         ]
@@ -386,4 +389,56 @@ class TestSequentialLatencyDependenceGraph(_CommonMixin):
 
     def test_simple_dag_resource(self):
         graph = self._simple_dag()
-        print(graph.resource())
+        total_map, min_alloc_map = graph.resource()
+        compare_total_map = {
+            (int_type, operators.ADD_OP): 1,
+            (real_type, operators.ADD_OP): 3,
+            (real_type, operators.MULTIPLY_OP): 1,
+        }
+        compare_min_alloc_map = {
+            (int_type, operators.ADD_OP): 1,
+            (real_type, operators.ADD_OP): 1,
+            (real_type, operators.MULTIPLY_OP): 1,
+        }
+        self.assertEqual(total_map, compare_total_map)
+        self.assertEqual(min_alloc_map, compare_min_alloc_map)
+
+    def test_loop_sequentialization(self):
+        program = """
+        def main(real[30] x, real[30] y) {
+            for (int i = 1; i < 30; i = i + 1) {
+                x[i] = x[i - 1] + 1;
+            }
+            for (int j = 1; j < 20; j = j + 1) {
+                y[j] = y[j - 1] + 1;
+            }
+            real z = x[0] + y[0];
+            return z;
+        }
+        """
+        loop_ii = LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
+        loop_ii += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
+        loop_ii += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
+        loop_depth = loop_ii + LOOP_LATENCY_TABLE[
+            int_type, operators.SUBTRACT_OP]
+        trip_count_i = 29
+        trip_count_j = 19
+        seq_loop_latency = (trip_count_i + trip_count_j - 2) * loop_ii
+        seq_loop_latency += loop_depth * 2
+        seq_latency = seq_loop_latency + SEQUENTIAL_LATENCY_TABLE[
+            real_type, operators.INDEX_ACCESS_OP]
+        seq_latency += SEQUENTIAL_LATENCY_TABLE[real_type, operators.ADD_OP]
+
+        graph = self._to_graph(program)
+        graph.sequentialize_loops = True
+        self.assertAlmostEqual(graph.latency(), seq_latency)
+
+        par_loop_latency = (max(trip_count_i, trip_count_j) - 1) * loop_ii
+        par_loop_latency += loop_depth
+        par_latency = par_loop_latency + SEQUENTIAL_LATENCY_TABLE[
+            real_type, operators.INDEX_ACCESS_OP]
+        par_latency += SEQUENTIAL_LATENCY_TABLE[real_type, operators.ADD_OP]
+
+        graph = self._to_graph(program)
+        graph.sequentialize_loops = False
+        self.assertAlmostEqual(graph.latency(), par_latency)

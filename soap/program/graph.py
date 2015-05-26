@@ -1,6 +1,6 @@
 import networkx
 
-from soap.common.base import base_dispatcher
+from soap.common import base_dispatcher, cached_property
 from soap.expression import InputVariable, External, InputVariableTuple
 from soap.semantics import is_numeral
 
@@ -60,42 +60,41 @@ class DependenceGraph(object):
 
     def __init__(self, env, out_vars):
         super().__init__()
-        self._invalidate_cache()
-        self.graph = networkx.DiGraph()
         self.env = env
         new_out_vars = []
         for var in out_vars:
             if var not in new_out_vars:
                 new_out_vars.append(var)
-        self.out_vars = new_out_vars
-        self._closure_graph = None
+        self.out_vars = tuple(new_out_vars)
         self._root_node = self._RootNode()
-        self._edges_recursive(self._root_node)
 
-    def _invalidate_cache(self):
-        self._nodes = None
-        self._edges = None
+    @cached_property
+    def graph(self):
+        graph = networkx.DiGraph()
+        self._edges_recursive(graph, self._root_node)
+        return graph
 
     def nodes(self):
-        if self._nodes is None:
-            self._nodes = self.graph.nodes()
+        try:
+            return self._nodes
+        except AttributeError:
+            pass
+        self._nodes = self.graph.nodes()
         return self._nodes
 
     def edges(self):
-        if self._edges is None:
-            self._edges = self.graph.edges()
+        try:
+            return self._edges
+        except AttributeError:
+            pass
+        self._edges = self.graph.edges()
         return self._edges
 
     def is_cyclic(self):
         return bool(list(networkx.simple_cycles(self.graph)))
 
-    def add_edge(self, from_node, to_node, attr_dict=None, **kwargs):
-        self._invalidate_cache()
-        self.graph.add_edge(from_node, to_node, attr_dict, **kwargs)
-
-    def add_dep_edges_one_to_many(self, from_node, to_nodes):
-        self._invalidate_cache()
-        self.graph.add_edges_from(
+    def add_dep_edges_one_to_many(self, graph, from_node, to_nodes):
+        graph.add_edges_from(
             self.edge_attr(from_node, to_node) for to_node in to_nodes)
 
     def edge_attr(self, from_node, to_node):
@@ -103,11 +102,12 @@ class DependenceGraph(object):
 
     deps_func = staticmethod(expression_dependencies)
 
-    def _edges_recursive(self, out_vars):
-        prev_nodes = self.nodes()
+    def _edges_recursive(self, graph, out_vars):
+        prev_nodes = graph.nodes()
         if out_vars == self._root_node:
             # terminal node
-            self.add_dep_edges_one_to_many(self._root_node, self.out_vars)
+            self.add_dep_edges_one_to_many(
+                graph, self._root_node, self.out_vars)
             deps = self.out_vars
         else:
             deps = []
@@ -120,23 +120,29 @@ class DependenceGraph(object):
                     expr = self.env[var]
                 local_deps = self.deps_func(expr)
                 deps += local_deps
-                self.add_dep_edges_one_to_many(var, local_deps)
+                self.add_dep_edges_one_to_many(graph, var, local_deps)
         if not deps:
             return
         new_deps = []
         for v in deps:
             if v not in prev_nodes:
                 new_deps.append(v)
-        self._edges_recursive(new_deps)
+        self._edges_recursive(graph, new_deps)
 
     def input_vars(self):
         return (v for v in self.nodes() if isinstance(v, InputVariable))
 
+    def _ignore_root_node(self, nodes):
+        return (n for n in nodes if n != self._root_node)
+
+    def dfs_preorder(self):
+        # strange non-deterministic dependence bug when using networkx's
+        # dfs_preorder method
+        return reversed(list(self.dfs_postorder()))
+
     def dfs_postorder(self):
-        for node in networkx.dfs_postorder_nodes(self.graph, self._root_node):
-            if node == self._root_node:
-                continue
-            yield node
+        return self._ignore_root_node(
+            networkx.dfs_postorder_nodes(self.graph, self._root_node))
 
     def is_multiply_shared(self, node):
         return len(self.predecessors(node)) > 1
