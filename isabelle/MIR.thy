@@ -67,6 +67,7 @@ datatype node_label =
 | N_plus
 | N_tif (* ternary if *)
 | N_fix
+| N_nop (* a transparent node, useful for easy implementation of substitution *)
 
 (* arity, i.e. number of operands *)
 fun ar where
@@ -77,6 +78,7 @@ fun ar where
 | "ar N_plus = 2"
 | "ar N_tif = 3"
 | "ar N_fix = 3"
+| "ar N_nop = 1"
 
 (* a MIR is a set of nodes, a mapping from variable names to the nodes that represent the
    expression that they hold, a relation from each node to its (ordered) list of children, 
@@ -118,7 +120,8 @@ definition "my_mir \<equiv> \<lparr>
 lemma "wf_mir {''x'',''y''} my_mir" 
 sorry
 
-(* get expression from a MIR node. NB: what if the MIR has a loop? *)
+(* non-constructive specification for getting an expression from a MIR node.
+   NB: if the MIR node n has a loop, then "get_expr m n e" is always False. *)
 
 inductive get_expr :: "mir \<Rightarrow> node \<Rightarrow> expr \<Rightarrow> bool"
 where
@@ -133,12 +136,73 @@ where
 | "\<lbrakk> lbl m n = N_tif ; children m n = [n1,n2,n3] ; get_expr m n1 e1 ; get_expr m n2 e2 ; get_expr m n3 e3 \<rbrakk> \<Longrightarrow> 
   get_expr m n (Tif e1 e2 e3)"
 
+(* predicate holds if mir uses maximal sharing *)
+definition minimal_mir :: "mir \<Rightarrow> bool"
+where
+  "minimal_mir m \<equiv> (\<forall>n1 \<in> nodes m. \<forall>n2 \<in> nodes m. \<forall>e. 
+  get_expr m n1 e \<and> get_expr m n2 e \<longrightarrow> n1 = n2)"
+
+(* constructive definition of substitution *)
+fun subst :: "mir \<Rightarrow> mir \<Rightarrow> mir" (infixr "\<star>" 65)
+where
+  (* assumption: nodes in m1 and m2 are disjoint *)
+  "m1 \<star> m2 = \<lparr> 
+  nodes = nodes m1 \<union> nodes m2,
+  vmap = vmap m1,
+  children = (\<lambda>n. 
+    if n \<in> nodes m1 then if (\<exists>x. get_expr m1 n (Var x)) then
+      let x = THE x. get_expr m1 n (Var x) in
+      [the (vmap m2 x)] else children m1 n else children m2 n),
+  lbl = (\<lambda>n. 
+    if n \<in> nodes m1 then if (\<exists>x. get_expr m1 n (Var x)) then 
+      N_nop else lbl m1 n else lbl m2 n) \<rparr>"
+  
+(* Example: MIR for x := x + 1 *)
+
+definition "my_mir2 \<equiv> \<lparr>
+  nodes = {4,5,6,7},
+  vmap = (\<lambda>x. if x = ''x'' then Some 5 else 
+              if x = ''y'' then Some 7 else None),
+  children = (\<lambda>n. if n = 4 then [] else
+                  if n = 5 then [4,6] else
+                  if n = 6 then [] else 
+                  if n = 7 then [] else undefined),
+  lbl = (\<lambda>n. if n = 4 then N_var ''x'' else
+             if n = 5 then N_plus else
+             if n = 6 then N_nat 1 else 
+             if n = 7 then N_var ''y'' else undefined) \<rparr>"
+
+(* Example: MIR for (y := x * 2) \<star> (x := x + 1) *)
+
+definition "my_mir3 \<equiv> \<lparr>
+  nodes = {1,2,3,4,5,6,7},
+  vmap = (\<lambda>x. if x = ''x'' then Some 1 else 
+              if x = ''y'' then Some 2 else None),
+  children = (\<lambda>n. if n = 1 then [5] else
+                  if n = 2 then [1,3] else
+                  if n = 3 then [] else 
+                  if n = 4 then [] else
+                  if n = 5 then [4,6] else
+                  if n = 6 then [] else 
+                  if n = 7 then [] else undefined),
+  lbl = (\<lambda>n. if n = 1 then N_nop else
+             if n = 2 then N_times else
+             if n = 3 then N_nat 2 else 
+             if n = 4 then N_var ''x'' else
+             if n = 5 then N_plus else
+             if n = 6 then N_nat 1 else 
+             if n = 7 then N_var ''y'' else undefined) \<rparr>"
+
+lemma "my_mir \<star> my_mir2 = my_mir3"
+apply (unfold my_mir_def my_mir2_def my_mir3_def)
+sorry
+
 (* non-constructive specification for how to obtain MIR from a program *)
 
-fun mir_of :: "program \<Rightarrow> var set \<Rightarrow> mir \<Rightarrow> bool"
+inductive mir_of :: "program \<Rightarrow> var set \<Rightarrow> mir \<Rightarrow> bool"
 where
-  "mir_of (Assign x e) xs m = (\<forall>y \<in> xs. get_expr m (the (vmap m y)) (if y=x then e else Var y))"
-| "mir_of _ _ _ = undefined" (* todo *)
+  "\<forall>y \<in> xs. get_expr m (the (vmap m y)) (if y=x then e else Var y) \<Longrightarrow> mir_of (Assign x e) xs m"
+| "\<lbrakk> mir_of p1 xs m1 ; mir_of p2 xs m2 \<rbrakk> \<Longrightarrow> mir_of (p1 ;;; p2) xs (m1 \<star> m2)" 
 
 (* constructive method to obtain MIR from a program *)
 
@@ -148,7 +212,7 @@ where
 
 (* constructive method satisfies non-constructive specification *)
 lemma "mir_of p xs (make_mir p xs)"
-
+sorry
 
 
 
