@@ -6,9 +6,14 @@ from soap.datatype import ArrayType, int_type, real_type
 from soap.expression import (
     expression_factory, is_expression, is_variable, Variable, operators
 )
-from soap.semantics.error import inf
 
 
+NONPIPELINED_OPERATORS = {
+    operators.INDEX_ACCESS_OP,
+    operators.INDEX_UPDATE_OP,
+    operators.FIXPOINT_OP,
+}
+PIPELINED_OPERATORS = set(operators.OPERATORS) - NONPIPELINED_OPERATORS
 # 150 MHz
 LOOP_LATENCY_TABLE = {
     (int_type, operators.UNARY_SUBTRACT_OP): 0,
@@ -71,11 +76,12 @@ def rename_var_in_expr(expr, var_list, format_str):
 
 
 def iter_point_count(iter_slice):
-    start = iter_slice.start
-    stop = iter_slice.stop
+    try:
+        start = int(iter_slice.start)
+        stop = int(iter_slice.stop)
+    except OverflowError:
+        raise OverflowError('Unbounded iter_slice.')
     step = iter_slice.step
-    if start == -inf or stop == inf:
-        raise ValueError('Unbounded iter_slice.')
     if step == 0:
         raise ZeroDivisionError('Step is 0.')
     return max(0, int(math.floor((stop - start) / step)))

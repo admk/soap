@@ -90,7 +90,7 @@ class LabelGenerator(base_dispatcher()):
     def execute_MetaState(self, expr, state):
         from soap.semantics.functions import arith_eval_meta_state
         env = {}
-        for each_var, each_expr in sorted(expr.items(), key=hash):
+        for each_var, each_expr in sorted(expr.items(), key=str):
             expr_label, expr_env = self(each_expr, state)
             env.update(expr_env)
             env[each_var] = expr_label

@@ -97,6 +97,10 @@ class _CommonMixin(unittest.TestCase):
     def tearDown(self):
         context.ii_precision = self.ori_ii_prec
 
+    def assertAlmostEqual(self, x, y, delta=None):
+        delta = delta or 1
+        super().assertAlmostEqual(x, y, delta=delta)
+
 
 class TestLoopLatencyDependenceGraph(_CommonMixin):
     def test_variable_initiation(self):
@@ -289,7 +293,7 @@ class TestLatencyEvaluation(_CommonMixin):
         trip_count_2 = 20
         latency_1 = (trip_count_1 - 1) * ii_1 + depth_1
         latency_2 = (trip_count_2 - 1) * ii_2 + depth_2
-        self.assertAlmostEqual(latency, latency_1 + latency_2)
+        self.assertAlmostEqual(latency, latency_1 + latency_2, delta=2)
 
 
 class TestExtraction(_CommonMixin):
@@ -431,7 +435,7 @@ class TestSequentialLatencyDependenceGraph(_CommonMixin):
 
         graph = self._to_graph(program)
         graph.sequentialize_loops = True
-        self.assertAlmostEqual(graph.latency(), seq_latency)
+        self.assertAlmostEqual(graph.latency(), seq_latency, delta=2)
 
         par_loop_latency = (max(trip_count_i, trip_count_j) - 1) * loop_ii
         par_loop_latency += loop_depth
