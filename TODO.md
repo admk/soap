@@ -16,12 +16,12 @@
     - [X] Plotting changes
 
 - [ ] Fix bugs
-    - [ ] Conversions are not counted
     - [X] Transitive distances
 
 
 # Ugliness, fix if have the time to
 
+* [ ] Add conversion operators, and infer them automatically
 * [ ] Consider what is a reasonable thing to do with non-terminating
   expressions
 * [ ] {Possible} Better code generation by expanding expressions with locals

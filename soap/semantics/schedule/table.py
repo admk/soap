@@ -1,11 +1,59 @@
 from collections import namedtuple
 
-from soap.common import cached
+from soap.common.base import dict_merge
 from soap.context import context
-from soap.expression import operators, is_expression, External, FixExpr
-from soap.semantics.common import is_numeral
-from soap.semantics.error import ErrorSemantics, IntegerInterval
-from soap.semantics.label import Label
+from soap.expression import operators
+
+
+DEVICE_LATENCY_TABLE = {
+    ('Virtex7', 100): {
+        'integer': {
+            'comparison': 1,
+            operators.UNARY_SUBTRACT_OP: 0,
+            operators.ADD_OP: 1,
+            operators.SUBTRACT_OP: 1,
+            operators.MULTIPLY_OP: 1,
+            operators.INDEX_ACCESS_OP: 1,
+        },
+        'float': {
+            'comparison': 4,
+            operators.UNARY_SUBTRACT_OP: 0,
+            operators.ADD_OP: 4,
+            operators.SUBTRACT_OP: 4,
+            operators.MULTIPLY_OP: 3,
+            operators.DIVIDE_OP: 8,
+            operators.INDEX_ACCESS_OP: 2,
+        },
+        'array': {
+            operators.INDEX_UPDATE_OP: 1,
+            operators.SUBSCRIPT_OP: 0,
+        },
+    },
+}
+DEVICE_LOOP_LATENCY_TABLE = {
+    ('Virtex7', 100): {
+        'float': {
+            'comparison': 3,
+            operators.ADD_OP: 3,
+            operators.SUBTRACT_OP: 3,
+            operators.MULTIPLY_OP: 2,
+            operators.DIVIDE_OP: 7,
+            operators.INDEX_ACCESS_OP: 1,
+        },
+    },
+}
+DEVICE_LOOP_LATENCY_TABLE = dict_merge(
+    DEVICE_LOOP_LATENCY_TABLE, DEVICE_LATENCY_TABLE)
+
+
+try:
+    LATENCY_TABLE = DEVICE_LATENCY_TABLE[context.device, context.frequency]
+    LOOP_LATENCY_TABLE = \
+        DEVICE_LOOP_LATENCY_TABLE[context.device, context.frequency]
+except KeyError:
+    raise KeyError(
+        'Device {} and frequency {} MHz combination not found.'
+        .format(context.device, context.frequency))
 
 
 class OperatorResourceTuple(namedtuple('Statistics', ['dsp', 'ff', 'lut'])):
@@ -15,7 +63,7 @@ class OperatorResourceTuple(namedtuple('Statistics', ['dsp', 'ff', 'lut'])):
 s = OperatorResourceTuple
 
 
-resource_table = {
+RESOURCE_TABLE = {
     'stratix4': {
         'integer': {
             'comparison': s(0, 65, 35),
@@ -30,7 +78,7 @@ resource_table = {
             operators.INDEX_ACCESS_OP: s(0, 0, 0),
             operators.INDEX_UPDATE_OP: s(0, 0, 0),
         },
-        'single': {
+        'float': {
             'conversion': s(0, 211, 186),
             'comparison': s(0, 33, 68),
             operators.ADD_OP: s(0, 540, 505),
@@ -60,7 +108,7 @@ resource_table = {
             operators.INDEX_ACCESS_OP: s(0, 0, 0),
             operators.INDEX_UPDATE_OP: s(0, 0, 0),
         },
-        'single': {
+        'float': {
             'conversion': s(0, 128, 341),
             'comparison': s(0, 66, 72),
             operators.ADD_OP: s(2, 227, 214),  # full dsp
@@ -77,44 +125,3 @@ resource_table = {
         'double': {},
     },
 }
-
-
-def _accumulate_count(env, integer_table, float_table):
-    stat = s(0, 0, 0)
-    conversion_set = set()
-    for label, expr in env.items():
-        if is_expression(expr) and not isinstance(expr, External):
-            op = expr.op
-            if op in operators.COMPARISON_OPERATORS:
-                op = 'comparison'
-            if isinstance(label, Label):
-                datatype = type(label.bound)
-            else:
-                datatype = None
-            if datatype is IntegerInterval:
-                stat += integer_table[op]
-            elif datatype is ErrorSemantics:
-                for arg in expr.args:
-                    if not isinstance(arg, Label):
-                        continue
-                    if not isinstance(arg.bound, IntegerInterval):
-                        continue
-                    if is_numeral(env[arg]):
-                        continue
-                    conversion_set.add(arg)
-                stat += float_table[op]
-        if isinstance(expr, FixExpr):
-            for e in (expr.bool_expr[1], expr.loop_state, expr.init_state):
-                stat += _accumulate_count(e, integer_table, float_table)
-    dsp, ff, lut = float_table['conversion']
-    no_conv = len(conversion_set)
-    stat += s(no_conv * dsp, no_conv * ff, no_conv * lut)
-    return stat
-
-
-@cached
-def resource_count(labsem):
-    table = resource_table[context.device]
-    integer_table = table['integer']
-    float_table = table[{23: 'single', 52: 'double'}[context.precision]]
-    return _accumulate_count(labsem.env, integer_table, float_table)

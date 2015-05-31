@@ -1,7 +1,7 @@
 import unittest
 
 from soap.context import context
-from soap.datatype import int_type, real_type, RealArrayType, ArrayType
+from soap.datatype import int_type, real_type, RealArrayType
 from soap.expression import operators, Variable, Subscript, expression_factory
 from soap.parser import parse
 from soap.semantics.error import IntegerInterval
@@ -10,15 +10,13 @@ from soap.semantics.label import Label
 from soap.semantics.schedule.extract import (
     ForLoopExtractor, ForLoopNestExtractor
 )
-from soap.semantics.schedule.common import (
-    LATENCY_TABLE, LOOP_LATENCY_TABLE
-)
 from soap.semantics.schedule.distance import (
     dependence_vector, dependence_distance, ISLIndependenceException
 )
 from soap.semantics.schedule.graph import (
     SequentialScheduleGraph, LoopScheduleGraph, schedule_graph
 )
+from soap.semantics.schedule.table import LOOP_LATENCY_TABLE, LATENCY_TABLE
 from soap.semantics.state import flow_to_meta_state
 
 
@@ -113,7 +111,7 @@ class TestLoopScheduleGraph(_CommonMixin):
         graph = LoopScheduleGraph(fix_expr)
 
         ii = graph.initiation_interval()
-        expect_ii = LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
+        expect_ii = LOOP_LATENCY_TABLE['float'][operators.ADD_OP]
         self.assertAlmostEqual(ii, expect_ii)
 
         trip_count = graph.trip_count()
@@ -150,9 +148,9 @@ class TestLoopScheduleGraph(_CommonMixin):
         fix_expr = flow_to_meta_state(parse(program))[self.a]
         graph = LoopScheduleGraph(fix_expr)
         ii = graph.initiation_interval()
-        expect_ii = LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
-        expect_ii += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
-        expect_ii += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
+        expect_ii = LOOP_LATENCY_TABLE['float'][operators.INDEX_ACCESS_OP]
+        expect_ii += LOOP_LATENCY_TABLE['float'][operators.ADD_OP]
+        expect_ii += LOOP_LATENCY_TABLE['array'][operators.INDEX_UPDATE_OP]
         expect_ii /= 3
         self.assertAlmostEqual(ii, expect_ii)
 
@@ -173,12 +171,12 @@ class TestLoopScheduleGraph(_CommonMixin):
         fix_expr = flow_to_meta_state(parse(program))[self.y]
         graph = LoopScheduleGraph(fix_expr)
         ii = graph.initiation_interval()
-        expect_ii = LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
-        expect_ii += LOOP_LATENCY_TABLE[real_type, operators.MULTIPLY_OP]
+        expect_ii = LOOP_LATENCY_TABLE['float'][operators.ADD_OP]
+        expect_ii += LOOP_LATENCY_TABLE['float'][operators.MULTIPLY_OP]
         expect_ii /= 2
         self.assertAlmostEqual(ii, expect_ii)
 
-    def test_mixed_array_initiation(self):
+    def test_mixed_array_transitive_initiation(self):
         program = """
         def main(real[30] a, real[30] c) {
             for (int i = 0; i < 9; i = i + 1) {
@@ -191,12 +189,12 @@ class TestLoopScheduleGraph(_CommonMixin):
         fix_expr = flow_to_meta_state(parse(program))[self.a]
         graph = LoopScheduleGraph(fix_expr)
         ii = graph.initiation_interval()
-        expect_ii = LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
-        expect_ii += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
-        expect_ii += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
-        expect_ii += LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
-        expect_ii += LOOP_LATENCY_TABLE[real_type, operators.MULTIPLY_OP]
-        expect_ii += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
+        expect_ii = LOOP_LATENCY_TABLE['float'][operators.INDEX_ACCESS_OP]
+        expect_ii += LOOP_LATENCY_TABLE['float'][operators.ADD_OP]
+        expect_ii += LOOP_LATENCY_TABLE['array'][operators.INDEX_UPDATE_OP]
+        expect_ii += LOOP_LATENCY_TABLE['float'][operators.INDEX_ACCESS_OP]
+        expect_ii += LOOP_LATENCY_TABLE['float'][operators.MULTIPLY_OP]
+        expect_ii += LOOP_LATENCY_TABLE['array'][operators.INDEX_UPDATE_OP]
         expect_ii /= 2
         self.assertAlmostEqual(ii, expect_ii)
 
@@ -237,9 +235,9 @@ class TestSequentialScheduleGraph(_CommonMixin):
 
     def test_simple_dag_latency(self):
         graph = self._simple_dag()
-        expect_latency = LATENCY_TABLE[real_type, operators.ADD_OP]
-        expect_latency += LATENCY_TABLE[real_type, operators.MULTIPLY_OP]
-        expect_latency += LATENCY_TABLE[real_type, operators.SUBTRACT_OP]
+        expect_latency = LATENCY_TABLE['float'][operators.ADD_OP]
+        expect_latency += LATENCY_TABLE['float'][operators.MULTIPLY_OP]
+        expect_latency += LATENCY_TABLE['float'][operators.SUBTRACT_OP]
         self.assertEqual(graph.latency(), expect_latency)
 
     def test_simple_dag_resource(self):
@@ -271,18 +269,18 @@ class TestSequentialScheduleGraph(_CommonMixin):
             return z;
         }
         """
-        loop_ii = LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
-        loop_ii += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
-        loop_ii += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
-        loop_depth = loop_ii + LOOP_LATENCY_TABLE[
-            int_type, operators.SUBTRACT_OP]
+        loop_ii = LOOP_LATENCY_TABLE['float'][operators.INDEX_ACCESS_OP]
+        loop_ii += LOOP_LATENCY_TABLE['float'][operators.ADD_OP]
+        loop_ii += LOOP_LATENCY_TABLE['array'][operators.INDEX_UPDATE_OP]
+        loop_depth = loop_ii
+        loop_depth += LOOP_LATENCY_TABLE['integer'][operators.SUBTRACT_OP]
         trip_count_i = 29
         trip_count_j = 19
         seq_loop_latency = (trip_count_i + trip_count_j - 2) * loop_ii
         seq_loop_latency += loop_depth * 2
         seq_latency = seq_loop_latency
-        seq_latency += LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
-        seq_latency += LATENCY_TABLE[real_type, operators.ADD_OP]
+        seq_latency += LATENCY_TABLE['float'][operators.INDEX_ACCESS_OP]
+        seq_latency += LATENCY_TABLE['float'][operators.ADD_OP]
 
         graph = self._to_graph(program)
         graph.sequentialize_loops = True
@@ -291,8 +289,8 @@ class TestSequentialScheduleGraph(_CommonMixin):
         par_loop_latency = (max(trip_count_i, trip_count_j) - 1) * loop_ii
         par_loop_latency += loop_depth
         par_latency = par_loop_latency
-        par_latency += LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
-        par_latency += LATENCY_TABLE[real_type, operators.ADD_OP]
+        par_latency += LATENCY_TABLE['float'][operators.INDEX_ACCESS_OP]
+        par_latency += LATENCY_TABLE['float'][operators.ADD_OP]
 
         graph = self._to_graph(program)
         graph.sequentialize_loops = False
@@ -328,9 +326,9 @@ class TestFullSchedule(_CommonMixin):
         distance = 3
         trip_count = 10
         graph = schedule_graph(meta_state, [self.a])
-        depth = LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
-        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
-        depth += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
+        depth = LOOP_LATENCY_TABLE['float'][operators.INDEX_ACCESS_OP]
+        depth += LOOP_LATENCY_TABLE['float'][operators.ADD_OP]
+        depth += LOOP_LATENCY_TABLE['array'][operators.INDEX_UPDATE_OP]
         expect_ii = depth / distance
         expect_latency = expect_ii * (trip_count - 1) + depth
         expect_resource = {
@@ -359,11 +357,11 @@ class TestFullSchedule(_CommonMixin):
         graph = schedule_graph(meta_state[self.a], [self.a])
         distance = 3
         trip_count = 10 * 10
-        depth = LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
-        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
-        depth += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
+        depth = LOOP_LATENCY_TABLE['float'][operators.INDEX_ACCESS_OP]
+        depth += LOOP_LATENCY_TABLE['float'][operators.ADD_OP]
+        depth += LOOP_LATENCY_TABLE['array'][operators.INDEX_UPDATE_OP]
         expect_ii = depth / distance
-        add_latency = LOOP_LATENCY_TABLE[int_type, operators.ADD_OP]
+        add_latency = LOOP_LATENCY_TABLE['integer'][operators.ADD_OP]
         expect_latency = expect_ii * (trip_count - 1) + depth + add_latency
         expect_resource = {
             (int_type, operators.ADD_OP): 3 / expect_ii,
@@ -385,10 +383,10 @@ class TestFullSchedule(_CommonMixin):
         graph = schedule_graph(meta_state[self.b], [self.b])
         distance = 3
         trip_count = 10
-        depth = LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
-        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
-        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
-        depth += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
+        depth = LOOP_LATENCY_TABLE['float'][operators.INDEX_ACCESS_OP]
+        depth += LOOP_LATENCY_TABLE['float'][operators.ADD_OP]
+        depth += LOOP_LATENCY_TABLE['float'][operators.ADD_OP]
+        depth += LOOP_LATENCY_TABLE['array'][operators.INDEX_UPDATE_OP]
         expect_ii = depth / distance
         expect_latency = expect_ii * (trip_count - 1) + depth
         expect_resource = {
@@ -410,12 +408,12 @@ class TestFullSchedule(_CommonMixin):
         meta_state = flow_to_meta_state(parse(program))
         graph = schedule_graph(meta_state[self.a], [self.a])
         trip_count = 10
-        depth = LOOP_LATENCY_TABLE[int_type, operators.ADD_OP]
-        depth += LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
-        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
-        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
-        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
-        depth += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
+        depth = LOOP_LATENCY_TABLE['integer'][operators.ADD_OP]
+        depth += LOOP_LATENCY_TABLE['float'][operators.INDEX_ACCESS_OP]
+        depth += LOOP_LATENCY_TABLE['float'][operators.ADD_OP]
+        depth += LOOP_LATENCY_TABLE['float'][operators.ADD_OP]
+        depth += LOOP_LATENCY_TABLE['float'][operators.ADD_OP]
+        depth += LOOP_LATENCY_TABLE['array'][operators.INDEX_UPDATE_OP]
         expect_ii = 5 / 2
         expect_latency = (trip_count - 1) * expect_ii + depth
         expect_resource = {
@@ -439,13 +437,13 @@ class TestFullSchedule(_CommonMixin):
         """
         meta_state = flow_to_meta_state(parse(program))
         graph = schedule_graph(meta_state[self.a], [self.a])
-        kernel_lat = LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
-        kernel_lat += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
-        kernel_lat += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
-        depth_1 = LOOP_LATENCY_TABLE[int_type, operators.ADD_OP] + kernel_lat
+        kernel_lat = LOOP_LATENCY_TABLE['float'][operators.INDEX_ACCESS_OP]
+        kernel_lat += LOOP_LATENCY_TABLE['float'][operators.ADD_OP]
+        kernel_lat += LOOP_LATENCY_TABLE['array'][operators.INDEX_UPDATE_OP]
+        depth_1 = LOOP_LATENCY_TABLE['integer'][operators.ADD_OP] + kernel_lat
         depth_2 = max(
-            LOOP_LATENCY_TABLE[int_type, operators.ADD_OP],
-            LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP])
+            LOOP_LATENCY_TABLE['integer'][operators.ADD_OP],
+            LOOP_LATENCY_TABLE['float'][operators.INDEX_ACCESS_OP])
         depth_2 += kernel_lat
         ii_1 = kernel_lat
         ii_2 = kernel_lat / 2

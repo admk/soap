@@ -16,16 +16,17 @@ from soap.semantics import is_numeral
 from soap.semantics.functions import label
 from soap.semantics.label import Label
 from soap.semantics.schedule.common import (
-    DependenceType, iter_point_count,
-    PIPELINED_OPERATORS, LOOP_LATENCY_TABLE, LATENCY_TABLE
+    DependenceType, iter_point_count, PIPELINED_OPERATORS
 )
 from soap.semantics.schedule.extract import ForLoopNestExtractor
 from soap.semantics.schedule.distance import dependence_eval
 from soap.semantics.schedule.ii import rec_init_int_search, res_init_int
+from soap.semantics.schedule.table import LOOP_LATENCY_TABLE, LATENCY_TABLE
 
 
 _irrelevant_types = (
     Label, Variable, InputVariableTuple, OutputVariableTuple)
+_float_type = {23: 'float', 52: 'double'}[context.precision]
 
 
 def _resource_ceil(res_map):
@@ -47,6 +48,12 @@ def _resource_map_min(total_map, lower_map):
 class SequentialScheduleGraph(DependenceGraph):
 
     pipelined_operators = PIPELINED_OPERATORS
+    latency_table = LATENCY_TABLE
+    dtype_key_map = {
+        int_type: 'integer',
+        real_type: _float_type,
+        ArrayType: 'array',
+    }
 
     def __init__(
             self, env, out_vars, round_values=False,
@@ -66,7 +73,10 @@ class SequentialScheduleGraph(DependenceGraph):
             dtype = node.dtype
             if isinstance(dtype, ArrayType):
                 dtype = ArrayType
-            return expr, dtype, expr.op
+            op = expr.op
+            if op in operators.COMPARISON_OPERATORS:
+                op = 'comparison'
+            return expr, dtype, op
         if is_numeral(expr) or isinstance(expr, _irrelevant_types):
             return None, None, None
         raise TypeError(
@@ -87,9 +97,6 @@ class SequentialScheduleGraph(DependenceGraph):
         cache[node] = graph
         return graph
 
-    def _dtype_op_latency(self, dtype, op):
-        return LATENCY_TABLE[dtype, op]
-
     def _node_latency(self, node):
         expr, dtype, op = self._node_expr(node)
         if expr is None:
@@ -103,7 +110,8 @@ class SequentialScheduleGraph(DependenceGraph):
             except OverflowError:
                 return latency
             return int(latency)
-        return self._dtype_op_latency(dtype, op)
+        dtype = self.dtype_key_map[dtype]
+        return self.latency_table[dtype][op]
 
     def _node_resource(self, node):
         expr, dtype, op = self._node_expr(node)
@@ -309,6 +317,8 @@ _edge_type_map = {
 
 class LoopScheduleGraph(SequentialScheduleGraph):
 
+    latency_table = LOOP_LATENCY_TABLE
+
     def __init__(self, fix_expr, round_values=False, sequentialize_loops=True):
         extractor = ForLoopNestExtractor(fix_expr)
         is_pipelined = extractor.is_for_loop_nest
@@ -323,9 +333,6 @@ class LoopScheduleGraph(SequentialScheduleGraph):
         self.iter_vars = iter_vars
         self.iter_slices = extractor.iter_slices
         self._init_loop_graph()
-
-    def _dtype_op_latency(self, dtype, op):
-        return LOOP_LATENCY_TABLE[dtype, op]
 
     def _init_loop_graph(self):
         if not self.is_pipelined:
