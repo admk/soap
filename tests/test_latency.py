@@ -11,7 +11,7 @@ from soap.semantics.schedule.extract import (
     ForLoopExtractor, ForLoopNestExtractor
 )
 from soap.semantics.schedule.common import (
-    SEQUENTIAL_LATENCY_TABLE, LOOP_LATENCY_TABLE
+    LATENCY_TABLE, LOOP_LATENCY_TABLE
 )
 from soap.semantics.schedule.distance import (
     dependence_vector, dependence_distance, ISLIndependenceException
@@ -237,11 +237,9 @@ class TestSequentialScheduleGraph(_CommonMixin):
 
     def test_simple_dag_latency(self):
         graph = self._simple_dag()
-        expect_latency = SEQUENTIAL_LATENCY_TABLE[real_type, operators.ADD_OP]
-        expect_latency += SEQUENTIAL_LATENCY_TABLE[
-            real_type, operators.MULTIPLY_OP]
-        expect_latency += SEQUENTIAL_LATENCY_TABLE[
-            real_type, operators.SUBTRACT_OP]
+        expect_latency = LATENCY_TABLE[real_type, operators.ADD_OP]
+        expect_latency += LATENCY_TABLE[real_type, operators.MULTIPLY_OP]
+        expect_latency += LATENCY_TABLE[real_type, operators.SUBTRACT_OP]
         self.assertEqual(graph.latency(), expect_latency)
 
     def test_simple_dag_resource(self):
@@ -282,9 +280,9 @@ class TestSequentialScheduleGraph(_CommonMixin):
         trip_count_j = 19
         seq_loop_latency = (trip_count_i + trip_count_j - 2) * loop_ii
         seq_loop_latency += loop_depth * 2
-        seq_latency = seq_loop_latency + SEQUENTIAL_LATENCY_TABLE[
-            real_type, operators.INDEX_ACCESS_OP]
-        seq_latency += SEQUENTIAL_LATENCY_TABLE[real_type, operators.ADD_OP]
+        seq_latency = seq_loop_latency
+        seq_latency += LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
+        seq_latency += LATENCY_TABLE[real_type, operators.ADD_OP]
 
         graph = self._to_graph(program)
         graph.sequentialize_loops = True
@@ -292,9 +290,9 @@ class TestSequentialScheduleGraph(_CommonMixin):
 
         par_loop_latency = (max(trip_count_i, trip_count_j) - 1) * loop_ii
         par_loop_latency += loop_depth
-        par_latency = par_loop_latency + SEQUENTIAL_LATENCY_TABLE[
-            real_type, operators.INDEX_ACCESS_OP]
-        par_latency += SEQUENTIAL_LATENCY_TABLE[real_type, operators.ADD_OP]
+        par_latency = par_loop_latency
+        par_latency += LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
+        par_latency += LATENCY_TABLE[real_type, operators.ADD_OP]
 
         graph = self._to_graph(program)
         graph.sequentialize_loops = False

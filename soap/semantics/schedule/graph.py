@@ -6,7 +6,7 @@ import math
 from soap import logger
 from soap.common.cache import cached
 from soap.context import context
-from soap.datatype import int_type, ArrayType
+from soap.datatype import int_type, real_type, ArrayType
 from soap.expression import (
     AccessExpr, InputVariable, is_expression, operators, UpdateExpr, Variable,
     InputVariableTuple, OutputVariableTuple
@@ -17,7 +17,7 @@ from soap.semantics.functions import label
 from soap.semantics.label import Label
 from soap.semantics.schedule.common import (
     DependenceType, iter_point_count,
-    PIPELINED_OPERATORS, LOOP_LATENCY_TABLE, SEQUENTIAL_LATENCY_TABLE
+    PIPELINED_OPERATORS, LOOP_LATENCY_TABLE, LATENCY_TABLE
 )
 from soap.semantics.schedule.extract import ForLoopNestExtractor
 from soap.semantics.schedule.distance import dependence_eval
@@ -46,7 +46,6 @@ def _resource_map_min(total_map, lower_map):
 
 class SequentialScheduleGraph(DependenceGraph):
 
-    latency_table = SEQUENTIAL_LATENCY_TABLE
     pipelined_operators = PIPELINED_OPERATORS
 
     def __init__(
@@ -88,6 +87,9 @@ class SequentialScheduleGraph(DependenceGraph):
         cache[node] = graph
         return graph
 
+    def _dtype_op_latency(self, dtype, op):
+        return LATENCY_TABLE[dtype, op]
+
     def _node_latency(self, node):
         expr, dtype, op = self._node_expr(node)
         if expr is None:
@@ -101,7 +103,7 @@ class SequentialScheduleGraph(DependenceGraph):
             except OverflowError:
                 return latency
             return int(latency)
-        return self.latency_table[dtype, op]
+        return self._dtype_op_latency(dtype, op)
 
     def _node_resource(self, node):
         expr, dtype, op = self._node_expr(node)
@@ -130,8 +132,16 @@ class SequentialScheduleGraph(DependenceGraph):
                 continue
             if op in self._array_operators:
                 memory_map[node.expr().true_var()] += 1
-            else:
-                operator_map[dtype, op] += 1
+                continue
+            operator_map[dtype, op] += 1
+            if dtype == real_type:
+                continue
+            for arg in expr.args:
+                if not isinstance(arg, Label):
+                    continue
+                if arg.dtype != int_type or is_numeral(self.env[arg]):
+                    continue
+                operator_map[dtype, 'conversion'] += 1
         self._resource_counts = (operator_map, memory_map)
         return self._resource_counts
 
@@ -299,8 +309,6 @@ _edge_type_map = {
 
 class LoopScheduleGraph(SequentialScheduleGraph):
 
-    latency_table = LOOP_LATENCY_TABLE
-
     def __init__(self, fix_expr, round_values=False, sequentialize_loops=True):
         extractor = ForLoopNestExtractor(fix_expr)
         is_pipelined = extractor.is_for_loop_nest
@@ -315,6 +323,9 @@ class LoopScheduleGraph(SequentialScheduleGraph):
         self.iter_vars = iter_vars
         self.iter_slices = extractor.iter_slices
         self._init_loop_graph()
+
+    def _dtype_op_latency(self, dtype, op):
+        return LOOP_LATENCY_TABLE[dtype, op]
 
     def _init_loop_graph(self):
         if not self.is_pipelined:
