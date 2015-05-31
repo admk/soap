@@ -6,7 +6,7 @@ import math
 from soap import logger
 from soap.common.cache import cached
 from soap.context import context
-from soap.datatype import ArrayType
+from soap.datatype import int_type, ArrayType
 from soap.expression import (
     AccessExpr, InputVariable, is_expression, operators, UpdateExpr, Variable,
     InputVariableTuple, OutputVariableTuple
@@ -29,9 +29,8 @@ _irrelevant_types = (
 
 
 def _resource_ceil(res_map):
-    return {
-        dtype_op: int(math.ceil(res_count))
-        for dtype_op, res_count in res_map.items()}
+    for dtype_op, res_count in res_map.items():
+        res_map[dtype_op] = int(math.ceil(res_count))
 
 
 def _resource_map_add(total_map, incr_map):
@@ -45,14 +44,14 @@ def _resource_map_min(total_map, lower_map):
             total_map.setdefault(dtype_op, 0), res_count)
 
 
-class SequentialLatencyDependenceGraph(DependenceGraph):
+class SequentialScheduleGraph(DependenceGraph):
 
     latency_table = SEQUENTIAL_LATENCY_TABLE
     pipelined_operators = PIPELINED_OPERATORS
 
     def __init__(
-            self, env, out_vars, round_values=False, sequentialize_loops=True,
-            scheduler=None):
+            self, env, out_vars, round_values=False,
+            sequentialize_loops=True, scheduler=None):
         self.sequentialize_loops = sequentialize_loops
         self.round_values = round_values
         self.scheduler = scheduler or context.scheduler
@@ -83,7 +82,7 @@ class SequentialLatencyDependenceGraph(DependenceGraph):
         graph = cache.get(node)
         if graph is not None:
             return graph
-        graph = LoopLatencyDependenceGraph(
+        graph = LoopScheduleGraph(
             node.expr(), round_values=self.round_values,
             sequentialize_loops=self.sequentialize_loops)
         cache[node] = graph
@@ -118,9 +117,9 @@ class SequentialLatencyDependenceGraph(DependenceGraph):
 
     _array_operators = [operators.INDEX_ACCESS_OP, operators.INDEX_UPDATE_OP]
 
-    def operator_counts(self):
+    def resource_counts(self):
         try:
-            return self._operator_counts
+            return self._resource_counts
         except AttributeError:
             pass
         operator_map = collections.defaultdict(int)
@@ -133,8 +132,8 @@ class SequentialLatencyDependenceGraph(DependenceGraph):
                 memory_map[node.expr().true_var()] += 1
             else:
                 operator_map[dtype, op] += 1
-        self._operator_counts = (operator_map, memory_map)
-        return self._operator_counts
+        self._resource_counts = (operator_map, memory_map)
+        return self._resource_counts
 
     def edge_attr(self, from_node, to_node):
         attr_dict = {
@@ -190,6 +189,11 @@ class SequentialLatencyDependenceGraph(DependenceGraph):
         return self._schedule
 
     def _pivot(self, schedule):
+        seq_latency = self.sequential_latency()
+        if seq_latency == float('inf'):
+            raise OverflowError(
+                'Unable to schedule nodes with infinite latency.')
+
         begin_events = collections.defaultdict(set)
         end_events = collections.defaultdict(set)
         for node, (begin, end) in schedule.items():
@@ -206,7 +210,7 @@ class SequentialLatencyDependenceGraph(DependenceGraph):
         prev_event_cycle = 0
         active_nodes = set()
         while end_events:
-            begin_min = min(begin_events)
+            begin_min = min(begin_events) if begin_events else float('inf')
             end_min = min(end_events)
             curr_event_cycle = min(begin_min, end_min)
 
@@ -223,7 +227,7 @@ class SequentialLatencyDependenceGraph(DependenceGraph):
 
         if begin_events or active_nodes:
             raise ValueError('Unprocessed events.')
-        if curr_event_cycle != self.latency():
+        if curr_event_cycle != seq_latency:
             raise ValueError('End of events should be the total latency.')
 
         return zip(control_point_nodes[:-1], control_point_cycles[1:])
@@ -259,9 +263,15 @@ class SequentialLatencyDependenceGraph(DependenceGraph):
         except AttributeError:
             pass
 
+        try:
+            control_points = self.control_points()
+        except OverflowError:
+            logger.warning('Unable to schedule code with infinite latency.')
+            control_points = [({node}, 1) for node in self.nodes()]
+
         min_alloc_map = {}
         total_map = {}
-        for active_nodes, cycles in self.control_points():
+        for active_nodes, cycles in control_points:
             alloc_map = {}
             for node in active_nodes:
                 res_total_map, res_lower_map = self._node_resource(node)
@@ -275,23 +285,34 @@ class SequentialLatencyDependenceGraph(DependenceGraph):
     resource = sequential_resource
 
 
-class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
+_edge_type_map = {
+    (operators.INDEX_ACCESS_OP, operators.INDEX_ACCESS_OP):
+        DependenceType.independent,
+    (operators.INDEX_ACCESS_OP, operators.INDEX_UPDATE_OP):
+        DependenceType.flow,
+    (operators.INDEX_UPDATE_OP, operators.INDEX_ACCESS_OP):
+        DependenceType.anti,
+    (operators.INDEX_UPDATE_OP, operators.INDEX_UPDATE_OP):
+        DependenceType.output,
+}
+
+
+class LoopScheduleGraph(SequentialScheduleGraph):
 
     latency_table = LOOP_LATENCY_TABLE
 
     def __init__(self, fix_expr, round_values=False, sequentialize_loops=True):
         extractor = ForLoopNestExtractor(fix_expr)
-        loop_var = fix_expr.loop_var
-        if isinstance(loop_var, OutputVariableTuple):
-            out_vars = loop_var.args
-        else:
-            out_vars = [loop_var]
+        is_pipelined = extractor.is_for_loop_nest
+        iter_vars = extractor.iter_vars
+        kernel = extractor.label_kernel
+        out_vars = sorted(kernel, key=str)
         super().__init__(
-            extractor.label_kernel, out_vars, round_values=round_values,
+            kernel, out_vars, round_values=round_values,
             sequentialize_loops=sequentialize_loops)
-        self.is_pipelined = extractor.is_for_loop_nest
+        self.is_pipelined = is_pipelined
         self.fix_expr = fix_expr
-        self.iter_vars = extractor.iter_vars
+        self.iter_vars = iter_vars
         self.iter_slices = extractor.iter_slices
         self._init_loop_graph()
 
@@ -303,16 +324,8 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
         self._init_array_loops(loop_graph)
         self.loop_graph = loop_graph
 
-    def _add_variable_loop(self, loop_graph, from_node, to_node):
-        attr_dict = {
-            'type': DependenceType.flow,
-            'latency': 0,
-            'distance': 1,
-        }
-        loop_graph.add_edge(from_node, to_node, attr_dict)
-
     def _init_variable_loops(self, loop_graph):
-        for to_node in self.graph.pred:
+        for to_node in self.graph.nodes():
             if not isinstance(to_node, InputVariable):
                 continue
             if isinstance(to_node.dtype, ArrayType):
@@ -321,18 +334,12 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
             if out_var not in self.env:
                 continue
             # variable is input & output, should have a self-loop
-            self._add_variable_loop(loop_graph, to_node, out_var)
-
-    _edge_type_map = {
-        (operators.INDEX_ACCESS_OP, operators.INDEX_ACCESS_OP):
-            DependenceType.independent,
-        (operators.INDEX_ACCESS_OP, operators.INDEX_UPDATE_OP):
-            DependenceType.flow,
-        (operators.INDEX_UPDATE_OP, operators.INDEX_ACCESS_OP):
-            DependenceType.anti,
-        (operators.INDEX_UPDATE_OP, operators.INDEX_UPDATE_OP):
-            DependenceType.output,
-    }
+            attr_dict = {
+                'type': DependenceType.flow,
+                'latency': 0,
+                'distance': 1,
+            }
+            loop_graph.add_edge(to_node, out_var, attr_dict)
 
     def _add_array_loop(self, loop_graph, from_node, to_node):
         # we do it for flow dependence only WAR and WAW are not dependences
@@ -349,7 +356,7 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
                  to_op == operators.INDEX_UPDATE_OP)
         if not check:
             return
-        dep_type = self._edge_type_map[from_op, to_op]
+        dep_type = _edge_type_map[from_op, to_op]
 
         if dep_type == DependenceType.independent:
             # RAR is not a dependence
@@ -404,11 +411,13 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
             self._initiation_interval = self.depth()
         else:
             logger.debug('Pipelining ', self.fix_expr)
-            _, access_map = self.operator_counts()
+            _, access_map = self.resource_counts()
             res_mii = res_init_int(access_map)
             ii = rec_init_int_search(self.loop_graph, res_mii)
             if self.round_values:
-                ii = int(math.ceil(ii))
+                # FIXME potential over-estimation of II
+                ii_overestimate_factor = 0
+                ii = int(math.ceil(ii - ii_overestimate_factor))
             self._initiation_interval = ii
         return self._initiation_interval
 
@@ -418,7 +427,7 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
         except AttributeError:
             pass
         _, init_env = label(self.fix_expr.init_state, None, None)
-        self._init_graph = SequentialLatencyDependenceGraph(
+        self._init_graph = SequentialScheduleGraph(
             init_env, init_env, round_values=self.round_values,
             sequentialize_loops=self.sequentialize_loops)
         return self._init_graph
@@ -432,52 +441,56 @@ class LoopLatencyDependenceGraph(SequentialLatencyDependenceGraph):
         trip_counts = [iter_point_count(s) for s in self.iter_slices]
         return functools.reduce(lambda x, y: x * y, trip_counts)
 
-    def latency(self):
+    def loop_latency(self):
         try:
-            return self._latency
+            return self._loop_latency
         except AttributeError:
             pass
         init_latency = self.init_graph().sequential_latency()
         ii = self.initiation_interval()
         loop_latency = (self.trip_count() - 1) * ii + self.depth()
-        self._latency = init_latency + loop_latency
-        return self._latency
+        self._loop_latency = init_latency + loop_latency
+        return self._loop_latency
 
-    def resource(self):
+    latency = loop_latency
+
+    def loop_resource(self):
         try:
-            return self._resource
+            return self._loop_resource
         except AttributeError:
             pass
         if not self.is_pipelined:
             loop_total_map, loop_alloc_map = self.sequential_resource()
         else:
-            loop_total_map = collections.defaultdict(int)
-            for node in self.nodes():
-                expr, dtype, op = self._node_expr(node)
-                if expr is None:
-                    continue
-                loop_total_map[dtype, op] += 1
-
+            loop_total_map, _ = self.resource_counts()
             loop_alloc_map = {}
+            ii = self.initiation_interval()
+            loop_alloc_map = {
+                dtype_op: count / ii
+                for dtype_op, count in loop_total_map.items()}
+            if self.round_values:
+                _resource_ceil(loop_alloc_map)
+            # add additional adders for incrementing loop nest iterators
+            _resource_map_add(loop_total_map, {
+                (int_type, operators.ADD_OP): len(self.iter_vars) - 1,
+            })
 
         total_map, min_alloc_map = self.init_graph().sequential_resource()
         _resource_map_add(total_map, loop_total_map)
         _resource_map_min(min_alloc_map, loop_alloc_map)
 
-        self._resource = (total_map, min_alloc_map)
-        return self._resource
+        self._loop_resource = (total_map, min_alloc_map)
+        return self._loop_resource
+
+    resource = loop_resource
 
 
 @cached
-def latency_graph(expr, out_vars=None):
+def schedule_graph(expr, out_vars=None, **kwargs):
     from soap.semantics import label
     label, env = label(expr, None, out_vars)
     if is_expression(expr):
         # expressions do not have out_vars, but have an output, in this case
         # ``label`` is its output variable
         out_vars = [label]
-    return SequentialLatencyDependenceGraph(env, out_vars)
-
-
-def latency_eval(expr, out_vars=None):
-    return latency_graph(expr, out_vars).latency()
+    return SequentialScheduleGraph(env, out_vars, **kwargs)

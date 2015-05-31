@@ -9,4 +9,4 @@ from soap.semantics.functions import (
 )
 from soap.semantics.label import Label, LabelContext, LabelSemantics
 from soap.semantics.state import BoxState, MetaState, flow_to_meta_state
-from soap.semantics.schedule import latency_eval
+from soap.semantics.schedule import schedule_graph

@@ -8,12 +8,16 @@
     - [X] Discovering
     - [X] Unrolling
     - [X] Scheduling and revamp latency
-    - [ ] Resource usage with sharing
+    - [X] Resource usage with sharing
     - [ ] Transform `AccessExpr` and `UpdateExpr`
     - [ ] Benchmarks
     - [ ] Comparison with actual results
     - [ ] Code generation
     - [X] Plotting changes
+
+- [ ] Fix bugs
+    - [ ] Conversions are not counted
+    - [X] Transitive distances
 
 
 # Ugliness, fix if have the time to

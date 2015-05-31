@@ -17,7 +17,7 @@ from soap.semantics.schedule.distance import (
     dependence_vector, dependence_distance, ISLIndependenceException
 )
 from soap.semantics.schedule.graph import (
-    SequentialLatencyDependenceGraph, LoopLatencyDependenceGraph, latency_eval
+    SequentialScheduleGraph, LoopScheduleGraph, schedule_graph
 )
 from soap.semantics.state import flow_to_meta_state
 
@@ -87,22 +87,19 @@ class TestDependenceCheck(unittest.TestCase):
 class _CommonMixin(unittest.TestCase):
     def setUp(self):
         self.ori_ii_prec = context.ii_precision
-        context.ii_precision = 40
+        context.ii_precision = 30
         self.x = Variable('x', real_type)
         self.y = Variable('y', real_type)
         self.a = Variable('a', RealArrayType([30]))
         self.b = Variable('b', RealArrayType([30, 30]))
+        self.c = Variable('c', RealArrayType([30]))
         self.i = Variable('i', int_type)
 
     def tearDown(self):
         context.ii_precision = self.ori_ii_prec
 
-    def assertAlmostEqual(self, x, y, delta=None):
-        delta = delta or 1
-        super().assertAlmostEqual(x, y, delta=delta)
 
-
-class TestLoopLatencyDependenceGraph(_CommonMixin):
+class TestLoopScheduleGraph(_CommonMixin):
     def test_variable_initiation(self):
         program = """
         def main(real x) {
@@ -113,7 +110,7 @@ class TestLoopLatencyDependenceGraph(_CommonMixin):
         }
         """
         fix_expr = flow_to_meta_state(parse(program))[self.x]
-        graph = LoopLatencyDependenceGraph(fix_expr)
+        graph = LoopScheduleGraph(fix_expr)
 
         ii = graph.initiation_interval()
         expect_ii = LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
@@ -136,7 +133,7 @@ class TestLoopLatencyDependenceGraph(_CommonMixin):
         }
         """
         fix_expr = flow_to_meta_state(parse(program))[self.a]
-        graph = LoopLatencyDependenceGraph(fix_expr)
+        graph = LoopScheduleGraph(fix_expr)
         ii = graph.initiation_interval()
         expect_ii = 1
         self.assertEqual(ii, expect_ii)
@@ -151,7 +148,7 @@ class TestLoopLatencyDependenceGraph(_CommonMixin):
         }
         """
         fix_expr = flow_to_meta_state(parse(program))[self.a]
-        graph = LoopLatencyDependenceGraph(fix_expr)
+        graph = LoopScheduleGraph(fix_expr)
         ii = graph.initiation_interval()
         expect_ii = LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
         expect_ii += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
@@ -159,202 +156,58 @@ class TestLoopLatencyDependenceGraph(_CommonMixin):
         expect_ii /= 3
         self.assertAlmostEqual(ii, expect_ii)
 
-
-class TestLatencyEvaluation(_CommonMixin):
-    def test_simple_flow(self):
+    def test_transitive_initiation(self):
         program = """
-        def main(real[30] a) {
-            for (int i = 0; i < 10; i = i + 1) {
-                a[i + 3] = a[i] + i;
+        def main() {
+            real x = 1.0;
+            real x0 = x;
+            real y = 1.0;
+            for (int i = 0; i < 9; i = i + 1) {
+                x0 = x;
+                x = y + 1.0;
+                y = x0 * 2.0;
+            }
+            return y;
+        }
+        """
+        fix_expr = flow_to_meta_state(parse(program))[self.y]
+        graph = LoopScheduleGraph(fix_expr)
+        ii = graph.initiation_interval()
+        expect_ii = LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
+        expect_ii += LOOP_LATENCY_TABLE[real_type, operators.MULTIPLY_OP]
+        expect_ii /= 2
+        self.assertAlmostEqual(ii, expect_ii)
+
+    def test_mixed_array_initiation(self):
+        program = """
+        def main(real[30] a, real[30] c) {
+            for (int i = 0; i < 9; i = i + 1) {
+                a[i] = c[i - 1] + 1.0;
+                c[i] = a[i - 1] * 2.0;
             }
             return a;
         }
         """
-        meta_state = flow_to_meta_state(parse(program))
-        distance = 3
-        trip_count = 10
-        latency = latency_eval(meta_state, [self.a])
-        depth = LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
-        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
-        depth += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
-        expect_ii = depth / distance
-        expect_latency = expect_ii * (trip_count - 1) + depth
-        self.assertAlmostEqual(latency, expect_latency)
-
-    def test_non_pipelineable(self):
-        program = """
-        def main(real[30] a, int j) {
-            for (int i = 0; i < 10; i = i + j) {
-                a[i + 3] = a[i] + i;
-            }
-            return a;
-        }
-        """
-        meta_state = flow_to_meta_state(parse(program))
-        latency = latency_eval(meta_state, [self.a])
-        expect_latency = float('inf')
-        self.assertAlmostEqual(latency, expect_latency)
-
-    def test_loop_nest_flow(self):
-        program = """
-        def main(real[30] a) {
-            int j = 0;
-            while (j < 10) {
-                int i = 0;
-                while (i < 10) {
-                    a[i + j + 3] = a[i + j] + i;
-                    i = i + 1;
-                }
-                j = j + 1;
-            }
-            return a;
-        }
-        """
-        meta_state = flow_to_meta_state(parse(program))
-        latency = latency_eval(meta_state[self.a], [self.a])
-        distance = 3
-        trip_count = 10 * 10
-        depth = LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
-        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
-        depth += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
-        expect_ii = depth / distance
-        add_latency = LOOP_LATENCY_TABLE[int_type, operators.ADD_OP]
-        expect_latency = expect_ii * (trip_count - 1) + depth + add_latency
-        self.assertAlmostEqual(latency, expect_latency)
-
-    def test_multi_dim_flow(self):
-        program = """
-        def main(real[30, 30] b, int j) {
-            for (int i = 0; i < 10; i = i + 1) {
-                b[i + 3, j] = (b[i, j] + i) + j;
-            }
-            return b;
-        }
-        """
-        meta_state = flow_to_meta_state(parse(program))
-        latency = latency_eval(meta_state[self.b], [self.b])
-        distance = 3
-        trip_count = 10
-        depth = LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
-        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
-        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
-        depth += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
-        expect_ii = depth / distance
-        expect_latency = expect_ii * (trip_count - 1) + depth
-        self.assertAlmostEqual(latency, expect_latency)
-
-    def test_resource_constraint_on_ii(self):
-        program = """
-        def main(real[30] a) {
-            for (int i = 0; i < 10; i = i + 1) {
-                a[i] = a[i] + a[i + 1] + a[i + 2] + a[i + 3];
-            }
-            return a;
-        }
-        """
-        meta_state = flow_to_meta_state(parse(program))
-        latency = latency_eval(meta_state[self.a], [self.a])
-        trip_count = 10
-        depth = LOOP_LATENCY_TABLE[int_type, operators.ADD_OP]
-        depth += LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
-        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
-        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
-        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
-        depth += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
-        expect_ii = 5 / 2
-        expect_latency = (trip_count - 1) * expect_ii + depth
-        self.assertAlmostEqual(latency, expect_latency)
-
-    def test_sequence_of_loops(self):
-        program = """
-        def main(real[30] a) {
-            for (int i = 0; i < 10; i = i + 1) {
-                a[i] = a[i - 1] + i;
-            }
-            for (int j = 0; j < 20; j = j + 1) {
-                a[j] = a[j - 2] + a[j];
-            }
-            return a;
-        }
-        """
-        meta_state = flow_to_meta_state(parse(program))
-        latency = latency_eval(meta_state[self.a], [self.a])
-        kernel_lat = LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
-        kernel_lat += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
-        kernel_lat += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
-        depth_1 = LOOP_LATENCY_TABLE[int_type, operators.ADD_OP] + kernel_lat
-        depth_2 = max(
-            LOOP_LATENCY_TABLE[int_type, operators.ADD_OP],
-            LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP])
-        depth_2 += kernel_lat
-        ii_1 = kernel_lat
-        ii_2 = kernel_lat / 2
-        trip_count_1 = 10
-        trip_count_2 = 20
-        latency_1 = (trip_count_1 - 1) * ii_1 + depth_1
-        latency_2 = (trip_count_2 - 1) * ii_2 + depth_2
-        self.assertAlmostEqual(latency, latency_1 + latency_2, delta=2)
+        fix_expr = flow_to_meta_state(parse(program))[self.a]
+        graph = LoopScheduleGraph(fix_expr)
+        ii = graph.initiation_interval()
+        expect_ii = LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
+        expect_ii += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
+        expect_ii += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
+        expect_ii += LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
+        expect_ii += LOOP_LATENCY_TABLE[real_type, operators.MULTIPLY_OP]
+        expect_ii += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
+        expect_ii /= 2
+        self.assertAlmostEqual(ii, expect_ii)
 
 
-class TestExtraction(_CommonMixin):
-    def compare(self, for_loop, expect_for_loop):
-        for key, expect_val in expect_for_loop.items():
-            self.assertEqual(getattr(for_loop, key), expect_val)
-
-    def test_simple_loop(self):
-        program = """
-        def main(real[30] a) {
-            for (int i = 1; i < 10; i = i + 1) {
-                a[i] = a[i - 1] + 1;
-            }
-            return a;
-        }
-        """
-        flow = parse(program)
-        meta_state = flow_to_meta_state(flow)
-        fix_expr = meta_state[flow.outputs[0]]
-        for_loop = ForLoopExtractor(fix_expr)
-        expect_for_loop = {
-            'iter_var': self.i,
-            'iter_slice': slice(1, 10, 1),
-        }
-        self.compare(for_loop, expect_for_loop)
-
-    def test_nested_loop(self):
-        program = """
-        def main(real[30] a) {
-            for (int i = 1; i < 10; i = i + 1) {
-                for (int j = 0; j < 20; j = j + 3) {
-                    a[i] = a[i - j] + 1;
-                }
-            }
-            return a;
-        }
-        """
-        flow = parse(program)
-        meta_state = flow_to_meta_state(flow)
-
-        a = flow.outputs[0]
-        i = Variable('i', int_type)
-        j = Variable('j', int_type)
-
-        fix_expr = meta_state[a]
-        for_loop = ForLoopNestExtractor(fix_expr)
-        expect_for_loop = {
-            'iter_vars': [i, j],
-            'iter_slices': [slice(1, 10, 1), slice(0, 20, 3)],
-            'kernel': fix_expr.loop_state[a].loop_state,
-        }
-        self.compare(for_loop, expect_for_loop)
-
-
-class TestSequentialLatencyDependenceGraph(_CommonMixin):
+class TestSequentialScheduleGraph(_CommonMixin):
     def _to_graph(self, program):
         flow = parse(program)
         meta_state = flow_to_meta_state(flow)
         outputs = flow.outputs
         lab, env = label(meta_state, None, outputs)
-        return SequentialLatencyDependenceGraph(env, outputs)
+        return SequentialScheduleGraph(env, outputs)
 
     def _simple_dag(self):
         program = """
@@ -445,4 +298,238 @@ class TestSequentialLatencyDependenceGraph(_CommonMixin):
 
         graph = self._to_graph(program)
         graph.sequentialize_loops = False
-        self.assertAlmostEqual(graph.latency(), par_latency)
+        self.assertAlmostEqual(graph.latency(), par_latency, delta=2)
+
+
+class TestFullSchedule(_CommonMixin):
+    def assertStatisticsAlmostEqual(
+            self, graph, expect_latency, expect_resource, delta=1):
+        latency = graph.latency()
+        self.assertAlmostEqual(latency, expect_latency, delta=delta)
+        total_resource, resource = graph.resource()
+        self.assertTrue(set(expect_resource) <= set(resource))
+        for dtype_op, expect_count in expect_resource.items():
+            count = resource[dtype_op]
+            try:
+                self.assertAlmostEqual(count, expect_count, delta=0.01)
+            except AssertionError:
+                raise AssertionError(
+                    'Resource count mismatch for operator {}: {} != {}'
+                    .format(dtype_op, count, expect_count))
+
+    def test_simple_flow(self):
+        program = """
+        def main(real[30] a) {
+            for (int i = 0; i < 10; i = i + 1) {
+                a[i + 3] = a[i] + i;
+            }
+            return a;
+        }
+        """
+        meta_state = flow_to_meta_state(parse(program))
+        distance = 3
+        trip_count = 10
+        graph = schedule_graph(meta_state, [self.a])
+        depth = LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
+        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
+        depth += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
+        expect_ii = depth / distance
+        expect_latency = expect_ii * (trip_count - 1) + depth
+        expect_resource = {
+            (int_type, operators.ADD_OP): 2 / expect_ii,
+            (real_type, operators.ADD_OP): 1 / expect_ii,
+        }
+        self.assertStatisticsAlmostEqual(
+            graph, expect_latency, expect_resource)
+
+    def test_loop_nest_flow(self):
+        program = """
+        def main(real[30] a) {
+            int j = 0;
+            while (j < 10) {
+                int i = 0;
+                while (i < 10) {
+                    a[i + j + 3] = a[i + j] + i;
+                    i = i + 1;
+                }
+                j = j + 1;
+            }
+            return a;
+        }
+        """
+        meta_state = flow_to_meta_state(parse(program))
+        graph = schedule_graph(meta_state[self.a], [self.a])
+        distance = 3
+        trip_count = 10 * 10
+        depth = LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
+        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
+        depth += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
+        expect_ii = depth / distance
+        add_latency = LOOP_LATENCY_TABLE[int_type, operators.ADD_OP]
+        expect_latency = expect_ii * (trip_count - 1) + depth + add_latency
+        expect_resource = {
+            (int_type, operators.ADD_OP): 3 / expect_ii,
+            (real_type, operators.ADD_OP): 1 / expect_ii,
+        }
+        self.assertStatisticsAlmostEqual(
+            graph, expect_latency, expect_resource)
+
+    def test_multi_dim_flow(self):
+        program = """
+        def main(real[30, 30] b, int j) {
+            for (int i = 0; i < 10; i = i + 1) {
+                b[i + 3, j] = (b[i, j] + i) + j;
+            }
+            return b;
+        }
+        """
+        meta_state = flow_to_meta_state(parse(program))
+        graph = schedule_graph(meta_state[self.b], [self.b])
+        distance = 3
+        trip_count = 10
+        depth = LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
+        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
+        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
+        depth += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
+        expect_ii = depth / distance
+        expect_latency = expect_ii * (trip_count - 1) + depth
+        expect_resource = {
+            (int_type, operators.ADD_OP): 2 / expect_ii,
+            (real_type, operators.ADD_OP): 2 / expect_ii,
+        }
+        self.assertStatisticsAlmostEqual(
+            graph, expect_latency, expect_resource)
+
+    def test_resource_constraint_on_ii(self):
+        program = """
+        def main(real[30] a) {
+            for (int i = 0; i < 10; i = i + 1) {
+                a[i] = a[i] + a[i + 1] + a[i + 2] + a[i + 3];
+            }
+            return a;
+        }
+        """
+        meta_state = flow_to_meta_state(parse(program))
+        graph = schedule_graph(meta_state[self.a], [self.a])
+        trip_count = 10
+        depth = LOOP_LATENCY_TABLE[int_type, operators.ADD_OP]
+        depth += LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
+        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
+        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
+        depth += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
+        depth += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
+        expect_ii = 5 / 2
+        expect_latency = (trip_count - 1) * expect_ii + depth
+        expect_resource = {
+            (int_type, operators.ADD_OP): 3 / expect_ii,
+            (real_type, operators.ADD_OP): 3 / expect_ii,
+        }
+        self.assertStatisticsAlmostEqual(
+            graph, expect_latency, expect_resource)
+
+    def test_sequence_of_loops(self):
+        program = """
+        def main(real[30] a) {
+            for (int i = 0; i < 10; i = i + 1) {
+                a[i] = a[i - 1] + i;
+            }
+            for (int j = 0; j < 20; j = j + 1) {
+                a[j] = a[j - 2] + a[j];
+            }
+            return a;
+        }
+        """
+        meta_state = flow_to_meta_state(parse(program))
+        graph = schedule_graph(meta_state[self.a], [self.a])
+        kernel_lat = LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP]
+        kernel_lat += LOOP_LATENCY_TABLE[real_type, operators.ADD_OP]
+        kernel_lat += LOOP_LATENCY_TABLE[ArrayType, operators.INDEX_UPDATE_OP]
+        depth_1 = LOOP_LATENCY_TABLE[int_type, operators.ADD_OP] + kernel_lat
+        depth_2 = max(
+            LOOP_LATENCY_TABLE[int_type, operators.ADD_OP],
+            LOOP_LATENCY_TABLE[real_type, operators.INDEX_ACCESS_OP])
+        depth_2 += kernel_lat
+        ii_1 = kernel_lat
+        ii_2 = kernel_lat / 2
+        trip_count_1 = 10
+        trip_count_2 = 20
+        latency_1 = (trip_count_1 - 1) * ii_1 + depth_1
+        latency_2 = (trip_count_2 - 1) * ii_2 + depth_2
+        expect_latency = latency_1 + latency_2
+        expect_resource = {
+            (int_type, operators.ADD_OP): 2 / kernel_lat,
+            (real_type, operators.ADD_OP): 2 / kernel_lat,
+        }
+        self.assertStatisticsAlmostEqual(
+            graph, expect_latency, expect_resource, delta=2)
+
+    def test_non_pipelineable(self):
+        program = """
+        def main(real[30] a, int j) {
+            for (int i = 0; i < 10; i = i + j) {
+                a[i + 3] = a[i] + i;
+            }
+            return a;
+        }
+        """
+        meta_state = flow_to_meta_state(parse(program))
+        graph = schedule_graph(meta_state, [self.a])
+        expect_latency = float('inf')
+        expect_resource = {
+            (int_type, operators.ADD_OP): 1,
+            (real_type, operators.ADD_OP): 1,
+        }
+        self.assertStatisticsAlmostEqual(
+            graph, expect_latency, expect_resource)
+
+
+class TestExtraction(_CommonMixin):
+    def compare(self, for_loop, expect_for_loop):
+        for key, expect_val in expect_for_loop.items():
+            self.assertEqual(getattr(for_loop, key), expect_val)
+
+    def test_simple_loop(self):
+        program = """
+        def main(real[30] a) {
+            for (int i = 1; i < 10; i = i + 1) {
+                a[i] = a[i - 1] + 1;
+            }
+            return a;
+        }
+        """
+        flow = parse(program)
+        meta_state = flow_to_meta_state(flow)
+        fix_expr = meta_state[flow.outputs[0]]
+        for_loop = ForLoopExtractor(fix_expr)
+        expect_for_loop = {
+            'iter_var': self.i,
+            'iter_slice': slice(1, 10, 1),
+        }
+        self.compare(for_loop, expect_for_loop)
+
+    def test_nested_loop(self):
+        program = """
+        def main(real[30] a) {
+            for (int i = 1; i < 10; i = i + 1) {
+                for (int j = 0; j < 20; j = j + 3) {
+                    a[i] = a[i - j] + 1;
+                }
+            }
+            return a;
+        }
+        """
+        flow = parse(program)
+        meta_state = flow_to_meta_state(flow)
+
+        a = flow.outputs[0]
+        i = Variable('i', int_type)
+        j = Variable('j', int_type)
+
+        fix_expr = meta_state[a]
+        for_loop = ForLoopNestExtractor(fix_expr)
+        expect_for_loop = {
+            'iter_vars': [i, j],
+            'iter_slices': [slice(1, 10, 1), slice(0, 20, 3)],
+            'kernel': fix_expr.loop_state[a].loop_state,
+        }
+        self.compare(for_loop, expect_for_loop)

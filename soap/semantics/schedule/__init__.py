@@ -1,1 +1,1 @@
-from soap.semantics.schedule.graph import latency_eval
+from soap.semantics.schedule.graph import schedule_graph

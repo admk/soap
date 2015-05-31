@@ -8,9 +8,7 @@ from collections import namedtuple
 from soap import logger
 from soap.common import Flyweight
 from soap.context import context
-from soap.semantics import (
-    error_eval, ErrorSemantics, inf, resource_eval, latency_eval
-)
+from soap.semantics import error_eval, ErrorSemantics, inf, schedule_graph
 
 
 def abs_error(expr, state):
@@ -122,7 +120,6 @@ class Analysis(Flyweight):
         expr_set = self.expr_set
         state = self.state
         out_vars = self.out_vars
-        precision = context.precision
 
         limit = context.size_limit
         if limit >= 0 and len(expr_set) > limit:
@@ -141,9 +138,10 @@ class Analysis(Flyweight):
                 logger.persistent(
                     'Analysing', '{}/{}'.format(step, total),
                     l=logger.levels.debug)
-                resource = resource_eval(expr, state, out_vars, precision)
                 error = abs_error(expr, state)
-                latency = latency_eval(expr, out_vars)
+                graph = schedule_graph(expr, out_vars)
+                latency = graph.latency()
+                resource = graph.resource_stats()
                 result = AnalysisResult(
                     resource.lut, resource.dsp, error, latency, expr)
                 results.add(result)

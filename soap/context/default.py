@@ -17,7 +17,7 @@ context = dict(
     widen_factor=100,   # how many steps before widening in static analysis
     precision='single',
     norm='mse_error',   # function for computing multiple variable avg error
-    ii_precision=8,     # the precision of II computed
+    ii_precision=8,     # how precise are IIs computed
     scheduler='alap',   # the scheduler used for sequential nodes
     # transform related
     rand_seed=0,
