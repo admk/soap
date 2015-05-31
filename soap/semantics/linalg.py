@@ -1,8 +1,7 @@
 import collections
 import itertools
 
-from soap.lattice.base import Lattice
-from soap.lattice.common import join
+from soap.lattice.base import Lattice, join
 from soap.semantics.error import ErrorSemantics, FloatInterval, IntegerInterval
 
 
@@ -14,13 +13,13 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
                  bottom=False, top=False):
         super().__init__(bottom=bottom, top=top)
         if top or bottom:
+            self.shape = _shape
             return
         self._c_top = None
         self._c_bottom = None
         self._init_flat_items(items, _flat_items, _shape)
 
     def _init_flat_items(self, items, _flat_items, _shape):
-
         def append_flat_items(flattened_flat_items, items):
             n = [len(items)]
             if not isinstance(items[0], (list, tuple)):
@@ -42,7 +41,8 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
             self._flat_items = _flat_items
         else:
             flattened_flat_items = []
-            self.shape = tuple(append_flat_items(flattened_flat_items, items))
+            self.shape = _shape or tuple(
+                append_flat_items(flattened_flat_items, items))
             self._flat_items = tuple(
                 item if isinstance(item, self.value_class) else
                 self.value_class(item) for item in flattened_flat_items)
@@ -131,7 +131,6 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
     def __getitem__(self, index):
         top = self.is_top()
         bottom = self.is_bottom()
-
         if top or bottom:
             return self.value_class(top=top, bottom=bottom)
 
@@ -178,12 +177,24 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
 
         return self.__class__(_flat_items=items, _shape=shape)
 
+    def le(self, other):
+        return all(
+            x.le(y) for x, y in zip(self._flat_items, other._flat_items))
+
+    def widen(self, other):
+        items = [
+            x.widen(y) for x, y in zip(self._flat_items, other._flat_items)]
+        return self.__class__(_flat_items=items, _shape=self.shape)
+
     def __len__(self):
         return len(self._flat_items)
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
+        # FIXME weird bug
+        if (self.bottom and other.bottom) or (self.top and other.top):
+            return True
         return self._flat_items == other._flat_items
 
     def __hash__(self):

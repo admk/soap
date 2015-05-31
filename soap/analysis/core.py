@@ -8,7 +8,7 @@ from collections import namedtuple
 from soap import logger
 from soap.common import Flyweight
 from soap.context import context
-from soap.semantics import error_eval, ErrorSemantics, inf, resources
+from soap.semantics import error_eval, ErrorSemantics, inf, schedule_graph
 
 
 def abs_error(expr, state):
@@ -36,8 +36,8 @@ def _pareto_frontier_2d(expr_set):
     return optimal, suboptimal
 
 
-def _pareto_frontier(points):
-    """Last row is always the expression!"""
+def _pareto_frontier(points, ignore_last=True):
+    # Last row can be an expression
 
     dom_func = lambda dominator_row, dominated_row: not any(
         dominator > dominated
@@ -45,10 +45,10 @@ def _pareto_frontier(points):
 
     pareto_points = set()
     for candidate_row in points:
-        candidate_stat = candidate_row[:-1]
+        candidate_stat = candidate_row[:-1] if ignore_last else candidate_row
         to_remove = set()
         for pareto_row in pareto_points:
-            pareto_stat = pareto_row[:-1]
+            pareto_stat = pareto_row[:-1] if ignore_last else pareto_row
             if pareto_stat == candidate_stat:
                 continue
             if dom_func(candidate_stat, pareto_stat):
@@ -63,8 +63,8 @@ def _pareto_frontier(points):
     return pareto_points, dominated_points
 
 
-def pareto_frontier(points):
-    return _pareto_frontier(points)[0]
+def pareto_frontier(points, ignore_last=True):
+    return _pareto_frontier(points, ignore_last)[0]
 
 
 def thick_frontier(points):
@@ -76,12 +76,16 @@ def thick_frontier(points):
 
 
 _analysis_result_tuple = namedtuple(
-    'AnalysisResult', ['lut', 'dsp', 'error', 'expression'])
+    'AnalysisResult', ['lut', 'dsp', 'error', 'latency', 'expression'])
 
 
 class AnalysisResult(_analysis_result_tuple):
-    def __str__(self):
-        return '({}, {}, {}, {})'.format(*self)
+    def format(self):
+        return '({}, {}, {}, {}, {})'.format(
+            self.lut, self.dsp, self.error, self.latency,
+            self.expression.format())
+
+    __str__ = format
 
 
 class Analysis(Flyweight):
@@ -116,7 +120,6 @@ class Analysis(Flyweight):
         expr_set = self.expr_set
         state = self.state
         out_vars = self.out_vars
-        precision = context.precision
 
         limit = context.size_limit
         if limit >= 0 and len(expr_set) > limit:
@@ -135,12 +138,16 @@ class Analysis(Flyweight):
                 logger.persistent(
                     'Analysing', '{}/{}'.format(step, total),
                     l=logger.levels.debug)
-                res = resources(expr, state, out_vars, precision)
                 error = abs_error(expr, state)
-                results.add(AnalysisResult(res.lut, res.dsp, error, expr))
+                graph = schedule_graph(expr, out_vars)
+                latency = graph.latency()
+                resource = graph.resource_stats()
+                result = AnalysisResult(
+                    resource.lut, resource.dsp, error, latency, expr)
+                results.add(result)
         except KeyboardInterrupt:
-            logger.warning('Analysis interrupted, completed: {}.'
-                           .format(len(results)))
+            logger.warning(
+                'Analysis interrupted, completed: {}.'.format(len(results)))
         logger.unpersistent('Analysing')
 
         self._results = results

@@ -1,9 +1,9 @@
 import unittest
 
-from soap.datatype import int_type, IntegerArrayType
+from soap.datatype import int_type, real_type, IntegerArrayType
 from soap.expression import (
-    operators, UnaryArithExpr, BinaryArithExpr, SelectExpr,
-    FixExpr, AccessExpr, UpdateExpr, BinaryBoolExpr, Variable,
+    operators, UnaryArithExpr, BinaryArithExpr, SelectExpr, FixExpr,
+    AccessExpr, UpdateExpr, BinaryBoolExpr, Variable
 )
 from soap.semantics.error import IntegerInterval, ErrorSemantics
 from soap.semantics.functions.arithmetic import arith_eval
@@ -17,7 +17,8 @@ class TestArithmeticEvaluator(unittest.TestCase):
         self.a = Variable('a', IntegerArrayType([2, 2]))
         self.x = Variable('x', int_type)
         self.y = Variable('y', int_type)
-        self.state = BoxState(x=[1, 2], y=3)
+        self.z = Variable('z', real_type)
+        self.state = BoxState(x=[1, 2], y=3, z=[1.0, 2.0])
         self.array_state = BoxState(
             a=IntegerIntervalArray([[1, 2], [3, 4]]), x=[0, 1], y=0)
 
@@ -60,6 +61,13 @@ class TestArithmeticEvaluator(unittest.TestCase):
     def test_SelectExpr(self):
         test_expr = SelectExpr(
             BinaryBoolExpr(operators.LESS_OP, self.x, ErrorSemantics(1.5)),
+            IntegerInterval(0), self.y)
+        test_value = IntegerInterval(0)
+        value = arith_eval(test_expr, self.state)
+        self.assertEqual(test_value, value)
+
+        test_expr = SelectExpr(
+            BinaryBoolExpr(operators.LESS_OP, self.z, ErrorSemantics(1.5)),
             IntegerInterval(0), self.y)
         test_value = IntegerInterval([0, 3])
         value = arith_eval(test_expr, self.state)

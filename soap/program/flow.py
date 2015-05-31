@@ -2,30 +2,11 @@
 .. module:: soap.program.flow
     :synopsis: Program flow graphs.
 """
-from akpytemp import Template
-from akpytemp.utils import code_gobble
+from collections import OrderedDict
 
-from soap.common import base_dispatcher, superscript
-from soap.semantics import BoxState, is_numeral, Label
-
-
-def _code_gobble(s):
-    return code_gobble(s).strip()
-
-
-def _indent(code):
-    return '\n'.join('    ' + c for c in code.split('\n')).rstrip() + '\n'
-
-
-def _state_with_label(state, label):
-    if state is None:
-        return
-    try:
-        state = state.filter(lambda k: k.label == label)
-        state = BoxState({k.variable: v for k, v in state.items()})
-    except AttributeError:
-        pass
-    return str(state)
+from soap.common import base_dispatcher, indent
+from soap.expression.linalg import AccessExpr
+from soap.semantics import is_numeral
 
 
 class Flow(object):
@@ -43,32 +24,17 @@ class Flow(object):
     def vars(self, input=True, output=True):
         return flow_variables(self, input, output)
 
-    def inputs(self):
-        return BoxState(input_output_variables(self)['inputs'])
-
-    def outputs(self):
-        return input_output_variables(self)['outputs']
-
     def flow(self, state):
         """Evaluates the flow with state."""
         return state.transition(self)
 
-    def debug(self, state=None):
-        """Debug flow transitions at each step."""
-        from soap.semantics.state import (
-            IdentifierBaseState, IdentifierBoxState
-        )
-        state = state or self.inputs()
-        if not isinstance(state, IdentifierBaseState):
-            state = IdentifierBoxState(state or {})
-        return self.format(self.flow(state))
+    def format(self):
+        raise NotImplementedError('Override this method')
 
-    def format(self, state=None):
-        raise NotImplementedError
-
-    @property
-    def label(self):
-        return Label(id(self))
+    def __add__(self, other):
+        return CompositionalFlow(
+            getattr(self, 'flows', (self, )) +
+            getattr(other, 'flows', (other, )))
 
     def __eq__(self, other):
         raise NotImplementedError('Override this method')
@@ -77,9 +43,9 @@ class Flow(object):
         return self.format().replace('    ', '').replace('\n', '').strip()
 
 
-class IdentityFlow(Flow):
-    """Identity flow, does nothing."""
-    def format(self, state=None):
+class SkipFlow(Flow):
+    """Skip flow, does nothing."""
+    def format(self):
         return 'skip; '
 
     def __bool__(self):
@@ -95,51 +61,6 @@ class IdentityFlow(Flow):
         return hash('skip;')
 
 
-class InputFlow(IdentityFlow):
-    def __init__(self, inputs):
-        super().__init__()
-        self.inputs = dict(inputs)
-
-    def format(self, state=None):
-        inputs = ', '.join(
-            '{}: {}'.format(k, v) for k, v in self.inputs.items())
-        return 'input ({}); '.format(inputs)
-
-    def __repr__(self):
-        return '{cls}({inputs!r})'.format(
-            cls=self.__class__.__name__, inputs=self.inputs)
-
-    def __hash__(self):
-        raise NotImplementedError
-
-    def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        return self.inputs == other.inputs
-
-
-class OutputFlow(IdentityFlow):
-    def __init__(self, outputs):
-        super().__init__()
-        self.outputs = tuple(outputs)
-
-    def format(self, state=None):
-        outputs = ', '.join(str(v) for v in self.outputs)
-        return 'output ({}); '.format(outputs)
-
-    def __repr__(self):
-        return '{cls}({outputs!r})'.format(
-            cls=self.__class__.__name__, outputs=self.outputs)
-
-    def __hash__(self):
-        return hash(self.outputs)
-
-    def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        return self.outputs == other.outputs
-
-
 class AssignFlow(Flow):
     """Assignment flow.
 
@@ -151,20 +72,17 @@ class AssignFlow(Flow):
         self.var = var
         self.expr = expr
 
-    def format(self, state=None):
-        s = '{var} = {expr}; '.format(var=self.var, expr=self.expr)
-        if state:
-            s += '\n' + _state_with_label(state, self.label)
-        return s
+    def format(self):
+        return '{var} = {expr}; '.format(var=self.var, expr=self.expr)
+
+    def __repr__(self):
+        return '{cls}(var={var!r}, expr={expr!r})'.format(
+            cls=self.__class__.__name__, var=self.var, expr=self.expr)
 
     def __eq__(self, other):
         if type(self) is not type(other):
             return False
         return (self.var == other.var and self.expr == other.expr)
-
-    def __repr__(self):
-        return '{cls}(var={var!r}, expr={expr!r})'.format(
-            cls=self.__class__.__name__, var=self.var, expr=self.expr)
 
     def __hash__(self):
         return hash((self.var, self.expr))
@@ -178,44 +96,20 @@ class IfFlow(Flow):
         self.true_flow = true_flow
         self.false_flow = false_flow
 
-    def format(self, state=None):
-        render_kwargs = {
-            'flow': self,
-            'state': state,
-            'label': superscript(self.label),
-        }
-        branch_template = Template(_code_gobble("""
-            {% if state %}{# split_format #}
-            {% end %}{# split_flow_format #}"""))
+    def format(self):
+        template = 'if ({conditional_expr}) {{\n{true_format}}} '
+        if self.false_flow:
+            template += 'else {{\n{false_format}}} '
+        return template.format(
+            conditional_expr=self.conditional_expr,
+            true_format=indent(self.true_flow.format()),
+            false_format=indent(self.false_flow.format()))
 
-        formats = []
-        zipper = [(self.true_flow,
-                   self.label.attributed_true()),
-                  (self.false_flow,
-                   self.label.attributed_false())]
-        for flow, label in zipper:
-            split_format = _state_with_label(state, label)
-            f = branch_template.render(
-                render_kwargs, split_format=split_format,
-                split_flow_format=flow.format(state))
-            formats.append(_indent(f))
-        true_format, false_format = formats
-
-        if state:
-            exit_label = self.label.attributed_exit()
-            join_format = _state_with_label(state, exit_label)
-        else:
-            join_format = None
-
-        template = Template(_code_gobble("""
-            if ({# flow.conditional_expr #}) {
-            {# true_format #}}{% if flow.false_flow %} else {
-            {# false_format #}}{% end %}; {% if state %}
-            {# join_format #}{% end %}
-            """))
-        return template.render(
-            render_kwargs, true_format=true_format, false_format=false_format,
-            join_format=join_format)
+    def __repr__(self):
+        return ('{cls}(conditional_expr={expr!r}, true_flow={true_flow!r}, '
+                'false_flow={false_flow!r})').format(
+            cls=self.__class__.__name__, expr=self.conditional_expr,
+            true_flow=self.true_flow, false_flow=self.false_flow)
 
     def __eq__(self, other):
         if type(self) is not type(other):
@@ -224,46 +118,29 @@ class IfFlow(Flow):
                 self.true_flow == other.true_flow and
                 self.false_flow == other.false_flow)
 
-    def __repr__(self):
-        return ('{cls}(conditional_expr={expr!r}, true_flow={true_flow!r}, '
-                'false_flow={false_flow!r})').format(
-            cls=self.__class__.__name__, expr=self.conditional_expr,
-            true_flow=self.true_flow, false_flow=self.false_flow)
-
     def __hash__(self):
         return hash((self.conditional_expr,
                      self.true_flow, self.false_flow))
 
 
 class WhileFlow(Flow):
-    """Program flow for conditional while loops.
+    """Program flow for conditional while loops.  """
 
-    Makes use of :class:`IfFlow` to define conditional branching. Computes the
-    fixpoint of the state object iteratively."""
     def __init__(self, conditional_expr, loop_flow):
         super().__init__()
         self.conditional_expr = conditional_expr
         self.loop_flow = loop_flow
 
-    def format(self, state=None):
-        entry_label = self.label.attributed_entry()
-        exit_label = self.label.attributed_exit()
-        render_kwargs = {
-            'flow': self,
-            'state': state,
-            'entry_format': _state_with_label(state, entry_label),
-            'exit_format': _state_with_label(state, exit_label),
-            'label': superscript(self.label),
-        }
-        loop_format = _indent(Template(_code_gobble("""
-            {% if state %}{# entry_format #}
-            {% end %}{# flow.loop_flow.format(state) #}
-            """)).render(render_kwargs))
-        template = Template(_code_gobble("""
-            while ({# flow.conditional_expr #}) {
-            {# loop_format #}}; {% if state %}
-            {# exit_format #}{% end %}"""))
-        return template.render(render_kwargs, loop_format=loop_format)
+    def format(self):
+        loop_format = indent(self.loop_flow.format())
+        template = 'while ({conditional_expr}) {{\n{loop_format}}} '
+        return template.format(
+            conditional_expr=self.conditional_expr, loop_format=loop_format)
+
+    def __repr__(self):
+        return '{cls}(conditional_expr={expr!r}, loop_flow={flow!r})'.format(
+            cls=self.__class__.__name__, expr=self.conditional_expr,
+            flow=self.loop_flow)
 
     def __eq__(self, other):
         if type(self) is not type(other):
@@ -271,13 +148,49 @@ class WhileFlow(Flow):
         return (self.conditional_expr == other.conditional_expr and
                 self.loop_flow == other.loop_flow)
 
+    def __hash__(self):
+        return hash((self.conditional_expr, self.loop_flow))
+
+
+class ForFlow(Flow):
+    """Flow for for-loop.  """
+
+    def __init__(self, init_flow, conditional_expr, incr_flow, loop_flow):
+        super().__init__()
+        self.init_flow = init_flow
+        self.conditional_expr = conditional_expr
+        self.incr_flow = incr_flow
+        self.loop_flow = loop_flow
+
+    def format(self):
+        loop_format = indent(self.loop_flow.format())
+        template = ('for ({init_flow}; {conditional_expr}; {incr_flow}) '
+                    '{{\n{loop_format}}} ')
+        return template.format(
+            init_flow=self.init_flow, conditional_expr=self.conditional_expr,
+            incr_flow=self.incr_flow, loop_format=loop_format)
+
     def __repr__(self):
-        return '{cls}(conditional_expr={expr!r}, loop_flow={flow!r})'.format(
-            cls=self.__class__.__name__, expr=self.conditional_expr,
+        repr_str = (
+            '{cls}(init_flow={init_flow!r}, conditional_expr={expr!r}, '
+            'incr_flow={incr_flow!r}, loop_flow={flow!r})')
+        return repr_str.format(
+            cls=self.__class__.__name__, init_flow=self.init_flow,
+            expr=self.conditional_expr, incr_flow=self.incr_flow,
             flow=self.loop_flow)
 
     def __hash__(self):
-        return hash((self.conditional_expr, self.loop_flow))
+        return hash((
+            self.init_flow, self.conditional_expr,
+            self.incr_flow, self.loop_flow))
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        return (self.init_flow == other.init_flow and
+                self.conditional_expr == other.conditional_expr and
+                self.incr_flow == other.incr_flow and
+                self.loop_flow == other.loop_flow)
 
 
 class CompositionalFlow(Flow):
@@ -294,17 +207,11 @@ class CompositionalFlow(Flow):
             state = flow.transition(state)
         return state
 
-    def __add__(self, other):
-        try:
-            return CompositionalFlow(self.flows + other.flows)
-        except AttributeError:
-            return CompositionalFlow(self.flows + (other, ))
-
     def __bool__(self):
         return any(self.flows)
 
-    def format(self, state=None):
-        return '\n'.join(flow.format(state) for flow in self.flows)
+    def format(self):
+        return '\n'.join(flow.format() for flow in self.flows)
 
     def __eq__(self, other):
         if type(self) is not type(other):
@@ -319,24 +226,91 @@ class CompositionalFlow(Flow):
         return hash(self.flows)
 
 
+class FunctionFlow(Flow):
+    def __init__(self, name, inputs, flow):
+        super().__init__()
+        self.name = name
+        self.inputs = OrderedDict(inputs)
+        *body_flow, return_flow = flow.flows
+        self.body_flow = CompositionalFlow(body_flow)
+        if not isinstance(return_flow, ReturnFlow):
+            raise ValueError('Function must return a value.')
+        self.return_flow = return_flow
+
+    @property
+    def outputs(self):
+        return self.return_flow.outputs
+
+    def format(self):
+        inputs = ', '.join('{dtype} {name}: {value}'.format(
+            dtype=var.dtype, name=var.name, value=value)
+            for var, value in self.inputs.items())
+        flow = indent(self.body_flow.format())
+        return 'def {name}({inputs}) {{\n{flow}}} '.format(
+            name=self.name, inputs=inputs, flow=flow)
+
+    def __repr__(self):
+        return '{cls}({name!r}, {inputs!r}, {flow!r})'.format(
+            cls=self.__class__.__name__, name=self.name, inputs=self.inputs,
+            flow=self.body_flow)
+
+    def __hash__(self):
+        return hash(
+            (self.__class__, self.name,
+             tuple(self.inputs.items()), self.body_flow))
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        return (self.name == other.name and self.inputs == other.inputs and
+                self.body_flow == other.body_flow)
+
+
+class ReturnFlow(Flow):
+    def __init__(self, outputs):
+        super().__init__()
+        self.outputs = tuple(outputs)
+
+    def format(self):
+        outputs = ', '.join(str(v) for v in self.outputs)
+        return 'return {}; '.format(outputs)
+
+    def __repr__(self):
+        return '{cls}({outputs!r})'.format(
+            cls=self.__class__.__name__, outputs=self.outputs)
+
+    def __hash__(self):
+        return hash(self.outputs)
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        return self.outputs == other.outputs
+
+
 class _VariableSetGenerator(base_dispatcher()):
 
     def generic_execute(self, flow, input, output):
         raise TypeError(
             'Do not know how to find variables in {!r}'.format(flow))
 
-    def execute_IdentityFlow(self, flow, input, output):
+    def execute_SkipFlow(self, flow, input, output):
         return set()
 
-    execute_InputFlow = execute_OutputFlow = execute_IdentityFlow
+    execute_ReturnFlow = execute_SkipFlow
 
     def execute_AssignFlow(self, flow, input, output):
         in_vars = out_vars = set()
-        expr = flow.expr
+        var, expr = flow.var, flow.expr
         if input and not is_numeral(expr):
             in_vars = expr.vars()
+            if isinstance(var, AccessExpr):
+                in_vars |= var.subscript.vars()
         if output:
-            out_vars = {flow.var}
+            out_var = var
+            if isinstance(var, AccessExpr):
+                out_var = var.var
+            out_vars = {out_var}
         return in_vars | out_vars
 
     def execute_IfFlow(self, flow, input, output):
@@ -356,10 +330,28 @@ class _VariableSetGenerator(base_dispatcher()):
         flow_vars = self(flow.loop_flow, input, output)
         return in_vars | flow_vars
 
+    def execute_ForFlow(self, flow, input, output):
+        if input:
+            in_vars = flow.conditional_expr.vars()
+        else:
+            in_vars = set()
+        flow_vars = self(flow.init_flow, input, output)
+        flow_vars |= self(flow.loop_flow, input, output)
+        flow_vars |= self(flow.incr_flow, input, output)
+        return in_vars | flow_vars
+
     def execute_CompositionalFlow(self, flow, input, output):
         var_set = set()
         for f in flow.flows:
             var_set |= self(f, input, output)
+        return var_set
+
+    def execute_FunctionFlow(self, flow, input, output):
+        var_set = set()
+        if input:
+            var_set |= set(flow.inputs)
+        if output:
+            var_set |= set(flow.outputs)
         return var_set
 
     def _execute(self, flow, input=True, output=True):
@@ -367,44 +359,3 @@ class _VariableSetGenerator(base_dispatcher()):
 
 
 flow_variables = _VariableSetGenerator()
-
-
-class _InputOutputGenerator(base_dispatcher()):
-    def __init__(self):
-        super().__init__()
-        self.inputs = self.outputs = None
-
-    def execute_InputFlow(self, flow):
-        self.inputs = flow.inputs
-
-    def execute_OutputFlow(self, flow):
-        self.outputs = flow.outputs
-
-    def _execute_dont_care(self, flow):
-        pass
-
-    execute_IdentityFlow = execute_AssignFlow = _execute_dont_care
-
-    def execute_IfFlow(self, flow):
-        self(flow.true_flow)
-        self(flow.false_flow)
-
-    def execute_WhileFlow(self, flow):
-        self(flow.loop_flow)
-
-    def execute_CompositionalFlow(self, flow):
-        for f in flow.flows:
-            self(f)
-
-    def __eq__(self, other):
-        return NotImplemented
-
-
-def input_output_variables(flow):
-    g = _InputOutputGenerator()
-    g(flow)
-    rv = {
-        'inputs': g.inputs,
-        'outputs': g.outputs,
-    }
-    return rv

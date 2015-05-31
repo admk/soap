@@ -46,6 +46,8 @@ class Expression(Flyweight):
             else:
                 brackets = is_expression(expr) and expr.args
             text = '({})' if brackets else '{}'
+            if is_expression(expr):
+                expr = expr.format()
             return text.format(expr)
 
         return [format(a) for a in self.args]
@@ -56,8 +58,12 @@ class Expression(Flyweight):
         return "{name}(op={op!r}, {args})".format(
             name=self.__class__.__name__, op=self.op, args=args)
 
+    def format(self):
+        raise NotImplementedError(
+            'Override this method for {}'.format(self.__class__))
+
     def __str__(self):
-        raise NotImplementedError
+        return self.format().replace('    ', '').replace('\n', '').strip()
 
     def _attr(self):
         return (self.op, self.args)
@@ -67,7 +73,7 @@ class Expression(Flyweight):
             return False
         if id(self) == id(other):
             return True
-        if hash(self) != hash(other) or type(self) is not type(other):
+        if type(self) is not type(other) or hash(self) != hash(other):
             return False
         return self._attr() == other._attr()
 
@@ -97,7 +103,7 @@ class UnaryExpression(Expression):
     def a1(self):
         return self.args[0]
 
-    def __str__(self):
+    def format(self):
         return '{op}{a}'.format(op=self.op, a=self._args_to_str().pop())
 
 
@@ -117,7 +123,7 @@ class BinaryExpression(Expression):
     def a2(self):
         return self.args[1]
 
-    def __str__(self):
+    def format(self):
         a1, a2 = self._args_to_str()
         return '{a1} {op} {a2}'.format(op=self.op, a1=a1, a2=a2)
 
@@ -195,11 +201,11 @@ class VariableSetGenerator(base_dispatcher()):
             input_vars |= self(expr)
         return input_vars
 
-    execute_Label = _execute_atom
-    execute_Variable = _execute_atom
+    execute_Label = execute_Variable = _execute_atom
     execute_UnaryArithExpr = execute_BinaryArithExpr = _execute_expression
-    execute_BinaryBoolExpr = _execute_expression
-    execute_SelectExpr = _execute_expression
+    execute_BinaryBoolExpr = execute_SelectExpr = _execute_expression
+    execute_AccessExpr = execute_UpdateExpr = _execute_expression
+    execute_Subscript = _execute_expression
 
 
 expression_variables = VariableSetGenerator()

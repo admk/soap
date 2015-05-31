@@ -1,13 +1,11 @@
 import unittest
 
-from akpytemp.utils import code_gobble
-
 from soap.datatype import int_type
 from soap.expression import (
     operators, Variable, BinaryArithExpr, BinaryBoolExpr,
 )
 from soap.program import (
-    IdentityFlow, AssignFlow, IfFlow, WhileFlow, CompositionalFlow
+    SkipFlow, AssignFlow, IfFlow, WhileFlow, ForFlow, CompositionalFlow
 )
 from soap.parser.program import parse
 from soap.semantics import BoxState, IntegerInterval, ErrorSemantics
@@ -24,10 +22,10 @@ class TestBoxState(unittest.TestCase):
         self.xm1 = BinaryArithExpr(
             operators.SUBTRACT_OP, self.x, IntegerInterval(1))
 
-    def test_visit_IdentityFlow(self):
-        flow = IdentityFlow()
+    def test_visit_SkipFlow(self):
+        flow = SkipFlow()
         state = BoxState(x=[1, 2])
-        self.assertEqual(state.visit_IdentityFlow(flow), state)
+        self.assertEqual(state.visit_SkipFlow(flow), state)
 
     def test_visit_AssignFlow(self):
         flow = AssignFlow(self.y, self.xp1)
@@ -48,6 +46,15 @@ class TestBoxState(unittest.TestCase):
         state = BoxState(x=[1, 4])
         self.assertEqual(state.visit_WhileFlow(flow), BoxState(x=[2, 4]))
 
+    def test_visit_ForFlow(self):
+        loop_flow = AssignFlow(self.y, BinaryArithExpr(
+            operators.ADD_OP, self.y, self.x))
+        state = BoxState(x=[1, 4], y=1)
+        flow = ForFlow(
+            SkipFlow(), self.xl2, AssignFlow(self.x, self.xp1), loop_flow)
+        compare_state = BoxState(x=[2, 4], y=[1, 2])
+        self.assertEqual(state.visit_ForFlow(flow), compare_state)
+
     def test_compositional_flow(self):
         flow = CompositionalFlow()
         flow += AssignFlow(self.x, self.xp1)
@@ -59,37 +66,43 @@ class TestBoxState(unittest.TestCase):
 class TestBoxStateExampleTransitions(unittest.TestCase):
     """Unittesting for :class:`soap.program.flow`."""
     def setUp(self):
-        self.simple_if = code_gobble(
+        self.simple_if = """
+            def main() {
+                int x = 0;
+                if (x <= 1) {
+                    x = x + 1;
+                } else {
+                    x = x - 1;
+                }
+                return x;
+            }
             """
-            int x = 0;
-            if (x <= 1) {
-                x = x + 1;
-            } else {
-                x = x - 1;
-            };
-            """)
-        self.simple_while = code_gobble(
+        self.simple_while = """
+            def main() {
+                int x = 0;
+                while (x < 5) {
+                    x = x + 1;
+                }
+                return x;
+            }
             """
-            int x = 0;
-            while (x < 5) {
-                x = x + 1;
-            };
-            """)
-        self.factorial = code_gobble(
+        self.factorial = """
+            def main(int x=[0, 5], int y=[0, 2]) {
+                while (x <= 3) {
+                    y = y * x;
+                    x = x + 1;
+                }
+                return y;
+            }
             """
-            int x; int y;
-            while (x <= 3) {
-                y = y * x;
-                x = x + 1;
-            };
-            """)
-        self.fixpoint = code_gobble(
+        self.fixpoint = """
+            def main(real x=[0.0, 9.0]) {
+                while (x > 1) {
+                    x = 0.9 * x;
+                }
+                return x;
+            }
             """
-            real x;
-            while (x > 1) {
-                x = 0.9 * x;
-            };
-            """)
 
     def test_simple_if(self):
         env = BoxState(bottom=True)

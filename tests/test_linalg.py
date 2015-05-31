@@ -19,6 +19,7 @@ class TestIntArray(unittest.TestCase):
         self.matrix = IntArray(self.matrix_values)
 
     def test_matrix_shape(self):
+        self.assertEqual(self.vector.shape, (3, ))
         self.assertEqual(self.matrix.shape, (3, 3))
 
     def test_matrix_content(self):

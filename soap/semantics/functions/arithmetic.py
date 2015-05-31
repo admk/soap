@@ -1,6 +1,7 @@
 from soap.common import base_dispatcher, cached
 from soap.expression import operators
-from soap.semantics.error import ErrorSemantics, FloatInterval, error_norm
+from soap.semantics.error import error_norm
+from soap.semantics.linalg import ErrorSemanticsArray
 
 
 class ArithmeticEvaluator(base_dispatcher()):
@@ -49,10 +50,14 @@ class ArithmeticEvaluator(base_dispatcher()):
 
     def execute_AccessExpr(self, expr, state):
         array, subscript = self._execute_args(expr, state)
+        if array.is_bottom():
+            return array.value_class(bottom=True)
         return array[subscript]
 
     def execute_UpdateExpr(self, expr, state):
         array, subscript, value = self._execute_args(expr, state)
+        if array.is_bottom():
+            return array
         return array.update(subscript, value)
 
     def execute_SelectExpr(self, expr, state):
@@ -65,13 +70,8 @@ class ArithmeticEvaluator(base_dispatcher()):
         return true_value | false_value
 
     def execute_FixExpr(self, expr, state):
-        from soap.semantics.functions import fix_expr_eval
+        from soap.semantics.functions.fixpoint import fix_expr_eval
         return fix_expr_eval(expr, state)
-
-    def execute_UnrollExpr(self, expr, state):
-        from soap.semantics.functions import unroll_eval
-        expr, kernel, depth = expr.args
-        return unroll_eval(expr, kernel, state, depth)
 
     def execute_MetaState(self, meta_state, state):
         from soap.semantics.functions import arith_eval_meta_state
@@ -91,19 +91,26 @@ class ArithmeticEvaluator(base_dispatcher()):
 arith_eval = ArithmeticEvaluator()
 
 
-class ErrorEvaluator(ArithmeticEvaluator):
+class ErrorEvaluator(base_dispatcher()):
 
-    def execute_Variable(self, expr, state):
-        value = state[expr]
-        if isinstance(value, FloatInterval):
-            value = ErrorSemantics(value, 0)
-        return value
+    def generic_execute(self, expr, state):
+        return arith_eval(expr, state)
 
-    def execute_BinaryBoolExpr(self, expr, state):
+    def _execute_dont_care(self, expr, state):
         return 0
 
+    execute_BinaryBoolExpr = execute_Subscript = _execute_dont_care
+
     def execute_MetaState(self, meta_state, state):
-        return error_norm([self(expr, state) for expr in meta_state.values()])
+        state = arith_eval(meta_state, state)
+        return error_norm(state.values())
 
 
-error_eval = ErrorEvaluator()
+_error_eval = ErrorEvaluator()
+
+
+def error_eval(expr, state, preserve_array=False):
+    value = _error_eval(expr, state)
+    if not preserve_array and isinstance(value, ErrorSemanticsArray):
+        value = error_norm(value._flat_items)
+    return value

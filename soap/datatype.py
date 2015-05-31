@@ -4,6 +4,9 @@ from soap.semantics.linalg import IntegerIntervalArray, ErrorSemanticsArray
 
 class TypeBase(object):
     """The base class of all data types.  """
+    def __repr__(self):
+        return '<{}>'.format(self)
+
     def __eq__(self, other):
         return self.__class__ == other.__class__
 
@@ -35,10 +38,17 @@ class RealType(TypeBase):
         return 'real'
 
 
+class FunctionType(TypeBase):
+    """Function data type.  """
+    def __str__(self):
+        return 'func'
+
+
 auto_type = AutoType()
 bool_type = BoolType()
 int_type = IntType()
 real_type = RealType()
+function_type = FunctionType()
 
 
 class ArrayType(TypeBase):
@@ -46,7 +56,14 @@ class ArrayType(TypeBase):
 
     def __init__(self, shape):
         super().__init__()
-        self.shape = tuple(shape)
+        new_shape = []
+        for s in shape:
+            if isinstance(s, IntegerInterval):
+                if s.min != s.max:
+                    raise ValueError('Array size must be a constant.')
+                s = int(s.min)
+            new_shape.append(s)
+        self.shape = tuple(new_shape)
 
     def __str__(self):
         return '{}[{}]'.format(
@@ -54,11 +71,12 @@ class ArrayType(TypeBase):
 
     def __eq__(self, other):
         return (
+            self.__class__ == other.__class__ and
             self.num_type == other.num_type and
             self.shape == other.shape)
 
     def __hash__(self):
-        return hash((self.num_type, self.shape))
+        return hash((self.__class__, self.num_type, self.shape))
 
 
 class IntegerArrayType(ArrayType):
@@ -70,6 +88,8 @@ class RealArrayType(ArrayType):
 
 
 def type_of(value):
+    if value is None:
+        return
     if isinstance(value, IntegerInterval):
         return int_type
     if isinstance(value, ErrorSemantics):
@@ -79,3 +99,22 @@ def type_of(value):
     if isinstance(value, ErrorSemanticsArray):
         return RealArrayType(value.shape)
     raise TypeError('Unrecognized type {}'.format(type(value)))
+
+
+def type_cast(dtype, value=None, top=False, bottom=False):
+    if dtype == int_type:
+        return IntegerInterval(value, top=top, bottom=bottom)
+    if dtype == real_type:
+        return ErrorSemantics(value, top=top, bottom=bottom)
+    if isinstance(dtype, IntegerArrayType):
+        cls = IntegerIntervalArray
+    elif isinstance(dtype, RealArrayType):
+        cls = ErrorSemanticsArray
+    else:
+        raise TypeError('Do not recognize type.')
+    shape = None if value is not None else dtype.shape
+    array = cls(value, _shape=shape, top=top, bottom=bottom)
+    if shape != array.shape:
+        raise ValueError(
+            'Array shape is not the same as the shape specified by data type.')
+    return array

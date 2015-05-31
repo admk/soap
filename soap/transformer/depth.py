@@ -15,7 +15,7 @@ class Cropper(base_dispatcher('crop')):
 
     def _crop_expression(self, expr, depth, context):
         if depth <= 0:
-            label = context.Label(expr)
+            label = context.Label(expr, None, None)
             return label, {label: expr}
 
         cropped_args = tuple(
@@ -30,10 +30,9 @@ class Cropper(base_dispatcher('crop')):
 
         return expr, env
 
-    crop_UnaryArithExpr = _crop_expression
-    crop_BinaryArithExpr = _crop_expression
-    crop_BinaryBoolExpr = _crop_expression
-    crop_SelectExpr = _crop_expression
+    crop_UnaryArithExpr = crop_BinaryArithExpr = _crop_expression
+    crop_BinaryBoolExpr = crop_SelectExpr = _crop_expression
+    crop_AccessExpr = crop_UpdateExpr = crop_Subscript = _crop_expression
 
     def crop_FixExpr(self, expr, depth, context):
         return expr, {}
@@ -64,10 +63,10 @@ class Stitcher(base_dispatcher('stitch')):
         args = tuple(self(arg, env) for arg in expr.args)
         return expression_factory(expr.op, *args)
 
-    stitch_UnaryArithExpr = _stitch_expression
-    stitch_BinaryArithExpr = _stitch_expression
-    stitch_BinaryBoolExpr = _stitch_expression
-    stitch_SelectExpr = _stitch_expression
+    stitch_UnaryArithExpr = stitch_BinaryArithExpr = _stitch_expression
+    stitch_BinaryBoolExpr = stitch_SelectExpr = _stitch_expression
+    stitch_AccessExpr = stitch_UpdateExpr = _stitch_expression
+    stitch_Subscript = _stitch_expression
 
     def stitch_FixExpr(self, expr, env):
         return expr

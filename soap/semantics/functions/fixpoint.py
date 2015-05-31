@@ -1,9 +1,14 @@
 from soap import logger
 from soap.context import context
 from soap.common.cache import cached
-from soap.expression import FixExpr, SelectExpr
+from soap.expression import (
+    operators, BinaryArithExpr, BinaryBoolExpr, FixExpr, SelectExpr
+)
+from soap.semantics import IntegerInterval
 from soap.semantics.functions.boolean import bool_eval
-from soap.semantics.functions.meta import arith_eval_meta_state, expand_expr
+from soap.semantics.functions.meta import (
+    arith_eval_meta_state, expand_expr, expand_meta_state
+)
 
 
 def _is_fixpoint(state, prev_state, curr_join_state, prev_join_state,
@@ -16,12 +21,12 @@ def _is_fixpoint(state, prev_state, curr_join_state, prev_join_state,
     return state.is_fixpoint(prev_state)
 
 
-def _widen(state, prev_state, iteration):
+def _widen(obj, prev_obj, iteration):
     if context.unroll_factor:
         if iteration % context.widen_factor == 0:
             logger.info('Widening', iteration)
-            state = prev_state.widen(state)
-    return state
+            obj = prev_obj.widen(obj)
+    return obj
 
 
 @cached
@@ -34,6 +39,7 @@ def fixpoint_eval(state, bool_expr, loop_meta_state=None, loop_flow=None):
     state_class = state.__class__
 
     iteration = 0
+    trip_count = prev_trip_count = IntegerInterval(0)
 
     # input state
     loop_state = state
@@ -41,10 +47,23 @@ def fixpoint_eval(state, bool_expr, loop_meta_state=None, loop_flow=None):
     # initial state values
     entry_state = entry_join_state = exit_join_state = state.empty()
     prev_entry_state = prev_entry_join_state = state.empty()
-    prev_loop_state = state.empty()
+    prev_loop_state = loop_end_join_state = state.empty()
+
+    if state.is_bottom():
+        return {
+            'entry': entry_join_state,
+            'exit': exit_join_state,
+            'last_entry': entry_state,
+            'last_exit': loop_state,
+            'end': loop_end_join_state,
+            'trip_count': trip_count,
+        }
 
     while True:
         iteration += 1
+        prev_trip_count = trip_count
+        trip_count += 1
+
         logger.persistent('Iteration', iteration, l=logger.levels.debug)
 
         # split state by the conditional of the while loop
@@ -82,8 +101,11 @@ def fixpoint_eval(state, bool_expr, loop_meta_state=None, loop_flow=None):
             raise ValueError(
                 'loop_flow and loop_meta_state are both unspecified.')
 
+        loop_end_join_state = loop_state | loop_end_join_state
+
         # widening
         loop_state = _widen(loop_state, prev_loop_state, iteration)
+        trip_count = _widen(trip_count, prev_trip_count, iteration)
 
     logger.unpersistent('Iteration')
 
@@ -92,6 +114,8 @@ def fixpoint_eval(state, bool_expr, loop_meta_state=None, loop_flow=None):
         'exit': exit_join_state,
         'last_entry': entry_state,
         'last_exit': loop_state,
+        'end': loop_end_join_state,
+        'trip_count': trip_count,
     }
 
 
@@ -103,11 +127,11 @@ def fix_expr_eval(expr, state):
     return fixpoint['exit'][expr.loop_var]
 
 
-def _equivalent_loop_meta_state(expr, outer_state, depth):
+def _unroll_fix_expr(fix_expr, outer_state, depth):
     from soap.semantics.state.meta import MetaState
 
-    unroll_state = expr.loop_state
-    expanded_bool_expr = expand_expr(expr.bool_expr, outer_state)
+    unroll_state = fix_expr.loop_state
+    expanded_bool_expr = expand_expr(fix_expr.bool_expr, outer_state)
 
     for _ in range(depth):
         new_unroll_state = {}
@@ -122,17 +146,73 @@ def _equivalent_loop_meta_state(expr, outer_state, depth):
                 new_unroll_state[var] = expr
         unroll_state = new_unroll_state
 
-    return MetaState(unroll_state)
+    loop_state = MetaState(unroll_state)
+    fix_expr = FixExpr(
+        fix_expr.bool_expr, loop_state, fix_expr.loop_var, fix_expr.init_state)
+    return fix_expr
 
 
-def equivalent_loop_meta_states(expr, depth):
-    for d in range(depth + 1):
-        yield _equivalent_loop_meta_state(expr, expr.loop_state, d)
+def _unroll_for_loop(expr, iter_var, iter_slice, depth):
+    from soap.semantics.state.meta import MetaState
+    from soap.semantics.schedule.common import iter_point_count
+
+    expr_list = [expr]
+
+    loop_state = expr.loop_state
+    init_state = expr.init_state
+    loop_var = expr.loop_var
+    start, stop, step = iter_slice.start, iter_slice.stop, iter_slice.step
+    if any(not isinstance(value, int) for value in (start, stop, step)):
+        # TODO support expression bounds (if Xilinx supports this)
+        logger.warning('Non-constant bounds not supported in unrolling yet.')
+        return expr_list
+
+    for d in range(2, depth + 1):
+        new_step = step * d
+        new_count = iter_point_count(slice(start, stop, new_step))
+        mid = start + new_count * new_step
+
+        new_loop_state = loop_state
+        for _ in range(d - 1):
+            new_loop_state = expand_meta_state(new_loop_state, loop_state)
+
+        step_expr = BinaryArithExpr(
+            operators.ADD_OP, iter_var, IntegerInterval(new_step))
+        new_loop_state = new_loop_state.immu_update(iter_var, step_expr)
+
+        bool_expr = BinaryBoolExpr(
+            operators.LESS_OP, iter_var, IntegerInterval(mid))
+
+        fix_expr = FixExpr(bool_expr, new_loop_state, loop_var, init_state)
+
+        loop_expr = loop_state[loop_var]
+        id_state = MetaState({var: var for var in loop_expr.vars()})
+        epilogue = []
+        for i in range(mid, stop, step):
+            state = id_state.immu_update(iter_var, IntegerInterval(i))
+            epilogue.append(expand_expr(loop_expr, state))
+
+        epilogue_state = id_state.immu_update(loop_var, fix_expr)
+        for expr in epilogue:
+            expr_state = MetaState({loop_var: expr})
+            epilogue_state = expand_meta_state(expr_state, epilogue_state)
+
+        expr_list.append(epilogue_state[loop_var])
+
+    return expr_list
 
 
-def unroll_eval(expr, outer, state, depth):
-    bool_expr = expr.bool_expr
-    loop_meta_state = _equivalent_loop_meta_state(expr, outer, depth)
-    unrolled_expr = FixExpr(
-        bool_expr, loop_meta_state, expr.loop_var, expr.init_state)
-    return fix_expr_eval(unrolled_expr, state)
+def unroll_fix_expr(expr, depth):
+    from soap.semantics.schedule.extract import (
+        ForLoopExtractor, ForLoopExtractionFailureException
+    )
+    extractor = ForLoopExtractor(expr)
+    if not extractor.is_for_loop:
+        return [_unroll_fix_expr(expr, expr.loop_state, d)
+                for d in range(depth + 1)]
+    iter_var = extractor.iter_var
+    iter_slice = extractor.iter_slice
+
+    if extractor.has_inner_loops:
+        return [expr]
+    return _unroll_for_loop(expr, iter_var, iter_slice, depth)

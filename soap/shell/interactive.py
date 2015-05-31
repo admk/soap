@@ -1,13 +1,10 @@
-import sys
+import os
+import pickle
 from pprint import pprint
 
 import IPython
 
 import soap
-from soap.shell.ast import FlowTransformer, TraceTransformer
-
-
-sys.excepthook = soap.excepthook
 
 
 class Shell(IPython.terminal.embed.InteractiveShellEmbed):
@@ -18,9 +15,6 @@ class Shell(IPython.terminal.embed.InteractiveShellEmbed):
             author=soap.__author__, email=soap.__email__,
             desc=soap.__description__)
         self.banner1 += '\n'.join(['', banner, ''])
-        self.ast_transformers.extend([
-            FlowTransformer(self), TraceTransformer(self),
-        ])
 
     def run_cell(self, raw_cell,
                  store_history=False, silent=False, shell_futures=True):
@@ -31,15 +25,14 @@ class Shell(IPython.terminal.embed.InteractiveShellEmbed):
 shell = Shell()
 
 
-def main(script=None):
+def main(file=None):
     from soap import (
-        context, parse, analyze, frontier, Plot, plot, analyze_and_plot,
-        parse, expr_parse, Flow, generate, IntegerInterval, FloatInterval,
-        FractionInterval, ErrorSemantics, BoxState, IdentifierBoxState,
-        MetaState, flow_to_meta_state, mpz, mpq, mpfr, mpz_type, mpq_type,
-        mpfr_type, inf, ulp, cast, arith_eval, error_eval, label, luts,
-        closure, greedy_frontier_closure, expand, reduce, parsings, martel,
-        greedy, frontier,
+        context, parse, analyze, frontier, Plot, plot, parse, Flow, generate,
+        IntegerInterval, FloatInterval, FractionInterval, ErrorSemantics,
+        BoxState, MetaState, flow_to_meta_state, mpz, mpq, mpfr, mpz_type,
+        mpq_type, mpfr_type, inf, ulp, cast, arith_eval, error_eval, label,
+        luts, closure, greedy_frontier_closure, expand, reduce, parsings,
+        martel, greedy, frontier
     )
 
     def pp(*args):
@@ -77,7 +70,21 @@ def main(script=None):
     with context.no_invalidate_cache():
         context.repr = str
 
-    if script:
-        exec(script)
+    if not file:
+        return shell()
+    directory, file_name = os.path.split(file)
+    base_name, ext = os.path.splitext(file_name)
+    if ext == '.py':
+        with open(file, 'r') as f:
+            exec(f.read())
         shell.banner1 = ''
+    elif ext == '.emir':
+        var_name = base_name.replace('.', '_')
+        with open(file, 'rb') as f:
+            globals()[var_name] = pickle.loads(f.read())
+    elif ext == '.soap':
+        with open(file, 'r') as f:
+            globals()[var_name] = parse(f.read())
+    else:
+        raise ValueError('Unrecognized file extension {}'.format(ext))
     return shell()

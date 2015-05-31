@@ -1,5 +1,5 @@
 from soap.program.flow import (
-    Flow, IdentityFlow, AssignFlow, IfFlow, WhileFlow, CompositionalFlow,
-    InputFlow, OutputFlow
+    Flow, SkipFlow, AssignFlow, IfFlow, WhileFlow, ForFlow,
+    CompositionalFlow, FunctionFlow, ReturnFlow,
 )
 from soap.program.generator import generate

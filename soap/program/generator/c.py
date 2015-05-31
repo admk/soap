@@ -1,7 +1,6 @@
 from soap import logger
-from soap.common import base_dispatcher
+from soap.common import base_dispatcher, indent
 from soap.expression import is_variable, is_expression
-from soap.program.flow import _indent
 from soap.program.generator.flow import CodeGenerator
 from soap.semantics import (
     ErrorSemantics, FloatInterval, IntegerInterval, Label, label
@@ -84,7 +83,7 @@ class CTranspiler(base_dispatcher('transpile')):
 
     _empty = lambda flow: ''
 
-    transpile_IdentityFlow = _empty
+    transpile_SkipFlow = _empty
     transpile_InputFlow = transpile_OutputFlow = _empty
 
     def transpile_AssignFlow(self, flow):
@@ -94,15 +93,15 @@ class CTranspiler(base_dispatcher('transpile')):
         true_branch = self(flow.true_flow)
         false_branch = self(flow.false_flow)
         code = 'if ({}) {{\n{}}}\n'.format(
-            flow.conditional_expr, _indent(true_branch))
+            flow.conditional_expr, indent(true_branch))
         if false_branch:
-            code += ' else {{\n{}}}\n'.format(_indent(false_branch))
+            code += ' else {{\n{}}}\n'.format(indent(false_branch))
         return code
 
     def transpile_WhileFlow(self, flow):
         loop = self(flow.loop_flow)
         code = 'while ({}) {{\n{}}}\n'.format(
-            flow.conditional_expr, _indent(loop))
+            flow.conditional_expr, indent(loop))
         return code
 
     def transpile_CompositionalFlow(self, flow):
@@ -138,12 +137,12 @@ def generate_function(meta_state, state, out_vars, func_name):
     int_set -= inputs
     float_set -= inputs
 
-    decl = _indent(_generate_declarations(int_set, float_set))
+    decl = indent(_generate_declarations(int_set, float_set))
 
     inputs = ', '.join(
         '{} {}'.format(_bound_type(v), k) for k, v in state.items())
     formatter = '{out_type} {func_name}({inputs}) {{\n{decl}{code}}}\n'
     func_code = formatter.format(
         out_type=out_type, func_name=func_name, inputs=inputs,
-        decl=decl, code=_indent(code))
+        decl=decl, code=indent(code))
     return func_code

@@ -1,7 +1,6 @@
-from functools import wraps
+import functools
 
 from soap.common.cache import Flyweight
-from soap.lattice.meta import LatticeMeta
 
 
 def _decorate(cls):
@@ -16,7 +15,7 @@ def _decorate(cls):
                 'No function matching {} from class {} to decorate'.format(
                     base_func.__qualname__, cls))
 
-        @wraps(decd_func)
+        @functools.wraps(decd_func)
         def wrapper(self):
             t = base_func(self)
             if t is not None:
@@ -30,7 +29,7 @@ def _decorate(cls):
             raise ValueError('No matching {} function to decorate'.format(
                 base_func.__qualname__))
 
-        @wraps(decd_func)
+        @functools.wraps(decd_func)
         def wrapper(self, other):
             t = base_func(self, other)
             if t is not None:
@@ -60,7 +59,7 @@ def _compare(func):
     return wrapped_func
 
 
-class Lattice(Flyweight, metaclass=LatticeMeta):
+class Lattice(Flyweight):
     """Common lattice structure.
 
     Because the partial orders we are using are always complete lattices,
@@ -152,3 +151,11 @@ class Lattice(Flyweight, metaclass=LatticeMeta):
             return self.__class__.__name__ + '(top=True)'
         if self.is_bottom():
             return self.__class__.__name__ + '(bottom=True)'
+
+
+def join(iterable):
+    return functools.reduce(lambda x, y: x.join(y), iterable)
+
+
+def meet(iterable):
+    return functools.reduce(lambda x, y: x.meet(y), iterable)

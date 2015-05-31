@@ -1,5 +1,6 @@
 import collections
 import itertools
+import math
 
 from soap.common.cache import cached
 from soap.context import context
@@ -33,42 +34,53 @@ def _rhs_eval(expr, state):
         'Evaluation returns an unrecognized object: %r' % bound)
 
 
-def _contract(op, bound):
+def _contract(op, dtype, bmin, bmax):
     if op not in [LESS_OP, GREATER_OP]:
-        return bound.min, bound.max
-    if isinstance(bound, IntegerInterval):
-        bmin = bound.min + 1
-        bmax = bound.max - 1
-    elif isinstance(bound, FloatInterval):
-        bmin = bound.min + ulp(bound.min)
-        bmax = bound.max - ulp(bound.max)
+        return bmin, bmax
+    if dtype == IntegerInterval:
+        bmin += 1
+        bmax -= 1
+    elif dtype == FloatInterval:
+        bmin += ulp(bmin)
+        bmax -= ulp(bmax)
     else:
-        raise TypeError
+        raise TypeError('Unknown type {}'.format(dtype))
     return bmin, bmax
 
 
-def _constraint(op, cond, bound):
+def _constraint(op, cond, dtype, bmin, bmax):
     op = COMPARISON_NEGATE_DICT[op] if not cond else op
-    if bound.is_bottom():
-        return bound
-    bound_min, bound_max = _contract(op, bound)
+    bmin, bmax = _contract(op, dtype, bmin, bmax)
     if op == EQUAL_OP:
-        return bound
+        return dtype([bmin, bmax])
     if op == NOT_EQUAL_OP:
-        return bound.__class__([-inf, inf])
+        return dtype([-inf, inf])
     if op in [LESS_OP, LESS_EQUAL_OP]:
-        return bound.__class__([-inf, bound_max])
+        return dtype([-inf, bmax])
     if op in [GREATER_OP, GREATER_EQUAL_OP]:
-        return bound.__class__([bound_min, inf])
-    raise ValueError('Unknown boolean operator %s' % op)
+        return dtype([bmin, inf])
+    raise ValueError('Unknown boolean operator {}'.format(op))
 
 
 def _conditional(op, var, expr, state, cond):
+    value = state[var]
+    dtype = type(value)
+    if dtype == ErrorSemantics:
+        dtype = FloatInterval
     bound = _rhs_eval(expr, state)
-    if isinstance(state[var], (FloatInterval, ErrorSemantics)):
-        # Comparing floats
-        bound = FloatInterval(bound)
-    cstr = _constraint(op, cond, bound)
+
+    if state.is_bottom():
+        return var, dtype(bottom=True)
+    if bound.is_bottom():
+        raise ValueError('Cannot evaluate {} with {}'.format(expr, state))
+
+    bmin, bmax = bound.min, bound.max
+    if isinstance(value, IntegerInterval) and \
+       isinstance(bound, FloatInterval):
+        bmin, bmax = int(math.ceil(bmin)), int(math.floor(bmax))
+        op_map = {LESS_OP: LESS_EQUAL_OP, GREATER_OP: GREATER_EQUAL_OP}
+        op = op_map.get(op, op)
+    cstr = _constraint(op, cond, dtype, bmin, bmax)
     if isinstance(cstr, FloatInterval):
         cstr = ErrorSemantics(cstr, FloatInterval(top=True))
     cstr &= state[var]

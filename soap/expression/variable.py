@@ -27,8 +27,8 @@ class Variable(ArithmeticMixin, BooleanMixin, BinaryExpression):
     def dtype(self):
         return self.args[1]
 
-    def __str__(self):
-        return '{}:{}'.format(self.name, self.dtype)
+    def format(self):
+        return '{}'.format(self.name)
 
     def __repr__(self):
         return '{cls}({name!r}, {dtype!r})'.format(
@@ -51,7 +51,7 @@ class External(ArithmeticMixin, BooleanMixin, Expression):
     def var(self):
         return self.args[0]
 
-    def __str__(self):
+    def format(self):
         return '^{}'.format(self.var)
 
 
@@ -78,7 +78,7 @@ class VariableTuple(ArithmeticMixin, BooleanMixin, Expression):
     def __len__(self):
         return len(self.args)
 
-    def __str__(self):
+    def format(self):
         var_list = ','.join(str(v) for v in self.args)
         return '({})'.format(var_list)
 
