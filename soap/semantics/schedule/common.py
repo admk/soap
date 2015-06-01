@@ -2,6 +2,7 @@ import math
 
 import islpy
 
+from soap.common.cache import cached
 from soap.expression import (
     expression_factory, is_expression, is_variable, Variable, operators
 )
@@ -54,3 +55,31 @@ def iter_point_count(iter_slice):
     if step == 0:
         raise ZeroDivisionError('Step is 0.')
     return max(0, int(math.floor((stop - start) / step)))
+
+
+def resource_ceil(res_map):
+    for dtype_op, res_count in res_map.items():
+        res_map[dtype_op] = int(math.ceil(res_count))
+
+
+def resource_map_add(total_map, incr_map):
+    for dtype_op, res_count in incr_map.items():
+        total_map[dtype_op] = total_map.setdefault(dtype_op, 0) + res_count
+
+
+def resource_map_min(total_map, lower_map):
+    for dtype_op, res_count in lower_map.items():
+        total_map[dtype_op] = max(
+            total_map.setdefault(dtype_op, 0), res_count)
+
+
+@cached
+def schedule_graph(expr, out_vars=None, **kwargs):
+    from soap.semantics import label
+    from soap.semantics.schedule.graph import SequentialScheduleGraph
+    label, env = label(expr, None, out_vars)
+    if is_expression(expr):
+        # expressions do not have out_vars, but have an output, in this case
+        # ``label`` is its output variable
+        out_vars = [label]
+    return SequentialScheduleGraph(env, out_vars, **kwargs)
