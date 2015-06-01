@@ -14,8 +14,9 @@ from soap.semantics.schedule.distance import (
     dependence_vector, dependence_distance, ISLIndependenceException
 )
 from soap.semantics.schedule.common import schedule_graph
-from soap.semantics.schedule.loop import LoopScheduleGraph
-from soap.semantics.schedule.sequential import SequentialScheduleGraph
+from soap.semantics.schedule.graph import (
+    LoopScheduleGraph, SequentialScheduleGraph
+)
 from soap.semantics.schedule.table import LOOP_LATENCY_TABLE, LATENCY_TABLE
 from soap.semantics.state import flow_to_meta_state
 

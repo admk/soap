@@ -37,11 +37,13 @@ class Expression(Flyweight):
 
     def _args_to_str(self):
         from soap.expression.arithmetic import UnaryArithExpr
+        from soap.expression.linalg import AccessExpr, UpdateExpr, Subscript
 
         def format(expr):
+            no_brackets = (UnaryArithExpr, AccessExpr, UpdateExpr, Subscript)
             if isinstance(expr, Lattice) and expr.is_bottom():
                 brackets = False
-            elif isinstance(expr, UnaryArithExpr):
+            elif isinstance(expr, no_brackets):
                 brackets = False
             else:
                 brackets = is_expression(expr) and expr.args

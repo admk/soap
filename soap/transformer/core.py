@@ -118,10 +118,11 @@ class TreeTransformer(TreeFarmer):
 
     def _sample(self, expr_set):
         limit = context.size_limit
-        if limit >= 0 and len(expr_set) > limit:
+        size = len(expr_set)
+        if limit >= 0 and size > limit:
             logger.debug(
-                'Equivalent structures over limit, '
-                'reduces population size by sampling.')
+                'Number of equivalent structures over limit ({} > {}), '
+                'reduces population size by sampling.'.format(size, limit))
             random.seed(context.rand_seed)
             expr_set = random.sample(expr_set, limit)
         return set(expr_set)
@@ -138,7 +139,6 @@ class TreeTransformer(TreeFarmer):
         else:
             cpu_count = chunksize = 1
             map = lambda func, args_list, _: [func(args) for args in args_list]
-        union = lambda s, _: functools.reduce(lambda x, y: x | y, s)
         args_list = [(expression, rules, closure, depth)
                      for index, expression in enumerate(expressions)]
         should_include, discovered_sets = \
@@ -146,7 +146,9 @@ class TreeTransformer(TreeFarmer):
         expressions = {
             expression for index, expression in enumerate(expressions)
             if should_include[index]}
-        discovered = union(discovered_sets, cpu_count)
+        discovered = set()
+        for s in discovered_sets:
+            discovered.update(s)
         return expressions, discovered
 
     def _recursive_closure(self, trees, reduced=False):
@@ -199,15 +201,9 @@ def _walk(args):
     try:
         discovered = _recursive_walk(expression, rules, depth)
     except Exception:
-        try:
-            from IPython.core.ultratb import VerboseTB
-        except ImportError:
-            import traceback
-            traceback.print_exc()
-        else:
-            import sys
-            exc = sys.exc_info()
-            print(VerboseTB().text(*exc))
+        import sys
+        from IPython.core.ultratb import VerboseTB
+        print(VerboseTB().text(*sys.exc_info()))
         raise
     if closure:
         discovered.add(expression)

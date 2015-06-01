@@ -1,4 +1,4 @@
-from soap.datatype import auto_type, type_of, type_cast
+from soap.datatype import auto_type, type_of, type_cast, ArrayType
 from soap.expression.variable import Variable
 from soap.lattice.map import MapLattice
 from soap.semantics.error import cast, ErrorSemantics
@@ -16,9 +16,14 @@ class BoxState(BaseState, MapLattice):
         elif isinstance(key, Variable):
             dtype = key.dtype
             if dtype is not auto_type and dtype != type_of(value):
-                raise TypeError(
-                    'Variable type is not the same as the type of value '
-                    'to be assigned')
+                if isinstance(dtype, ArrayType):
+                    for dim in reversed(dtype.shape):
+                        value = [value] * dim
+                    value = type_cast(dtype, value=value)
+                else:
+                    raise TypeError(
+                        'Variable type is not the same as the type of value '
+                        'to be assigned')
         return key, value
 
     def _cast_key(self, key, value=None):

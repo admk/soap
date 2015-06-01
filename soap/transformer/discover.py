@@ -194,7 +194,7 @@ class BaseDiscoverer(base_dispatcher('discover')):
     def _discover_multiple_expressions(
             self, var_expr_state, state, out_vars):
 
-        var_list = sorted(set(var_expr_state.keys()) | set(out_vars), key=hash)
+        var_list = sorted(set(var_expr_state.keys()) | set(out_vars), key=str)
 
         logger.info('Discovering state: {}'.format(var_expr_state))
 
@@ -209,8 +209,10 @@ class BaseDiscoverer(base_dispatcher('discover')):
                 meta_state = dict(meta_state)
                 meta_state[var] = var_expr
                 new_frontier.append(MetaState(meta_state))
-            frontier = self.filter(new_frontier, state, var_list[:(i + 1)])
-        frontier = self.filter(frontier, state, out_vars)
+            if len(frontier) == len(new_frontier):
+                frontier = new_frontier
+            else:
+                frontier = self.filter(new_frontier, state, var_list[:(i + 1)])
 
         logger.unpersistent('Merge')
         logger.info('Discovered: {}, Frontier: {}'
@@ -222,6 +224,12 @@ class BaseDiscoverer(base_dispatcher('discover')):
     @cached
     def __call__(self, expr, state, out_vars=None):
         return super().__call__(expr, state, out_vars)
+
+    def __eq__(self, other):
+        return self.__class__ == other.__class__
+
+    def __hash__(self):
+        return hash(self.__class__)
 
 
 class MartelDiscoverer(BaseDiscoverer):

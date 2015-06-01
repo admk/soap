@@ -1,3 +1,4 @@
+import collections
 import functools
 import itertools
 import math
@@ -36,7 +37,9 @@ class LoopScheduleGraph(SequentialScheduleGraph):
 
     latency_table = LOOP_LATENCY_TABLE
 
-    def __init__(self, fix_expr, round_values=False, sequentialize_loops=True):
+    def __init__(
+            self, fix_expr, round_values=False, sequentialize_loops=True,
+            scheduler=None):
         extractor = ForLoopNestExtractor(fix_expr)
         is_pipelined = extractor.is_for_loop_nest
         iter_vars = extractor.iter_vars
@@ -44,12 +47,31 @@ class LoopScheduleGraph(SequentialScheduleGraph):
         out_vars = sorted(kernel, key=str)
         super().__init__(
             kernel, out_vars, round_values=round_values,
-            sequentialize_loops=sequentialize_loops)
+            sequentialize_loops=sequentialize_loops,
+            scheduler=scheduler)
         self.is_pipelined = is_pipelined
         self.fix_expr = fix_expr
         self.iter_vars = iter_vars
         self.iter_slices = extractor.iter_slices
         self._init_loop_graph()
+
+    def resource_counts(self):
+        try:
+            return self._resource_counts
+        except AttributeError:
+            pass
+        operator_map = collections.defaultdict(int)
+        memory_map = collections.defaultdict(int)
+        for node in self.graph.nodes():
+            expr, dtype, op = self.node_expr(node)
+            if expr is None:
+                continue
+            if op in [operators.INDEX_ACCESS_OP, operators.INDEX_UPDATE_OP]:
+                memory_map[node.expr().true_var()] += 1
+                continue
+            operator_map[dtype, op] += 1
+        self._resource_counts = (operator_map, memory_map)
+        return self._resource_counts
 
     def _init_loop_graph(self):
         if not self.is_pipelined:
@@ -97,12 +119,12 @@ class LoopScheduleGraph(SequentialScheduleGraph):
             # RAR is not a dependence
             return
         elif dep_type == DependenceType.flow:
-            latency = self._node_latency(to_node)
+            latency = self.node_latency(to_node)
         elif dep_type == DependenceType.anti:
-            latency = 1 - self._node_latency(from_node)
+            latency = 1 - self.node_latency(from_node)
         elif dep_type == DependenceType.output:
-            latency = 1 + self._node_latency(to_node)
-            latency -= self._node_latency(from_node)
+            latency = 1 + self.node_latency(to_node)
+            latency -= self.node_latency(from_node)
         else:
             raise TypeError('Unrecognized dependence type.')
 
@@ -164,7 +186,8 @@ class LoopScheduleGraph(SequentialScheduleGraph):
         _, init_env = label(self.fix_expr.init_state, None, None)
         self._init_graph = SequentialScheduleGraph(
             init_env, init_env, round_values=self.round_values,
-            sequentialize_loops=self.sequentialize_loops)
+            sequentialize_loops=self.sequentialize_loops,
+            scheduler=self.scheduler)
         return self._init_graph
 
     def depth(self):

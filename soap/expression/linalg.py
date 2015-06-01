@@ -54,7 +54,8 @@ class AccessExpr(
         return self.a2
 
     def format(self):
-        return '{}{}'.format(self.var, self.subscript)
+        var, subscript = self._args_to_str()
+        return '{}{}'.format(var, subscript)
 
     def __repr__(self):
         return '{cls}({var!r}, {subscript!r})'.format(
@@ -86,7 +87,8 @@ class UpdateExpr(
         return self.a3
 
     def format(self):
-        return 'update({}, {}, {})'.format(self.var, self.subscript, self.expr)
+        var, subscript, expr = self._args_to_str()
+        return 'update({}, {}, {})'.format(var, subscript, expr)
 
     def __repr__(self):
         return '{cls}({var!r}, {subscript!r}, {expr!r})'.format(

@@ -90,7 +90,7 @@ class AnalysisResult(_analysis_result_tuple):
 
 class Analysis(Flyweight):
 
-    def __init__(self, expr_set, state, out_vars=None, size_limit=-1):
+    def __init__(self, expr_set, state, out_vars=None, size_limit=None):
         """Analysis class initialisation.
 
         :param expr_set: A set of expressions or a single expression.
@@ -103,7 +103,7 @@ class Analysis(Flyweight):
         self.expr_set = expr_set
         self.state = state
         self.out_vars = out_vars
-        self.size_limit = size_limit if size_limit >= 0 else context.size_limit
+        self.size_limit = size_limit or context.size_limit
         self._results = None
 
     def analyze(self):
@@ -121,11 +121,12 @@ class Analysis(Flyweight):
         state = self.state
         out_vars = self.out_vars
 
-        limit = context.size_limit
-        if limit >= 0 and len(expr_set) > limit:
+        size = len(expr_set)
+        limit = self.size_limit
+        if limit >= 0 and size > limit:
             logger.debug(
-                'Equivalent structures over limit, '
-                'reduces population size by sampling.')
+                'Number of equivalent structures over limit {} > {}, '
+                'reduces population size by sampling.'.format(size, limit))
             random.seed(context.rand_seed)
             expr_set = random.sample(expr_set, limit)
 

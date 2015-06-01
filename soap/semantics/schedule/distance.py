@@ -55,7 +55,8 @@ def dependence_vector(iter_vars, iter_slices, source, sink, invariant=None):
         if step == 1:
             continue
         for node_type in ['src', 'snk']:
-            exists_vars.add('__stride_{}_{}'.format(node_type, var))
+            exists_vars.add(Variable(
+                '__stride_{}_{}'.format(node_type, var.name), var.dtype))
             constraints.append(
                 '__stride_{node_type}_{iter_var} * {step_size} = '
                 '__{node_type}_{iter_var}'.format(

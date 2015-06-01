@@ -13,21 +13,21 @@ context = dict(
     # platform
     device='Virtex7',
     frequency=100,
-    # analysis related
     port_count=2,
+    # analysis related
     unroll_factor=50,   # how many steps before no unrolling in static analysis
     widen_factor=100,   # how many steps before widening in static analysis
     precision='single',
     norm='mse_error',   # function for computing multiple variable avg error
-    ii_precision=8,     # how precise are IIs computed
+    ii_precision=5,     # how precise are IIs computed
     scheduler='alap',   # the scheduler used for sequential nodes
     # transform related
-    rand_seed=0,
+    rand_seed=42,
     reduce_limit=2000,
-    size_limit=1000,
-    loop_size_limit=100,
-    algorithm='thick',
-    max_steps=10,       # max no of steps for equivalent expr discovery
+    size_limit=500,
+    loop_size_limit=50,
+    algorithm='greedy',
+    max_steps=5,        # max no of steps for equivalent expr discovery
     plugin_every=1,     # no of steps before plugins are executed
     thickness=3,        # no of iterations of pareto suboptimal inclusion
     bool_steps=5,       # transition steps for finding equivalent boolean exprs

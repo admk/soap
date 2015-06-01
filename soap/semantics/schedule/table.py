@@ -46,25 +46,27 @@ DEVICE_LOOP_LATENCY_TABLE = dict_merge(
     DEVICE_LOOP_LATENCY_TABLE, DEVICE_LATENCY_TABLE)
 
 
-try:
-    LATENCY_TABLE = DEVICE_LATENCY_TABLE[context.device, context.frequency]
-    LOOP_LATENCY_TABLE = \
-        DEVICE_LOOP_LATENCY_TABLE[context.device, context.frequency]
-except KeyError:
-    raise KeyError(
-        'Device {} and frequency {} MHz combination not found.'
-        .format(context.device, context.frequency))
-
-
 class OperatorResourceTuple(namedtuple('Statistics', ['dsp', 'ff', 'lut'])):
     def __add__(self, other):
         dsp, ff, lut = [a + b for a, b in zip(self, other)]
         return self.__class__(dsp, ff, lut)
+    __radd__ = __add__
+
+    def __mul__(self, other):
+        if not isinstance(other, (int, float)):
+            raise TypeError(
+                '{} can only be multiplied with a number.'
+                .format(self.__class__.__name__))
+        return self.__class__(
+            other * self.dsp, other * self.ff, other * self.lut)
+    __rmul__ = __mul__
+
+
 s = OperatorResourceTuple
 
 
-RESOURCE_TABLE = {
-    'stratix4': {
+DEVICE_RESOURCE_TABLE = {
+    'Stratix4': {
         'integer': {
             'comparison': s(0, 65, 35),
             operators.ADD_OP: s(0, 96, 32),
@@ -76,7 +78,6 @@ RESOURCE_TABLE = {
             operators.FIXPOINT_OP: s(0, 96, 32),
             operators.BARRIER_OP: s(0, 0, 0),
             operators.INDEX_ACCESS_OP: s(0, 0, 0),
-            operators.INDEX_UPDATE_OP: s(0, 0, 0),
         },
         'float': {
             'conversion': s(0, 211, 186),
@@ -90,11 +91,13 @@ RESOURCE_TABLE = {
             operators.FIXPOINT_OP: s(0, 96, 32),
             operators.BARRIER_OP: s(0, 0, 0),
             operators.INDEX_ACCESS_OP: s(0, 0, 0),
-            operators.INDEX_UPDATE_OP: s(0, 0, 0),
         },
-        'double': {},
+        'array': {
+            operators.INDEX_UPDATE_OP: s(0, 0, 0),
+            operators.SUBSCRIPT_OP: s(0, 0, 0),
+        }
     },
-    'virtex7': {
+    'Virtex7': {
         'integer': {
             'comparison': s(0, 0, 39),
             operators.ADD_OP: s(0, 0, 32),
@@ -106,7 +109,6 @@ RESOURCE_TABLE = {
             operators.FIXPOINT_OP: s(0, 0, 71),
             operators.BARRIER_OP: s(0, 0, 0),
             operators.INDEX_ACCESS_OP: s(0, 0, 0),
-            operators.INDEX_UPDATE_OP: s(0, 0, 0),
         },
         'float': {
             'conversion': s(0, 128, 341),
@@ -120,8 +122,21 @@ RESOURCE_TABLE = {
             operators.FIXPOINT_OP: s(0, 0, 0),
             operators.BARRIER_OP: s(0, 0, 0),
             operators.INDEX_ACCESS_OP: s(0, 0, 0),
-            operators.INDEX_UPDATE_OP: s(0, 0, 0),
         },
-        'double': {},
+        'array': {
+            operators.INDEX_UPDATE_OP: s(0, 0, 0),
+            operators.SUBSCRIPT_OP: s(0, 0, 0),
+        }
     },
 }
+
+
+try:
+    LATENCY_TABLE = DEVICE_LATENCY_TABLE[context.device, context.frequency]
+    LOOP_LATENCY_TABLE = \
+        DEVICE_LOOP_LATENCY_TABLE[context.device, context.frequency]
+    RESOURCE_TABLE = DEVICE_RESOURCE_TABLE[context.device]
+except KeyError:
+    raise KeyError(
+        'Statistics for device {} and frequency {} MHz combination not found.'
+        .format(context.device, context.frequency))

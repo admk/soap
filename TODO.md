@@ -16,6 +16,7 @@
     - [X] Plotting changes
 
 - [ ] Fix bugs
+    - [ ] Ensure singly update paths
     - [X] Transitive distances
 
 
