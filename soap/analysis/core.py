@@ -2,8 +2,8 @@
 .. module:: soap.analysis.core
     :synopsis: Analysis classes.
 """
+import collections
 import random
-from collections import namedtuple
 
 from soap import logger
 from soap.common import Flyweight
@@ -21,24 +21,21 @@ def abs_error(expr, state):
     return float(max(abs(v.e.min), abs(v.e.max)))
 
 
-def _pareto_frontier_2d(expr_set):
-    if not expr_set:
-        return expr_set, expr_set
-    expr_set = sorted(expr_set)
-    head, *tail = expr_set
-    optimal = [head]
-    suboptimal = []
-    for m in tail:
-        if m[1] < optimal[-1][1]:
-            optimal.append(m)
-        else:
-            suboptimal.append(m)
-    return optimal, suboptimal
+_analysis_result_tuple = collections.namedtuple(
+    'AnalysisResult', ['lut', 'dsp', 'error', 'latency', 'expression'])
+
+
+class AnalysisResult(_analysis_result_tuple):
+    def format(self):
+        return '({}, {}, {}, {}, {})'.format(
+            self.lut, self.dsp, self.error, self.latency,
+            self.expression.format())
+
+    __str__ = format
 
 
 def _pareto_frontier(points, ignore_last=True):
     # Last row can be an expression
-
     dom_func = lambda dominator_row, dominated_row: not any(
         dominator > dominated
         for dominator, dominated in zip(dominator_row, dominated_row))
@@ -63,8 +60,21 @@ def _pareto_frontier(points, ignore_last=True):
     return pareto_points, dominated_points
 
 
+def sample_unique(points):
+    random.seed(context.rand_seed)
+    point_dict = collections.defaultdict(set)
+    for *stats, expr in points:
+        point_dict[tuple(stats)].add(expr)
+    result_set = set()
+    for stats, exprs in point_dict.items():
+        expr = exprs.pop() if len(exprs) == 1 else random.sample(exprs, 1)
+        result_set.add(AnalysisResult(*(stats + (expr, ))))
+    return result_set
+
+
 def pareto_frontier(points, ignore_last=True):
-    return _pareto_frontier(points, ignore_last)[0]
+    frontier = _pareto_frontier(points, ignore_last)[0]
+    return frontier
 
 
 def thick_frontier(points):
@@ -73,19 +83,6 @@ def thick_frontier(points):
         optimal, points = _pareto_frontier(points)
         frontier += optimal
     return frontier
-
-
-_analysis_result_tuple = namedtuple(
-    'AnalysisResult', ['lut', 'dsp', 'error', 'latency', 'expression'])
-
-
-class AnalysisResult(_analysis_result_tuple):
-    def format(self):
-        return '({}, {}, {}, {}, {})'.format(
-            self.lut, self.dsp, self.error, self.latency,
-            self.expression.format())
-
-    __str__ = format
 
 
 class Analysis(Flyweight):
@@ -156,7 +153,7 @@ class Analysis(Flyweight):
 
     def frontier(self):
         """Computes the Pareto frontier from analyzed results."""
-        return pareto_frontier(self.analyze())
+        return sample_unique(pareto_frontier(self.analyze()))
 
     def thick_frontier(self):
         return thick_frontier(self.analyze())

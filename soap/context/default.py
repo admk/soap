@@ -23,6 +23,7 @@ context = dict(
     scheduler='alap',   # the scheduler used for sequential nodes
     # transform related
     rand_seed=42,
+    sample_unique=True,
     reduce_limit=2000,
     size_limit=500,
     loop_size_limit=50,
@@ -32,6 +33,6 @@ context = dict(
     thickness=3,        # no of iterations of pareto suboptimal inclusion
     bool_steps=5,       # transition steps for finding equivalent boolean exprs
     window_depth=2,     # depth limit window for equivalent expr discovery
-    unroll_depth=3,     # partial unroll depth limit
+    unroll_depth=2,     # partial unroll depth limit
 )
 context = SoapContext(context)

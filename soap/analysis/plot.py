@@ -71,7 +71,7 @@ class Plot(object):
             no_of_points = len(items)
             luts, errs, lats, exprs = zip(*items)
             luts_view = ([xmin] * no_of_points, errs, lats)
-            errs_view = (luts, [ymax] * no_of_points, lats)
+            errs_view = (luts, [ymin] * no_of_points, lats)
             lats_view = (luts, errs, [zmin] * no_of_points)
             ax3d.scatter(*luts_view, color=color, marker='.', alpha=0.5)
             ax3d.scatter(*errs_view, color=color, marker='.', alpha=0.5)
@@ -82,19 +82,19 @@ class Plot(object):
                 color=color, alpha=0.5)
             f_luts, f_lats = frontier(luts, lats, zmax, xmax)
             ax3d.plot(
-                f_luts, [ymax] * len(f_lats), f_lats,
+                f_luts, [ymin] * len(f_lats), f_lats,
                 color=color, alpha=0.5)
             f_luts, f_errs = frontier(luts, errs, ymax, xmax)
             ax3d.plot(
                 f_luts, f_errs, [zmin] * len(f_luts),
                 color=color, alpha=0.5)
 
-    def _add_projection_lines(self, xmin, xmax, ymin, ymax, zmin, zmax):
+    def _add_projection_lines(self, xmin, ymin, zmin):
         for color, items in self.projection_results:
             for lut, err, lat, expr in items:
                 lines = [
                     ((lut, xmin), (err, err), (lat, lat)),
-                    ((lut, lut), (err, ymax), (lat, lat)),
+                    ((lut, lut), (err, ymin), (lat, lat)),
                     ((lut, lut), (err, err), (lat, zmin)),
                 ]
                 for arg in lines:
@@ -108,7 +108,7 @@ class Plot(object):
         ymin, ymax = ax3d.get_ylim()
         zmin, zmax = ax3d.get_zlim()
         self._add_projection_frontiers(xmin, xmax, ymin, ymax, zmin, zmax)
-        self._add_projection_lines(xmin, xmax, ymin, ymax, zmin, zmax)
+        self._add_projection_lines(xmin, ymin, zmin)
         ax3d.set_xlim(xmin, xmax)
         ax3d.set_ylim(ymin, ymax)
         ax3d.set_zlim(zmin, zmax)
@@ -138,6 +138,7 @@ class Plot(object):
         if self.is_finalized:
             return
         self.is_finalized = True
+        logger.debug('Finalizing plot...')
         self._add_projections()
         self._set_labels()
         self._add_legend()
