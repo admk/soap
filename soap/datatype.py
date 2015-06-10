@@ -1,3 +1,5 @@
+import collections
+
 from soap.semantics.error import IntegerInterval, ErrorSemantics
 from soap.semantics.linalg import IntegerIntervalArray, ErrorSemanticsArray
 
@@ -112,9 +114,14 @@ def type_cast(dtype, value=None, top=False, bottom=False):
         cls = ErrorSemanticsArray
     else:
         raise TypeError('Do not recognize type.')
-    shape = dtype.shape if value is None else None
+    shape = dtype.shape
+    if isinstance(dtype, ArrayType):
+        if not isinstance(value, collections.Sequence):
+            for dim in reversed(dtype.shape):
+                value = [value] * dim
+            return cls(_flat_items=value, _shape=shape, top=top, bottom=bottom)
     array = cls(value, _shape=shape, top=top, bottom=bottom)
-    if dtype.shape != array.shape:
+    if shape is not None and dtype.shape != array.shape:
         raise ValueError(
             'Array shape is not the same as the shape specified by data type.')
     return array
