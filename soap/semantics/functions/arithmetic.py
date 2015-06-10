@@ -8,6 +8,7 @@ class ArithmeticEvaluator(base_dispatcher()):
 
     _unary_operator_function_dictionary = {
         operators.UNARY_SUBTRACT_OP: lambda x: -x,
+        operators.EXPONENTIATE_OP: lambda x: x.exp(),
     }
 
     _binary_operator_function_dictionary = {

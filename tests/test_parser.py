@@ -47,6 +47,11 @@ class TestExpressionParser(Base):
             self.z)
         self.assertEqual(expr_parse('(x + -y) * z'), expr)
 
+    def test_special_unary_arithmetic_expression(self):
+        xpy = expression_factory(operators.ADD_OP, self.x, self.y)
+        expr = expression_factory(operators.EXPONENTIATE_OP, xpy)
+        self.assertEqual(expr_parse('exp(x + y)'), expr)
+
     def test_select_expression(self):
         expr = expression_factory(
             operators.TERNARY_SELECT_OP,

@@ -74,17 +74,24 @@ def main(file=None):
         return shell()
     directory, file_name = os.path.split(file)
     base_name, ext = os.path.splitext(file_name)
+    var_name = base_name.replace('.', '_')
     if ext == '.py':
         with open(file, 'r') as f:
             exec(f.read())
-        shell.banner1 = ''
+        banner = ''
     elif ext == '.emir':
-        var_name = base_name.replace('.', '_')
         with open(file, 'rb') as f:
             globals()[var_name] = pickle.loads(f.read())
+        banner = (
+            shell.banner1 +
+            '\nEMIR file loaded and stored in `{}`.'.format(var_name))
     elif ext == '.soap':
         with open(file, 'r') as f:
             globals()[var_name] = parse(f.read())
+        banner = (
+            shell.banner1 +
+            '\nSOAP file loaded and stored in `{}`.'.format(var_name))
     else:
         raise ValueError('Unrecognized file extension {}'.format(ext))
+    shell.banner1 = banner
     return shell()

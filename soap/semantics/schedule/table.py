@@ -22,6 +22,7 @@ DEVICE_LATENCY_TABLE = {
             operators.SUBTRACT_OP: 4,
             operators.MULTIPLY_OP: 3,
             operators.DIVIDE_OP: 8,
+            operators.EXPONENTIATE_OP: 12,
             operators.INDEX_ACCESS_OP: 2,
         },
         'array': {
@@ -38,6 +39,7 @@ DEVICE_LOOP_LATENCY_TABLE = {
             operators.SUBTRACT_OP: 3,
             operators.MULTIPLY_OP: 2,
             operators.DIVIDE_OP: 7,
+            operators.EXPONENTIATE_OP: 11,
             operators.INDEX_ACCESS_OP: 1,
         },
     },
@@ -118,6 +120,7 @@ DEVICE_RESOURCE_TABLE = {
             operators.MULTIPLY_OP: s(3, 128, 135),  # max dsp
             operators.DIVIDE_OP: s(0, 363, 802),
             operators.UNARY_SUBTRACT_OP: s(0, 0, 37),
+            operators.EXPONENTIATE_OP: s(26, 2935, 3787),
             operators.TERNARY_SELECT_OP: s(0, 0, 71),
             operators.FIXPOINT_OP: s(0, 0, 0),
             operators.BARRIER_OP: s(0, 0, 0),

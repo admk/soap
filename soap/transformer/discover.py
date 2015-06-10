@@ -37,34 +37,51 @@ class UnrollExpr(UnaryExpression):
         return 'unroll_{}'.format(self.fix_expr.format())
 
 
-class MarkUnroll(base_dispatcher('mark')):
-    def generic_mark(self, expr):
-        raise TypeError('Do not know how to mark {!r}'.format(expr))
+class GenericExecuter(base_dispatcher()):
+    def generic_execute(self, expr):
+        raise TypeError('Do not know how to unroll {!r}'.format(expr))
 
-    def _mark_atom(self, expr):
+    def _execute_atom(self, expr):
         return expr
 
-    mark_numeral = _mark_atom
-    mark_Variable = _mark_atom
+    execute_numeral = execute_Variable = _execute_atom
 
-    def _mark_expression(self, expr):
+    def _execute_expression(self, expr):
         return expression_factory(expr.op, *(self(a) for a in expr.args))
 
-    mark_UnaryArithExpr = mark_BinaryArithExpr = _mark_expression
-    mark_UnaryBoolExpr = mark_BinaryBoolExpr = _mark_expression
-    mark_AccessExpr = mark_UpdateExpr = _mark_expression
-    mark_SelectExpr = mark_Subscript = _mark_expression
+    execute_UnaryArithExpr = execute_BinaryArithExpr = _execute_expression
+    execute_UnaryBoolExpr = execute_BinaryBoolExpr = _execute_expression
+    execute_AccessExpr = execute_UpdateExpr = _execute_expression
+    execute_SelectExpr = execute_Subscript = _execute_expression
+    execute_FixExpr = _execute_expression
 
-    def _mark_multiple_expressions(self, meta_state):
+    def execute_MetaState(self, meta_state):
         return MetaState({var: self(expr) for var, expr in meta_state.items()})
 
-    mark_MetaState = _mark_multiple_expressions
 
-    def mark_FixExpr(self, expr):
+class MarkUnroll(GenericExecuter):
+    def generic_execute(self, expr):
+        raise TypeError('Do not know how to unroll {!r}'.format(expr))
+
+    def execute_FixExpr(self, expr):
         return UnrollExpr(expr)
-
-
 mark_unroll = MarkUnroll()
+
+
+class BreakUpdate(base_dispatcher()):
+    def generic_execute(self, expr):
+        raise TypeError(
+            'Do not know how to break update expressions in {!r}'
+            .format(expr))
+
+    def _execute_atom(self, expr):
+        return expr, {}
+
+    def _execute_expression(self, expr):
+        ...
+
+    def _execute_multiple_expressions(self, meta_state):
+        return MetaState({var: self(expr) for var, expr in meta_state.items()})
 
 
 class BaseDiscoverer(base_dispatcher('discover')):

@@ -141,6 +141,8 @@ class ExpressionVisitor(object):
             op = operators.UNARY_SUBTRACT_OP
         return expression_factory(op, atom)
 
+    visit_unary_subtract = visit_unary_expr
+
     visit_maybe_sum_list = visit_maybe_prod_list = _visit_maybe_list
     visit_sum_list = visit_prod_list = _visit_list
     visit_sum_expr = visit_prod_expr = _lift_children
@@ -153,6 +155,9 @@ class ExpressionVisitor(object):
         'mul': operators.MULTIPLY_OP,
         'div': operators.DIVIDE_OP,
         'pow': NotImplemented,
+        'exp': operators.EXPONENTIATE_OP,
+        'sin': NotImplemented,
+        'cos': NotImplemented,
         'lt': operators.LESS_OP,
         'le': operators.LESS_EQUAL_OP,
         'ge': operators.GREATER_EQUAL_OP,
@@ -173,8 +178,10 @@ class ExpressionVisitor(object):
     visit_and = visit_or = visit_not = _visit_operator
 
     visit_sum_operator = visit_prod_operator = _lift_child
+    visit_unary_operator = _lift_child
 
     visit_add = visit_sub = visit_mul = visit_div = visit_pow = _visit_operator
+    visit_exp = visit_sin = visit_cos = _visit_operator
 
 
 class _UntypedExpressionVisitor(

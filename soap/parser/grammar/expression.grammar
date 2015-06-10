@@ -43,13 +43,14 @@ and_expr         = and bool_atom
 
 arithmetic_expression = select / term
 
-select  = boolean_expression question term colon term
-term    = factor maybe_sum_list
-factor  = atom maybe_prod_list
-atom    = parened / unary_expr / number / variable_subscript
-parened = left_paren arithmetic_expression right_paren
+select     = boolean_expression question term colon term
+term       = factor maybe_sum_list
+factor     = atom maybe_prod_list
+atom       = parened / unary_expr / unary_subtract / number / variable_subscript
+parened    = left_paren arithmetic_expression right_paren
+unary_expr = unary_operator parened
 
-unary_expr      = sub atom
+unary_subtract  = sub atom
 maybe_sum_list  = sum_list / _
 sum_list        = sum_expr maybe_sum_list
 sum_expr        = sum_operator factor
@@ -87,13 +88,17 @@ or  = _ 'or'  _
 not = _ 'not' _
 
 sum_operator = add / sub
-prod_operator = mul / div / pow
+prod_operator = pow / mul / div
+unary_operator = exp / sin / cos
 
 add = _ '+' _
 sub = _ '-' _
 mul = _ '*' _
 div = _ '/' _
-pow = _ '^' _
+pow = _ '**' _
+exp = _ 'exp' _
+sin = _ 'sin' _
+cos = _ 'cos' _
 
 
 # =========

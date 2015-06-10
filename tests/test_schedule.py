@@ -85,7 +85,7 @@ class TestDependenceCheck(unittest.TestCase):
 
 class _CommonMixin(unittest.TestCase):
     def setUp(self):
-        self.ori_ii_prec = context.ii_precision
+        context.take_snapshot()
         context.ii_precision = 30
         self.x = Variable('x', real_type)
         self.y = Variable('y', real_type)
@@ -95,7 +95,7 @@ class _CommonMixin(unittest.TestCase):
         self.i = Variable('i', int_type)
 
     def tearDown(self):
-        context.ii_precision = self.ori_ii_prec
+        context.restore_snapshot()
 
 
 class TestLoopScheduleGraph(_CommonMixin):

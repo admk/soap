@@ -26,7 +26,7 @@ Usage:
     {__executable__} optimize [options] (<file> | --command=<str> | -)
     {__executable__} plot [options] <file>
     {__executable__} report [options] <file>
-    {__executable__} interactive [options] [<file>]
+    {__executable__} interact [options] [<file>]
     {__executable__} lint [options] (<file> | --command=<str> | -)
     {__executable__} (-h | --help)
     {__executable__} --version
@@ -118,7 +118,6 @@ def _setup_context(args):
     context.widen_factor = int(args['--widen-factor'])
     context.window_depth = int(args['--window-depth'])
     context.unroll_depth = int(args['--unroll-depth'])
-
     context.norm = args['--norm']
 
     if args['--no-multiprocessing']:
@@ -149,8 +148,8 @@ def _file(args):
     return file, out_file
 
 
-def _interactive(args):
-    if not args['interactive']:
+def _interact(args):
+    if not args['interact']:
         return
     interactive.main(args['<file>'])
     return 0
@@ -240,7 +239,7 @@ def _post_run(args):
 def main():
     args = docopt(usage, version=soap.__version__)
     functions = [
-        _setup_context, _interactive, _analyze, _simulate, _optimize, _lint,
+        _setup_context, _interact, _analyze, _simulate, _optimize, _lint,
         _plot, _report, _unreachable,
     ]
     try:

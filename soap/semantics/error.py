@@ -325,6 +325,11 @@ class Interval(Lattice):
             return self
         return self.__class__([-self.max, -self.min])
 
+    def exp(self):
+        if self.is_top() or self.is_bottom():
+            return self
+        return FloatInterval([gmpy2.exp(self.min), gmpy2.exp(self.max)])
+
     @_decorate_operator
     def widen(self, other, cls):
         if cls is not None:
@@ -549,6 +554,19 @@ class ErrorSemantics(Lattice):
         if self.is_top() or self.is_bottom():
             return self
         return self.__class__(-self.v, -self.e)
+
+    def exp(self):
+        if self.is_top() or self.is_bottom():
+            return self
+        v_min, v_max = self.v
+        if _propagate_constant and v_min == v_max:
+            v = gmpy2.exp(mpq(v_min))
+        else:
+            v = self.v.exp()
+        # exponentiation generally computes irrational numbers
+        e = round_off_error(v)
+        e += (self.e.exp() - 1) * v
+        return self.__class__(v, e)
 
     @_decorate_operator
     def widen(self, other, cls):
