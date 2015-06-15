@@ -18,8 +18,11 @@ class LabelGenerator(base_dispatcher()):
     def generic_execute(self, expr, state):
         raise TypeError('Do not know how to label {!r}'.format(expr))
 
+    def execute_PartitionLabel(self, expr, state):
+        return LabelSemantics(expr, {})
+
     def _execute_atom(self, expr, state):
-        bound = error_eval(expr, state, preserve_array=True)
+        bound = error_eval(expr, state, to_norm=False)
         label = self.Label(expr, bound, None)
         env = {label: expr}
         return LabelSemantics(label, env)
@@ -37,7 +40,7 @@ class LabelGenerator(base_dispatcher()):
 
     def _execute_arithmetic_expression(self, expr, state):
         label_expr, label_env = self._execute_expression(expr, state)
-        bound = error_eval(expr, state, preserve_array=True)
+        bound = error_eval(expr, state, to_norm=False)
         label = self.Label(expr, bound, None)
         label_env[label] = label_expr
         return LabelSemantics(label, label_env)
@@ -49,7 +52,7 @@ class LabelGenerator(base_dispatcher()):
     def execute_BinaryBoolExpr(self, expr, state):
         label_expr, label_env = self._execute_expression(expr, state)
         sub_expr = expression_factory(operators.SUBTRACT_OP, expr.a1, expr.a2)
-        bound = error_eval(sub_expr, state, preserve_array=True)
+        bound = error_eval(sub_expr, state, to_norm=False)
         label = self.Label(expr, bound, None)
         label_env[label] = label_expr
         return LabelSemantics(label, label_env)
@@ -88,14 +91,13 @@ class LabelGenerator(base_dispatcher()):
         return LabelSemantics(label, env)
 
     def execute_MetaState(self, expr, state):
-        from soap.semantics.functions import arith_eval_meta_state
         env = {}
         for each_var, each_expr in sorted(expr.items(), key=str):
             expr_label, expr_env = self(each_expr, state)
             env.update(expr_env)
             env[each_var] = expr_label
 
-        bound = arith_eval_meta_state(expr, state)
+        bound = error_eval(expr, state, to_norm=False)
         label = self.Label(expr, bound, None)
         return LabelSemantics(label, env)
 

@@ -1,9 +1,12 @@
 import unittest
 
+from soap.datatype import int_type, IntegerArrayType
+from soap.expression import Expression, expression_factory, operators, Variable
 from soap.parser import expr_parse
-from soap.expression.base import Expression
-from soap.transformer import pattern
-from soap.transformer import arithmetic
+from soap.semantics import BoxState
+from soap.semantics.linalg import IntegerIntervalArray
+from soap.semantics.state.meta import MetaState
+from soap.transformer import arithmetic, pattern
 from soap.transformer.utils import parsings, reduce
 
 Expression.__repr__ = lambda self: self.__str__()
@@ -114,3 +117,44 @@ class TestArithTreeTransformer(unittest.TestCase):
             expr_parse('a + b')
         }
         self.assertEqual(f, g)
+
+
+from soap.transformer.partition import partition, partition_optimize
+
+
+class TestPartition(unittest.TestCase):
+    def setUp(self):
+        mat = IntegerIntervalArray([1, 2, 3, 4])
+        self.x = Variable('x', int_type)
+        self.y = Variable('y', int_type)
+        self.z = Variable('z', IntegerArrayType([4]))
+        self.state = BoxState({
+            self.x: [1, 2],
+            self.y: 3,
+            self.z: mat,
+        })
+
+    def test_UpdateExpr(self):
+        expr = expression_factory(
+            operators.INDEX_UPDATE_OP,
+            self.z, expression_factory(operators.SUBSCRIPT_OP, self.y), self.x)
+        label, env = partition(expr, self.state)
+        print(label)
+        print(MetaState(env).format())
+
+    def test_MetaState(self):
+        from soap import parse, flow_to_meta_state
+        flow = parse(
+            """
+            def main(real[30] a=[0.0, 1.0], real x=[0.0, 1.0]) {
+                for (int i = 0; i < 10; i = i + 1) {
+                    a[i] = x * i + x * i;
+                }
+                real z = a[0] + a[1];
+                return z;
+            }
+            """)
+        meta_state = flow_to_meta_state(flow)
+        env = partition_optimize(
+            meta_state, BoxState(flow.inputs), flow.outputs)
+        print(MetaState(env).format())

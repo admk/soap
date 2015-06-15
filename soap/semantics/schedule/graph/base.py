@@ -16,6 +16,7 @@ from soap.semantics.schedule.common import (
     SHARED_DATATYPE_OPERATORS
 )
 from soap.semantics.schedule.table import OperatorResourceTuple, RESOURCE_TABLE
+from soap.transformer.partition import PartitionLabel
 
 
 _irrelevant_types = (
@@ -46,9 +47,9 @@ class ScheduleGraph(DependenceGraph):
         self.scheduler = scheduler or context.scheduler
 
     def node_expr(self, node):
-        if isinstance(node, InputVariable) or is_numeral(node):
+        if isinstance(node, (InputVariable, PartitionLabel)):
             return None, None, None
-        if node == self._root_node:
+        if is_numeral(node) or node == self._root_node:
             return None, None, None
         expr = self.env[node]
         if is_expression(expr):
@@ -213,7 +214,9 @@ class ScheduleGraph(DependenceGraph):
         stat = OperatorResourceTuple(0, 0, 0)
         for (dtype, op), count in total_map.items():
             if (dtype, op) in SHARED_DATATYPE_OPERATORS:
-                count = int(math.ceil(count / MAX_SHARE_COUNT))
+                count = count / MAX_SHARE_COUNT
+                if self.round_values:
+                    count = int(math.ceil(count))
             if op in operators.COMPARISON_OPERATORS:
                 op = 'comparison'
             count = max(count, min_alloc_map[dtype, op])

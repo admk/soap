@@ -103,6 +103,7 @@ class DependenceGraph(object):
     deps_func = staticmethod(expression_dependencies)
 
     def _edges_recursive(self, graph, out_vars):
+        from soap.transformer.partition import PartitionLabel
         prev_nodes = graph.nodes()
         if out_vars == self._root_node:
             # terminal node
@@ -112,7 +113,9 @@ class DependenceGraph(object):
         else:
             deps = []
             for var in out_vars:
-                if is_numeral(var) or isinstance(var, InputVariable):
+                if is_numeral(var):
+                    continue
+                if isinstance(var, (InputVariable, PartitionLabel)):
                     continue
                 if isinstance(var, InputVariableTuple):
                     expr = var

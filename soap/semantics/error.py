@@ -344,6 +344,7 @@ class Interval(Lattice):
         if min_val == max_val:
             return str(min_val)
         return '[{}, {}]'.format(min_val, max_val)
+    format = __str__
 
     def __repr__(self):
         return '{cls}([{min!r}, {max!r}])'.format(

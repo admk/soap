@@ -37,7 +37,7 @@ class UnrollExpr(UnaryExpression):
         return 'unroll_{}'.format(self.fix_expr.format())
 
 
-class GenericExecuter(base_dispatcher()):
+class MarkUnroll(base_dispatcher()):
     def generic_execute(self, expr):
         raise TypeError('Do not know how to unroll {!r}'.format(expr))
 
@@ -53,35 +53,15 @@ class GenericExecuter(base_dispatcher()):
     execute_UnaryBoolExpr = execute_BinaryBoolExpr = _execute_expression
     execute_AccessExpr = execute_UpdateExpr = _execute_expression
     execute_SelectExpr = execute_Subscript = _execute_expression
-    execute_FixExpr = _execute_expression
+
+    def execute_FixExpr(self, expr):
+        return UnrollExpr(expr)
 
     def execute_MetaState(self, meta_state):
         return MetaState({var: self(expr) for var, expr in meta_state.items()})
 
 
-class MarkUnroll(GenericExecuter):
-    def generic_execute(self, expr):
-        raise TypeError('Do not know how to unroll {!r}'.format(expr))
-
-    def execute_FixExpr(self, expr):
-        return UnrollExpr(expr)
 mark_unroll = MarkUnroll()
-
-
-class BreakUpdate(base_dispatcher()):
-    def generic_execute(self, expr):
-        raise TypeError(
-            'Do not know how to break update expressions in {!r}'
-            .format(expr))
-
-    def _execute_atom(self, expr):
-        return expr, {}
-
-    def _execute_expression(self, expr):
-        ...
-
-    def _execute_multiple_expressions(self, meta_state):
-        return MetaState({var: self(expr) for var, expr in meta_state.items()})
 
 
 class BaseDiscoverer(base_dispatcher('discover')):
@@ -160,7 +140,8 @@ class BaseDiscoverer(base_dispatcher('discover')):
 
         logger.info('Discovering: {}'.format(init_meta_state))
 
-        frontier_init_meta_state_set = self(init_meta_state, state, [loop_var])
+        frontier_init_meta_state_set = self(
+            init_meta_state, state, init_meta_state.keys())
 
         logger.info('Discovered: {}, Frontier: {}'.format(
             init_meta_state, len(frontier_init_meta_state_set)))
