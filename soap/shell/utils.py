@@ -1,5 +1,7 @@
 import random
 import time
+import csv
+import sys
 
 from soap import logger
 from soap.analysis import frontier as analysis_frontier, Plot
@@ -77,8 +79,7 @@ _algorithm_map = {
     'frontier': frontier,
     'thick': thick,
 }
-
-
+    
 def optimize(program, file_name=None):
     program, state, out_vars = parse(program)
     if not is_expression(program):
@@ -115,6 +116,14 @@ def plot(emir, file_name, reanalyze=False):
     plot.add(results, legend='{} ({:.2f}s)'.format(func_name, emir['time']))
     plot.save('{}.pdf'.format(emir['file']))
     plot.show()
+
+def emir2csv(emir):
+    csvwriter = csv.writer(sys.stdout)
+    csvwriter.writerow(['lut', 'error', 'latency', 'expression'])
+    orig = emir['original']
+    csvwriter.writerow([orig.lut, orig.error, orig.latency, orig.expression])
+    for result in emir['results']:
+        csvwriter.writerow([result.lut, result.error, result.latency, result.expression])
 
 
 def report(emir, file_name):

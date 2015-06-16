@@ -1,0 +1,30 @@
+body {
+    font: 11px sans-serif;
+    margin-bottom: 200px;
+}
+
+.axis path,
+.axis line {
+    fill: none;
+    stroke: #000;
+    shape-rendering: crispEdges;
+}
+
+.dot {
+}
+
+select {
+    font-size:16px;
+}
+
+textarea {
+    font-family:monospace;
+    font-size:16px;
+}
+
+.tooltip {
+    position: absolute;
+    width: 200px;
+    height: 28px;
+    pointer-events: none;
+}
