@@ -1,5 +1,7 @@
+import csv
 import random
 import time
+import sys
 
 from soap import logger
 from soap.analysis import frontier as analysis_frontier, Plot
@@ -10,7 +12,6 @@ from soap.semantics import (
     arith_eval, BoxState, ErrorSemantics, flow_to_meta_state, MetaState,
     IntegerInterval
 )
-from soap.semantics.schedule.table import s
 from soap.transformer import (
     closure, expand, frontier, greedy, parsings, reduce, thick
 )
@@ -115,6 +116,15 @@ def plot(emir, file_name, reanalyze=False):
     plot.add(results, legend='{} ({:.2f}s)'.format(func_name, emir['time']))
     plot.save('{}.pdf'.format(emir['file']))
     plot.show()
+
+
+def emir2csv(emir):
+    csvwriter = csv.writer(sys.stdout)
+    orig = emir['original']
+    csvwriter.writerow(orig._fields)
+    csvwriter.writerow(orig)
+    for result in emir['results']:
+        csvwriter.writerow(result)
 
 
 def report(emir, file_name):
