@@ -1,0 +1,7 @@
+To host the SOAP web interface via Dropbox, simply create a symlink from the Public folder of your Dropbox to this folder.
+
+For example:
+
+cd ~/Dropbox/Public
+
+ln -s /Users/jpw48/git/soap-private/www/ soap-www

@@ -11,7 +11,7 @@ from soap.context import context
 from soap.semantics import flow_to_meta_state
 from soap.shell import interactive
 from soap.shell.utils import (
-    optimize, parse, plot, report, simulate_error
+    optimize, parse, plot, emir2csv, report, simulate_error
 )
 
 
@@ -25,6 +25,7 @@ Usage:
     {__executable__} simulate [options] (<file> | --command=<str> | -)
     {__executable__} optimize [options] (<file> | --command=<str> | -)
     {__executable__} plot [options] <file>
+    {__executable__} csv [options] <file>
     {__executable__} report [options] <file>
     {__executable__} interact [options] [<file>]
     {__executable__} lint [options] (<file> | --command=<str> | -)
@@ -201,6 +202,16 @@ def _plot(args):
     return 0
 
 
+def _csv(args):
+    if not args['csv']:
+        return
+    file = args['<file>']
+    with open(file, 'rb') as f:
+        emir = pickle.load(f)
+    emir2csv(emir)
+    return 0
+
+
 def _report(args):
     if not args['report']:
         return
@@ -240,7 +251,7 @@ def main():
     args = docopt(usage, version=soap.__version__)
     functions = [
         _setup_context, _interact, _analyze, _simulate, _optimize, _lint,
-        _plot, _report, _unreachable,
+        _plot, _csv, _report, _unreachable,
     ]
     try:
         for f in functions:

@@ -1,0 +1,5 @@
+lut,error,latency,expression
+6,45,7,"bar=(a+b)*c"
+4,298,5,"bar=(b+a)*c"
+1,45,3,"bar=c*(a+b+0)"
+8,38,7,"bar=c*a+b*c"
