@@ -202,6 +202,7 @@ def _plot(args):
     plot(emir, file)
     return 0
 
+
 def _csv(args):
     if not args['csv']:
         return
@@ -251,7 +252,7 @@ def main():
     args = docopt(usage, version=soap.__version__)
     functions = [
         _setup_context, _interactive, _analyze, _simulate, _optimize, _lint,
-        _plot, _report, _csv, _unreachable,
+        _plot, _csv, _report, _unreachable,
     ]
     try:
         for f in functions:

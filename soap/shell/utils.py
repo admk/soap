@@ -1,6 +1,6 @@
+import csv
 import random
 import time
-import csv
 import sys
 
 from soap import logger
@@ -12,7 +12,6 @@ from soap.semantics import (
     arith_eval, BoxState, ErrorSemantics, flow_to_meta_state, MetaState,
     IntegerInterval
 )
-from soap.semantics.schedule.table import s
 from soap.transformer import (
     closure, expand, frontier, greedy, parsings, reduce, thick
 )
@@ -79,7 +78,8 @@ _algorithm_map = {
     'frontier': frontier,
     'thick': thick,
 }
-    
+
+
 def optimize(program, file_name=None):
     program, state, out_vars = parse(program)
     if not is_expression(program):
@@ -117,13 +117,14 @@ def plot(emir, file_name, reanalyze=False):
     plot.save('{}.pdf'.format(emir['file']))
     plot.show()
 
+
 def emir2csv(emir):
     csvwriter = csv.writer(sys.stdout)
-    csvwriter.writerow(['lut', 'error', 'latency', 'expression'])
     orig = emir['original']
-    csvwriter.writerow([orig.lut, orig.error, orig.latency, orig.expression])
+    csvwriter.writerow(orig._fields)
+    csvwriter.writerow(orig)
     for result in emir['results']:
-        csvwriter.writerow([result.lut, result.error, result.latency, result.expression])
+        csvwriter.writerow(result)
 
 
 def report(emir, file_name):
