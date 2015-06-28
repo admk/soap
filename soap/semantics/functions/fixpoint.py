@@ -5,27 +5,26 @@ from soap.expression import (
     operators, BinaryArithExpr, BinaryBoolExpr, FixExpr, SelectExpr
 )
 from soap.semantics import IntegerInterval
+from soap.semantics.functions.arithmetic import arith_eval
 from soap.semantics.functions.boolean import bool_eval
 from soap.semantics.functions.meta import (
-    arith_eval_meta_state, expand_expr, expand_meta_state
+    expand_expr, expand_meta_state
 )
 
 
 def _is_fixpoint(state, prev_state, curr_join_state, prev_join_state,
                  iteration):
-    if context.unroll_factor:
-        if iteration % context.unroll_factor == 0:
-            # join all states in previous iterations
-            logger.info('No unroll', iteration)
-            return curr_join_state.is_fixpoint(prev_join_state)
+    if context.unroll_factor > 0 and iteration % context.unroll_factor == 0:
+        # join all states in previous iterations
+        logger.info('No unroll', iteration)
+        return curr_join_state.is_fixpoint(prev_join_state)
     return state.is_fixpoint(prev_state)
 
 
 def _widen(obj, prev_obj, iteration):
-    if context.unroll_factor:
-        if iteration % context.widen_factor == 0:
-            logger.info('Widening', iteration)
-            obj = prev_obj.widen(obj)
+    if context.widen_factor > 0 and iteration % context.widen_factor == 0:
+        logger.info('Widening', iteration)
+        obj = prev_obj.widen(obj)
     return obj
 
 
@@ -91,9 +90,9 @@ def fixpoint_eval(state, bool_expr, loop_meta_state=None, loop_flow=None):
         if loop_flow:
             loop_state = entry_state.transition(loop_flow)
         elif loop_meta_state:
-            diff_state = arith_eval_meta_state(loop_meta_state, entry_state)
-            # arith_eval_meta_state only computes value changes with
-            # loop_meta_state, need to use changes to update existing state
+            diff_state = arith_eval(loop_meta_state, entry_state)
+            # arith_eval only computes value changes with loop_meta_state,
+            # need to use changes to update existing state
             loop_state = dict(entry_state)
             loop_state.update(diff_state)
             loop_state = state_class(loop_state)
@@ -120,7 +119,7 @@ def fixpoint_eval(state, bool_expr, loop_meta_state=None, loop_flow=None):
 
 
 def fix_expr_eval(expr, state):
-    state = arith_eval_meta_state(expr.init_state, state)
+    state = arith_eval(expr.init_state, state)
     fixpoint = fixpoint_eval(
         state, expr.bool_expr, loop_meta_state=expr.loop_state)
     fixpoint['last_entry']._warn_non_termination(expr)
@@ -149,6 +148,7 @@ def _unroll_fix_expr(fix_expr, outer_state, depth):
     loop_state = MetaState(unroll_state)
     fix_expr = FixExpr(
         fix_expr.bool_expr, loop_state, fix_expr.loop_var, fix_expr.init_state)
+    fix_expr.unroll_depth = depth
     return fix_expr
 
 
@@ -156,6 +156,7 @@ def _unroll_for_loop(expr, iter_var, iter_slice, depth):
     from soap.semantics.state.meta import MetaState
     from soap.semantics.schedule.common import iter_point_count
 
+    expr.unroll_depth = 0
     expr_list = [expr]
 
     loop_state = expr.loop_state
@@ -167,7 +168,7 @@ def _unroll_for_loop(expr, iter_var, iter_slice, depth):
         logger.warning('Non-constant bounds not supported in unrolling yet.')
         return expr_list
 
-    for d in range(2, depth + 1):
+    for d in range(2, depth + 2):
         new_step = step * d
         new_count = iter_point_count(slice(start, stop, new_step))
         mid = start + new_count * new_step
@@ -184,6 +185,7 @@ def _unroll_for_loop(expr, iter_var, iter_slice, depth):
             operators.LESS_OP, iter_var, IntegerInterval(mid))
 
         fix_expr = FixExpr(bool_expr, new_loop_state, loop_var, init_state)
+        fix_expr.unroll_depth = d
 
         loop_expr = loop_state[loop_var]
         id_state = MetaState({var: var for var in loop_expr.vars()})
@@ -203,16 +205,17 @@ def _unroll_for_loop(expr, iter_var, iter_slice, depth):
 
 
 def unroll_fix_expr(expr, depth):
-    from soap.semantics.schedule.extract import (
-        ForLoopExtractor, ForLoopExtractionFailureException
-    )
+    from soap.semantics.schedule.extract import ForLoopExtractor
+
     extractor = ForLoopExtractor(expr)
+    if extractor.has_inner_loops:
+        expr.unroll_depth = 0
+        return [expr]
+
     if not extractor.is_for_loop:
         return [_unroll_fix_expr(expr, expr.loop_state, d)
                 for d in range(depth + 1)]
+
     iter_var = extractor.iter_var
     iter_slice = extractor.iter_slice
-
-    if extractor.has_inner_loops:
-        return [expr]
     return _unroll_for_loop(expr, iter_var, iter_slice, depth)

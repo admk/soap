@@ -155,6 +155,39 @@ class TestLoopScheduleGraph(_CommonMixin):
         expect_ii /= 3
         self.assertAlmostEqual(ii, expect_ii)
 
+    def test_simple_array_unroll_initiation(self):
+        program = """
+        def main(real[30] a) {
+            for (int i = 0; i < 10; i = i + 1) {
+                a[i] = a[i - 1] + 1.0;
+            }
+            return a;
+        }
+        """
+        unroll_program = """
+        def main(real[30] a) {
+            for (int i = 0; i < 9; i = i + 2) {
+                a[i] = a[i - 1] + 1.0;
+                a[i + 1] = a[i] + 1.0;
+            }
+            return a;
+        }
+        """
+        fix_expr = flow_to_meta_state(parse(program))[self.a]
+        graph = LoopScheduleGraph(fix_expr)
+        ii = graph.initiation_interval()
+
+        unroll_fix_expr = flow_to_meta_state(parse(unroll_program))[self.a]
+        unroll_graph = LoopScheduleGraph(unroll_fix_expr)
+        unroll_ii = unroll_graph.initiation_interval()
+
+        expect_ii = LOOP_LATENCY_TABLE['float'][operators.INDEX_ACCESS_OP]
+        expect_ii += LOOP_LATENCY_TABLE['float'][operators.ADD_OP]
+        expect_ii += LOOP_LATENCY_TABLE['array'][operators.INDEX_UPDATE_OP]
+
+        self.assertAlmostEqual(ii, expect_ii)
+        self.assertAlmostEqual(unroll_ii, 2 * expect_ii)
+
     def test_transitive_initiation(self):
         program = """
         def main() {

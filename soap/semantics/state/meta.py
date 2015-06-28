@@ -1,20 +1,13 @@
-from soap import logger
 from soap.common import indent
-from soap.datatype import int_type
 from soap.expression import (
-    AccessExpr, Expression, SelectExpr, FixExpr, Variable,
-    OutputVariableTuple, BinaryArithExpr, UpdateExpr, is_variable, operators
+    AccessExpr, Expression, FixExpr, OutputVariableTuple, SelectExpr,
+    UpdateExpr, Variable
 )
-from soap.program.flow import AssignFlow, SkipFlow
-from soap.semantics.error import cast, IntegerInterval
 from soap.semantics.common import is_numeral
+from soap.semantics.error import cast
+from soap.semantics.functions import expand_expr
 from soap.semantics.label import Label
 from soap.semantics.state.base import BaseState
-from soap.semantics.functions import expand_expr
-
-
-class ForLoopExtractionFailureException(Exception):
-    """Fails to extract for loop.  """
 
 
 class MetaState(BaseState, dict):

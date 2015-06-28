@@ -1,4 +1,5 @@
 import networkx
+from matplotlib import pyplot
 
 from soap.common import base_dispatcher, cached_property
 from soap.expression import InputVariable, External, InputVariableTuple
@@ -17,7 +18,7 @@ class ExpressionDependencies(base_dispatcher()):
     def _execute_atom(self, expr):
         return [expr]
 
-    execute_Label = execute_numeral = _execute_atom
+    execute_Label = execute_PartitionLabel = execute_numeral = _execute_atom
 
     def execute_Variable(self, expr):
         return [InputVariable(expr.name, expr.dtype)]
@@ -149,6 +150,18 @@ class DependenceGraph(object):
 
     def is_multiply_shared(self, node):
         return len(self.predecessors(node)) > 1
+
+    def _draw(self, graph):
+        pos = networkx.graphviz_layout(graph, prog='dot')
+        networkx.draw_networkx_nodes(graph, pos, node_size=70)
+        networkx.draw_networkx_edges(graph, pos)
+        networkx.draw_networkx_labels(
+            graph, pos, font_size=20, font_family='sans-serif')
+        pyplot.axis('off')
+
+    def show(self):
+        self._draw(self.graph)
+        pyplot.show()
 
 
 class HierarchicalDependenceGraph(DependenceGraph):

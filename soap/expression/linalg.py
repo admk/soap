@@ -10,8 +10,8 @@ from soap.expression.operators import (
 
 
 class Subscript(Expression):
-
     __slots__ = ()
+    _str_brackets = False
 
     def __init__(self, *subscript):
         super().__init__(SUBSCRIPT_OP, *subscript)
@@ -20,13 +20,16 @@ class Subscript(Expression):
         return iter(self.args)
 
     def format(self):
-        return '[{}]'.format(', '.join(self._args_to_str()))
+        args = (a.format() for a in self.args)
+        return '[{}]'.format(', '.join(args))
 
     def __repr__(self):
         return '{}({!r})'.format(self.__class__.__name__, self.args)
 
 
 class _TrueVarMixin(object):
+    __slots__ = ()
+
     def true_var(self):
         var = self.var
         while not is_variable(var):
@@ -36,8 +39,8 @@ class _TrueVarMixin(object):
 
 class AccessExpr(
         ArithmeticMixin, BooleanMixin, BinaryExpression, _TrueVarMixin):
-
     __slots__ = ()
+    _str_brackets = False
 
     def __init__(self, var, subscript):
         from soap.semantics.label import Label
@@ -54,8 +57,8 @@ class AccessExpr(
         return self.a2
 
     def format(self):
-        var, subscript = self._args_to_str()
-        return '{}{}'.format(var, subscript)
+        var, subscript = (a.format() for a in self.args)
+        return 'access({}, {})'.format(var, subscript)
 
     def __repr__(self):
         return '{cls}({var!r}, {subscript!r})'.format(
@@ -65,8 +68,8 @@ class AccessExpr(
 
 class UpdateExpr(
         ArithmeticMixin, BooleanMixin, TernaryExpression, _TrueVarMixin):
-
     __slots__ = ()
+    _str_brackets = False
 
     def __init__(self, var, subscript, expr):
         from soap.semantics.label import Label
@@ -87,7 +90,7 @@ class UpdateExpr(
         return self.a3
 
     def format(self):
-        var, subscript, expr = self._args_to_str()
+        var, subscript, expr = (a.format() for a in self.args)
         return 'update({}, {}, {})'.format(var, subscript, expr)
 
     def __repr__(self):

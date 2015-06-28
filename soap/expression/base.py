@@ -4,13 +4,14 @@
 """
 from soap.common import Flyweight, base_dispatcher
 from soap.expression.common import is_expression
-from soap.lattice.base import Lattice
+from soap.semantics import is_numeral
 
 
 class Expression(Flyweight):
     """A base class for expressions."""
 
     __slots__ = ('_op', '_args', '_hash')
+    _str_brackets = True
 
     def __init__(self, op, *args):
         super().__init__()
@@ -36,17 +37,11 @@ class Expression(Flyweight):
         return expression_variables(self)
 
     def _args_to_str(self):
-        from soap.expression.arithmetic import UnaryArithExpr
-        from soap.expression.linalg import AccessExpr, UpdateExpr, Subscript
-
         def format(expr):
-            no_brackets = (UnaryArithExpr, AccessExpr, UpdateExpr, Subscript)
-            if isinstance(expr, Lattice) and expr.is_bottom():
-                brackets = False
-            elif isinstance(expr, no_brackets):
+            if is_numeral(expr):
                 brackets = False
             else:
-                brackets = is_expression(expr) and expr.args
+                brackets = getattr(expr, '_str_brackets', True)
             text = '({})' if brackets else '{}'
             if is_expression(expr):
                 expr = expr.format()

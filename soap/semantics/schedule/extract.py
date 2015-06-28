@@ -5,6 +5,7 @@ from soap.expression import (
 )
 from soap.semantics.error import IntegerInterval, inf
 from soap.semantics.functions import expand_expr, label
+from soap.semantics.label import Label
 
 
 class ForLoopExtractionFailureException(Exception):
@@ -66,7 +67,10 @@ class ForLoopExtractor(object):
         return slice(start, stop, step)
 
     def _extract_start(self, fix_expr, iter_var):
-        return fix_expr.init_state[self.iter_var]
+        init_state = fix_expr.init_state
+        if isinstance(init_state, Label):
+            init_state = init_state.expr()
+        return init_state[self.iter_var]
 
     def _extract_stop(self, fix_expr):
         bool_expr = fix_expr.bool_expr

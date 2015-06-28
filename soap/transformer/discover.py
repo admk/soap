@@ -17,7 +17,7 @@ from soap.expression import (
 from soap.program import Flow
 from soap.semantics import BoxState, ErrorSemantics, MetaState
 from soap.semantics.functions import (
-    arith_eval_meta_state, unroll_fix_expr, fixpoint_eval,
+    arith_eval, unroll_fix_expr, fixpoint_eval,
 )
 from soap.transformer.arithmetic import MartelTreeTransformer
 from soap.transformer.utils import (
@@ -147,7 +147,7 @@ class BaseDiscoverer(base_dispatcher('discover')):
             init_meta_state, len(frontier_init_meta_state_set)))
 
         # compute loop optimizing value ranges
-        init_value_state = arith_eval_meta_state(init_meta_state, state)
+        init_value_state = arith_eval(init_meta_state, state)
         loop_value_state = fixpoint_eval(
             init_value_state, bool_expr, loop_meta_state)['entry']
         # set all errors to null to optimize loop specifically

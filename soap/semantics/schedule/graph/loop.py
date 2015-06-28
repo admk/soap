@@ -6,10 +6,10 @@ import math
 from soap import logger
 from soap.datatype import int_type, ArrayType
 from soap.expression import (
-    AccessExpr, InputVariable, operators, UpdateExpr, Variable
+    AccessExpr, InputVariable, operators, UpdateExpr, Variable,
+    expression_factory
 )
-from soap.semantics import is_numeral
-from soap.semantics.functions import label
+from soap.semantics import is_numeral, label, Label
 from soap.semantics.schedule.common import (
     DependenceType, iter_point_count,
     resource_ceil, resource_map_add, resource_map_min
@@ -31,6 +31,14 @@ _edge_type_map = {
     (operators.INDEX_UPDATE_OP, operators.INDEX_UPDATE_OP):
         DependenceType.output,
 }
+
+
+def label_to_expr(node):
+    if not isinstance(node, Label):
+        return node
+    expr = node.expr()
+    args = (label_to_expr(arg) for arg in expr.args)
+    return expression_factory(expr.op, *args)
 
 
 class LoopScheduleGraph(SequentialScheduleGraph):
@@ -67,7 +75,7 @@ class LoopScheduleGraph(SequentialScheduleGraph):
             if expr is None:
                 continue
             if op in [operators.INDEX_ACCESS_OP, operators.INDEX_UPDATE_OP]:
-                memory_map[node.expr().true_var()] += 1
+                memory_map[label_to_expr(node).true_var()] += 1
                 continue
             operator_map[dtype, op] += 1
         self._resource_counts = (operator_map, memory_map)
@@ -102,8 +110,8 @@ class LoopScheduleGraph(SequentialScheduleGraph):
         # we do it for flow dependence only WAR and WAW are not dependences
         # that impact II, as read/write accesses can always be performed
         # consecutively.
-        from_expr = from_node.expr()
-        to_expr = to_node.expr()
+        from_expr = label_to_expr(from_node)
+        to_expr = label_to_expr(to_node)
         if from_expr.true_var() != to_expr.true_var():
             # access different arrays
             return
@@ -165,9 +173,9 @@ class LoopScheduleGraph(SequentialScheduleGraph):
         except AttributeError:
             pass
         if not self.is_pipelined:
+            logger.debug('Loop', self.fix_expr, 'is not pipelined.')
             self._initiation_interval = self.depth()
         else:
-            logger.debug('Pipelining ', self.fix_expr)
             _, access_map = self.resource_counts()
             res_mii = res_init_int(access_map)
             ii = rec_init_int_search(self.loop_graph, res_mii)
@@ -183,6 +191,9 @@ class LoopScheduleGraph(SequentialScheduleGraph):
             return self._init_graph
         except AttributeError:
             pass
+        init_state = self.fix_expr.init_state
+        if isinstance(init_state, Label):
+            return None
         _, init_env = label(self.fix_expr.init_state, None, None)
         self._init_graph = SequentialScheduleGraph(
             init_env, init_env, round_values=self.round_values,
@@ -204,7 +215,11 @@ class LoopScheduleGraph(SequentialScheduleGraph):
             return self._loop_latency
         except AttributeError:
             pass
-        init_latency = self.init_graph().sequential_latency()
+        init_graph = self.init_graph()
+        if init_graph:
+            init_latency = init_graph.sequential_latency()
+        else:
+            init_latency = 0
         ii = self.initiation_interval()
         loop_latency = (self.trip_count() - 1) * ii + self.depth()
         self._loop_latency = init_latency + loop_latency
@@ -218,26 +233,29 @@ class LoopScheduleGraph(SequentialScheduleGraph):
         except AttributeError:
             pass
         if not self.is_pipelined:
-            loop_total_map, loop_alloc_map = self.sequential_resource()
+            total_map, alloc_map = self.sequential_resource()
         else:
-            loop_total_map, _ = self.resource_counts()
-            loop_alloc_map = {}
+            total_map, _ = self.resource_counts()
+            alloc_map = {}
             ii = self.initiation_interval()
-            loop_alloc_map = {
+            alloc_map = {
                 dtype_op: count / ii
-                for dtype_op, count in loop_total_map.items()}
+                for dtype_op, count in total_map.items()}
             if self.round_values:
-                resource_ceil(loop_alloc_map)
+                resource_ceil(alloc_map)
             # add additional adders for incrementing loop nest iterators
-            resource_map_add(loop_total_map, {
+            resource_map_add(total_map, {
                 (int_type, operators.ADD_OP): len(self.iter_vars) - 1,
             })
 
-        total_map, min_alloc_map = self.init_graph().sequential_resource()
-        resource_map_add(total_map, loop_total_map)
-        resource_map_min(min_alloc_map, loop_alloc_map)
+        init_graph = self.init_graph()
+        if init_graph:
+            init_total_map, init_min_alloc_map = \
+                init_graph.sequential_resource()
+            resource_map_add(total_map, init_total_map)
+            resource_map_min(alloc_map, init_min_alloc_map)
 
-        self._loop_resource = (total_map, min_alloc_map)
+        self._loop_resource = (total_map, alloc_map)
         return self._loop_resource
 
     resource = loop_resource

@@ -2,6 +2,7 @@ from soap.datatype import auto_type, type_of, type_cast
 from soap.expression.variable import Variable
 from soap.lattice.map import MapLattice
 from soap.semantics.error import cast, ErrorSemantics
+from soap.semantics.label import Label
 from soap.semantics.linalg import MultiDimensionalArray
 from soap.semantics.state.base import BaseState
 
@@ -20,7 +21,7 @@ class BoxState(BaseState, MapLattice):
         return key, value
 
     def _cast_key(self, key, value=None):
-        if isinstance(key, Variable):
+        if isinstance(key, (Variable, Label)):
             return key
         if isinstance(key, str):
             var_list = [var for var in self.keys() if var.name == key]

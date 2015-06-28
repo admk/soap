@@ -56,7 +56,7 @@ class ArithmeticEvaluator(base_dispatcher()):
 
     def execute_AccessExpr(self, expr, state):
         array, subscript = self._execute_args(expr, state)
-        if array.is_bottom():
+        if array.is_bottom() or any(s.is_bottom() for s in subscript):
             return array.value_class(bottom=True)
         return array[subscript]
 
@@ -64,6 +64,8 @@ class ArithmeticEvaluator(base_dispatcher()):
         array, subscript, value = self._execute_args(expr, state)
         if array.is_bottom():
             return array
+        if any(s.is_bottom() for s in subscript):
+            return array.__class__(_shape=array.shape, bottom=True)
         return array.update(subscript, value)
 
     def execute_SelectExpr(self, expr, state):
@@ -78,6 +80,9 @@ class ArithmeticEvaluator(base_dispatcher()):
     def execute_FixExpr(self, expr, state):
         from soap.semantics.functions.fixpoint import fix_expr_eval
         return fix_expr_eval(expr, state)
+
+    def execute_PreUnrollExpr(self, expr, state):
+        return self.execute_FixExpr(expr.a, state)
 
     def execute_MetaState(self, meta_state, state):
         return state.__class__({

@@ -86,26 +86,30 @@ def dependence_vector(iter_vars, iter_slices, source, sink, invariant=None):
         if upper != inf:
             constraints.append('{var} <= {upper}'.format(upper=upper, var=var))
 
-    problem = '{{ [{dist_vars}] : exists ( {exists_vars} : {constraints} ) }}'
+    problem = \
+        '{{ [{dist_vars}] : exists ( {exists_vars} : \n{constraints} \n) }}'
     problem = problem.format(
         dist_vars=', '.join(dist_vars),
         iter_vars=', '.join(v.name for v in iter_vars),
-        constraints=' and '.join(constraints),
+        constraints=' and \n'.join(constraints),
         exists_vars=', '.join(v.name for v in exists_vars))
 
     basic_set = islpy.BasicSet(problem)
     dist_vect_list = []
     basic_set.lexmin().foreach_point(dist_vect_list.append)
+
     if not dist_vect_list:
         raise ISLIndependenceException('Source and sink is independent.')
+
     if len(dist_vect_list) != 1:
-        raise ValueError(
-            'The function lexmin() should return a single point.')
+        raise ValueError('The function lexmin() should return a single point.')
+
     raw_dist_vect = dist_vect_list.pop()
     dist_vect = []
-    for i in range(len(dist_vars)):
+    for i, (_, iter_slice) in enumerate(zip(iter_vars, iter_slices)):
         val = raw_dist_vect.get_coordinate_val(islpy.dim_type.set, i)
-        dist_vect.append(val.to_python())
+        val = val.to_python() / iter_slice.step
+        dist_vect.append(val)
     return tuple(dist_vect)
 
 

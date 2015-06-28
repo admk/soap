@@ -30,10 +30,11 @@ _dtype_key_map = {
 
 
 @cached
-def loop_graph(node, round_values, sequentialize_loops, scheduler):
+def loop_graph(
+        expr, round_values=False, sequentialize_loops=True, scheduler=None):
     from soap.semantics.schedule.graph.loop import LoopScheduleGraph
     return LoopScheduleGraph(
-        node.expr(), round_values=round_values,
+        expr, round_values=round_values,
         sequentialize_loops=sequentialize_loops, scheduler=scheduler)
 
 
@@ -73,7 +74,7 @@ class ScheduleGraph(DependenceGraph):
         if op == operators.FIXPOINT_OP:
             # FixExpr, round to the nearest integer for integer cycle counts
             graph = loop_graph(
-                node, self.round_values, self.sequentialize_loops,
+                node.expr(), self.round_values, self.sequentialize_loops,
                 self.scheduler)
             latency = graph.latency()
             try:
@@ -91,7 +92,7 @@ class ScheduleGraph(DependenceGraph):
         if op == operators.FIXPOINT_OP:
             # FixExpr
             graph = loop_graph(
-                node, self.round_values, self.sequentialize_loops,
+                node.expr(), self.round_values, self.sequentialize_loops,
                 self.scheduler)
             return graph.resource()
         if op == operators.SUBTRACT_OP:

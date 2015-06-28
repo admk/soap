@@ -26,6 +26,9 @@ _analysis_result_tuple = collections.namedtuple(
 
 
 class AnalysisResult(_analysis_result_tuple):
+    def stats(self):
+        return self.lut, self.dsp, self.error, self.latency
+
     def format(self):
         return '({}, {}, {}, {}, {})'.format(
             self.lut, self.dsp, self.error, self.latency,
@@ -67,7 +70,7 @@ def sample_unique(points):
         point_dict[tuple(stats)].add(expr)
     result_set = set()
     for stats, exprs in point_dict.items():
-        expr = exprs.pop() if len(exprs) == 1 else random.sample(exprs, 1)
+        expr = (exprs if len(exprs) == 1 else random.sample(exprs, 1)).pop()
         result_set.add(AnalysisResult(*(stats + (expr, ))))
     return result_set
 
@@ -136,12 +139,7 @@ class Analysis(Flyweight):
                 logger.persistent(
                     'Analysing', '{}/{}'.format(step, total),
                     l=logger.levels.debug)
-                error = abs_error(expr, state)
-                graph = schedule_graph(expr, out_vars)
-                latency = graph.latency()
-                resource = graph.resource_stats()
-                result = AnalysisResult(
-                    resource.lut, resource.dsp, error, latency, expr)
+                result = self.analyze_expression(expr, state, out_vars)
                 results.add(result)
         except KeyboardInterrupt:
             logger.warning(
@@ -150,6 +148,14 @@ class Analysis(Flyweight):
 
         self._results = results
         return results
+
+    def analyze_expression(self, expr, state, out_vars):
+        error = abs_error(expr, state)
+        graph = schedule_graph(expr, out_vars)
+        latency = graph.latency()
+        resource = graph.resource_stats()
+        return AnalysisResult(
+            resource.lut, resource.dsp, error, latency, expr)
 
     def frontier(self):
         """Computes the Pareto frontier from analyzed results."""
