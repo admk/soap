@@ -102,14 +102,18 @@ class ArithmeticEvaluator(base_dispatcher()):
 arith_eval = ArithmeticEvaluator()
 
 
+def _to_norm(value):
+    if isinstance(value, ErrorSemanticsArray):
+        return error_norm(value._flat_items)
+    if isinstance(value, collections.Mapping):
+        return error_norm(_to_norm(val) for val in value.values())
+    return value
+
+
 def error_eval(expr, state, to_norm=True):
     if isinstance(expr, (BinaryBoolExpr, Subscript)):
         return 0
     value = arith_eval(expr, state)
-    if not to_norm:
-        return value
-    if isinstance(value, ErrorSemanticsArray):
-        value = error_norm(value._flat_items)
-    elif isinstance(value, collections.Mapping):
-        value = error_norm(value.values())
+    if to_norm:
+        value = _to_norm(value)
     return value

@@ -9,20 +9,22 @@
     - [X] Unrolling
     - [X] Scheduling and revamp latency
     - [X] Resource usage with sharing
-    - [ ] Transform `AccessExpr` and `UpdateExpr`
+    - [!] Transform `AccessExpr` and `UpdateExpr`
+    - [ ] II reduction in subexpressions
     - [ ] Benchmarks
     - [ ] Comparison with actual results
     - [ ] Code generation
     - [X] Plotting changes
 
-- [ ] Fix bugs
-    - [ ] Ensure singly update paths
+- [X] Fix bugs
+    - [X] Ensure singly update paths
     - [X] Transitive distances
 
 
 # Ugliness, fix if have the time to
 
 * [ ] Add conversion operators, and infer them automatically
+* [ ] FSM and multiplexer resource utilization
 * [ ] Consider what is a reasonable thing to do with non-terminating
   expressions
 * [ ] {Possible} Better code generation by expanding expressions with locals

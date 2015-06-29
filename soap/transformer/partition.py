@@ -376,6 +376,10 @@ def partition_optimize(
     results = optimizer(env, state)
     logger.info('Optimized:', meta_state)
 
+    if context.logger.level == logger.levels.debug:
+        for r in results:
+            print(r.format())
+
     expr_list = [_splice(r.expression, r.expression) for r in results]
     analysis = Analysis(expr_list, state, out_vars)
     return analysis.frontier()

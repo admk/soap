@@ -9,11 +9,11 @@ from soap.transformer.partition import partition_optimize
 class TestPartition(unittest.TestCase):
     def setUp(self):
         context.take_snapshot()
-        context.unroll_depth = 0
+        context.unroll_depth = 1
         flow = parse(
             """
-            def main(real[10] a=[0.0, 1.0], real x=[0.0, 1.0]) {
-                for (int i = 3; i < 10; i = i + 1) {
+            def main(real[20] a=[0.0, 1.0], real x=[0.0, 1.0]) {
+                for (int i = 3; i < 20; i = i + 1) {
                     a[i] = (a[i - 1] + a[i - 2] + a[i - 3]) * 0.5;
                 }
                 return a;
@@ -26,7 +26,6 @@ class TestPartition(unittest.TestCase):
 
     def tearDown(self):
         context.restore_snapshot()
-        context.unroll_depth = 0
 
     def test_generate(self):
         alg = lambda expr, state: {expr}
@@ -37,9 +36,3 @@ class TestPartition(unittest.TestCase):
         compare_meta_state = results.pop().expression
         self.assertEqual(
             self.meta_state[self.output], compare_meta_state[self.output])
-
-    def test_optimize(self):
-        return
-        env_list = partition_optimize(
-            self.meta_state, self.state, self.flow.outputs)
-        print(len(env_list))

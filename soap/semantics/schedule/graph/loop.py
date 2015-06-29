@@ -62,24 +62,11 @@ class LoopScheduleGraph(SequentialScheduleGraph):
         self.iter_vars = iter_vars
         self.iter_slices = extractor.iter_slices
         self._init_loop_graph()
+        self._dependences = {}
 
-    def resource_counts(self):
-        try:
-            return self._resource_counts
-        except AttributeError:
-            pass
-        operator_map = collections.defaultdict(int)
-        memory_map = collections.defaultdict(int)
-        for node in self.graph.nodes():
-            expr, dtype, op = self.node_expr(node)
-            if expr is None:
-                continue
-            if op in [operators.INDEX_ACCESS_OP, operators.INDEX_UPDATE_OP]:
-                memory_map[label_to_expr(node).true_var()] += 1
-                continue
-            operator_map[dtype, op] += 1
-        self._resource_counts = (operator_map, memory_map)
-        return self._resource_counts
+    @property
+    def dependences(self):
+        return self._dependences
 
     def _init_loop_graph(self):
         if not self.is_pipelined:
@@ -105,6 +92,22 @@ class LoopScheduleGraph(SequentialScheduleGraph):
                 'distance': 1,
             }
             loop_graph.add_edge(to_node, out_var, attr_dict)
+
+    def _init_array_loops(self, loop_graph):
+        def is_array_op(node):
+            if isinstance(node, InputVariable):
+                return False
+            if is_numeral(node):
+                return False
+            if node == self._root_node:
+                return False
+            expr = self.env[node]
+            return isinstance(expr, (AccessExpr, UpdateExpr))
+
+        nodes = (n for n in self.graph.nodes() if is_array_op(n))
+        for from_node, to_node in itertools.combinations(nodes, 2):
+            self._add_array_loop(loop_graph, from_node, to_node)
+            self._add_array_loop(loop_graph, to_node, from_node)
 
     def _add_array_loop(self, loop_graph, from_node, to_node):
         # we do it for flow dependence only WAR and WAW are not dependences
@@ -151,21 +154,38 @@ class LoopScheduleGraph(SequentialScheduleGraph):
         }
         loop_graph.add_edge(from_node, to_node, attr_dict)
 
-    def _init_array_loops(self, loop_graph):
-        def is_array_op(node):
-            if isinstance(node, InputVariable):
-                return False
-            if is_numeral(node):
-                return False
-            if node == self._root_node:
-                return False
-            expr = self.env[node]
-            return isinstance(expr, (AccessExpr, UpdateExpr))
+    def init_graph(self):
+        try:
+            return self._init_graph
+        except AttributeError:
+            pass
+        init_state = self.fix_expr.init_state
+        if isinstance(init_state, Label):
+            return None
+        _, init_env = label(self.fix_expr.init_state, None, None)
+        self._init_graph = SequentialScheduleGraph(
+            init_env, init_env, round_values=self.round_values,
+            sequentialize_loops=self.sequentialize_loops,
+            scheduler=self.scheduler)
+        return self._init_graph
 
-        nodes = (n for n in self.graph.nodes() if is_array_op(n))
-        for from_node, to_node in itertools.combinations(nodes, 2):
-            self._add_array_loop(loop_graph, from_node, to_node)
-            self._add_array_loop(loop_graph, to_node, from_node)
+    def resource_counts(self):
+        try:
+            return self._resource_counts
+        except AttributeError:
+            pass
+        operator_map = collections.defaultdict(int)
+        memory_map = collections.defaultdict(int)
+        for node in self.graph.nodes():
+            expr, dtype, op = self.node_expr(node)
+            if expr is None:
+                continue
+            if op in [operators.INDEX_ACCESS_OP, operators.INDEX_UPDATE_OP]:
+                memory_map[label_to_expr(node).true_var()] += 1
+                continue
+            operator_map[dtype, op] += 1
+        self._resource_counts = (operator_map, memory_map)
+        return self._resource_counts
 
     def initiation_interval(self):
         try:
@@ -185,21 +205,6 @@ class LoopScheduleGraph(SequentialScheduleGraph):
                 ii = int(math.ceil(ii - ii_overestimate_factor))
             self._initiation_interval = ii
         return self._initiation_interval
-
-    def init_graph(self):
-        try:
-            return self._init_graph
-        except AttributeError:
-            pass
-        init_state = self.fix_expr.init_state
-        if isinstance(init_state, Label):
-            return None
-        _, init_env = label(self.fix_expr.init_state, None, None)
-        self._init_graph = SequentialScheduleGraph(
-            init_env, init_env, round_values=self.round_values,
-            sequentialize_loops=self.sequentialize_loops,
-            scheduler=self.scheduler)
-        return self._init_graph
 
     def depth(self):
         return self.sequential_latency()

@@ -49,12 +49,12 @@ def distributivity_distribute_select_func(op, args, da):
 
 distributivity_distribute_unary_subtraction_addition = (
     compile('-(a + b)'),
-    compile('-a - b'),
+    compile('-a - b', '-b - a'),
     'distributivity_distribute_unary_subtraction_addition'
 )
 distributivity_distribute_unary_subtraction_subtraction = (
     compile('-(a - b)'),
-    compile('-a + b'),
+    compile('-a + b', 'b - a'),
     'distributivity_distribute_unary_subtraction_addition'
 )
 distributivity_distribute_unary_subtraction_multiplication = (
@@ -294,7 +294,6 @@ class ArithTreeTransformer(TreeTransformer):
             distributivity_distribute_select,
         ],
         operators.SUBTRACT_OP: [
-            negation,
             distributivity_distribute_select,
         ],
         operators.MULTIPLY_OP: [
