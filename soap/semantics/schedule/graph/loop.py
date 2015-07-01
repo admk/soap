@@ -61,12 +61,12 @@ class LoopScheduleGraph(SequentialScheduleGraph):
         self.fix_expr = fix_expr
         self.iter_vars = iter_vars
         self.iter_slices = extractor.iter_slices
+        self._recurrence_dependences = {}
         self._init_loop_graph()
-        self._dependences = {}
 
     @property
-    def dependences(self):
-        return self._dependences
+    def recurrence_dependences(self):
+        return self._recurrence_dependences
 
     def _init_loop_graph(self):
         if not self.is_pipelined:
@@ -77,21 +77,24 @@ class LoopScheduleGraph(SequentialScheduleGraph):
         self.loop_graph = loop_graph
 
     def _init_variable_loops(self, loop_graph):
-        for to_node in self.graph.nodes():
-            if not isinstance(to_node, InputVariable):
+        for from_node in self.graph.nodes():
+            if not isinstance(from_node, InputVariable):
                 continue
-            if isinstance(to_node.dtype, ArrayType):
+            if isinstance(from_node.dtype, ArrayType):
                 continue
-            out_var = Variable(to_node.name, to_node.dtype)
+
+            out_var = Variable(from_node.name, from_node.dtype)
             if out_var not in self.env:
                 continue
+
             # variable is input & output, should have a self-loop
             attr_dict = {
                 'type': DependenceType.flow,
                 'latency': 0,
                 'distance': 1,
             }
-            loop_graph.add_edge(to_node, out_var, attr_dict)
+            loop_graph.add_edge(from_node, out_var, attr_dict)
+            self._recurrence_dependences[out_var, out_var] = 1
 
     def _init_array_loops(self, loop_graph):
         def is_array_op(node):
@@ -106,6 +109,8 @@ class LoopScheduleGraph(SequentialScheduleGraph):
 
         nodes = (n for n in self.graph.nodes() if is_array_op(n))
         for from_node, to_node in itertools.combinations(nodes, 2):
+            # note that edges (from_node, to_node) and (to_node, from_node)
+            # are used once each only
             self._add_array_loop(loop_graph, from_node, to_node)
             self._add_array_loop(loop_graph, to_node, from_node)
 
@@ -153,6 +158,13 @@ class LoopScheduleGraph(SequentialScheduleGraph):
             'distance': distance,
         }
         loop_graph.add_edge(from_node, to_node, attr_dict)
+
+        if dep_type != DependenceType.flow:
+            return
+        from_expr = AccessExpr(from_expr.true_var(), from_expr.subscript)
+        to_expr = UpdateExpr(
+            to_expr.true_var(), to_expr.subscript, to_expr.expr)
+        self._recurrence_dependences[from_expr, to_expr] = distance
 
     def init_graph(self):
         try:

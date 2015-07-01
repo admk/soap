@@ -234,6 +234,34 @@ class TestLoopScheduleGraph(_CommonMixin):
         expect_ii /= 2
         self.assertAlmostEqual(ii, expect_ii)
 
+    def test_recurrence_info(self):
+        program = """
+        def main(real[30] a) {
+            for (int i = 0; i < 30; i = i + 1) {
+                a[i] = a[i - 3] * 2;
+            }
+            return a;
+        }
+        """
+        flow = parse(program)
+        meta_state = flow_to_meta_state(flow)
+        fix_expr = meta_state[flow.outputs[0]]
+        graph = LoopScheduleGraph(fix_expr)
+        loop_recurrence_map = graph.recurrence_dependences
+        im1 = expression_factory(
+            operators.SUBTRACT_OP, self.i, IntegerInterval(3))
+        access = expression_factory(
+            operators.INDEX_ACCESS_OP, self.a, Subscript(im1))
+        expr = expression_factory(
+            operators.MULTIPLY_OP, access, IntegerInterval(2))
+        update = expression_factory(
+            operators.INDEX_UPDATE_OP, self.a, Subscript(self.i), expr)
+        compare_map = {
+            (self.i, self.i): 1,
+            (access, update): 3,
+        }
+        self.assertDictEqual(loop_recurrence_map, compare_map)
+
 
 class TestSequentialScheduleGraph(_CommonMixin):
     def _to_graph(self, program):
