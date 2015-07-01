@@ -2,7 +2,9 @@ import unittest
 
 from soap.context import context
 from soap.datatype import int_type, real_type, RealArrayType
-from soap.expression import operators, Variable, Subscript, expression_factory
+from soap.expression import (
+    operators, Variable, Subscript, expression_factory
+)
 from soap.parser import parse
 from soap.semantics.error import IntegerInterval
 from soap.semantics.functions.label import label
@@ -289,6 +291,44 @@ class TestSequentialScheduleGraph(_CommonMixin):
         }
         self.assertEqual(total_map, compare_total_map)
         self.assertEqual(min_alloc_map, compare_min_alloc_map)
+
+    def test_simple_recurrence_aware_latency(self):
+        program = """
+        def main(real x, int y, real z) {
+            x = z * z * z * z * z * z * z * z * z * z * z * z * z
+                + (x * y + x);
+            return x;
+        }
+        """
+        graph = self._to_graph(program)
+        graph.loop_recurrence = {
+            (Variable('x', real_type), Variable('x', real_type)): 1
+        }
+        expect_latency = LATENCY_TABLE['float'][operators.MULTIPLY_OP]
+        expect_latency += LATENCY_TABLE['float'][operators.ADD_OP]
+        expect_latency += LATENCY_TABLE['float'][operators.ADD_OP]
+        self.assertEqual(graph.latency(), expect_latency)
+
+    def test_array_recurrence_aware_latency(self):
+        program = """
+        def main(real[30] a, int i) {
+            a[i] = a[i - 1] + (a[i - 2] + 1);
+            return a;
+        }
+        """
+        graph = self._to_graph(program)
+        im1 = expression_factory(
+            operators.SUBTRACT_OP, self.i, IntegerInterval(1))
+        access = expression_factory(
+            operators.INDEX_ACCESS_OP, self.a, Subscript(im1))
+        update = expression_factory(
+            operators.INDEX_UPDATE_OP, self.a, Subscript(self.i), None)
+        graph.loop_recurrence = {
+            (access, update): 1,
+        }
+        expect_latency = LATENCY_TABLE['float'][operators.MULTIPLY_OP]
+        expect_latency += LATENCY_TABLE['float'][operators.ADD_OP]
+        self.assertEqual(graph.latency(), expect_latency)
 
     def test_loop_sequentialization(self):
         program = """
