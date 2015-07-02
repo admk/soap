@@ -36,3 +36,10 @@ class TestPartition(unittest.TestCase):
         compare_meta_state = results.pop().expression
         self.assertEqual(
             self.meta_state[self.output], compare_meta_state[self.output])
+
+    def test_optimize(self):
+        env_list = partition_optimize(
+            self.meta_state, self.state, [self.output])
+        print(len(env_list))
+        for e in env_list:
+            print(e.format())

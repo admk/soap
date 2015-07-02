@@ -247,20 +247,17 @@ class TestLoopScheduleGraph(_CommonMixin):
         meta_state = flow_to_meta_state(flow)
         fix_expr = meta_state[flow.outputs[0]]
         graph = LoopScheduleGraph(fix_expr)
-        loop_recurrence_map = graph.recurrence_dependences
         im1 = expression_factory(
             operators.SUBTRACT_OP, self.i, IntegerInterval(3))
         access = expression_factory(
             operators.INDEX_ACCESS_OP, self.a, Subscript(im1))
-        expr = expression_factory(
-            operators.MULTIPLY_OP, access, IntegerInterval(2))
         update = expression_factory(
-            operators.INDEX_UPDATE_OP, self.a, Subscript(self.i), expr)
-        compare_map = {
-            (self.i, self.i): 1,
-            (access, update): 3,
+            operators.INDEX_UPDATE_OP, self.a, Subscript(self.i), None)
+        compare_set = {
+            (self.i, self.i, 1),
+            (access, update, 3),
         }
-        self.assertDictEqual(loop_recurrence_map, compare_map)
+        self.assertSetEqual(graph.recurrences, compare_set)
 
 
 class TestSequentialScheduleGraph(_CommonMixin):
@@ -329,9 +326,7 @@ class TestSequentialScheduleGraph(_CommonMixin):
         }
         """
         graph = self._to_graph(program)
-        graph.loop_recurrence = {
-            (Variable('x', real_type), Variable('x', real_type)): 1
-        }
+        graph.recurrences = [(self.x, self.x, 1)]
         expect_latency = LATENCY_TABLE['float'][operators.MULTIPLY_OP]
         expect_latency += LATENCY_TABLE['float'][operators.ADD_OP]
         expect_latency += LATENCY_TABLE['float'][operators.ADD_OP]
@@ -351,11 +346,10 @@ class TestSequentialScheduleGraph(_CommonMixin):
             operators.INDEX_ACCESS_OP, self.a, Subscript(im1))
         update = expression_factory(
             operators.INDEX_UPDATE_OP, self.a, Subscript(self.i), None)
-        graph.loop_recurrence = {
-            (access, update): 1,
-        }
-        expect_latency = LATENCY_TABLE['float'][operators.MULTIPLY_OP]
+        graph.recurrences = [(access, update, 1)]
+        expect_latency = LATENCY_TABLE['float'][operators.INDEX_ACCESS_OP]
         expect_latency += LATENCY_TABLE['float'][operators.ADD_OP]
+        expect_latency += LATENCY_TABLE['array'][operators.INDEX_UPDATE_OP]
         self.assertEqual(graph.latency(), expect_latency)
 
     def test_loop_sequentialization(self):

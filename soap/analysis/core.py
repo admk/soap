@@ -90,7 +90,9 @@ def thick_frontier(points):
 
 class Analysis(Flyweight):
 
-    def __init__(self, expr_set, state, out_vars=None, size_limit=None):
+    def __init__(
+            self, expr_set, state, out_vars=None, recurrences=None,
+            size_limit=None):
         """Analysis class initialisation.
 
         :param expr_set: A set of expressions or a single expression.
@@ -103,6 +105,7 @@ class Analysis(Flyweight):
         self.expr_set = expr_set
         self.state = state
         self.out_vars = out_vars
+        self.recurrences = recurrences
         self.size_limit = size_limit or context.size_limit
         self._results = None
 
@@ -118,8 +121,6 @@ class Analysis(Flyweight):
             return results
 
         expr_set = self.expr_set
-        state = self.state
-        out_vars = self.out_vars
 
         size = len(expr_set)
         limit = self.size_limit
@@ -139,7 +140,7 @@ class Analysis(Flyweight):
                 logger.persistent(
                     'Analysing', '{}/{}'.format(step, total),
                     l=logger.levels.debug)
-                result = self.analyze_expression(expr, state, out_vars)
+                result = self.analyze_expression(expr)
                 results.add(result)
         except KeyboardInterrupt:
             logger.warning(
@@ -149,9 +150,10 @@ class Analysis(Flyweight):
         self._results = results
         return results
 
-    def analyze_expression(self, expr, state, out_vars):
-        error = abs_error(expr, state)
-        graph = schedule_graph(expr, out_vars)
+    def analyze_expression(self, expr):
+        error = abs_error(expr, self.state)
+        graph = schedule_graph(
+            expr, self.out_vars, recurrences=self.recurrences)
         latency = graph.latency()
         resource = graph.resource_stats()
         return AnalysisResult(

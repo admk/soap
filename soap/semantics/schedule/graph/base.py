@@ -16,7 +16,6 @@ from soap.semantics.schedule.common import (
     SHARED_DATATYPE_OPERATORS
 )
 from soap.semantics.schedule.table import OperatorResourceTuple, RESOURCE_TABLE
-from soap.transformer.partition import PartitionLabel
 
 
 _irrelevant_types = (
@@ -48,6 +47,7 @@ class ScheduleGraph(DependenceGraph):
         self.scheduler = scheduler or context.scheduler
 
     def node_expr(self, node):
+        from soap.transformer.partition import PartitionLabel
         if isinstance(node, (InputVariable, PartitionLabel)):
             return None, None, None
         if is_numeral(node) or node == self._root_node:

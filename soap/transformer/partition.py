@@ -13,6 +13,7 @@ from soap.semantics import Label, LabelContext, MetaState
 from soap.semantics.functions import (
     error_eval, fixpoint_eval, unroll_fix_expr
 )
+from soap.semantics.schedule.graph.base import loop_graph
 from soap.transformer.utils import thick_frontier_closure
 
 
@@ -173,6 +174,7 @@ class PartitionGenerator(GenericExecuter):
         new_expr = FixExpr(bool_expr, loop_env, loop_var, init_label)
 
         new_expr.unroll_depth = expr.unroll_depth
+        loop_info['recurrences'] = loop_graph(expr).recurrences
         new_expr.loop_info = loop_info
 
         label = self.Label(
@@ -211,41 +213,41 @@ class PartitionOptimizer(GenericExecuter):
             results = sample_unique(results)
         return results
 
-    def optimize_algorithm(self, expr, state):
-        return thick_frontier_closure(expr, state, depth=100)
+    def optimize_algorithm(self, expr, state, recurrences):
+        return thick_frontier_closure(
+            expr, state, recurrences=recurrences, depth=100)
 
-    def analyze_algorithm(self, expr_set, state):
-        return Analysis(expr_set, state).analyze()
+    def analyze_algorithm(self, expr_set, state, recurrences):
+        return Analysis(
+            expr_set, state, recurrences=recurrences).analyze()
 
-    def _optimize_expression(self, expr, state):
+    def _optimize_expression(self, expr, state, recurrences):
         logger.info('Optimizing: {}'.format(expr))
-        expr_set = self.optimize_algorithm(expr, state)
-        results = self.analyze_algorithm(expr_set, state)
+        expr_set = self.optimize_algorithm(expr, state, recurrences)
+        results = self.analyze_algorithm(expr_set, state, recurrences)
         logger.info('Optimized: {}, size: {}'.format(expr, len(results)))
         return results
 
-    def _execute_atom(self, expr, state):
+    def _execute_atom(self, expr, state, recurrences):
         return {AnalysisResult(0, 0, 0, 0, expr)}
 
     execute_PartitionLabel = _execute_atom
 
-    def _execute_expression(self, expr, state):
-        return self._optimize_expression(expr, state)
+    def _execute_expression(self, expr, state, recurrences):
+        return self._optimize_expression(expr, state, recurrences)
 
-    def execute_PostUnrollExpr(self, expr, state):
+    def execute_PostUnrollExpr(self, expr, state, _):
         results = []
         terminal_label, fix_expr_list = expr.args
         for env in fix_expr_list:
-            for result in self._execute_mapping(env, state):
+            for result in self._execute_mapping(env, state, None):
                 lut, dsp, error, latency, fix_expr = result
                 fix_expr = PostOptimizeExpr(terminal_label, fix_expr)
                 result = AnalysisResult(lut, dsp, error, latency, fix_expr)
                 results.append(result)
         return self.filter_algorithm(results)
 
-    def execute_FixExpr(self, expr, state):
-        from soap.semantics.schedule.graph.base import loop_graph
-
+    def execute_FixExpr(self, expr, state, _):
         bool_expr, loop_env, loop_var, init_label = expr.args
         loop_info = expr.loop_info
         trip_count = loop_info['trip_count']
@@ -256,7 +258,8 @@ class PartitionOptimizer(GenericExecuter):
                 'innermost' if innermost else 'outer',
                 expr, expr.unroll_depth))
 
-        loop_env_set = self(loop_env, loop_info['entry'])
+        loop_env_set = self(
+            loop_env, loop_info['entry'], loop_info['recurrences'])
         results = set()
         for each_loop_env_result in loop_env_set:
             lut, dsp, error, latency, each_loop_env = each_loop_env_result
@@ -278,14 +281,14 @@ class PartitionOptimizer(GenericExecuter):
             'Optimized loop: {}, size: {}'.format(expr, len(results)))
         return results
 
-    def _execute_mapping(self, meta_state, state):
+    def _execute_mapping(self, meta_state, state, recurrences):
         results = [AnalysisResult(0, 0, 0, 0, MetaState())]
         var_list = sorted(meta_state.keys(), key=str)
         limit = context.size_limit
         for idx, var in enumerate(var_list):
             logger.persistent('Merge', '{}/{}'.format(idx, len(var_list)))
             each_expr = meta_state[var]
-            expr_results = self(each_expr, state)
+            expr_results = self(each_expr, state, recurrences)
             logger.info('Merging: {}'.format(each_expr))
             new_results = []
             iterer = itertools.product(results, expr_results)
@@ -311,13 +314,13 @@ class PartitionOptimizer(GenericExecuter):
         logger.unpersistent('Merge')
         return results
 
-    def __call__(self, expr, state):
-        results = self._cache.get((expr, state))
+    def __call__(self, expr, state, recurrences):
+        results = self._cache.get((expr, state, recurrences))
         if results is not None:
             logger.info('Cached optimization:', expr)
             return results
-        results = super().__call__(expr, state)
-        self._cache[(expr, state)] = results
+        results = super().__call__(expr, state, recurrences)
+        self._cache[expr, state, recurrences] = results
         return results
 
 
@@ -355,7 +358,8 @@ _splice = PartitionSplicer()
 
 
 def partition_optimize(
-        meta_state, state, out_vars=None, optimize_algorithm=None):
+        meta_state, state, out_vars=None, recurrences=None,
+        optimize_algorithm=None):
 
     if not isinstance(meta_state, MetaState):
         raise TypeError('Must be meta_state to partition and optimize.')
@@ -373,7 +377,7 @@ def partition_optimize(
 
     logger.info('Optimizing:', meta_state)
     optimizer = PartitionOptimizer(optimize_algorithm=optimize_algorithm)
-    results = optimizer(env, state)
+    results = optimizer(env, state, recurrences)
     logger.info('Optimized:', meta_state)
 
     if context.logger.level == logger.levels.debug:

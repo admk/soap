@@ -5,7 +5,8 @@ import islpy
 from soap.common.cache import cached
 from soap.datatype import real_type
 from soap.expression import (
-    expression_factory, is_expression, is_variable, Variable, operators
+    expression_factory, is_expression, is_variable, Variable, operators,
+    FixExpr
 )
 
 
@@ -86,7 +87,11 @@ def resource_map_min(total_map, lower_map):
 @cached
 def schedule_graph(expr, out_vars=None, **kwargs):
     from soap.semantics import label
-    from soap.semantics.schedule.graph import SequentialScheduleGraph
+    from soap.semantics.schedule.graph import (
+        SequentialScheduleGraph, LoopScheduleGraph
+    )
+    if isinstance(expr, FixExpr):
+        return LoopScheduleGraph(expr, **kwargs)
     label, env = label(expr, None, out_vars)
     if is_expression(expr):
         # expressions do not have out_vars, but have an output, in this case

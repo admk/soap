@@ -2,9 +2,7 @@ import collections
 import math
 
 from soap import logger
-from soap.expression import (
-    expression_factory, AccessExpr, UpdateExpr
-)
+from soap.expression import AccessExpr, UpdateExpr
 from soap.semantics.label import Label
 from soap.semantics.schedule.common import resource_map_add, resource_map_min
 from soap.semantics.schedule.table import LATENCY_TABLE
@@ -17,31 +15,34 @@ class SequentialScheduleGraph(ScheduleGraph):
 
     def __init__(
             self, env, out_vars, round_values=False,
-            sequentialize_loops=True, scheduler=None, loop_recurrence=None):
+            sequentialize_loops=True, scheduler=None, recurrences=None):
         super().__init__(
             env, out_vars, round_values=round_values,
             sequentialize_loops=sequentialize_loops, scheduler=scheduler)
-        self.loop_recurrence = loop_recurrence
+        self.recurrences = recurrences
 
-    def _loop_recurrence_latency(
-            self, total_latency, schedule, loop_recurrence):
+    def _recurrence_latency(self, total_latency, schedule, recurrences):
         # create a new schedule with expressions compatible with
-        # loop_recurrence specification
+        # recurrences specification
         new_schedule = collections.defaultdict(list)
         for node, interval in schedule.items():
             expr = node
             if isinstance(node, Label):
                 expr = self.env[node]
-                if isinstance(expr, (AccessExpr, UpdateExpr)):
-                    expr = node.expr()
-                    args = expr.args[1:]
-                    expr = expression_factory(expr.op, expr.true_var(), *args)
+            if isinstance(expr, (AccessExpr, UpdateExpr)):
+                expr = node.expr()
+                var = expr.true_var()
+                subscript = expr.subscript
+                if isinstance(expr, AccessExpr):
+                    expr = AccessExpr(var, subscript)
+                elif isinstance(expr, UpdateExpr):
+                    expr = UpdateExpr(var, subscript, None)
             new_schedule[expr].append(interval)
 
         # finds the maximum recurrence-weigthed latency
         # from any pair of from_expr and to_expr
         max_latency = 0
-        for (from_expr, to_expr), distance in loop_recurrence.items():
+        for from_expr, to_expr, distance in recurrences:
             from_schedule = new_schedule[from_expr]
             if not from_schedule:
                 continue
@@ -75,9 +76,9 @@ class SequentialScheduleGraph(ScheduleGraph):
             pass
         schedule = self.schedule()
         latency = self.max_latency(schedule)
-        if self.loop_recurrence:
-            latency = self._loop_recurrence_latency(
-                latency, schedule, self.loop_recurrence)
+        if self.recurrences:
+            latency = self._recurrence_latency(
+                latency, schedule, self.recurrences)
         if self.round_values:
             try:
                 latency = int(math.ceil(latency))

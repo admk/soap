@@ -123,7 +123,6 @@ distributivity_collect_division_2 = (
     compile('(a * d + b * c) / (c * d)'),
     'distributivity_collect_division_2'
 )
-# FIXME did I forget about distribute rules?
 distributivity_collect_select_addition = (
     compile('b ? (a + d) : (c + d)'),
     compile('(b ? a : c) + d'),

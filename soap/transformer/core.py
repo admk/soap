@@ -78,7 +78,8 @@ class TreeTransformer(TreeFarmer):
     def __init__(self, tree_or_trees,
                  depth=None, steps=None, no_bool=True,
                  transform_rules=None, reduction_rules=None,
-                 step_plugin=None, reduce_plugin=None, multiprocessing=None):
+                 step_plugin=None, reduce_plugin=None, multiprocessing=None,
+                 **kwargs):
         super().__init__(depth=depth or context.window_depth)
 
         self.steps = steps or context.max_steps
