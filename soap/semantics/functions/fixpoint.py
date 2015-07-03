@@ -155,6 +155,7 @@ def _unroll_fix_expr(fix_expr, outer_state, depth):
 def _unroll_for_loop(expr, iter_var, iter_slice, depth):
     from soap.semantics.state.meta import MetaState
     from soap.semantics.schedule.common import iter_point_count
+    from soap.transformer.linalg import linear_algebra_simplify
 
     expr.unroll_depth = 0
     expr_list = [expr]
@@ -180,6 +181,7 @@ def _unroll_for_loop(expr, iter_var, iter_slice, depth):
         step_expr = BinaryArithExpr(
             operators.ADD_OP, iter_var, IntegerInterval(new_step))
         new_loop_state = new_loop_state.immu_update(iter_var, step_expr)
+        new_loop_state = linear_algebra_simplify(new_loop_state)
 
         bool_expr = BinaryBoolExpr(
             operators.LESS_OP, iter_var, IntegerInterval(mid))

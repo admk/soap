@@ -2,6 +2,7 @@
 .. module:: soap.expression.common
     :synopsis: Common definitions for expressions.
 """
+from soap.common.base import base_dispatcher
 from soap.common.cache import cached
 
 
@@ -96,3 +97,40 @@ def expression_factory(op, *args):
     except IndexError:
         raise ValueError('Too many arguments.')
     return cls(op, *args)
+
+
+class VariableSetGenerator(base_dispatcher()):
+
+    def generic_execute(self, expr):
+        raise TypeError(
+            'Do not know how to find input variables for {!r}'.format(expr))
+
+    def _execute_atom(self, expr):
+        return {expr}
+
+    def _execute_expression(self, expr):
+        input_vars = set()
+        for arg in expr.args:
+            input_vars |= self(arg)
+        return input_vars
+
+    def execute_tuple(self, expr):
+        return set(expr)
+
+    def execute_numeral(self, expr):
+        return set()
+
+    def execute_FixExpr(self, expr):
+        input_vars = set()
+        for expr in expr.init_state.values():
+            input_vars |= self(expr)
+        return input_vars
+
+    execute_Label = execute_Variable = _execute_atom
+    execute_UnaryArithExpr = execute_BinaryArithExpr = _execute_expression
+    execute_BinaryBoolExpr = execute_SelectExpr = _execute_expression
+    execute_AccessExpr = execute_UpdateExpr = _execute_expression
+    execute_Subscript = _execute_expression
+
+
+expression_variables = VariableSetGenerator()

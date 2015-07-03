@@ -9,7 +9,7 @@ from soap.expression.operators import (
     COMPARISON_NEGATE_DICT, COMPARISON_MIRROR_DICT,
 )
 from soap.expression.common import (
-    expression_factory, is_expression, is_variable
+    expression_factory, expression_variables, is_expression, is_variable
 )
 from soap.expression.base import (
     Expression, UnaryExpression, BinaryExpression, TernaryExpression,
