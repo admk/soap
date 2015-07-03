@@ -8,6 +8,7 @@ from soap.expression import (
     expression_factory, is_expression, is_variable, Variable, operators,
     FixExpr
 )
+from soap.semantics.label import Label
 
 
 NONPIPELINED_OPERATORS = {
@@ -98,3 +99,12 @@ def schedule_graph(expr, out_vars=None, **kwargs):
         # ``label`` is its output variable
         out_vars = [label]
     return SequentialScheduleGraph(env, out_vars, **kwargs)
+
+
+def label_to_expr(node):
+    if isinstance(node, Label):
+        node = node.expr()
+    if is_expression(node):
+        args = (label_to_expr(arg) for arg in node.args)
+        return expression_factory(node.op, *args)
+    return node

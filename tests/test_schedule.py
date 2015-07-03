@@ -335,7 +335,7 @@ class TestSequentialScheduleGraph(_CommonMixin):
     def test_array_recurrence_aware_latency(self):
         program = """
         def main(real[30] a, int i) {
-            a[i] = a[i - 1] + (a[i - 2] + 1);
+            a[i] = (a[i - 1] + (a[i - 2] + a[i - 3])) / 3;
             return a;
         }
         """
@@ -349,6 +349,7 @@ class TestSequentialScheduleGraph(_CommonMixin):
         graph.recurrences = [(access, update, 1)]
         expect_latency = LATENCY_TABLE['float'][operators.INDEX_ACCESS_OP]
         expect_latency += LATENCY_TABLE['float'][operators.ADD_OP]
+        expect_latency += LATENCY_TABLE['float'][operators.DIVIDE_OP]
         expect_latency += LATENCY_TABLE['array'][operators.INDEX_UPDATE_OP]
         self.assertEqual(graph.latency(), expect_latency)
 

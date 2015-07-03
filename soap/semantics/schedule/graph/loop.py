@@ -7,12 +7,11 @@ from soap import logger
 from soap.datatype import int_type, ArrayType
 from soap.expression import (
     AccessExpr, InputVariable, operators, UpdateExpr, Variable,
-    expression_factory
 )
 from soap.semantics import is_numeral, label, Label
 from soap.semantics.schedule.common import (
     DependenceType, iter_point_count,
-    resource_ceil, resource_map_add, resource_map_min
+    resource_ceil, resource_map_add, resource_map_min, label_to_expr
 )
 from soap.semantics.schedule.extract import ForLoopNestExtractor
 from soap.semantics.schedule.distance import dependence_eval
@@ -31,14 +30,6 @@ _edge_type_map = {
     (operators.INDEX_UPDATE_OP, operators.INDEX_UPDATE_OP):
         DependenceType.output,
 }
-
-
-def label_to_expr(node):
-    if not isinstance(node, Label):
-        return node
-    expr = node.expr()
-    args = (label_to_expr(arg) for arg in expr.args)
-    return expression_factory(expr.op, *args)
 
 
 class LoopScheduleGraph(SequentialScheduleGraph):

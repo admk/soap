@@ -42,11 +42,10 @@ class Expression(Flyweight):
                 brackets = False
             else:
                 brackets = getattr(expr, '_str_brackets', True)
-            text = '({})' if brackets else '{}'
             if is_expression(expr):
                 expr = expr.format()
+            text = '({})' if brackets else '{}'
             return text.format(expr)
-
         return [format(a) for a in self.args]
 
     def __repr__(self):
