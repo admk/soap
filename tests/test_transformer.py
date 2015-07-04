@@ -179,8 +179,8 @@ class TestPartition(unittest.TestCase):
         context.unroll_depth = 0
         flow = parse(
             """
-            def main(real[200] a=[0.0, 1.0]) {
-                for (int i = 2; i < 200; i = i + 1) {
+            def main(real[20] a=[0.0, 1.0]) {
+                for (int i = 2; i < 20; i = i + 1) {
                     a[i] = (a[i - 1] + a[i - 2]) * 0.333;
                 }
                 return a;
@@ -200,11 +200,14 @@ class TestPartition(unittest.TestCase):
             self.meta_state, self.state, [self.output], optimize_algorithm=alg)
 
         self.assertEqual(len(results), 1)
-        compare_meta_state = results.pop().expression
+        result = results.pop()
+        print(result.format())
+        compare_meta_state = result.expression
         self.assertEqual(
             self.meta_state[self.output], compare_meta_state[self.output])
 
     def test_optimize(self):
+        return
         with context.local(unroll_depth=1):
             env_list = partition_optimize(
                 self.meta_state, self.state, [self.output])

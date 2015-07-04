@@ -1,5 +1,6 @@
 import collections
 
+from soap.context import context
 from soap.semantics.error import IntegerInterval, ErrorSemantics
 from soap.semantics.linalg import IntegerIntervalArray, ErrorSemanticsArray
 
@@ -117,6 +118,8 @@ def type_cast(dtype, value=None, top=False, bottom=False):
     shape = dtype.shape
     if isinstance(dtype, ArrayType):
         if not isinstance(value, collections.Sequence):
+            if context.scalar_array:
+                return cls(scalar=value, _shape=shape, top=top, bottom=bottom)
             for dim in reversed(dtype.shape):
                 value = [value] * dim
             return cls(_flat_items=value, _shape=shape, top=top, bottom=bottom)

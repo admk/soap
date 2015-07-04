@@ -104,6 +104,8 @@ arith_eval = ArithmeticEvaluator()
 
 def _to_norm(value):
     if isinstance(value, ErrorSemanticsArray):
+        if value.is_scalar():
+            return value.scalar
         return error_norm(value._flat_items)
     if isinstance(value, collections.Mapping):
         return error_norm(_to_norm(val) for val in value.values())

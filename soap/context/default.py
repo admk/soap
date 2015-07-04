@@ -15,6 +15,7 @@ context = dict(
     frequency=100,
     port_count=2,
     # analysis related
+    scalar_array=True,
     unroll_factor=0,    # how many steps before no unrolling in static analysis
     widen_factor=0,     # how many steps before widening in static analysis
     precision='single',
