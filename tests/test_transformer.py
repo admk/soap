@@ -1,5 +1,6 @@
 import unittest
 
+from soap.analysis.core import Analysis
 from soap.context import context
 from soap.expression import Expression, operators
 from soap.parser import expr_parse, parse
@@ -179,9 +180,13 @@ class TestPartition(unittest.TestCase):
         context.unroll_depth = 0
         flow = parse(
             """
-            def main(real[20] a=[0.0, 1.0]) {
-                for (int i = 2; i < 20; i = i + 1) {
-                    a[i] = (a[i - 1] + a[i - 2]) * 0.333;
+            def main(real[200, 200] a=[0.0, 1.0]) {
+                for (int i = 1; i < 10; i = i + 1) {
+                  for (int j = 1; j < 10; j = j + 1) {
+                      a[i, j] = 0.2 * (a[i, j-1]
+                          + a[i, j] + a[i, j+1]
+                          + a[i+1, j] + a[i-1, j]);
+                  }
                 }
                 return a;
             }
@@ -207,11 +212,13 @@ class TestPartition(unittest.TestCase):
             self.meta_state[self.output], compare_meta_state[self.output])
 
     def test_optimize(self):
-        return
-        with context.local(unroll_depth=1):
-            env_list = partition_optimize(
+        analysis = Analysis(
+            {self.meta_state}, self.state, [self.output], round_values=True)
+        print(analysis.analyze().pop().format())
+        with context.local(unroll_depth=0):
+            env_set = partition_optimize(
                 self.meta_state, self.state, [self.output])
-            for e in env_list:
+            for e in env_set:
                 print(e.format())
-            # from soap.shell import shell; shell()
-            self.assertGreater(len(env_list), 1)
+            from soap.shell import shell; shell()
+            self.assertGreater(len(env_set), 1)

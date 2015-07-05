@@ -3,29 +3,10 @@ import math
 import islpy
 
 from soap.common.cache import cached
-from soap.datatype import real_type
 from soap.expression import (
-    expression_factory, is_expression, is_variable, Variable, operators,
-    FixExpr
+    expression_factory, is_expression, is_variable, Variable, FixExpr
 )
 from soap.semantics.label import Label
-
-
-NONPIPELINED_OPERATORS = {
-    operators.INDEX_ACCESS_OP,
-    operators.INDEX_UPDATE_OP,
-    operators.FIXPOINT_OP,
-}
-PIPELINED_OPERATORS = set(operators.OPERATORS) - NONPIPELINED_OPERATORS
-MAX_SHARE_COUNT = 8
-SHARED_DATATYPE_OPERATORS = {
-    (real_type, 'conversion'),
-    (real_type, 'comparison'),
-    (real_type, operators.ADD_OP),
-    (real_type, operators.SUBTRACT_OP),
-    (real_type, operators.MULTIPLY_OP),
-    (real_type, operators.DIVIDE_OP),
-}
 
 
 class DependenceType(object):
@@ -38,8 +19,9 @@ class DependenceType(object):
 def is_isl_expr(expr):
     variables = expr.vars()
     try:
-        islpy.Set('{{ [{vars}]: {expr} > 0 }}'.format(
-            vars=', '.join(v.name for v in variables), expr=expr))
+        problem = '{{ [{vars}]: {expr} > 0 }}'.format(
+            vars=', '.join(v.name for v in variables), expr=expr)
+        islpy.Set(problem)
     except islpy.Error:
         return False
     return True

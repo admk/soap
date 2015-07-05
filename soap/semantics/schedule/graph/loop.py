@@ -16,7 +16,6 @@ from soap.semantics.schedule.common import (
 from soap.semantics.schedule.extract import ForLoopNestExtractor
 from soap.semantics.schedule.distance import dependence_eval
 from soap.semantics.schedule.ii import rec_init_int_search, res_init_int
-from soap.semantics.schedule.table import LOOP_LATENCY_TABLE
 from soap.semantics.schedule.graph.sequential import SequentialScheduleGraph
 
 
@@ -33,12 +32,9 @@ _edge_type_map = {
 
 
 class LoopScheduleGraph(SequentialScheduleGraph):
-
-    latency_table = LOOP_LATENCY_TABLE
-
     def __init__(
-            self, fix_expr, round_values=False, sequentialize_loops=True,
-            scheduler=None):
+            self, fix_expr, round_values=None, sequentialize_loops=True,
+            scheduler=None, **kwargs):
         extractor = ForLoopNestExtractor(fix_expr)
         is_pipelined = extractor.is_for_loop_nest
         iter_vars = extractor.iter_vars

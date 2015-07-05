@@ -31,7 +31,7 @@ class TreeFarmer(object):
 
     def _harvest(self, trees):
         """Crops all trees at the depth limit."""
-        if self.depth >= RECURSION_LIMIT:
+        if self.depth < 0 or self.depth >= RECURSION_LIMIT:
             return trees
         cropped = []
         for t in trees:

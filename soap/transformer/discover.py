@@ -69,7 +69,20 @@ class BaseDiscoverer(base_dispatcher('discover')):
 
     Subclasses need to override :member:`closure`.
     """
-    def filter(self, expr_set, state, out_vars, **kwargs):
+    def __init__(self, **analysis_kwargs):
+        super().__init__()
+        self.analysis_kwargs = analysis_kwargs
+
+    def _filter(self, expr_set, state, out_vars, size_limit=None):
+        return self.filter(
+            expr_set, state, out_vars, size_limit=size_limit,
+            **self.analysis_kwargs)
+
+    def _closure(self, expr_set, state, out_vars):
+        return self.closure(
+            expr_set, state, out_vars, **self.analysis_kwargs)
+
+    def filter(self, expr_set, state, out_vars, size_limit=None):
         raise NotImplementedError
 
     def closure(self, expr_set, state, out_vars):
@@ -95,7 +108,7 @@ class BaseDiscoverer(base_dispatcher('discover')):
         }
         frontier_expr_set.add(expr)
         logger.info('Discovering: {}'.format(expr))
-        frontier = self.closure(frontier_expr_set, state, out_vars)
+        frontier = self._closure(frontier_expr_set, state, out_vars)
         logger.info('Discovered: {}, Frontier: {}'.format(expr, len(frontier)))
         return frontier
 
@@ -127,7 +140,7 @@ class BaseDiscoverer(base_dispatcher('discover')):
             expr_set.add(SelectExpr(bool_expr, true_expr, false_expr))
 
         expr_set = self.filter(expr_set, state, out_vars)
-        return self.closure(expr_set, state, out_vars)
+        return self._closure(expr_set, state, out_vars)
 
     discover_AccessExpr = discover_UpdateExpr = _discover_expression
     discover_Subscript = _discover_expression

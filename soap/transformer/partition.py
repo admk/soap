@@ -17,6 +17,13 @@ from soap.transformer.common import GenericExecuter
 from soap.transformer.utils import thick_frontier_closure
 
 
+def is_innermost_loop(expr):
+    for e in expr.loop_state.values():
+        if isinstance(e, (FixExpr, PreUnrollExpr, PostUnrollExpr)):
+            return False
+    return True
+
+
 class PreUnrollExpr(UnaryExpression):
     _str_brackets = False
 
@@ -63,7 +70,9 @@ class MarkUnroll(GenericExecuter):
         return MetaState({var: self(expr) for var, expr in meta_state.items()})
 
     def execute_FixExpr(self, expr):
-        return PreUnrollExpr(expr)
+        if is_innermost_loop(expr):
+            return PreUnrollExpr(expr)
+        return self._execute_expression(expr)
 
 
 class PartitionLabel(Label):
@@ -72,13 +81,6 @@ class PartitionLabel(Label):
 
 class PartitionLabelContext(LabelContext):
     label_class = PartitionLabel
-
-
-def is_innermost_loop(expr):
-    for e in expr.loop_state.values():
-        if isinstance(e, FixExpr):
-            return False
-    return True
 
 
 class PartitionGenerator(GenericExecuter):
@@ -137,8 +139,9 @@ class PartitionGenerator(GenericExecuter):
             expr.loop_state, loop_info['entry'])
         new_expr = FixExpr(bool_expr, loop_env, loop_var, init_label)
 
-        new_expr.unroll_depth = expr.unroll_depth
-        loop_info['recurrences'] = loop_graph(expr).recurrences
+        if is_innermost_loop(expr):
+            loop_info['unroll_depth'] = expr.unroll_depth
+            loop_info['recurrences'] = loop_graph(expr).recurrences
         new_expr.loop_info = loop_info
 
         label = self.Label(
@@ -179,11 +182,12 @@ class PartitionOptimizer(GenericExecuter):
 
     def optimize_algorithm(self, expr, state, recurrences):
         return thick_frontier_closure(
-            expr, state, recurrences=recurrences, depth=100)
+            expr, state, recurrences=recurrences, depth=-1)
 
     def analyze_algorithm(self, expr_set, state, recurrences):
-        return Analysis(
+        results = Analysis(
             expr_set, state, recurrences=recurrences).analyze()
+        return results
 
     def _optimize_expression(self, expr, state, recurrences):
         logger.info('Optimizing: {}'.format(expr))
@@ -203,7 +207,9 @@ class PartitionOptimizer(GenericExecuter):
     def execute_PostUnrollExpr(self, expr, state, _):
         results = []
         terminal_label, fix_expr_list = expr.args
-        for env in fix_expr_list:
+        for count, env in enumerate(fix_expr_list):
+            logger.persistent(
+                'Unroll', '{}/{}'.format(count, len(fix_expr_list) - 1))
             for result in self._execute_mapping(env, state, None):
                 lut, dsp, error, latency, fix_expr = result
                 fix_expr = PostOptimizeExpr(terminal_label, fix_expr)
@@ -214,32 +220,37 @@ class PartitionOptimizer(GenericExecuter):
     def execute_FixExpr(self, expr, state, _):
         bool_expr, loop_env, loop_var, init_label = expr.args
         loop_info = expr.loop_info
-        trip_count = loop_info['trip_count']
+        trip_count = loop_info['trip_count'].max
         innermost = is_innermost_loop(expr)
 
         logger.info(
-            'Optimizing {} loop: {}, depth: {}'.format(
-                'innermost' if innermost else 'outer',
-                expr, expr.unroll_depth))
+            'Optimizing {} loop: {}, unroll: {}'.format(
+                'innermost' if innermost else 'outer', expr,
+                loop_info['unroll_depth'] if innermost else 'not unrolled'))
 
-        loop_env_set = self(
-            loop_env, loop_info['entry'], loop_info['recurrences'])
-        results = set()
-        for each_loop_env_result in loop_env_set:
-            lut, dsp, error, latency, each_loop_env = each_loop_env_result
-            fix_expr = FixExpr(bool_expr, each_loop_env, loop_var, init_label)
-            error *= trip_count  # assume the loop has Lipschitz continuity
-            if innermost:
-                analysis_fix_expr = FixExpr(
+        recurrences = loop_info['recurrences'] if innermost else None
+        loop_env_set = self(loop_env, loop_info['entry'], recurrences)
+        if innermost:
+            expr_set = set()
+            for each_loop_env_result in loop_env_set:
+                each_loop_env = each_loop_env_result.expression
+                fix_expr = FixExpr(
                     bool_expr, _splice(each_loop_env, each_loop_env),
                     loop_var, init_label)
-                graph = loop_graph(analysis_fix_expr)
-                latency = graph.latency()
-                dsp, ff, lut = graph.resource_stats()
-            else:
-                # simplify the analysis of outer loops
-                latency *= trip_count
-            results.add(AnalysisResult(lut, dsp, error, latency, fix_expr))
+                expr_set.add(fix_expr)
+            results = Analysis(expr_set, None, None,
+                               size_limit=context.loop_size_limit).analyze()
+        else:
+            results = set()
+            for each_loop_env_result in loop_env_set:
+                lut, dsp, error, latency, each_loop_env = each_loop_env_result
+                fix_expr = FixExpr(
+                    bool_expr, each_loop_env, loop_var, init_label)
+                latency *= trip_count  # simplify the analysis of outer loops
+                error *= trip_count  # assume the loop has Lipschitz continuity
+                result = AnalysisResult(lut, dsp, error, latency, fix_expr)
+                results.add(result)
+
         results = self.filter_algorithm(results)
         logger.info(
             'Optimized loop: {}, size: {}'.format(expr, len(results)))
@@ -323,7 +334,7 @@ _splice = PartitionSplicer()
 
 def partition_optimize(
         meta_state, state, out_vars=None, recurrences=None,
-        optimize_algorithm=None):
+        optimize_algorithm=None, final_analysis=True):
 
     if not isinstance(meta_state, MetaState):
         raise TypeError('Must be meta_state to partition and optimize.')
@@ -335,8 +346,7 @@ def partition_optimize(
         out_vars = sorted(meta_state.keys(), key=str)
 
     logger.info('Partitioning:', meta_state)
-    meta_state = _mark_unroll(meta_state)
-    label, env = _generate(meta_state, state)
+    label, env = _generate(_mark_unroll(meta_state), state)
     logger.info('Partitioned:', meta_state)
 
     logger.info('Optimizing:', meta_state)
@@ -348,6 +358,13 @@ def partition_optimize(
         for r in results:
             print(r.format())
 
+    if not final_analysis:
+        return results
+
+    logger.info('Final analysis: ', len(results))
     expr_list = [_splice(r.expression, r.expression) for r in results]
-    analysis = Analysis(expr_list, state, out_vars)
-    return analysis.frontier()
+    analysis = Analysis(expr_list, state, out_vars, round_values=True)
+    expr_list = analysis.frontier()
+    logger.info('Final frontier: ', len(expr_list))
+
+    return expr_list

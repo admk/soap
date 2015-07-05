@@ -12,7 +12,7 @@ context = dict(
     multiprocessing=True,
     # platform
     device='Virtex7',
-    frequency=100,
+    frequency=333,
     port_count=2,
     # analysis related
     scalar_array=True,
@@ -21,10 +21,11 @@ context = dict(
     precision='single',
     norm='mse_error',   # function for computing multiple variable avg error
     ii_precision=5,     # how precise are IIs computed
+    round_values=False,
     scheduler='alap',   # the scheduler used for sequential nodes
     # transform related
     rand_seed=42,
-    sample_unique=True,
+    sample_unique=False,
     reduce_limit=2000,
     size_limit=500,
     loop_size_limit=50,

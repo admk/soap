@@ -11,11 +11,11 @@ from soap.expression import (
 from soap.program.graph import DependenceGraph
 from soap.semantics import is_numeral
 from soap.semantics.label import Label
-from soap.semantics.schedule.common import (
-    DependenceType, PIPELINED_OPERATORS, MAX_SHARE_COUNT,
-    SHARED_DATATYPE_OPERATORS
+from soap.semantics.schedule.common import DependenceType
+from soap.semantics.schedule.table import (
+    OperatorResourceTuple, RESOURCE_TABLE, PIPELINED_OPERATORS, LATENCY_TABLE,
+    MAX_SHARE_COUNT, SHARED_DATATYPE_OPERATORS,
 )
-from soap.semantics.schedule.table import OperatorResourceTuple, RESOURCE_TABLE
 
 
 _irrelevant_types = (
@@ -30,7 +30,7 @@ _dtype_key_map = {
 
 @cached
 def loop_graph(
-        expr, round_values=False, sequentialize_loops=True, scheduler=None):
+        expr, round_values=None, sequentialize_loops=True, scheduler=None):
     from soap.semantics.schedule.graph.loop import LoopScheduleGraph
     return LoopScheduleGraph(
         expr, round_values=round_values,
@@ -38,12 +38,14 @@ def loop_graph(
 
 
 class ScheduleGraph(DependenceGraph):
+    latency_table = LATENCY_TABLE
+
     def __init__(
-            self, env, out_vars, round_values=False,
+            self, env, out_vars, round_values=None,
             sequentialize_loops=True, scheduler=None):
         super().__init__(env, out_vars)
         self.sequentialize_loops = sequentialize_loops
-        self.round_values = round_values
+        self.round_values = round_values or context.round_values
         self.scheduler = scheduler or context.scheduler
 
     def node_expr(self, node):

@@ -39,6 +39,21 @@ def linear_expressions_never_equal(*args):
         return False
 
 
+def _subscripts_compare(func, *subscripts):
+    for indices in zip(*(a.args for a in subscripts)):
+        if not func(*indices):
+            return False
+    return True
+
+
+def subscripts_always_equal(*subscripts):
+    return _subscripts_compare(linear_expressions_always_equal, *subscripts)
+
+
+def subscripts_never_equal(*subscripts):
+    return _subscripts_compare(linear_expressions_never_equal, *subscripts)
+
+
 class LinearAlgebraSimplifier(GenericExecuter):
     def _execute_atom(self, expr):
         return expr
@@ -55,10 +70,10 @@ class LinearAlgebraSimplifier(GenericExecuter):
         if not isinstance(var, UpdateExpr):
             return expr
         var, update_subscript, update_expr = self._execute_args(var)
-        if linear_expressions_always_equal(update_subscript, access_subscript):
+        if subscripts_always_equal(update_subscript, access_subscript):
             # access(update(a, i, e), i) ==> e
             return update_expr
-        if linear_expressions_never_equal(update_subscript, access_subscript):
+        if subscripts_never_equal(update_subscript, access_subscript):
             # access(update(a, i, _), j) ==> access(a, j)  [i != j]
             return self(AccessExpr(var, access_subscript))
         return expr
@@ -69,7 +84,7 @@ class LinearAlgebraSimplifier(GenericExecuter):
         if not isinstance(var, UpdateExpr):
             return expr
         var, last_subscript, _ = self._execute_args(var)
-        if linear_expressions_always_equal(last_subscript, subscript):
+        if subscripts_always_equal(last_subscript, subscript):
             # update(update(a, i, _), i, e) ==> update(a, i, e)
             return self(UpdateExpr(var, subscript, item_expr))
         return expr

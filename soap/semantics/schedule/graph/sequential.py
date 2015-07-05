@@ -7,16 +7,12 @@ from soap.semantics.label import Label
 from soap.semantics.schedule.common import (
     resource_map_add, resource_map_min, label_to_expr
 )
-from soap.semantics.schedule.table import LATENCY_TABLE
 from soap.semantics.schedule.graph.base import ScheduleGraph
 
 
 class SequentialScheduleGraph(ScheduleGraph):
-
-    latency_table = LATENCY_TABLE
-
     def __init__(
-            self, env, out_vars, round_values=False,
+            self, env, out_vars, round_values=None,
             sequentialize_loops=True, scheduler=None, recurrences=None):
         super().__init__(
             env, out_vars, round_values=round_values,

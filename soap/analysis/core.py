@@ -36,6 +36,11 @@ class AnalysisResult(_analysis_result_tuple):
 
     __str__ = format
 
+    def __repr__(self):
+        return '{}({!r}, {!r}, {!r}, {!r})'.format(
+            self.__class__.__name__, self.lut, self.dsp, self.error,
+            self.latency, self.expression)
+
 
 def _pareto_frontier(points, ignore_last=True):
     # Last row can be an expression
@@ -92,7 +97,7 @@ class Analysis(Flyweight):
 
     def __init__(
             self, expr_set, state, out_vars=None, recurrences=None,
-            size_limit=None):
+            size_limit=None, round_values=None):
         """Analysis class initialisation.
 
         :param expr_set: A set of expressions or a single expression.
@@ -107,6 +112,7 @@ class Analysis(Flyweight):
         self.out_vars = out_vars
         self.recurrences = recurrences
         self.size_limit = size_limit or context.size_limit
+        self.round_values = round_values
         self._results = None
 
     def analyze(self):
@@ -153,7 +159,8 @@ class Analysis(Flyweight):
     def analyze_expression(self, expr):
         error = abs_error(expr, self.state)
         graph = schedule_graph(
-            expr, self.out_vars, recurrences=self.recurrences)
+            expr, self.out_vars, recurrences=self.recurrences,
+            round_values=self.round_values)
         latency = graph.latency()
         resource = graph.resource_stats()
         return AnalysisResult(
