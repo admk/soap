@@ -22,15 +22,15 @@ class _NoDaemonPool(Pool):
 class _Pool(object):
     def __init__(self, cpu=None):
         super().__init__()
-        self._cpu = cpu
+        self._cpu = cpu or multiprocessing.cpu_count()
         self._pool = None
-        self.map = self._func_wrapper('imap')
-        self.map_unordered = self._func_wrapper('imap_unordered')
+        self.map = self._map_func_wrapper('imap')
+        self.map_unordered = self._map_func_wrapper('imap_unordered')
 
     @property
     def pool(self):
         if not self._pool:
-            cpu = self._cpu or multiprocessing.cpu_count()
+            cpu = self._cpu
             self._pool = _NoDaemonPool(cpu, initializer=self._initializer)
         return self._pool
 
@@ -38,10 +38,13 @@ class _Pool(object):
     def _initializer():
         signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-    def _func_wrapper(self, func):
-        def wrapped(*args, **kwargs):
+    def _map_func_wrapper(self, func_name):
+        def wrapped(map_func, items, chunksize=None):
+            if chunksize is None:
+                chunksize = int(len(items) / self._cpu) + 1
             try:
-                return list(getattr(self.pool, func)(*args, **kwargs))
+                func = getattr(self.pool, func_name)
+                return list(func(map_func, items, chunksize))
             except KeyboardInterrupt:
                 logger.warning(
                     'KeyboardInterrupt caught, terminating workers.')

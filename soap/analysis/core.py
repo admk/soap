@@ -7,6 +7,7 @@ import random
 
 from soap import logger
 from soap.common import Flyweight
+from soap.common.parallel import pool
 from soap.context import context
 from soap.semantics import error_eval, ErrorSemantics, inf, schedule_graph
 
@@ -93,11 +94,22 @@ def thick_frontier(points):
     return frontier
 
 
+def _analyze_expression(args):
+    expr, state, out_vars, recurrences, round_values = args
+    error = abs_error(expr, state)
+    graph = schedule_graph(
+        expr, out_vars, recurrences=recurrences, round_values=round_values)
+    latency = graph.latency()
+    resource = graph.resource_stats()
+    return AnalysisResult(
+        resource.lut, resource.dsp, error, latency, expr)
+
+
 class Analysis(Flyweight):
 
     def __init__(
             self, expr_set, state, out_vars=None, recurrences=None,
-            size_limit=None, round_values=None):
+            size_limit=None, round_values=None, multiprocessing=None):
         """Analysis class initialisation.
 
         :param expr_set: A set of expressions or a single expression.
@@ -113,6 +125,10 @@ class Analysis(Flyweight):
         self.recurrences = recurrences
         self.size_limit = size_limit or context.size_limit
         self.round_values = round_values
+        if multiprocessing is not None:
+            self.multiprocessing = multiprocessing
+        else:
+            self.multiprocessing = context.multiprocessing
         self._results = None
 
     def analyze(self):
@@ -127,6 +143,10 @@ class Analysis(Flyweight):
             return results
 
         expr_set = self.expr_set
+        state = self.state
+        out_vars = self.out_vars
+        recurrences = self.recurrences
+        round_values = self.round_values
 
         size = len(expr_set)
         limit = self.size_limit
@@ -136,17 +156,22 @@ class Analysis(Flyweight):
                 'reduces population size by sampling.'.format(size, limit))
             random.seed(context.rand_seed)
             expr_set = random.sample(expr_set, limit)
+        size = len(expr_set)
 
-        results = set()
-        step = 0
-        total = len(expr_set)
+        if self.multiprocessing:
+            map = lambda func, args_list: [func(args) for args in args_list]
+        else:
+            map = pool.map
+        args_list = [
+            (expr, state, out_vars, recurrences, round_values)
+            for expr in expr_set]
+
         try:
-            for expr in expr_set:
-                step += 1
+            results = set()
+            for i, result in enumerate(map(_analyze_expression, args_list)):
                 logger.persistent(
-                    'Analysing', '{}/{}'.format(step, total),
+                    'Analysing', '{}/{}'.format(i, size),
                     l=logger.levels.debug)
-                result = self.analyze_expression(expr)
                 results.add(result)
         except KeyboardInterrupt:
             logger.warning(
@@ -155,16 +180,6 @@ class Analysis(Flyweight):
 
         self._results = results
         return results
-
-    def analyze_expression(self, expr):
-        error = abs_error(expr, self.state)
-        graph = schedule_graph(
-            expr, self.out_vars, recurrences=self.recurrences,
-            round_values=self.round_values)
-        latency = graph.latency()
-        resource = graph.resource_stats()
-        return AnalysisResult(
-            resource.lut, resource.dsp, error, latency, expr)
 
     def frontier(self):
         """Computes the Pareto frontier from analyzed results."""
