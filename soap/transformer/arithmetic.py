@@ -377,21 +377,3 @@ class ArithTreeTransformer(TreeTransformer):
             same_expression_reduction_ifelse,
         ],
     }
-
-
-class MartelTreeTransformer(ArithTreeTransformer):
-    """
-    Some compatibility hacks to support martel's equivalence finding, so we can
-    compare.
-    """
-
-    reduction_methods = []
-
-    def _harvest(self, trees):
-        return trees
-
-    def _seed(self, trees):
-        return trees
-
-    def _step(self, expressions, closure=False, depth=None):
-        return super()._step(expressions, closure, self.depth)

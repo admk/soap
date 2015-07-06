@@ -1,0 +1,6 @@
+lut,dsp,error,latency,expression
+268,2,0.0002284646179759875,1201,"{sum: fix(λe̲.(i < 100 ? e̲ % {i: i + 1, sum: sum + access(x, [i]), x: x} : sum)) % {i: 0, sum: 0, x: x}}"
+300,2,0.00012505055929068476,613,"{sum: fix(λe̲.(i < 100 ? e̲ % {i: i + 2, sum: (access(x, [i]) + access(x, [i + 1])) + sum, x: x} : sum)) % {i: 0, sum: 0, x: x}}"
+364,2,7.629395258845761e-05,324,"{sum: fix(λe̲.(i < 100 ? e̲ % {i: i + 4, sum: ((access(x, [2 + i]) + access(x, [3 + i])) + (access(x, [i]) + access(x, [i + 1]))) + sum, x: x} : sum)) % {i: 0, sum: 0, x: x}}"
+268,2,0.0002284646179759875,1201,"{sum: fix(λe̲.(i < 100 ? e̲ % {i: i + 1, sum: sum + access(x, [i]), x: x} : sum)) % {i: 0, sum: 0, x: x}}"
+396,2,6.389618647517636e-05,275,"{sum: fix(λe̲.(i < 100 ? e̲ % {i: i + 5, sum: (((access(x, [i]) + access(x, [i + 1])) + access(x, [4 + i])) + (access(x, [2 + i]) + access(x, [3 + i]))) + sum, x: x} : sum)) % {i: 0, sum: 0, x: x}}"

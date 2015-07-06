@@ -8,8 +8,8 @@ context = dict(
     autocall=True,
     xmode='context',
     # general
-    repr=str,
-    multiprocessing=True,
+    repr=repr,
+    multiprocessing=False,
     # platform
     device='Virtex7',
     frequency=333,
@@ -25,16 +25,16 @@ context = dict(
     scheduler='alap',   # the scheduler used for sequential nodes
     # transform related
     rand_seed=42,
-    sample_unique=False,
+    sample_unique=True,
     reduce_limit=2000,
     size_limit=500,
     loop_size_limit=0,
-    algorithm='greedy',
-    max_steps=5,        # max no of steps for equivalent expr discovery
+    algorithm='partition',
+    max_steps=10,       # max no of steps for equivalent expr discovery
     plugin_every=1,     # no of steps before plugins are executed
     thickness=0,        # no of iterations of pareto suboptimal inclusion
     bool_steps=5,       # transition steps for finding equivalent boolean exprs
-    window_depth=2,     # depth limit window for equivalent expr discovery
+    window_depth=3,     # depth limit window for equivalent expr discovery
     unroll_depth=2,     # partial unroll depth limit
 )
 context = SoapContext(context)

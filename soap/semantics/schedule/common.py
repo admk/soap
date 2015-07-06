@@ -1,3 +1,4 @@
+import collections
 import math
 
 import islpy
@@ -77,7 +78,7 @@ def schedule_graph(expr, out_vars=None, **kwargs):
     if isinstance(expr, FixExpr):
         return LoopScheduleGraph(expr, **kwargs)
     label, env = label(expr, None, out_vars)
-    if is_expression(expr):
+    if not isinstance(expr, collections.Mapping):
         # expressions do not have out_vars, but have an output, in this case
         # ``label`` is its output variable
         out_vars = [label]

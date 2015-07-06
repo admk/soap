@@ -1,0 +1,8 @@
+# livermore inner_product
+def inner_product(real[100] x=[0.0, 1.0], real[100] z=[0.0, 1.0]) {
+    real q = 0.0;
+    for (int k = 0; k < 100; k = k + 1) {
+        q = q + z[k] * x[k];
+    }
+    return q;
+}

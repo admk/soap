@@ -209,13 +209,13 @@ class TestPartition(unittest.TestCase):
             self.meta_state[self.output], compare_meta_state[self.output])
 
     def test_optimize(self):
-        analysis = Analysis(
-            {self.meta_state}, self.state, [self.output], round_values=True)
-        print(analysis.analyze().pop().format())
         with context.local(unroll_depth=1):
             env_set = partition_optimize(
                 self.meta_state, self.state, [self.output])
         for e in env_set:
             print(e.format())
+        analysis = Analysis(
+            {self.meta_state}, self.state, [self.output], round_values=True)
+        print('Original: ', analysis.analyze().pop().format())
         from soap.shell import shell; shell()
         self.assertGreater(len(env_set), 1)

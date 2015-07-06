@@ -44,7 +44,7 @@ class _Pool(object):
                 chunksize = int(len(items) / self._cpu) + 1
             try:
                 func = getattr(self.pool, func_name)
-                return list(func(map_func, items, chunksize))
+                return func(map_func, items, chunksize)
             except KeyboardInterrupt:
                 logger.warning(
                     'KeyboardInterrupt caught, terminating workers.')

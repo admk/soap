@@ -19,7 +19,6 @@ from soap.semantics import BoxState, ErrorSemantics, MetaState
 from soap.semantics.functions import (
     arith_eval, unroll_fix_expr, fixpoint_eval,
 )
-from soap.transformer.arithmetic import MartelTreeTransformer
 from soap.transformer.utils import (
     closure, greedy_frontier_closure, thick_frontier_closure
 )
@@ -96,8 +95,8 @@ class BaseDiscoverer(base_dispatcher('discover')):
     def _discover_atom(self, expr, state, out_vars):
         return {expr}
 
-    discover_numeral = _discover_atom
-    discover_Variable = _discover_atom
+    discover_numeral = discover_Variable = discover_PartitionLabel = \
+        _discover_atom
 
     def _discover_expression(self, expr, state, out_vars):
         op = expr.op
@@ -243,17 +242,6 @@ class BaseDiscoverer(base_dispatcher('discover')):
         return hash(self.__class__)
 
 
-class MartelDiscoverer(BaseDiscoverer):
-    """A subclass of :class:`BaseDiscoverer` to generate Martel's results."""
-    def filter(self, expr_set, state, out_vars, **kwargs):
-        return expr_set
-
-    def closure(self, expr_set, state, out_vars):
-        transformer = MartelTreeTransformer(
-            expr_set, depth=context.window_depth)
-        return transformer.closure()
-
-
 class _FrontierFilter(BaseDiscoverer):
     def filter(self, expr_set, state, out_vars, **kwargs):
         frontier = [
@@ -267,8 +255,8 @@ class GreedyDiscoverer(_FrontierFilter):
     A subclass of :class:`BaseDiscoverer` to generate our greedy_trace
     equivalent expressions.
     """
-    def closure(self, expr_set, state, out_vars):
-        return greedy_frontier_closure(expr_set, state, out_vars)
+    def closure(self, expr_set, state, out_vars, **kwargs):
+        return greedy_frontier_closure(expr_set, state, out_vars, **kwargs)
 
 
 class ThickDiscoverer(BaseDiscoverer):
@@ -278,15 +266,15 @@ class ThickDiscoverer(BaseDiscoverer):
                 expr_set, state, out_vars, **kwargs)]
         return frontier
 
-    def closure(self, expr_set, state, out_vars):
-        return thick_frontier_closure(expr_set, state, out_vars)
+    def closure(self, expr_set, state, out_vars, **kwargs):
+        return thick_frontier_closure(expr_set, state, out_vars, **kwargs)
 
 
 class FrontierDiscoverer(_FrontierFilter):
     """A subclass of :class:`BaseDiscoverer` to generate our frontier_trace
     equivalent expressions."""
-    def closure(self, expr_set, state, out_vars):
-        expr_set = closure(expr_set, depth=context.window_depth)
+    def closure(self, expr_set, state, out_vars, **kwargs):
+        expr_set = closure(expr_set, depth=context.window_depth, **kwargs)
         return self.filter(expr_set, state, out_vars)
 
 
@@ -313,7 +301,6 @@ def _discover(discoverer, expr, state, out_vars):
     return discoverer(expr, state, out_vars)
 
 
-_martel_discoverer = MartelDiscoverer()
 _greedy_discoverer = GreedyDiscoverer()
 _frontier_discoverer = FrontierDiscoverer()
 _thick_discoverer = ThickDiscoverer()
@@ -362,18 +349,3 @@ def frontier(expr, state=None, out_vars=None):
     :type out_vars: :class:`collections.Sequence`
     """
     return _discover(_frontier_discoverer, expr, state, out_vars)
-
-
-def martel(expr, state=None, out_vars=None):
-    """Finds Martel's equivalent expressions.
-
-    :param expr: An expression or a variable-expression mapping
-    :type expr:
-        :class:`soap.expression.Expression` or
-        :class:`soap.semantics.state.MetaState`
-    :param state: The ranges of input variables.
-    :type state: :class:`soap.semantics.state.BoxState`
-    :param out_vars: The output variables of the metastate
-    :type out_vars: :class:`collections.Sequence`
-    """
-    return _discover(_martel_discoverer, expr, state, out_vars)

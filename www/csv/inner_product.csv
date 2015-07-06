@@ -1,0 +1,6 @@
+lut,dsp,error,latency,expression
+391,5,0.00024038554693106562,1208,"{q: fix(λe̲.(k < 100 ? e̲ % {k: k + 1, q: q + (access(z, [k]) * access(x, [k])), x: x, z: z} : q)) % {k: 0, q: 0.0, x: x, z: z}}"
+391,5,0.00024038554693106562,1208,"{q: fix(λe̲.(k < 100 ? e̲ % {k: k + 1, q: q + (access(z, [k]) * access(x, [k])), x: x, z: z} : q)) % {k: 0, q: 0.0, x: x, z: z}}"
+423,5,0.00013697148824576288,620,"{q: fix(λe̲.(k < 100 ? e̲ % {k: k + 2, q: ((access(z, [k]) * access(x, [k])) + (access(z, [k + 1]) * access(x, [k + 1]))) + q, x: x, z: z} : q)) % {k: 0, q: 0.0, x: x, z: z}}"
+487,5,8.821488154353574e-05,331,"{q: fix(λe̲.(k < 100 ? e̲ % {k: k + 4, q: (((access(z, [2 + k]) * access(x, [2 + k])) + (access(z, [3 + k]) * access(x, [3 + k]))) + ((access(z, [k]) * access(x, [k])) + (access(z, [k + 1]) * access(x, [k + 1])))) + q, x: x, z: z} : q)) % {k: 0, q: 0.0, x: x, z: z}}"
+519,5,7.581711543025449e-05,282,"{q: fix(λe̲.(k < 100 ? e̲ % {k: k + 5, q: ((((access(z, [3 + k]) * access(x, [3 + k])) + (access(z, [2 + k]) * access(x, [2 + k]))) + (access(z, [4 + k]) * access(x, [4 + k]))) + ((access(z, [k]) * access(x, [k])) + (access(z, [k + 1]) * access(x, [k + 1])))) + q, x: x, z: z} : q)) % {k: 0, q: 0.0, x: x, z: z}}"

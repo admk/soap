@@ -149,7 +149,8 @@ class LoopScheduleGraph(SequentialScheduleGraph):
         if dep_type != DependenceType.flow:
             return
         from_expr = AccessExpr(from_expr.true_var(), from_expr.subscript)
-        to_expr = UpdateExpr(to_expr.true_var(), to_expr.subscript, None)
+        to_expr = UpdateExpr(
+            to_expr.true_var(), to_expr.subscript, Variable('__dont_care'))
         recurrences.add((from_expr, to_expr, distance))
 
     def init_graph(self):

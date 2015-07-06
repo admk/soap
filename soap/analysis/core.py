@@ -159,9 +159,9 @@ class Analysis(Flyweight):
         size = len(expr_set)
 
         if self.multiprocessing:
-            map = lambda func, args_list: [func(args) for args in args_list]
-        else:
             map = pool.map
+        else:
+            map = lambda func, args_list: (func(args) for args in args_list)
         args_list = [
             (expr, state, out_vars, recurrences, round_values)
             for expr in expr_set]
@@ -169,9 +169,7 @@ class Analysis(Flyweight):
         try:
             results = set()
             for i, result in enumerate(map(_analyze_expression, args_list)):
-                logger.persistent(
-                    'Analysing', '{}/{}'.format(i, size),
-                    l=logger.levels.debug)
+                logger.persistent('Analysing', '{}/{}'.format(i, size))
                 results.add(result)
         except KeyboardInterrupt:
             logger.warning(

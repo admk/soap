@@ -118,6 +118,11 @@ class PartitionGenerator(GenericExecuter):
         expr_list = []
         for each_expr in unroll_fix_expr(expr, context.unroll_depth):
             each_label, each_env = self(each_expr, state)
+            if not isinstance(each_label, Label):
+                bound = error_eval(each_label, state, to_norm=False)
+                real_label = self.Label(each_label, bound)
+                each_env[real_label] = each_label
+                each_label = real_label
             expr_list.append((each_label, each_env))
         label = expr_list[0][0]
         env_list = []
@@ -181,8 +186,10 @@ class PartitionOptimizer(GenericExecuter):
         return results
 
     def optimize_algorithm(self, expr, state, recurrences):
-        return thick_frontier_closure(
-            expr, state, recurrences=recurrences, depth=-1)
+        # return thick_frontier_closure(
+            # expr, state, recurrences=recurrences, depth=-1)
+        from soap.transformer.discover import GreedyDiscoverer, ThickDiscoverer
+        return GreedyDiscoverer(recurrences=recurrences)(expr, state, None)
 
     def analyze_algorithm(self, expr_set, state, recurrences):
         results = Analysis(
@@ -293,7 +300,7 @@ class PartitionOptimizer(GenericExecuter):
     def __call__(self, expr, state, recurrences):
         results = self._cache.get((expr, state, recurrences))
         if results is not None:
-            logger.info('Cached optimization:', expr)
+            logger.info('Cached optimization:', expr.format())
             return results
         results = super().__call__(expr, state, recurrences)
         self._cache[expr, state, recurrences] = results
@@ -346,14 +353,16 @@ def partition_optimize(
     else:
         out_vars = sorted(meta_state.keys(), key=str)
 
-    logger.info('Partitioning:', meta_state)
-    label, env = _generate(_mark_unroll(meta_state), state)
-    logger.info('Partitioned:', meta_state)
+    meta_state_str = meta_state.format()
 
-    logger.info('Optimizing:', meta_state)
+    logger.info('Partitioning:', meta_state_str)
+    label, env = _generate(_mark_unroll(meta_state), state)
+    logger.info('Partitioned:', meta_state_str)
+
+    logger.info('Optimizing:', meta_state_str)
     optimizer = PartitionOptimizer(optimize_algorithm=optimize_algorithm)
     results = optimizer(env, state, recurrences)
-    logger.info('Optimized:', meta_state)
+    logger.info('Optimized:', meta_state_str)
 
     if context.logger.level == logger.levels.debug:
         for r in results:

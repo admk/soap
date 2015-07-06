@@ -13,7 +13,8 @@ from soap.semantics import (
     IntegerInterval
 )
 from soap.transformer import (
-    closure, expand, frontier, greedy, parsings, reduce, thick
+    closure, expand, frontier, greedy, parsings, reduce, thick,
+    partition_optimize
 )
 
 
@@ -77,6 +78,7 @@ _algorithm_map = {
     'greedy': greedy,
     'frontier': frontier,
     'thick': thick,
+    'partition': partition_optimize,
 }
 
 
@@ -91,10 +93,10 @@ def optimize(program, file_name=None):
     original = analysis_frontier([program], state, out_vars).pop()
 
     start_time = time.time()
-    expr_set = func(program, state, out_vars)
+    results = func(program, state, out_vars)
     elapsed_time = time.time() - start_time
 
-    results = analysis_frontier(expr_set, state, out_vars)
+    # results = analysis_frontier(expr_set, state, out_vars)
     emir = {
         'original': original,
         'inputs': state,
@@ -119,7 +121,7 @@ def plot(emir, file_name, reanalyze=False):
 
 
 def emir2csv(emir):
-    csvwriter = csv.writer(sys.stdout)
+    csvwriter = csv.writer(sys.stdout, lineterminator='\n')
     orig = emir['original']
     csvwriter.writerow(orig._fields)
     csvwriter.writerow(orig)
