@@ -215,6 +215,7 @@ class PartitionOptimizer(GenericExecuter):
                 fix_expr = PostOptimizeExpr(terminal_label, fix_expr)
                 result = AnalysisResult(lut, dsp, error, latency, fix_expr)
                 results.append(result)
+        logger.unpersistent('Unroll')
         return self.filter_algorithm(results)
 
     def execute_FixExpr(self, expr, state, _):

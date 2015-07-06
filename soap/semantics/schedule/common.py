@@ -4,7 +4,8 @@ import islpy
 
 from soap.common.cache import cached
 from soap.expression import (
-    expression_factory, is_expression, is_variable, Variable, FixExpr
+    expression_factory, is_expression, is_variable, Variable, FixExpr,
+    expression_variables
 )
 from soap.semantics.label import Label
 
@@ -17,7 +18,7 @@ class DependenceType(object):
 
 
 def is_isl_expr(expr):
-    variables = expr.vars()
+    variables = expression_variables(expr)
     try:
         problem = '{{ [{vars}]: {expr} > 0 }}'.format(
             vars=', '.join(v.name for v in variables), expr=expr)

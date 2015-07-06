@@ -1,6 +1,6 @@
 from soap.expression.arithmetic import ArithmeticMixin
-from soap.expression.base import (
-    BinaryExpression, Expression, TernaryExpression
+from soap.expression import (
+    BinaryExpression, Expression, TernaryExpression, FixExpr
 )
 from soap.expression.common import is_variable
 from soap.expression.boolean import BooleanMixin
@@ -33,7 +33,10 @@ class _TrueVarMixin(object):
     def true_var(self):
         var = self.var
         while not is_variable(var):
-            var = var.var
+            if isinstance(var, FixExpr):
+                var = var.loop_var
+            else:
+                var = var.var
         return var
 
 

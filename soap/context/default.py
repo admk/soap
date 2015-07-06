@@ -21,14 +21,14 @@ context = dict(
     precision='single',
     norm='mse_error',   # function for computing multiple variable avg error
     ii_precision=5,     # how precise are IIs computed
-    round_values=False,
+    round_values=True,
     scheduler='alap',   # the scheduler used for sequential nodes
     # transform related
     rand_seed=42,
     sample_unique=False,
     reduce_limit=2000,
     size_limit=500,
-    loop_size_limit=50,
+    loop_size_limit=0,
     algorithm='greedy',
     max_steps=5,        # max no of steps for equivalent expr discovery
     plugin_every=1,     # no of steps before plugins are executed
