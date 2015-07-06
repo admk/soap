@@ -14,7 +14,6 @@ from soap.semantics.functions import (
 )
 from soap.semantics.schedule.graph.base import loop_graph
 from soap.transformer.common import GenericExecuter
-from soap.transformer.utils import thick_frontier_closure
 
 
 def is_innermost_loop(expr):
@@ -186,10 +185,11 @@ class PartitionOptimizer(GenericExecuter):
         return results
 
     def optimize_algorithm(self, expr, state, recurrences):
-        # return thick_frontier_closure(
-            # expr, state, recurrences=recurrences, depth=-1)
-        from soap.transformer.discover import GreedyDiscoverer, ThickDiscoverer
+        from soap.transformer.discover import GreedyDiscoverer
         return GreedyDiscoverer(recurrences=recurrences)(expr, state, None)
+        from soap.transformer.utils import thick_frontier_closure
+        return thick_frontier_closure(
+            expr, state, recurrences=recurrences, depth=-1)
 
     def analyze_algorithm(self, expr_set, state, recurrences):
         results = Analysis(
