@@ -356,7 +356,7 @@ def partition_optimize(
 
     if context.logger.level == logger.levels.debug:
         for r in results:
-            print(r.format())
+            logger.debug(r.format())
 
     if not final_analysis:
         return results
