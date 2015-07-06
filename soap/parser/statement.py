@@ -1,6 +1,5 @@
 from soap.program import (
-    SkipFlow, AssignFlow, IfFlow, WhileFlow, ForFlow,
-    CompositionalFlow, ReturnFlow
+    SkipFlow, AssignFlow, IfFlow, WhileFlow, ForFlow, CompositionalFlow
 )
 from soap.parser.common import (
     _lift_child, _lift_first, _lift_middle, _lift_dontcare, CommonVisitor
@@ -62,10 +61,6 @@ class StatementVisitor(object):
         return AssignFlow(var, expr)
 
     visit_boolean_block = visit_code_block = _lift_middle
-
-    def visit_return_statement(self, node, children):
-        output_lit, output_list, semicolon = children
-        return ReturnFlow(output_list)
 
     visit_skip = visit_assign = _lift_dontcare
     visit_if = visit_else = visit_while = visit_for = _lift_dontcare

@@ -42,10 +42,6 @@ class CommonVisitor(nodes.NodeVisitor):
     visit_maybe_integer_list = _visit_maybe_list
     visit_comma_integer_list = _lift_second
 
-    visit_variable_list = _visit_list
-    visit_maybe_variable_list = _visit_maybe_list
-    visit_comma_variable_list = _lift_second
-
     visit_expression_list = _visit_list
     visit_maybe_expression_list = _visit_maybe_list
     visit_comma_expression_list = _lift_second
@@ -89,4 +85,4 @@ class CommonVisitor(nodes.NodeVisitor):
     visit_integer = visit_real = _lift_middle
     visit_variable_regex = _lift_text
 
-    visit__ = _lift_dontcare
+    visit__no_new_line = visit__ = _lift_dontcare

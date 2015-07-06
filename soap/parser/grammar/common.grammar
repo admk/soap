@@ -26,4 +26,6 @@ comma       = _ ',' _
 #  regexes
 # =========
 
-_ = ~r"\s*(?:#[^\r\n]*)?\s*"
+_new_line = _no_new_line ~r"[\r\n]+"m _
+_no_new_line = ~r"[^\S\r\n]*"
+_ = ~r"\s*(?://[^\r\n]*)?\s*"

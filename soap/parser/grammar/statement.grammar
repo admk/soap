@@ -6,7 +6,8 @@ statement = compound_statement / _  # empty
 compound_statement = single_statement statement
 single_statement =
     skip_statement / assign_statement / if_statement / while_statement /
-    for_statement / declaration_statement / return_statement
+    for_statement / declaration_statement /
+    pragma_input_statement / pragma_output_statement
 
 skip_statement = skip semicolon
 
@@ -25,22 +26,34 @@ for_statement =
     for left_paren for_assign_part semicolon boolean_expression semicolon
     for_assign_part right_paren code_block
 
-return_statement = return variable_list semicolon
-
 for_assign_part = assign_part / skip
 assign_part = variable_or_declaration assign arithmetic_expression
 
 boolean_block = left_paren boolean_expression right_paren
 code_block = left_curl statement right_curl
 
+pragma_input_statement = pragma input input_list _
 
-# ==============
-#  common lists
-# ==============
+input_list = input_expr maybe_input_list
+maybe_input_list = comma_input_list / _
+comma_input_list = comma input_list
+input_expr = input_assign_expr / variable_declaration
+input_assign_expr = variable_declaration assign number
 
-variable_list = variable maybe_variable_list
-maybe_variable_list = comma_variable_list / _
-comma_variable_list = comma variable_list
+pragma_output_statement = pragma output output_list _
+
+output_list = variable maybe_output_list
+maybe_output_list = comma_output_list / _
+comma_output_list = comma output_list
+
+
+# ==========
+#  literals
+# ==========
+
+input = _no_new_line 'input' _no_new_line
+output = _no_new_line 'output' _no_new_line
+pragma = _ '#pragma soap' _no_new_line
 
 
 # ==========

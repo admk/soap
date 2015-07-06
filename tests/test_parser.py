@@ -1,11 +1,11 @@
 import unittest
 
-from soap.datatype import auto_type, int_type, real_type, function_type
+from soap.datatype import auto_type, int_type, real_type
 from soap.expression import expression_factory, operators, Variable, Subscript
 from soap.semantics import IntegerInterval, ErrorSemantics
 from soap.program.flow import (
-    AssignFlow, SkipFlow, IfFlow, WhileFlow, ForFlow,
-    FunctionFlow, ReturnFlow, CompositionalFlow
+    AssignFlow, SkipFlow, IfFlow, WhileFlow, ForFlow, CompositionalFlow,
+    PragmaInputFlow, PragmaOutputFlow, ProgramFlow
 )
 from soap.parser import stmt_parse, expr_parse, parse
 
@@ -123,12 +123,6 @@ class TestStatementParser(Base):
         flow = CompositionalFlow([SkipFlow(), AssignFlow(self.x, self.y)])
         self.assertEqual(self.stmt_parse('skip; x = y;'), flow)
 
-    def test_return_statement(self):
-        flow = ReturnFlow([self.x])
-        self.assertEqual(self.stmt_parse('return x;'), flow)
-        flow = ReturnFlow([self.x, self.y])
-        self.assertEqual(self.stmt_parse('return x, y;'), flow)
-
 
 class TestProgramParser(Base):
     def setUp(self):
@@ -142,18 +136,20 @@ class TestProgramParser(Base):
             operators.ADD_OP, expression_factory(
                 operators.ADD_OP, self.x, self.y), self.z)
         body = CompositionalFlow([
-            AssignFlow(self.z, expr), ReturnFlow([self.z]),
+            PragmaInputFlow([(self.x, self.i1)]),
+            PragmaInputFlow([
+                (self.y, ErrorSemantics([3.0, 4.0])),
+                (self.z, ErrorSemantics([5, 6], [0, 0])),
+            ]),
+            PragmaOutputFlow([self.z]),
+            AssignFlow(self.z, expr),
         ])
-        flow = FunctionFlow(Variable('main', function_type), [
-            (self.x, self.i1),
-            (self.y, ErrorSemantics([3.0, 4.0])),
-            (self.z, ErrorSemantics([5, 6], [0, 0])),
-        ], body)
+        flow = ProgramFlow(body)
         prog = """
-            def main(int x=1, real y=[3.0, 4.0], real z=[5.0, 6.0][0, 0]) {
-                z = x + y + z;
-                return z;
-            }
+            #pragma soap input int x=1
+            #pragma soap input real y=[3.0, 4.0], real z=[5.0, 6.0][0, 0]
+            #pragma soap output z
+            z = x + y + z;
             """
         parsed_flow = parse(prog)
         self.assertEqual(flow, parsed_flow)
