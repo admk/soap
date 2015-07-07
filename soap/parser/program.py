@@ -10,10 +10,7 @@ from soap.parser.grammar import compiled_grammars
 from soap.parser.statement import StatementVisitor
 
 
-class ProgramVisitor(object):
-    def visit_program(self, node, children):
-        return ProgramFlow(_lift_child(self, node, children))
-
+class PragmaVisitor(object):
     def visit_pragma_input_statement(self, node, children):
         pragma_lit, input_lit, input_list, _ = children
         return PragmaInputFlow(input_list)
@@ -52,11 +49,26 @@ class ProgramVisitor(object):
 
 class _ProgramVisitor(
         CommonVisitor, DeclarationVisitor, ExpressionVisitor,
-        StatementVisitor, ProgramVisitor):
-    grammar = compiled_grammars['program']
+        StatementVisitor, PragmaVisitor):
+    grammar = compiled_grammars['statement']
+
+
+def _preprocess(text):
+    text = text.split('\n')
+    new_text = []
+    line_cont = False
+    for line in text:
+        if line_cont:
+            line = new_text.pop() + line
+        if line.rstrip().endswith('\\'):
+            line_cont = True
+            line = line.rstrip()[:-1] + ' '
+        new_text.append(line)
+    return '\n'.join(new_text)
 
 
 def parse(program, decl=None):
     decl = decl or {}
     visitor = _ProgramVisitor(decl)
-    return visitor.parse(program)
+    program = _preprocess(program)
+    return ProgramFlow(visitor.parse(program))

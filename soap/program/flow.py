@@ -90,11 +90,11 @@ class AssignFlow(Flow):
 
 class IfFlow(Flow):
     """Program flow for conditional non-loop branching.  """
-    def __init__(self, conditional_expr, true_flow, false_flow):
+    def __init__(self, conditional_expr, true_flow, false_flow=None):
         super().__init__()
         self.conditional_expr = conditional_expr
         self.true_flow = true_flow
-        self.false_flow = false_flow
+        self.false_flow = false_flow or SkipFlow()
 
     def format(self):
         template = 'if ({conditional_expr}) {{\n{true_format}}} '

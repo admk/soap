@@ -100,6 +100,19 @@ exp = _ 'exp' _
 sin = _ 'sin' _
 cos = _ 'cos' _
 
+op_eq_operator = add_eq / sub_eq / mul_eq / div_eq / pow_eq
+
+add_eq = _ '+=' _
+sub_eq = _ '-=' _
+mul_eq = _ '*=' _
+div_eq = _ '/=' _
+pow_eq = _ '**=' _
+
+step_operator = incr / decr
+
+incr = _ '++' _
+decr = _ '--' _
+
 
 # =========
 #  regexes

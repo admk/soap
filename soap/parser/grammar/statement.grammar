@@ -5,7 +5,9 @@
 statement = compound_statement / _  # empty
 compound_statement = single_statement statement
 single_statement =
-    skip_statement / assign_statement / if_statement / while_statement /
+    skip_statement / assign_statement /
+    operator_assign_statement / step_statement /
+    if_statement / while_statement /
     for_statement / declaration_statement /
     pragma_input_statement / pragma_output_statement
 
@@ -15,6 +17,11 @@ declaration_statement = variable_declaration semicolon
 
 assign_statement = assign_part semicolon
 variable_or_declaration = variable_declaration / variable_subscript
+
+operator_assign_statement =
+    variable_subscript op_eq_operator arithmetic_expression semicolon
+
+step_statement = variable_subscript step_operator semicolon
 
 if_statement = if_else_block / if_then_block
 if_then_block = if boolean_block code_block
@@ -30,7 +37,8 @@ for_assign_part = assign_part / skip
 assign_part = variable_or_declaration assign arithmetic_expression
 
 boolean_block = left_paren boolean_expression right_paren
-code_block = left_curl statement right_curl
+code_block = single_statement / multi_line_code_block
+multi_line_code_block = left_curl statement right_curl
 
 pragma_input_statement = pragma input input_list _
 
@@ -53,7 +61,7 @@ comma_output_list = comma output_list
 
 input = _no_new_line 'input' _no_new_line
 output = _no_new_line 'output' _no_new_line
-pragma = _ '#pragma soap' _no_new_line
+pragma = _ '#pragma' _no_new_line 'soap' _no_new_line
 
 
 # ==========

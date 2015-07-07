@@ -95,19 +95,49 @@ class TestStatementParser(Base):
         flow = AssignFlow(self.x, expr)
         self.assertEqual(self.stmt_parse('x = y + 1;'), flow)
 
+    def test_operator_assign_statement(self):
+        expr = expression_factory(
+            operators.ADD_OP, self.x, self.i1)
+        flow = AssignFlow(self.x, expr)
+        self.assertEqual(self.stmt_parse('x += 1;'), flow)
+
+    def test_increment_statement(self):
+        expr = expression_factory(
+            operators.ADD_OP, self.x, self.i1)
+        flow = AssignFlow(self.x, expr)
+        self.assertEqual(self.stmt_parse('x++;'), flow)
+
     def test_if_statement(self):
         bool_expr = expression_factory(operators.LESS_OP, self.x, self.i3)
-        assign_flow = AssignFlow(self.y, self.x)
-        flow = IfFlow(bool_expr, assign_flow, SkipFlow())
+        assign_flow_1 = AssignFlow(self.y, self.x)
+        assign_flow_2 = AssignFlow(self.x, self.y)
+        flow = IfFlow(bool_expr, assign_flow_1)
         self.assertEqual(self.stmt_parse('if (x < 3) {y = x;}'), flow)
+        flow = IfFlow(bool_expr, assign_flow_1, assign_flow_2)
         self.assertEqual(
-            self.stmt_parse('if (x < 3) {y = x;} else {skip;}'), flow)
+            self.stmt_parse('if (x < 3) {y = x;} else {x = y;}'), flow)
+
+    def test_single_line_if_statement(self):
+        bool_expr = expression_factory(operators.LESS_OP, self.x, self.i3)
+        assign_flow_1 = AssignFlow(self.y, self.x)
+        assign_flow_2 = AssignFlow(self.x, self.y)
+        flow = IfFlow(bool_expr, assign_flow_1)
+        self.assertEqual(self.stmt_parse('if (x < 3) y = x;'), flow)
+        flow = IfFlow(bool_expr, assign_flow_1, assign_flow_2)
+        self.assertEqual(
+            self.stmt_parse('if (x < 3) y = x; else x = y;'), flow)
 
     def test_while_statement(self):
         bool_expr = expression_factory(operators.LESS_OP, self.x, self.i3)
         assign_flow = AssignFlow(self.y, self.x)
         flow = WhileFlow(bool_expr, assign_flow)
         self.assertEqual(self.stmt_parse('while (x < 3) {y = x;}'), flow)
+
+    def test_single_line_while_statement(self):
+        bool_expr = expression_factory(operators.LESS_OP, self.x, self.i3)
+        assign_flow = AssignFlow(self.y, self.x)
+        flow = WhileFlow(bool_expr, assign_flow)
+        self.assertEqual(self.stmt_parse('while (x < 3) y = x;'), flow)
 
     def test_for_statement(self):
         bool_expr = expression_factory(operators.LESS_OP, self.x, self.i3)
@@ -119,9 +149,20 @@ class TestStatementParser(Base):
         parsed_flow = self.stmt_parse('for (x = 1; x < 3; x = x + 1) {y = x;}')
         self.assertEqual(parsed_flow, flow)
 
+    def test_single_line_for_statement(self):
+        bool_expr = expression_factory(operators.LESS_OP, self.x, self.i3)
+        init_flow = AssignFlow(self.x, self.i1)
+        incr_flow = AssignFlow(self.x, expression_factory(
+            operators.ADD_OP, self.x, self.i1))
+        assign_flow = AssignFlow(self.y, self.x)
+        flow = ForFlow(init_flow, bool_expr, incr_flow, assign_flow)
+        parsed_flow = self.stmt_parse('for (x = 1; x < 3; x = x + 1) y = x;')
+        self.assertEqual(parsed_flow, flow)
+
     def test_compound_statement(self):
-        flow = CompositionalFlow([SkipFlow(), AssignFlow(self.x, self.y)])
-        self.assertEqual(self.stmt_parse('skip; x = y;'), flow)
+        flow = CompositionalFlow(
+            [AssignFlow(self.y, self.x), AssignFlow(self.x, self.y)])
+        self.assertEqual(self.stmt_parse('y = x; x = y;'), flow)
 
 
 class TestProgramParser(Base):
@@ -136,8 +177,8 @@ class TestProgramParser(Base):
             operators.ADD_OP, expression_factory(
                 operators.ADD_OP, self.x, self.y), self.z)
         body = CompositionalFlow([
-            PragmaInputFlow([(self.x, self.i1)]),
             PragmaInputFlow([
+                (self.x, self.i1),
                 (self.y, ErrorSemantics([3.0, 4.0])),
                 (self.z, ErrorSemantics([5, 6], [0, 0])),
             ]),
@@ -146,8 +187,8 @@ class TestProgramParser(Base):
         ])
         flow = ProgramFlow(body)
         prog = """
-            #pragma soap input int x=1
-            #pragma soap input real y=[3.0, 4.0], real z=[5.0, 6.0][0, 0]
+            #pragma soap input \
+                int x=1, real y=[3.0, 4.0], real z=[5.0, 6.0][0, 0]
             #pragma soap output z
             z = x + y + z;
             """

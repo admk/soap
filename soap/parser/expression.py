@@ -167,10 +167,16 @@ class ExpressionVisitor(object):
         'and': operators.AND_OP,
         'or': operators.OR_OP,
         'not': operators.UNARY_NEGATION_OP,
+        'incr': operators.ADD_OP,
+        'decr': operators.SUBTRACT_OP,
     }
 
     def _visit_operator(self, node, children):
         return self._operator_map[node.expr_name]
+
+    def _visit_op_eq_operator(self, node, children):
+        name = node.expr_name[:-3]  # remove '_eq'
+        return self._operator_map[name]
 
     visit_lt = visit_le = visit_ge = visit_gt = _visit_operator
     visit_eq = visit_ne = _visit_operator
@@ -182,6 +188,13 @@ class ExpressionVisitor(object):
 
     visit_add = visit_sub = visit_mul = visit_div = visit_pow = _visit_operator
     visit_exp = visit_sin = visit_cos = _visit_operator
+
+    visit_op_eq_operator = _lift_child
+    visit_add_eq = visit_sub_eq = visit_mul_eq = _visit_op_eq_operator
+    visit_div_eq = visit_pow_eq = _visit_op_eq_operator
+
+    visit_step_operator = _lift_child
+    visit_incr = visit_decr = _visit_operator
 
 
 class _UntypedExpressionVisitor(
