@@ -19,10 +19,8 @@
 
 # Ultra Short Term FIXMEs
 
-* [X] Ensure singly update paths
-* [X] Transitive distances
-* [ ] Fix nested loop extraction
 * [ ] Fix sequential loop partitioning
+* [ ] Fix Simplifier may not reduce properly
 
 
 # Ugliness, fix if have the time to
@@ -81,6 +79,9 @@
 
 # Completed
 
+* [X] Ensure singly update paths
+* [X] Transitive distances
+* [X] Fix nested loop extraction
 * [X] Get rid of identifier based analysis, no longer required.
 * [X] Code generation
     - [X] Hierarchical dependency graph

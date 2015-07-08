@@ -11,9 +11,6 @@ from soap.parser import parse
 from soap.semantics.error import IntegerInterval
 from soap.semantics.functions.label import label
 from soap.semantics.label import Label
-from soap.semantics.schedule.extract import (
-    ForLoopExtractor, ForLoopNestExtractor
-)
 from soap.semantics.schedule.distance import (
     dependence_vector, dependence_distance, ISLIndependenceException
 )
@@ -548,50 +545,3 @@ class TestFullSchedule(_CommonMixin):
         }
         self.assertStatisticsAlmostEqual(
             graph, expect_latency, expect_resource)
-
-
-class TestExtraction(_CommonMixin):
-    def compare(self, for_loop, expect_for_loop):
-        for key, expect_val in expect_for_loop.items():
-            self.assertEqual(getattr(for_loop, key), expect_val)
-
-    def test_simple_loop(self):
-        program = """
-        #pragma soap input float a[30]
-        #pragma soap output a
-        for (int i = 1; i < 10; i = i + 1)
-            a[i] = a[i - 1] + 1;
-        """
-        flow = parse(program)
-        meta_state = flow_to_meta_state(flow)
-        fix_expr = meta_state[flow.outputs[0]]
-        for_loop = ForLoopExtractor(fix_expr)
-        expect_for_loop = {
-            'iter_var': self.i,
-            'iter_slice': slice(1, 10, 1),
-        }
-        self.compare(for_loop, expect_for_loop)
-
-    def test_nested_loop(self):
-        program = """
-        #pragma soap input float a[30]
-        #pragma soap output a
-        for (int i = 1; i < 10; i = i + 1)
-            for (int j = 0; j < 20; j = j + 3)
-                a[i] = a[i - j] + 1;
-        """
-        flow = parse(program)
-        meta_state = flow_to_meta_state(flow)
-
-        a = flow.outputs[0]
-        i = Variable('i', int_type)
-        j = Variable('j', int_type)
-
-        fix_expr = meta_state[a]
-        for_loop = ForLoopNestExtractor(fix_expr)
-        expect_for_loop = {
-            'iter_vars': [i, j],
-            'iter_slices': [slice(1, 10, 1), slice(0, 20, 3)],
-            'kernel': fix_expr.loop_state[a].loop_state,
-        }
-        self.compare(for_loop, expect_for_loop)

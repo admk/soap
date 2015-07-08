@@ -12,6 +12,16 @@ class ForLoopExtractionFailureException(Exception):
     """Failed to extract for loop.  """
 
 
+def _has_loops(expr):
+    _, env = label(expr, None, None, fusion=False)
+    for var, var_expr in env.items():
+        if not is_expression(var_expr):
+            continue
+        if var_expr.op == operators.FIXPOINT_OP:
+            return True
+    return False
+
+
 class ForLoopExtractor(object):
     def __init__(self, fix_expr):
         super().__init__()
@@ -20,8 +30,9 @@ class ForLoopExtractor(object):
         try:
             self.iter_var = self._extract_iter_var(fix_expr)
             self.iter_slice = self._extract_iter_slice(fix_expr, self.iter_var)
-        except ForLoopExtractionFailureException:
+        except ForLoopExtractionFailureException as exception:
             self.is_for_loop = False
+            self.exception = exception
 
     @property
     def kernel(self):
@@ -34,16 +45,7 @@ class ForLoopExtractor(object):
 
     @cached_property
     def has_inner_loops(self):
-        return self._has_inner_loops(self.kernel)
-
-    def _has_inner_loops(self, expr):
-        _, env = label(expr, None, None, fusion=False)
-        for var, var_expr in env.items():
-            if not is_expression(var_expr):
-                continue
-            if var_expr.op == operators.FIXPOINT_OP:
-                return True
-        return False
+        return _has_loops(self.kernel)
 
     def _extract_iter_var(self, fix_expr):
         bool_expr = fix_expr.bool_expr
@@ -126,54 +128,66 @@ class ForLoopNestExtractor(ForLoopExtractor):
             self.iter_vars, self.iter_slices, self._kernel = \
                 self._extract_for_loop_nest(fix_expr)
             self.is_for_loop_nest = True
-        except ForLoopNestExtractionFailureException:
+        except ForLoopNestExtractionFailureException as exception:
             self.iter_vars = self.iter_slices = None
             self._kernel = fix_expr.loop_state
             self.is_for_loop_nest = False
+            self.exception = exception
 
     @property
     def kernel(self):
         return self._kernel
 
+    def _check_init_sandwich(self, fix_expr):
+        for var, expr in fix_expr.init_state.items():
+            if is_expression(expr):
+                raise ForLoopNestExtractionFailureException(
+                    'Loop has logic sandwich because its init_state '
+                    'has logic.')
+
+    def _find_inner_fix_expr(self, fix_expr, iter_var):
+        found_inner_loop = False
+        for var, expr in fix_expr.loop_state.items():
+            if var == iter_var:
+                pass  # iter_var is already checked by ForLoopExtractor
+            elif var == fix_expr.loop_var:
+                if isinstance(expr, FixExpr):
+                    # has SIMPLE inner loop
+                    inner_fix_expr = expr
+                    found_inner_loop = True
+                else:
+                    # has sandwich
+                    raise ForLoopNestExtractionFailureException(
+                        'Loop has logic sandwich somewhere.')
+            elif var == expr:
+                pass  # no logic
+            else:
+                raise ForLoopNestExtractionFailureException(
+                    'Loop has logic sandwich on variables other than the '
+                    'iteration variable and the loop variable.')
+        if not found_inner_loop:
+            raise ForLoopNestExtractionFailureException(
+                'Did not find loop var in loop.')
+        return inner_fix_expr
+
     def _extract_for_loop_nest(self, fix_expr):
         extractor = ForLoopExtractor(fix_expr)
         if not extractor.is_for_loop:
             raise ForLoopNestExtractionFailureException(
-                'Loop is not for loop.')
-        loop_var = fix_expr.loop_var
+                'Loop is not for loop, reason: ' + str(extractor.exception))
+
         iter_var = extractor.iter_var
         iter_vars = [iter_var]
         iter_slices = [extractor.iter_slice]
 
-        for var, expr in fix_expr.loop_state.items():
-            if var == iter_var:
-                continue
-            if var == loop_var:
-                if self._has_inner_loops(expr):
-                    # has inner loop
-                    if isinstance(expr, FixExpr):
-                        # has SIMPLE inner loop
-                        inner_fix_expr = expr
-                        break
-                    # has sandwich
-                    raise ForLoopNestExtractionFailureException(
-                        'Loop var has logic sandwich.')
-                else:
-                    return iter_vars, iter_slices, fix_expr.loop_state
-        else:
-            raise ForLoopNestExtractionFailureException(
-                'Did not find loop_var in loop.')
+        if not _has_loops(fix_expr.loop_state):
+            return iter_vars, iter_slices, fix_expr.loop_state
 
-        # if has inner loop, then check the outer loop is simple
-        for var, expr in fix_expr.loop_state.items():
-            if var == iter_var:
-                continue
-            if var == loop_var and not isinstance(expr, FixExpr):
-                raise ForLoopNestExtractionFailureException(
-                    'Loop var has logic sandwich.')
-            if var != expr:
-                raise ForLoopNestExtractionFailureException(
-                    'Loop has logic sandwich.')
+        # nested loops
+        inner_fix_expr = self._find_inner_fix_expr(fix_expr, iter_var)
+
+        # and check inner loop init_state is simple
+        self._check_init_sandwich(inner_fix_expr)
 
         inner_iter_vars, inner_iter_slices, inner_kernel = \
             self._extract_for_loop_nest(inner_fix_expr)
