@@ -102,7 +102,7 @@ class TestSandwichedNestedLoopExtractFailure(unittest.TestCase):
             }
         """)
 
-    def test_foreign_sandwich_after(self):
+    def test_interleave_sandwich(self):
         self._test_program("""
         int k = 0;
         for (int i = 1; i < 10; i++) {
