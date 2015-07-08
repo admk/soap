@@ -5,7 +5,8 @@
 from collections import OrderedDict
 
 from soap.common import base_dispatcher, indent
-from soap.expression.linalg import AccessExpr
+from soap.datatype import auto_type
+from soap.expression import AccessExpr, Variable
 from soap.semantics import is_numeral
 
 
@@ -90,11 +91,11 @@ class AssignFlow(Flow):
 
 class IfFlow(Flow):
     """Program flow for conditional non-loop branching.  """
-    def __init__(self, conditional_expr, true_flow, false_flow):
+    def __init__(self, conditional_expr, true_flow, false_flow=None):
         super().__init__()
         self.conditional_expr = conditional_expr
         self.true_flow = true_flow
-        self.false_flow = false_flow
+        self.false_flow = false_flow or SkipFlow()
 
     def format(self):
         template = 'if ({conditional_expr}) {{\n{true_format}}} '
@@ -216,7 +217,7 @@ class CompositionalFlow(Flow):
     def __eq__(self, other):
         if type(self) is not type(other):
             return False
-        return (self.flows == other.flows)
+        return self.flows == other.flows
 
     def __repr__(self):
         return '{cls}(flows={flows!r})'.format(
@@ -226,54 +227,45 @@ class CompositionalFlow(Flow):
         return hash(self.flows)
 
 
-class FunctionFlow(Flow):
-    def __init__(self, name, inputs, flow):
-        super().__init__()
-        self.name = name
-        self.inputs = OrderedDict(inputs)
-        *body_flow, return_flow = flow.flows
-        self.body_flow = CompositionalFlow(body_flow)
-        if not isinstance(return_flow, ReturnFlow):
-            raise ValueError('Function must return a value.')
-        self.return_flow = return_flow
+pragma_keyword = '#pragma soap'
 
-    @property
-    def outputs(self):
-        return self.return_flow.outputs
+
+class PragmaFlow(Flow):
+    pass
+
+
+class PragmaInputFlow(PragmaFlow):
+    def __init__(self, inputs):
+        super().__init__()
+        self.inputs = OrderedDict(inputs)
 
     def format(self):
-        inputs = ', '.join('{dtype} {name}: {value}'.format(
+        inputs = ', '.join('{dtype} {name} = {value}'.format(
             dtype=var.dtype, name=var.name, value=value)
             for var, value in self.inputs.items())
-        flow = indent(self.body_flow.format())
-        return 'def {name}({inputs}) {{\n{flow}}} '.format(
-            name=self.name, inputs=inputs, flow=flow)
+        return '{} inputs {} '.format(pragma_keyword, inputs)
 
     def __repr__(self):
-        return '{cls}({name!r}, {inputs!r}, {flow!r})'.format(
-            cls=self.__class__.__name__, name=self.name, inputs=self.inputs,
-            flow=self.body_flow)
+        return '{cls}({inputs!r})'.format(
+            cls=self.__class__.__name__, inputs=self.inputs)
 
     def __hash__(self):
-        return hash(
-            (self.__class__, self.name,
-             tuple(self.inputs.items()), self.body_flow))
+        return hash(self.inputs)
 
     def __eq__(self, other):
         if type(self) is not type(other):
             return False
-        return (self.name == other.name and self.inputs == other.inputs and
-                self.body_flow == other.body_flow)
+        return self.inputs == other.inputs
 
 
-class ReturnFlow(Flow):
+class PragmaOutputFlow(PragmaFlow):
     def __init__(self, outputs):
         super().__init__()
         self.outputs = tuple(outputs)
 
     def format(self):
         outputs = ', '.join(str(v) for v in self.outputs)
-        return 'return {}; '.format(outputs)
+        return '{} outputs {} '.format(pragma_keyword, outputs)
 
     def __repr__(self):
         return '{cls}({outputs!r})'.format(
@@ -286,6 +278,64 @@ class ReturnFlow(Flow):
         if type(self) is not type(other):
             return False
         return self.outputs == other.outputs
+
+
+class ProgramFlow(Flow):
+    def __init__(self, flow, decl):
+        super().__init__()
+        self.input_flows, self.output_flows, body_flows = \
+            self._find_pragmas(flow)
+        self.body_flow = CompositionalFlow(body_flows)
+        self.original_flow = flow
+        self.decl = decl
+
+    def _find_pragmas(self, flow):
+        input_flows = []
+        output_flows = []
+        body_flows = []
+        for each_flow in flow.flows:
+            if isinstance(each_flow, PragmaInputFlow):
+                input_flows.append(each_flow)
+            elif isinstance(each_flow, PragmaOutputFlow):
+                output_flows.append(each_flow)
+            else:
+                body_flows.append(each_flow)
+        return input_flows, output_flows, body_flows
+
+    @property
+    def inputs(self):
+        inputs = []
+        for flow in self.input_flows:
+            inputs += flow.inputs.items()
+        return OrderedDict(inputs)
+
+    @property
+    def outputs(self):
+        outputs = []
+        for flow in self.output_flows:
+            outputs += flow.outputs
+        typed_outputs = []
+        for var in outputs:
+            if var.dtype == auto_type:
+                name = var.name
+                var = Variable(name, self.decl[name])
+            typed_outputs.append(var)
+        return typed_outputs
+
+    def format(self):
+        return self.original_flow.format()
+
+    def __repr__(self):
+        return '{cls}({flow!r})'.format(
+            cls=self.__class__.__name__, flow=self.original_flow)
+
+    def __hash__(self):
+        return hash((self.__class__, self.original_flow))
+
+    def __eq__(self, other):
+        if type(self) is not type(other):
+            return False
+        return self.original_flow == other.original_flow
 
 
 class _VariableSetGenerator(base_dispatcher()):
@@ -346,7 +396,7 @@ class _VariableSetGenerator(base_dispatcher()):
             var_set |= self(f, input, output)
         return var_set
 
-    def execute_FunctionFlow(self, flow, input, output):
+    def execute_ProgramFlow(self, flow, input, output):
         var_set = set()
         if input:
             var_set |= set(flow.inputs)

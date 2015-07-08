@@ -1,26 +1,19 @@
-from soap.datatype import function_type, type_cast
-from soap.expression import Variable, is_variable
-from soap.program import FunctionFlow
+from soap.datatype import type_cast
+from soap.expression import is_variable
+from soap.program import ProgramFlow, PragmaInputFlow, PragmaOutputFlow
 from soap.parser.common import (
-    _lift_child, _lift_dontcare, _lift_second, CommonVisitor
+    _lift_child, _lift_dontcare, _lift_second, _visit_maybe_list, _visit_list,
+    CommonVisitor
 )
 from soap.parser.expression import DeclarationVisitor, ExpressionVisitor
 from soap.parser.grammar import compiled_grammars
 from soap.parser.statement import StatementVisitor
 
 
-class ProgramVisitor(object):
-    visit_program = _lift_child
-
-    def visit_function(self, node, children):
-        (def_lit, new_variable, left_paren,
-         input_list, right_paren, code_block) = children
-        func = Variable(new_variable.name, function_type)
-        return FunctionFlow(func, input_list, code_block)
-
-    def visit_input_list_or_empty(self, node, children):
-        input_list = _lift_child(self, node, children)
-        return input_list or []
+class PragmaVisitor(object):
+    def visit_pragma_input_statement(self, node, children):
+        pragma_lit, input_lit, input_list, _ = children
+        return PragmaInputFlow(input_list)
 
     def visit_input_list(self, node, children):
         input_expr, maybe_input_list = children
@@ -43,16 +36,41 @@ class ProgramVisitor(object):
         variable, colon, number = children
         return variable, number
 
-    visit_def = _lift_dontcare
+    def visit_pragma_output_statement(self, node, children):
+        pragma_lit, output_lit, output_list, _ = children
+        return PragmaOutputFlow(output_list)
+
+    visit_output_list = _visit_list
+    visit_maybe_output_list = _visit_maybe_list
+    visit_comma_output_list = _lift_second
+
+    visit_input = visit_output = visit_pragma = _lift_dontcare
 
 
 class _ProgramVisitor(
         CommonVisitor, DeclarationVisitor, ExpressionVisitor,
-        StatementVisitor, ProgramVisitor):
-    grammar = compiled_grammars['program']
+        StatementVisitor, PragmaVisitor):
+    grammar = compiled_grammars['statement']
+
+
+def _preprocess(text):
+    text = text.split('\n')
+    new_text = []
+    line_cont = False
+    for line in text:
+        if line_cont:
+            line = new_text.pop() + line
+        if line.rstrip().endswith('\\'):
+            line_cont = True
+            line = line.rstrip()[:-1] + ' '
+        new_text.append(line)
+    return '\n'.join(new_text)
 
 
 def parse(program, decl=None):
     decl = decl or {}
     visitor = _ProgramVisitor(decl)
-    return visitor.parse(program)
+    program = _preprocess(program)
+    flow = visitor.parse(program)
+    decl = visitor.decl_map
+    return ProgramFlow(flow, decl)

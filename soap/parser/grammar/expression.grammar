@@ -9,15 +9,18 @@ expression = arithmetic_expression / boolean_expression
 #  declarations
 # ==============
 
-variable_declaration = data_type new_variable
+variable_declaration = array_declaration / scalar_declaration
+array_declaration = data_type new_variable dimension_list
+scalar_declaration = data_type new_variable
 
-data_type  = array_type / base_type
-array_type = base_type left_brac integer_list right_brac
-
-base_type = int_type / real_type
+data_type = int_type / float_type / double_type
 
 int_type  = _ 'int'  _
-real_type = _ 'real' _
+float_type = _ 'float' _
+double_type = _ 'double' _
+
+dimension_list = dimension+
+dimension = left_brac integer right_brac
 
 
 # =============
@@ -59,7 +62,10 @@ prod_list       = prod_expr maybe_prod_list
 prod_expr       = prod_operator atom
 
 variable_subscript      = variable_with_subscript / variable
-variable_with_subscript = variable left_brac expression_list right_brac
+variable_with_subscript = variable subscript_list
+
+subscript_list = subscript+
+subscript = left_brac arithmetic_expression right_brac
 
 number   = error / interval / scalar
 error    = interval interval
@@ -100,6 +106,19 @@ exp = _ 'exp' _
 sin = _ 'sin' _
 cos = _ 'cos' _
 
+op_eq_operator = add_eq / sub_eq / mul_eq / div_eq / pow_eq
+
+add_eq = _ '+=' _
+sub_eq = _ '-=' _
+mul_eq = _ '*=' _
+div_eq = _ '/=' _
+pow_eq = _ '**=' _
+
+step_operator = incr / decr
+
+incr = _ '++' _
+decr = _ '--' _
+
 
 # =========
 #  regexes
@@ -107,7 +126,7 @@ cos = _ 'cos' _
 
 variable = _ variable_regex _
 new_variable = _ variable_regex _
-variable_regex = ~'(?!int|real|and|or|not|if|while)([a-zA-Z_][a-zA-Z_0-9]*)'
+variable_regex = ~'[a-zA-Z_][a-zA-Z_0-9]*'
 
 integer = _ integer_regex _
 real    = _ real_regex _

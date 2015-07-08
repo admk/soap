@@ -34,10 +34,22 @@ class IntType(TypeBase):
         return 'int'
 
 
-class RealType(TypeBase):
-    """Real data type.  """
+class FloatingPointType(TypeBase):
+    """Floating-point data type.  """
     def __str__(self):
-        return 'real'
+        return 'fp'
+
+
+class FloatType(FloatingPointType):
+    """Single-precision floating-point data type.  """
+    def __str__(self):
+        return 'float'
+
+
+class DoubleType(FloatingPointType):
+    """Double-precision floating-point data type.  """
+    def __str__(self):
+        return 'double'
 
 
 class FunctionType(TypeBase):
@@ -49,7 +61,8 @@ class FunctionType(TypeBase):
 auto_type = AutoType()
 bool_type = BoolType()
 int_type = IntType()
-real_type = RealType()
+float_type = FloatType()
+double_type = DoubleType()
 function_type = FunctionType()
 
 
@@ -85,8 +98,8 @@ class IntegerArrayType(ArrayType):
     num_type = int_type
 
 
-class RealArrayType(ArrayType):
-    num_type = real_type
+class FloatArrayType(ArrayType):
+    num_type = float_type
 
 
 def type_of(value):
@@ -95,22 +108,22 @@ def type_of(value):
     if isinstance(value, IntegerInterval):
         return int_type
     if isinstance(value, ErrorSemantics):
-        return real_type
+        return float_type
     if isinstance(value, IntegerIntervalArray):
         return IntegerArrayType(value.shape)
     if isinstance(value, ErrorSemanticsArray):
-        return RealArrayType(value.shape)
+        return FloatArrayType(value.shape)
     raise TypeError('Unrecognized type {}'.format(type(value)))
 
 
 def type_cast(dtype, value=None, top=False, bottom=False):
     if dtype == int_type:
         return IntegerInterval(value, top=top, bottom=bottom)
-    if dtype == real_type:
+    if dtype == float_type:
         return ErrorSemantics(value, top=top, bottom=bottom)
     if isinstance(dtype, IntegerArrayType):
         cls = IntegerIntervalArray
-    elif isinstance(dtype, RealArrayType):
+    elif isinstance(dtype, FloatArrayType):
         cls = ErrorSemanticsArray
     else:
         raise TypeError('Do not recognize type.')

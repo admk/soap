@@ -1,5 +1,6 @@
 from collections import namedtuple
 
+from soap.datatype import int_type, float_type, ArrayType
 from soap.common.base import dict_merge
 from soap.context import context
 from soap.expression import operators
@@ -7,7 +8,7 @@ from soap.expression import operators
 
 DEVICE_LATENCY_TABLE = {
     ('Virtex7', 100): {
-        'integer': {
+        int_type: {
             'comparison': 1,
             operators.UNARY_SUBTRACT_OP: 0,
             operators.ADD_OP: 1,
@@ -15,7 +16,7 @@ DEVICE_LATENCY_TABLE = {
             operators.MULTIPLY_OP: 1,
             operators.INDEX_ACCESS_OP: 1,
         },
-        'float': {
+        float_type: {
             'comparison': 4,
             operators.UNARY_SUBTRACT_OP: 0,
             operators.ADD_OP: 4,
@@ -25,7 +26,7 @@ DEVICE_LATENCY_TABLE = {
             operators.EXPONENTIATE_OP: 12,
             operators.INDEX_ACCESS_OP: 2,
         },
-        'array': {
+        ArrayType: {
             operators.INDEX_UPDATE_OP: 1,
             operators.SUBSCRIPT_OP: 0,
         },
@@ -33,7 +34,7 @@ DEVICE_LATENCY_TABLE = {
 }
 DEVICE_LOOP_LATENCY_TABLE = {
     ('Virtex7', 100): {
-        'float': {
+        float_type: {
             'comparison': 3,
             operators.ADD_OP: 3,
             operators.SUBTRACT_OP: 3,
@@ -69,7 +70,7 @@ s = OperatorResourceTuple
 
 DEVICE_RESOURCE_TABLE = {
     'Stratix4': {
-        'integer': {
+        int_type: {
             'comparison': s(0, 65, 35),
             operators.ADD_OP: s(0, 96, 32),
             operators.SUBTRACT_OP: s(0, 96, 32),
@@ -81,7 +82,7 @@ DEVICE_RESOURCE_TABLE = {
             operators.BARRIER_OP: s(0, 0, 0),
             operators.INDEX_ACCESS_OP: s(0, 0, 0),
         },
-        'float': {
+        float_type: {
             'conversion': s(0, 211, 186),
             'comparison': s(0, 33, 68),
             operators.ADD_OP: s(0, 540, 505),
@@ -94,13 +95,13 @@ DEVICE_RESOURCE_TABLE = {
             operators.BARRIER_OP: s(0, 0, 0),
             operators.INDEX_ACCESS_OP: s(0, 0, 0),
         },
-        'array': {
+        ArrayType: {
             operators.INDEX_UPDATE_OP: s(0, 0, 0),
             operators.SUBSCRIPT_OP: s(0, 0, 0),
         }
     },
     'Virtex7': {
-        'integer': {
+        int_type: {
             'comparison': s(0, 0, 39),
             operators.ADD_OP: s(0, 0, 32),
             operators.SUBTRACT_OP: s(0, 0, 32),
@@ -112,7 +113,7 @@ DEVICE_RESOURCE_TABLE = {
             operators.BARRIER_OP: s(0, 0, 0),
             operators.INDEX_ACCESS_OP: s(0, 0, 0),
         },
-        'float': {
+        float_type: {
             'conversion': s(0, 128, 341),
             'comparison': s(0, 66, 72),
             operators.ADD_OP: s(2, 227, 214),  # full dsp
@@ -126,7 +127,7 @@ DEVICE_RESOURCE_TABLE = {
             operators.BARRIER_OP: s(0, 0, 0),
             operators.INDEX_ACCESS_OP: s(0, 0, 0),
         },
-        'array': {
+        ArrayType: {
             operators.INDEX_UPDATE_OP: s(0, 0, 0),
             operators.SUBSCRIPT_OP: s(0, 0, 0),
         }

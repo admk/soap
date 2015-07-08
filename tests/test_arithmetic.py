@@ -1,6 +1,6 @@
 import unittest
 
-from soap.datatype import int_type, real_type, IntegerArrayType
+from soap.datatype import int_type, float_type, IntegerArrayType
 from soap.expression import (
     operators, UnaryArithExpr, BinaryArithExpr, SelectExpr, FixExpr,
     AccessExpr, UpdateExpr, BinaryBoolExpr, Variable
@@ -17,7 +17,7 @@ class TestArithmeticEvaluator(unittest.TestCase):
         self.a = Variable('a', IntegerArrayType([2, 2]))
         self.x = Variable('x', int_type)
         self.y = Variable('y', int_type)
-        self.z = Variable('z', real_type)
+        self.z = Variable('z', float_type)
         self.state = BoxState(x=[1, 2], y=3, z=[1.0, 2.0])
         self.array_state = BoxState(
             a=IntegerIntervalArray([[1, 2], [3, 4]]), x=[0, 1], y=0)

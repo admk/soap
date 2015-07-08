@@ -1,12 +1,13 @@
+from soap.expression import expression_factory
 from soap.program import (
-    SkipFlow, AssignFlow, IfFlow, WhileFlow, ForFlow,
-    CompositionalFlow, ReturnFlow
+    SkipFlow, AssignFlow, IfFlow, WhileFlow, ForFlow, CompositionalFlow
 )
 from soap.parser.common import (
     _lift_child, _lift_first, _lift_middle, _lift_dontcare, CommonVisitor
 )
 from soap.parser.expression import DeclarationVisitor, ExpressionVisitor
 from soap.parser.grammar import compiled_grammars
+from soap.semantics import IntegerInterval
 
 
 class StatementVisitor(object):
@@ -28,7 +29,19 @@ class StatementVisitor(object):
 
     visit_declaration_statement = visit_skip_statement
 
-    visit_assign_statement = _lift_first
+    visit_assign_statement = visit_operator_assign_statement = _lift_first
+    visit_step_statement = _lift_first
+    visit_assign_variations = _lift_child
+
+    def visit_operator_assign_part(self, node, children):
+        var, op, expr = children
+        expr = expression_factory(op, var, expr)
+        return AssignFlow(var, expr)
+
+    def visit_step_part(self, node, children):
+        var, op = children
+        expr = expression_factory(op, var, IntegerInterval(1))
+        return AssignFlow(var, expr)
 
     visit_if_statement = _lift_child
 
@@ -61,11 +74,8 @@ class StatementVisitor(object):
         var, assign, expr = children
         return AssignFlow(var, expr)
 
-    visit_boolean_block = visit_code_block = _lift_middle
-
-    def visit_return_statement(self, node, children):
-        output_lit, output_list, semicolon = children
-        return ReturnFlow(output_list)
+    visit_code_block = _lift_child
+    visit_boolean_block = visit_multi_line_code_block = _lift_middle
 
     visit_skip = visit_assign = _lift_dontcare
     visit_if = visit_else = visit_while = visit_for = _lift_dontcare

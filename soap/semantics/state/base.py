@@ -62,7 +62,7 @@ class BaseState(base_dispatcher('visit')):
             state = state.transition(f)
         return state
 
-    def visit_FunctionFlow(self, flow):
+    def visit_ProgramFlow(self, flow):
         return self.transition(flow.body_flow)
 
     def is_fixpoint(self, other):

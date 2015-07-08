@@ -15,7 +15,7 @@ def _construct(names):
     return Grammar('\n'.join(grammar_list))
 
 
-grammar_list = ['common', 'expression', 'statement', 'program']
+grammar_list = ['common', 'expression', 'statement']
 
 compiled_grammars = {}
 for idx in range(1, len(grammar_list)):

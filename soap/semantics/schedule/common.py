@@ -3,7 +3,7 @@ import math
 import islpy
 
 from soap.common.cache import cached
-from soap.datatype import real_type
+from soap.datatype import float_type
 from soap.expression import (
     expression_factory, is_expression, is_variable, Variable, operators
 )
@@ -17,12 +17,12 @@ NONPIPELINED_OPERATORS = {
 PIPELINED_OPERATORS = set(operators.OPERATORS) - NONPIPELINED_OPERATORS
 MAX_SHARE_COUNT = 8
 SHARED_DATATYPE_OPERATORS = {
-    (real_type, 'conversion'),
-    (real_type, 'comparison'),
-    (real_type, operators.ADD_OP),
-    (real_type, operators.SUBTRACT_OP),
-    (real_type, operators.MULTIPLY_OP),
-    (real_type, operators.DIVIDE_OP),
+    (float_type, 'conversion'),
+    (float_type, 'comparison'),
+    (float_type, operators.ADD_OP),
+    (float_type, operators.SUBTRACT_OP),
+    (float_type, operators.MULTIPLY_OP),
+    (float_type, operators.DIVIDE_OP),
 }
 
 
