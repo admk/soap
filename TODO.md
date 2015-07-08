@@ -1,4 +1,4 @@
-# Ultra Short Term FIXMEs
+# Ultra Short Term TODOs
 
 * [ ] Latency analysis
     - [X] Meta state analysis
@@ -9,16 +9,20 @@
     - [X] Unrolling
     - [X] Scheduling and revamp latency
     - [X] Resource usage with sharing
-    - [!] Transform `AccessExpr` and `UpdateExpr`
-    - [ ] II reduction in subexpressions
+    - [X] Transform `AccessExpr` and `UpdateExpr`
+    - [X] II reduction in subexpressions
     - [ ] Benchmarks
     - [ ] Comparison with actual results
     - [ ] Code generation
     - [X] Plotting changes
 
-- [X] Fix bugs
-    - [X] Ensure singly update paths
-    - [X] Transitive distances
+
+# Ultra Short Term FIXMEs
+
+* [X] Ensure singly update paths
+* [X] Transitive distances
+* [ ] Fix nested loop extraction
+* [ ] Fix sequential loop partitioning
 
 
 # Ugliness, fix if have the time to
