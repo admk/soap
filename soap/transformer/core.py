@@ -31,7 +31,7 @@ class TreeFarmer(object):
 
     def _harvest(self, trees):
         """Crops all trees at the depth limit."""
-        if self.depth >= RECURSION_LIMIT:
+        if self.depth < 0 or self.depth >= RECURSION_LIMIT:
             return trees
         cropped = []
         for t in trees:
@@ -78,7 +78,8 @@ class TreeTransformer(TreeFarmer):
     def __init__(self, tree_or_trees,
                  depth=None, steps=None, no_bool=True,
                  transform_rules=None, reduction_rules=None,
-                 step_plugin=None, reduce_plugin=None, multiprocessing=None):
+                 step_plugin=None, reduce_plugin=None, multiprocessing=None,
+                 **kwargs):
         super().__init__(depth=depth or context.window_depth)
 
         self.steps = steps or context.max_steps
@@ -131,18 +132,14 @@ class TreeTransformer(TreeFarmer):
         """One step of the transitive closure."""
         rules = self.transform_rules if closure else self.reduction_rules
         if self.multiprocessing:
-            cpu_count = multiprocessing.cpu_count()
-            chunksize = int(len(expressions) / cpu_count) + 1
             # this gives the desired deterministic behaviour for reduction
             # so never change it to imap_unordered!!
             map = pool.map
         else:
-            cpu_count = chunksize = 1
-            map = lambda func, args_list, _: [func(args) for args in args_list]
+            map = lambda func, args_list: [func(args) for args in args_list]
         args_list = [(expression, rules, closure, depth)
                      for index, expression in enumerate(expressions)]
-        should_include, discovered_sets = \
-            zip(*map(_walk, args_list, chunksize))
+        should_include, discovered_sets = zip(*map(_walk, args_list))
         expressions = {
             expression for index, expression in enumerate(expressions)
             if should_include[index]}

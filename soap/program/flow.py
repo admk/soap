@@ -165,11 +165,11 @@ class ForFlow(Flow):
 
     def format(self):
         loop_format = indent(self.loop_flow.format())
-        template = ('for ({init_flow}; {conditional_expr}; {incr_flow}) '
+        template = ('for ({init_flow} {conditional_expr}; {incr_flow}) '
                     '{{\n{loop_format}}} ')
         return template.format(
             init_flow=self.init_flow, conditional_expr=self.conditional_expr,
-            incr_flow=self.incr_flow, loop_format=loop_format)
+            incr_flow=str(self.incr_flow)[:-1], loop_format=loop_format)
 
     def __repr__(self):
         repr_str = (
@@ -277,7 +277,8 @@ class PragmaOutputFlow(PragmaFlow):
     def __eq__(self, other):
         if type(self) is not type(other):
             return False
-        return self.outputs == other.outputs
+        return all(
+            a.name == b.name for a, b in zip(self.outputs, other.outputs))
 
 
 class ProgramFlow(Flow):
@@ -316,7 +317,7 @@ class ProgramFlow(Flow):
             outputs += flow.outputs
         typed_outputs = []
         for var in outputs:
-            if var.dtype == auto_type:
+            if not var.dtype:
                 name = var.name
                 var = Variable(name, self.decl[name])
             typed_outputs.append(var)
@@ -335,7 +336,9 @@ class ProgramFlow(Flow):
     def __eq__(self, other):
         if type(self) is not type(other):
             return False
-        return self.original_flow == other.original_flow
+        return (self.inputs == other.inputs and
+                self.outputs == other.outputs and
+                self.body_flow == other.body_flow)
 
 
 class _VariableSetGenerator(base_dispatcher()):

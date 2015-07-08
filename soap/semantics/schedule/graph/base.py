@@ -3,7 +3,7 @@ import math
 
 from soap.common import cached
 from soap.context import context
-from soap.datatype import ArrayType, int_type, float_type, double_type
+from soap.datatype import ArrayType
 from soap.expression import (
     Variable, InputVariable, is_expression, operators, InputVariableTuple,
     OutputVariableTuple
@@ -11,11 +11,11 @@ from soap.expression import (
 from soap.program.graph import DependenceGraph
 from soap.semantics import is_numeral
 from soap.semantics.label import Label
-from soap.semantics.schedule.common import (
-    DependenceType, PIPELINED_OPERATORS, MAX_SHARE_COUNT,
-    SHARED_DATATYPE_OPERATORS
+from soap.semantics.schedule.common import DependenceType
+from soap.semantics.schedule.table import (
+    OperatorResourceTuple, RESOURCE_TABLE, PIPELINED_OPERATORS, LATENCY_TABLE,
+    MAX_SHARE_COUNT, SHARED_DATATYPE_OPERATORS,
 )
-from soap.semantics.schedule.table import OperatorResourceTuple, RESOURCE_TABLE
 
 
 _irrelevant_types = (
@@ -23,26 +23,30 @@ _irrelevant_types = (
 
 
 @cached
-def loop_graph(node, round_values, sequentialize_loops, scheduler):
+def loop_graph(
+        expr, round_values=None, sequentialize_loops=True, scheduler=None):
     from soap.semantics.schedule.graph.loop import LoopScheduleGraph
     return LoopScheduleGraph(
-        node.expr(), round_values=round_values,
+        expr, round_values=round_values,
         sequentialize_loops=sequentialize_loops, scheduler=scheduler)
 
 
 class ScheduleGraph(DependenceGraph):
+    latency_table = LATENCY_TABLE
+
     def __init__(
-            self, env, out_vars, round_values=False,
+            self, env, out_vars, round_values=None,
             sequentialize_loops=True, scheduler=None):
         super().__init__(env, out_vars)
         self.sequentialize_loops = sequentialize_loops
-        self.round_values = round_values
+        self.round_values = round_values or context.round_values
         self.scheduler = scheduler or context.scheduler
 
     def node_expr(self, node):
-        if isinstance(node, InputVariable) or is_numeral(node):
+        from soap.transformer.partition import PartitionLabel
+        if isinstance(node, (InputVariable, PartitionLabel)):
             return None, None, None
-        if node == self._root_node:
+        if is_numeral(node) or node == self._root_node:
             return None, None, None
         expr = self.env[node]
         if is_expression(expr):
@@ -66,7 +70,7 @@ class ScheduleGraph(DependenceGraph):
         if op == operators.FIXPOINT_OP:
             # FixExpr, round to the nearest integer for integer cycle counts
             graph = loop_graph(
-                node, self.round_values, self.sequentialize_loops,
+                node.expr(), self.round_values, self.sequentialize_loops,
                 self.scheduler)
             latency = graph.latency()
             try:
@@ -83,7 +87,7 @@ class ScheduleGraph(DependenceGraph):
         if op == operators.FIXPOINT_OP:
             # FixExpr
             graph = loop_graph(
-                node, self.round_values, self.sequentialize_loops,
+                node.expr(), self.round_values, self.sequentialize_loops,
                 self.scheduler)
             return graph.resource()
         if op == operators.SUBTRACT_OP:
@@ -206,10 +210,11 @@ class ScheduleGraph(DependenceGraph):
         stat = OperatorResourceTuple(0, 0, 0)
         for (dtype, op), count in total_map.items():
             if (dtype, op) in SHARED_DATATYPE_OPERATORS:
-                count = int(math.ceil(count / MAX_SHARE_COUNT))
+                count = count / MAX_SHARE_COUNT
+                if self.round_values:
+                    count = int(math.ceil(count))
             if op in operators.COMPARISON_OPERATORS:
                 op = 'comparison'
             count = max(count, min_alloc_map[dtype, op])
-            dtype = _dtype_key_map[dtype]
             stat += RESOURCE_TABLE[dtype][op] * count
         return stat

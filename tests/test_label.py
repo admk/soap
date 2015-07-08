@@ -180,11 +180,3 @@ class TestLabel(unittest.TestCase):
         label = self.context.Label(meta_state, bound, None)
         test_value = LabelSemantics(label, env)
         self.compare(meta_state, test_value)
-
-
-"""
-class TestStitch(TestLabel):
-    def compare(self, expr, test_labsem):
-        test_expr = stitch(test_labsem)
-        self.assertEqual(test_expr, expr)
-"""

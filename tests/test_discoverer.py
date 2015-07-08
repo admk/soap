@@ -20,6 +20,7 @@ class TestUnroller(unittest.TestCase):
         x = Variable('x', float_type)
         fix_expr = flow_to_meta_state(parse(program))[x]
         unrolled = list(unroll_fix_expr(fix_expr, 2))
+        for u in unrolled: print(u.format())
         self.assertEqual(fix_expr, unrolled[0])
         program = """
         #pragma soap output x

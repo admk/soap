@@ -17,9 +17,9 @@ GREATER_OP = '>'
 GREATER_EQUAL_OP = '>='
 LESS_OP = '<'
 LESS_EQUAL_OP = '<='
-UNARY_NEGATION_OP = 'not'
-AND_OP = 'and'
-OR_OP = 'or'
+UNARY_NEGATION_OP = '!'
+AND_OP = '&&'
+OR_OP = '||'
 
 # special operators
 VARIABLE_OP = 'v'

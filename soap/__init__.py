@@ -31,7 +31,7 @@ from soap.semantics import (
 )
 from soap.transformer import (
     closure, greedy_frontier_closure, expand, reduce, parsings,
-    martel, greedy, frontier,
+    greedy, frontier,
 )
 
 

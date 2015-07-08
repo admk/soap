@@ -65,8 +65,9 @@ def base_dispatcher(dispatch_name='execute'):
     return Dispatcher
 
 
-def dict_merge(source, destination):
-    destination = dict(destination)
+def dict_merge(source, destination, copy=True):
+    if copy:
+        destination = dict(destination)
     for key, value in source.items():
         if isinstance(value, dict):
             # get node or create one

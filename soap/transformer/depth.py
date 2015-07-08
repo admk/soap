@@ -10,12 +10,11 @@ class Cropper(base_dispatcher('crop')):
     def _crop_atom(self, expr, depth, context):
         return expr, {}
 
+    crop_numeral = crop_Variable = crop_PartitionLabel = _crop_atom
+
     def _crop_fixed_expr(self, expr, depth, context):
         label = context.Label(expr, None, None)
         return label, {label: expr}
-
-    crop_numeral = _crop_atom
-    crop_Variable = _crop_atom
 
     def _crop_expression(self, expr, depth, context):
         if depth <= 0:
@@ -35,9 +34,9 @@ class Cropper(base_dispatcher('crop')):
 
     crop_UnaryArithExpr = crop_BinaryArithExpr = _crop_expression
     crop_BinaryBoolExpr = crop_SelectExpr = _crop_expression
-    crop_AccessExpr = crop_Subscript = _crop_expression
+    crop_AccessExpr = crop_UpdateExpr = crop_Subscript = _crop_expression
 
-    crop_UpdateExpr = crop_FixExpr = _crop_fixed_expr
+    crop_FixExpr = _crop_fixed_expr
 
     def __call__(self, expr, depth, context=None):
         context = context or LabelContext(expr)
@@ -52,8 +51,7 @@ class Stitcher(base_dispatcher('stitch')):
     def _stitch_atom(self, expr, env):
         return expr
 
-    stitch_numeral = _stitch_atom
-    stitch_Variable = _stitch_atom
+    stitch_numeral = stitch_Variable = stitch_PartitionLabel = _stitch_atom
 
     def stitch_Label(self, expr, env):
         return env[expr]
@@ -64,8 +62,9 @@ class Stitcher(base_dispatcher('stitch')):
 
     stitch_UnaryArithExpr = stitch_BinaryArithExpr = _stitch_expression
     stitch_BinaryBoolExpr = stitch_SelectExpr = _stitch_expression
-    stitch_AccessExpr = stitch_Subscript = _stitch_expression
-    stitch_UpdateExpr = stitch_FixExpr = stitch_Label
+    stitch_AccessExpr = stitch_UpdateExpr = _stitch_expression
+    stitch_Subscript = _stitch_expression
+    stitch_FixExpr = stitch_Label
 
 
 crop = Cropper()

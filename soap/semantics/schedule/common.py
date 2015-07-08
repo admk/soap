@@ -1,29 +1,14 @@
+import collections
 import math
 
 import islpy
 
 from soap.common.cache import cached
-from soap.datatype import float_type
 from soap.expression import (
-    expression_factory, is_expression, is_variable, Variable, operators
+    expression_factory, is_expression, is_variable, Variable, FixExpr,
+    expression_variables
 )
-
-
-NONPIPELINED_OPERATORS = {
-    operators.INDEX_ACCESS_OP,
-    operators.INDEX_UPDATE_OP,
-    operators.FIXPOINT_OP,
-}
-PIPELINED_OPERATORS = set(operators.OPERATORS) - NONPIPELINED_OPERATORS
-MAX_SHARE_COUNT = 8
-SHARED_DATATYPE_OPERATORS = {
-    (float_type, 'conversion'),
-    (float_type, 'comparison'),
-    (float_type, operators.ADD_OP),
-    (float_type, operators.SUBTRACT_OP),
-    (float_type, operators.MULTIPLY_OP),
-    (float_type, operators.DIVIDE_OP),
-}
+from soap.semantics.label import Label
 
 
 class DependenceType(object):
@@ -34,10 +19,11 @@ class DependenceType(object):
 
 
 def is_isl_expr(expr):
-    variables = expr.vars()
+    variables = expression_variables(expr)
     try:
-        islpy.Set('{{ [{vars}]: {expr} > 0 }}'.format(
-            vars=', '.join(v.name for v in variables), expr=expr))
+        problem = '{{ [{vars}]: {expr} > 0 }}'.format(
+            vars=', '.join(v.name for v in variables), expr=expr)
+        islpy.Set(problem)
     except islpy.Error:
         return False
     return True
@@ -86,10 +72,23 @@ def resource_map_min(total_map, lower_map):
 @cached
 def schedule_graph(expr, out_vars=None, **kwargs):
     from soap.semantics import label
-    from soap.semantics.schedule.graph import SequentialScheduleGraph
+    from soap.semantics.schedule.graph import (
+        SequentialScheduleGraph, LoopScheduleGraph
+    )
+    if isinstance(expr, FixExpr):
+        return LoopScheduleGraph(expr, **kwargs)
     label, env = label(expr, None, out_vars)
-    if is_expression(expr):
+    if not isinstance(expr, collections.Mapping):
         # expressions do not have out_vars, but have an output, in this case
         # ``label`` is its output variable
         out_vars = [label]
     return SequentialScheduleGraph(env, out_vars, **kwargs)
+
+
+def label_to_expr(node):
+    if isinstance(node, Label):
+        node = node.expr()
+    if is_expression(node):
+        args = (label_to_expr(arg) for arg in node.args)
+        return expression_factory(node.op, *args)
+    return node

@@ -1,23 +1,27 @@
 import collections
+import functools
 import itertools
 
-from soap.lattice.base import Lattice, join
+from soap.lattice.base import join, Lattice
 from soap.semantics.error import ErrorSemantics, FloatInterval, IntegerInterval
 
 
 class MultiDimensionalArray(Lattice, collections.Sequence):
-    __slots__ = ('_flat_items', '_c_top', '_c_bottom')
+    __slots__ = ('_flat_items', 'scalar', 'shape', '_c_top', '_c_bottom')
     value_class = None
 
-    def __init__(self, items=None, _flat_items=None, _shape=None,
-                 bottom=False, top=False):
+    def __init__(self, items=None, scalar=None, _flat_items=None,
+                 _shape=None, bottom=False, top=False):
         super().__init__(bottom=bottom, top=top)
+        self.shape = _shape
         if top or bottom:
-            self.shape = _shape
             return
-        self._c_top = None
-        self._c_bottom = None
-        self._init_flat_items(items, _flat_items, _shape)
+        self.scalar = scalar
+        if scalar is None:
+            self._init_flat_items(items, _flat_items, _shape)
+
+    def is_scalar(self):
+        return self.scalar is not None
 
     def _init_flat_items(self, items, _flat_items, _shape):
         def append_flat_items(flattened_flat_items, items):
@@ -57,25 +61,38 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
 
     @property
     def size(self):
-        return itertools.reduce(lambda x, y: x * y, self.shape)
+        return functools.reduce(lambda x, y: x * y, self.shape)
 
     def is_top(self):
-        top = self._c_top
-        if top is not None:
-            return top
-        top = self._c_top = all(i.is_top() for i in self._flat_items)
+        try:
+            return self._c_top
+        except AttributeError:
+            pass
+        if self.scalar is not None:
+            top = self.scalar.is_top()
+        else:
+            top = all(i.is_top() for i in self._flat_items)
+        self._c_top = top
         return top
 
     def is_bottom(self):
-        bot = self._c_bottom
-        if bot is not None:
-            return bot
-        bot = self._c_bottom = all(i.is_bottom() for i in self._flat_items)
+        try:
+            return self._c_top
+        except AttributeError:
+            pass
+        if self.scalar is not None:
+            bot = self.scalar.is_bottom()
+        else:
+            bot = all(i.is_bottom() for i in self._flat_items)
+        self._c_bottom = bot
         return bot
 
     def join(self, other):
         if self.shape != other.shape:
             raise ValueError('Shape mismatch.')
+        if self.scalar is not None:
+            return self.__class__(
+                scalar=self.scalar.join(other.scalar), _shape=self.shape)
         items = tuple(
             x.join(y) for x, y in zip(self._flat_items, other._flat_items))
         return self.__class__(_flat_items=items, _shape=self.shape)
@@ -83,12 +100,15 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
     def meet(self, other):
         if self.shape != other.shape:
             raise ValueError('Shape mismatch.')
+        if self.scalar is not None:
+            return self.__class__(
+                scalar=self.scalar.meet(other.scalar), _shape=self.shape)
         items = tuple(
             x.meet(y) for x, y in zip(self._flat_items, other._flat_items))
         return self.__class__(_flat_items=items, _shape=self.shape)
 
     def _to_flat_index(self, index):
-        return sum([i * p for i, p in zip(index, self._shape_prod)])
+        return sum((i * p for i, p in zip(index, self._shape_prod)))
 
     def to_nested_list(self):
         items = self._flat_items
@@ -134,6 +154,9 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
         if top or bottom:
             return self.value_class(top=top, bottom=bottom)
 
+        if self.scalar is not None:
+            return self.scalar
+
         # fast path for one-dimensional arrays
         if isinstance(index, int):
             return self._flat_items[index]
@@ -148,6 +171,12 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
         top = self.is_top()
         bottom = self.is_bottom()
         shape = self.shape
+
+        if self.scalar is not None:
+            if top or bottom:
+                return self
+            value = value.join(self.scalar)
+            return self.__class__(scalar=value, _shape=shape)
 
         if top or bottom:
             # extrapolate items in the matrix
@@ -182,12 +211,15 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
             x.le(y) for x, y in zip(self._flat_items, other._flat_items))
 
     def widen(self, other):
+        if self.scalar is not None:
+            return self.__class__(
+                scalar=self.scalar.widen(other.scalar), _shape=self.shape)
         items = [
             x.widen(y) for x, y in zip(self._flat_items, other._flat_items)]
         return self.__class__(_flat_items=items, _shape=self.shape)
 
     def __len__(self):
-        return len(self._flat_items)
+        return self.size()
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -198,7 +230,11 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
         return self._flat_items == other._flat_items
 
     def __hash__(self):
-        hash_val = self._hash = hash(self._flat_items)
+        if self.scalar is not None:
+            hash_val = hash((self.scalar, self.shape))
+        else:
+            hash_val = hash(self._flat_items)
+        self._hash = hash_val
         return hash_val
 
     def _format_matrix(self):
@@ -224,6 +260,9 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
                 for row in items))
 
     def __str__(self):
+        if self.scalar is not None:
+            shape = 'x'.join(str(s) for s in self.shape)
+            return '[{}: {}]'.format(shape, self.scalar)
         if len(self.shape) == 1:
             return '[{}]'.format(', '.join(str(v) for v in self._flat_items))
         if len(self.shape) == 2:
@@ -231,6 +270,9 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
         return str(self.to_nested_list())
 
     def __repr__(self):
+        if self.scalar is not None:
+            return '{}(scalar={!r}, _shape={!r})'.format(
+                self.__class__.__name__, self.scalar, self.shape)
         return '{}({!r})'.format(self.__class__.__name__, self._flat_items)
 
 

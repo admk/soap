@@ -7,6 +7,7 @@ import random
 
 from soap import logger
 from soap.common import Flyweight
+from soap.common.parallel import pool
 from soap.context import context
 from soap.semantics import error_eval, ErrorSemantics, inf, schedule_graph
 
@@ -26,12 +27,20 @@ _analysis_result_tuple = collections.namedtuple(
 
 
 class AnalysisResult(_analysis_result_tuple):
+    def stats(self):
+        return self.lut, self.dsp, self.error, self.latency
+
     def format(self):
         return '({}, {}, {}, {}, {})'.format(
             self.lut, self.dsp, self.error, self.latency,
             self.expression.format())
 
     __str__ = format
+
+    def __repr__(self):
+        return '{}({!r}, {!r}, {!r}, {!r})'.format(
+            self.__class__.__name__, self.lut, self.dsp, self.error,
+            self.latency, self.expression)
 
 
 def _pareto_frontier(points, ignore_last=True):
@@ -67,7 +76,7 @@ def sample_unique(points):
         point_dict[tuple(stats)].add(expr)
     result_set = set()
     for stats, exprs in point_dict.items():
-        expr = exprs.pop() if len(exprs) == 1 else random.sample(exprs, 1)
+        expr = (exprs if len(exprs) == 1 else random.sample(exprs, 1)).pop()
         result_set.add(AnalysisResult(*(stats + (expr, ))))
     return result_set
 
@@ -85,9 +94,22 @@ def thick_frontier(points):
     return frontier
 
 
+def _analyze_expression(args):
+    expr, state, out_vars, recurrences, round_values = args
+    error = abs_error(expr, state)
+    graph = schedule_graph(
+        expr, out_vars, recurrences=recurrences, round_values=round_values)
+    latency = graph.latency()
+    resource = graph.resource_stats()
+    return AnalysisResult(
+        resource.lut, resource.dsp, error, latency, expr)
+
+
 class Analysis(Flyweight):
 
-    def __init__(self, expr_set, state, out_vars=None, size_limit=None):
+    def __init__(
+            self, expr_set, state, out_vars=None, recurrences=None,
+            size_limit=None, round_values=None, multiprocessing=None):
         """Analysis class initialisation.
 
         :param expr_set: A set of expressions or a single expression.
@@ -100,7 +122,13 @@ class Analysis(Flyweight):
         self.expr_set = expr_set
         self.state = state
         self.out_vars = out_vars
+        self.recurrences = recurrences
         self.size_limit = size_limit or context.size_limit
+        self.round_values = round_values
+        if multiprocessing is not None:
+            self.multiprocessing = multiprocessing
+        else:
+            self.multiprocessing = context.multiprocessing
         self._results = None
 
     def analyze(self):
@@ -117,6 +145,8 @@ class Analysis(Flyweight):
         expr_set = self.expr_set
         state = self.state
         out_vars = self.out_vars
+        recurrences = self.recurrences
+        round_values = self.round_values
 
         size = len(expr_set)
         limit = self.size_limit
@@ -126,22 +156,20 @@ class Analysis(Flyweight):
                 'reduces population size by sampling.'.format(size, limit))
             random.seed(context.rand_seed)
             expr_set = random.sample(expr_set, limit)
+        size = len(expr_set)
 
-        results = set()
-        step = 0
-        total = len(expr_set)
+        if self.multiprocessing:
+            map = pool.map
+        else:
+            map = lambda func, args_list: (func(args) for args in args_list)
+        args_list = [
+            (expr, state, out_vars, recurrences, round_values)
+            for expr in expr_set]
+
         try:
-            for expr in expr_set:
-                step += 1
-                logger.persistent(
-                    'Analysing', '{}/{}'.format(step, total),
-                    l=logger.levels.debug)
-                error = abs_error(expr, state)
-                graph = schedule_graph(expr, out_vars)
-                latency = graph.latency()
-                resource = graph.resource_stats()
-                result = AnalysisResult(
-                    resource.lut, resource.dsp, error, latency, expr)
+            results = set()
+            for i, result in enumerate(map(_analyze_expression, args_list)):
+                logger.persistent('Analysing', '{}/{}'.format(i, size))
                 results.add(result)
         except KeyboardInterrupt:
             logger.warning(

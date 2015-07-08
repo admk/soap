@@ -49,12 +49,12 @@ def distributivity_distribute_select_func(op, args, da):
 
 distributivity_distribute_unary_subtraction_addition = (
     compile('-(a + b)'),
-    compile('-a - b'),
+    compile('-a - b', '-b - a'),
     'distributivity_distribute_unary_subtraction_addition'
 )
 distributivity_distribute_unary_subtraction_subtraction = (
     compile('-(a - b)'),
-    compile('-a + b'),
+    compile('-a + b', 'b - a'),
     'distributivity_distribute_unary_subtraction_addition'
 )
 distributivity_distribute_unary_subtraction_multiplication = (
@@ -123,7 +123,6 @@ distributivity_collect_division_2 = (
     compile('(a * d + b * c) / (c * d)'),
     'distributivity_collect_division_2'
 )
-# FIXME did I forget about distribute rules?
 distributivity_collect_select_addition = (
     compile('b ? (a + d) : (c + d)'),
     compile('(b ? a : c) + d'),
@@ -294,7 +293,6 @@ class ArithTreeTransformer(TreeTransformer):
             distributivity_distribute_select,
         ],
         operators.SUBTRACT_OP: [
-            negation,
             distributivity_distribute_select,
         ],
         operators.MULTIPLY_OP: [
@@ -379,21 +377,3 @@ class ArithTreeTransformer(TreeTransformer):
             same_expression_reduction_ifelse,
         ],
     }
-
-
-class MartelTreeTransformer(ArithTreeTransformer):
-    """
-    Some compatibility hacks to support martel's equivalence finding, so we can
-    compare.
-    """
-
-    reduction_methods = []
-
-    def _harvest(self, trees):
-        return trees
-
-    def _seed(self, trees):
-        return trees
-
-    def _step(self, expressions, closure=False, depth=None):
-        return super()._step(expressions, closure, self.depth)

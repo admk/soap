@@ -14,7 +14,7 @@
   <h1>SOAP</h1>
   <p>SOAP is a tool for automatically exploring optimisations to a C
   program, so that when it is compiled to an FPGA implementation, the
-  error, area, and latency of the implementation are minimised.</p>  
+  error, area, and latency of the implementation are minimised.</p>
 </div>
 
 <div class="container">
@@ -22,7 +22,10 @@
 <div class="col-sm-12">
   <h3>Select an example:</h3>
   <select onChange="draw_graphs(this)" size=5>
-    <option value="tester">Tester</option>
+    <option value="cum_sum">Summation</option>
+    <option value="inner_product">Matrix Multiply Inner Product</option>
+    <option value="seidel">Seidel</option>
+    <option value="tridiagonal">Tridiagonal</option>
     <option value="basal">Basal</option>
     <option value="euler">Euler</option>
     <option value="filter">Filter</option>
@@ -37,7 +40,7 @@
 </div>
 
 <script src="js/scatter.js"></script>
- 
+
 <div class="col-sm-6">
   <h2>Original program</h2>
   <textarea id="orig_program" style="width: 100%;" rows=10></textarea>
@@ -47,7 +50,7 @@
   <h2>Optimised program</h2>
   <textarea id="opti_program" style="width: 100%;" rows=10></textarea>
 </div>
-  
+
 <div class="col-sm-4">
   <h2>Latency vs. error</h2>
 <div id="graphzone1"></div>
@@ -60,7 +63,7 @@
   <h2>Lut vs. latency</h2>
 <div id="graphzone3"></div>
 </div>
-  
+
 </div>
 
 </body>

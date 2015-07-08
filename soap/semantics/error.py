@@ -154,11 +154,13 @@ def _decorate_operator(func):
         with ignored(AttributeError):
             if self.is_top() or other.is_top():
                 # top denotes no information or non-termination
-                return self.__class__(top=True)
+                cls = _coerce(self, other) or self.__class__
+                return cls(top=True)
         with ignored(AttributeError):
             if self.is_bottom() or other.is_bottom():
                 # bottom denotes conflict
-                return self.__class__(bottom=True)
+                cls = _coerce(self, other) or self.__class__
+                return cls(bottom=True)
         try:
             return _decorate_coerce(func)(self, other)
         except gmpy2.RangeError:
@@ -328,7 +330,9 @@ class Interval(Lattice):
     def exp(self):
         if self.is_top() or self.is_bottom():
             return self
-        return FloatInterval([gmpy2.exp(self.min), gmpy2.exp(self.max)])
+        value = [gmpy2.exp(self.min), gmpy2.exp(self.max)]
+        error = round_off_error(value)
+        return ErrorSemantics(value, error)
 
     @_decorate_operator
     def widen(self, other, cls):
@@ -344,6 +348,7 @@ class Interval(Lattice):
         if min_val == max_val:
             return str(min_val)
         return '[{}, {}]'.format(min_val, max_val)
+    format = __str__
 
     def __repr__(self):
         return '{cls}([{min!r}, {max!r}])'.format(

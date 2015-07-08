@@ -1,0 +1,15 @@
+def two_dim_hydro(
+        int j = [0, 99],
+        real[100, 100] za = [0.0, 1.0],
+        real[100, 100] zb = [0.0, 1.0],
+        real[100, 100] zr = [0.0, 1.0],
+        real[100, 100] zu = [0.0, 1.0],
+        real[100, 100] zv = [0.0, 1.0],
+        real[100, 100] zz = [0.0, 1.0]) {
+    for (int k=1 ; k<100 ; k = k + 1 ) {
+        real qa = za[j+1,k]*zr[j,k] + za[j-1,k]*zb[j,k] +
+                  za[j,k+1]*zu[j,k] + za[j,k-1]*zv[j,k] + zz[j,k];
+        za[j,k] = za[j,k] + 0.175*( qa - za[j,k] );
+    }
+    return za;
+}

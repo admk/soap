@@ -46,6 +46,7 @@ class UnaryArithExpr(UnaryExpression, ArithExpr):
     """Unary arithmetic expressions."""
 
     __slots__ = ()
+    _str_brackets = False
 
     def format(self):
         arg, = self._args_to_str()

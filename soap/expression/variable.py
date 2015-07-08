@@ -13,8 +13,8 @@ from soap.expression.operators import EXTERNAL_OP, VARIABLE_OP
 
 class Variable(ArithmeticMixin, BooleanMixin, BinaryExpression):
     """The variable class."""
-
     __slots__ = ()
+    _str_brackets = False
 
     def __init__(self, name, dtype=auto_type):
         super().__init__(VARIABLE_OP, name, dtype)

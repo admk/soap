@@ -33,7 +33,7 @@ class TestExpressionParser(Base):
             operators.NOT_EQUAL_OP, self.y, self.i1)
         bool_expr = expression_factory(
             operators.AND_OP, bool_expr_1, bool_expr_2)
-        self.assertEqual(expr_parse('not x < 3 and y != 1'), bool_expr)
+        self.assertEqual(expr_parse('!(x < 3) && y != 1'), bool_expr)
 
     def test_operator_precedence(self):
         neg_y = expression_factory(operators.UNARY_SUBTRACT_OP, self.y)
@@ -178,6 +178,7 @@ class TestStatementParser(Base):
 class TestProgramParser(Base):
     def setUp(self):
         super().setUp()
+        self.w = Variable('w', float_type)
         self.x = Variable('x', int_type)
         self.y = Variable('y', float_type)
         self.z = Variable('z', float_type)
@@ -187,25 +188,29 @@ class TestProgramParser(Base):
             'z': float_type,
         }
 
-    def test_function(self):
+    def test_full(self):
         expr = expression_factory(
             operators.ADD_OP, expression_factory(
                 operators.ADD_OP, self.x, self.y), self.z)
+        inputs = [
+            (self.x, self.i1),
+            (self.y, ErrorSemantics([3.0, 4.0])),
+            (self.z, ErrorSemantics([5, 6], [0, 0])),
+        ]
+        outputs = [self.w]
         body = CompositionalFlow([
-            PragmaInputFlow([
-                (self.x, self.i1),
-                (self.y, ErrorSemantics([3.0, 4.0])),
-                (self.z, ErrorSemantics([5, 6], [0, 0])),
-            ]),
-            PragmaOutputFlow([self.z]),
-            AssignFlow(self.z, expr),
+            PragmaInputFlow(inputs),
+            PragmaOutputFlow(outputs),
+            AssignFlow(self.w, expr),
         ])
         flow = ProgramFlow(body, self.decl)
         prog = """
             #pragma soap input \
                 int x=1, float y=[3.0, 4.0], float z=[5.0, 6.0][0, 0]
-            #pragma soap output z
-            z = x + y + z;
+            #pragma soap output w
+            float w = x + y + z;
             """
         parsed_flow = parse(prog)
-        self.assertEqual(flow, parsed_flow)
+        self.assertListEqual(list(parsed_flow.inputs.items()), inputs)
+        self.assertListEqual(parsed_flow.outputs, outputs)
+        self.assertEqual(parsed_flow, flow)

@@ -27,12 +27,18 @@ def full_closure(expr, **kwargs):
     return closure(expr)
 
 
-def _plugin_closure(plugin, expr, state, out_vars, **kwargs):
+def _plugin_closure(
+        plugin_func, expr, state, out_vars, recurrences=None, **kwargs):
+    def plugin(expr_set):
+        frontier_set = plugin_func(
+            expr_set, state, out_vars, recurrences=recurrences)
+        return [r.expression for r in frontier_set]
     transformer = ArithTreeTransformer(expr, step_plugin=plugin, **kwargs)
     return plugin(transformer.closure())
 
 
-def greedy_frontier_closure(expr, state, out_vars=None, **kwargs):
+def greedy_frontier_closure(
+        expr, state, out_vars=None, recurrences=None, **kwargs):
     """Our greedy transitive closure.
 
     :param expr: The expression(s) under transform.
@@ -44,13 +50,16 @@ def greedy_frontier_closure(expr, state, out_vars=None, **kwargs):
         :class:`soap.semantics.error.Interval`
     :param out_vars: The output variables of the metastate
     :type out_vars: :class:`collections.Sequence`
+    :param recurrences: A dictionary containing information about
+        loop recurrences
+    :type recurrences: dict
     """
-    plugin = lambda exprs: [
-        r.expression for r in frontier(exprs, state, out_vars)]
-    return _plugin_closure(plugin, expr, state, out_vars, **kwargs)
+    return _plugin_closure(
+        frontier, expr, state, out_vars, recurrences, **kwargs)
 
 
-def thick_frontier_closure(expr, state, out_vars=None, **kwargs):
+def thick_frontier_closure(
+        expr, state, out_vars=None, recurrences=None, **kwargs):
     """Our thick frontier transitive closure.
 
     :param expr: The expression(s) under transform.
@@ -62,10 +71,12 @@ def thick_frontier_closure(expr, state, out_vars=None, **kwargs):
         :class:`soap.semantics.error.Interval`
     :param out_vars: The output variables of the metastate
     :type out_vars: :class:`collections.Sequence`
+    :param recurrences: A dictionary containing information about
+        loop recurrences
+    :type recurrences: dict
     """
-    plugin = lambda exprs: [
-        r.expression for r in thick_frontier(exprs, state, out_vars)]
-    return _plugin_closure(plugin, expr, state, out_vars, **kwargs)
+    return _plugin_closure(
+        thick_frontier, expr, state, out_vars, recurrences, **kwargs)
 
 
 def transform(expr, reduction_rules=None, transform_rules=None,
@@ -78,7 +89,7 @@ def transform(expr, reduction_rules=None, transform_rules=None,
         depth=depth, multiprocessing=multiprocessing).closure()
 
 
-def expand(expr):
+def expand(expr, *args, **kwargs):
     """Fully expands the expression expr by distributivity.
 
     :param expr: The expression expr.
@@ -98,7 +109,7 @@ def expand(expr):
         multiprocessing=False).pop()
 
 
-def reduce(expr):
+def reduce(expr, *args, **kwargs):
     """Transforms expr by reduction rules only.
 
     :param expr: The expression expr.
@@ -121,7 +132,7 @@ def reduce(expr):
     raise TypeError('Do not know how to reduce {!r}'.format(expr))
 
 
-def parsings(expr):
+def parsings(expr, *args, **kwargs):
     """Generates all possible parsings of the same expr by associativity.
 
     :param expr: The expression expr.

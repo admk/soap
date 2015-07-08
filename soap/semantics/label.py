@@ -31,6 +31,7 @@ label_namedtuple_type = namedtuple(
 class Label(label_namedtuple_type, Flyweight):
     """Constructs a label for expression or statement `statement`"""
     __slots__ = ()
+    _str_brackets = False
 
     def __new__(cls, statement, bound, invariant,
                 context_id=None, _label_value=None):
@@ -63,9 +64,20 @@ class Label(label_namedtuple_type, Flyweight):
     def port_name(self):
         return 'p_{}'.format(self.label_value)
 
-    def __str__(self):
+    def format(self):
         s = 'l{}({})'.format(self.label_value, self.bound)
+        s = 'l{}'.format(self.label_value)
         return s
+
+    def __eq__(self, other):
+        return (self.__class__ == other.__class__ and
+                self.label_value == other.label_value)
+
+    def __hash__(self):
+        return hash((self.__class__, self.label_value))
+
+    def __str__(self):
+        return self.format()
 
     def __repr__(self):
         formatter = '{cls}({label!r}, {bound!r}, {invariant!r}, {context!r})'
@@ -76,6 +88,8 @@ class Label(label_namedtuple_type, Flyweight):
 
 
 class LabelContext(object):
+    label_class = Label
+
     def __init__(self, description, out_vars=None):
         super().__init__()
         if not isinstance(description, str):
@@ -87,7 +101,7 @@ class LabelContext(object):
 
     def Label(self, statement, bound, invariant):
         label_value = fresh_int(statement, _lmap=self.lmap)
-        return Label(
+        return self.label_class(
             statement, bound=bound, invariant=invariant,
             context_id=self.description, _label_value=label_value)
 

@@ -89,9 +89,9 @@ gt = _ '>'  _
 eq = _ '==' _
 ne = _ '!=' _
 
-and = _ 'and' _
-or  = _ 'or'  _
-not = _ 'not' _
+and = _ '&&' _
+or  = _ '||' _
+not = _ '!'  _
 
 sum_operator = add / sub
 prod_operator = pow / mul / div

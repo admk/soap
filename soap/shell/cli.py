@@ -64,7 +64,8 @@ Options:
                             [default: {context.unroll_depth}]
     --algorithm=<str>       The name of the algorithm used for optimization.
                             Allows: `closure`, `expand`, `reduce`, `parsings`,
-                            `greedy`, `frontier` or `thick`.  [default: thick]
+                            `greedy`, `frontier`, `thick` or `partition`.
+                            [default: partition]
     --norm={context.norm}
                             Specify the name of the norm function to use.
                             Allows: `mean_error`, `mse_error`, `max_error`
