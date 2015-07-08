@@ -67,41 +67,32 @@ class TestBoxStateExampleTransitions(unittest.TestCase):
     """Unittesting for :class:`soap.program.flow`."""
     def setUp(self):
         self.simple_if = """
-            def main() {
-                int x = 0;
-                if (x <= 1) {
-                    x = x + 1;
-                } else {
-                    x = x - 1;
-                }
-                return x;
-            }
+            #pragma soap output x
+            int x = 0;
+            if (x <= 1)
+                x = x + 1;
+            else
+                x = x - 1;
             """
         self.simple_while = """
-            def main() {
-                int x = 0;
-                while (x < 5) {
-                    x = x + 1;
-                }
-                return x;
-            }
+            #pragma soap output x
+            int x = 0;
+            while (x < 5)
+                x = x + 1;
             """
         self.factorial = """
-            def main(int x=[0, 5], int y=[0, 2]) {
-                while (x <= 3) {
-                    y = y * x;
-                    x = x + 1;
-                }
-                return y;
+            #pragma soap input int x = [0, 5], int y = [0, 2]
+            #pragma soap output y
+            while (x <= 3) {
+                y = y * x;
+                x = x + 1;
             }
             """
         self.fixpoint = """
-            def main(real x=[0.0, 9.0]) {
-                while (x > 1) {
-                    x = 0.9 * x;
-                }
-                return x;
-            }
+            #pragma soap input float x = [0.0, 9.0]
+            #pragma soap output x
+            while (x > 1)
+                x = 0.9 * x;
             """
 
     def test_simple_if(self):

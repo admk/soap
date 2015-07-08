@@ -3,7 +3,7 @@ import math
 
 from soap.common import cached
 from soap.context import context
-from soap.datatype import ArrayType, int_type, real_type
+from soap.datatype import ArrayType, int_type, float_type, double_type
 from soap.expression import (
     Variable, InputVariable, is_expression, operators, InputVariableTuple,
     OutputVariableTuple
@@ -20,12 +20,6 @@ from soap.semantics.schedule.table import OperatorResourceTuple, RESOURCE_TABLE
 
 _irrelevant_types = (
     Label, Variable, InputVariableTuple, OutputVariableTuple)
-_float_type = {23: 'float', 52: 'double'}[context.precision]
-_dtype_key_map = {
-    int_type: 'integer',
-    real_type: _float_type,
-    ArrayType: 'array',
-}
 
 
 @cached
@@ -80,7 +74,6 @@ class ScheduleGraph(DependenceGraph):
             except OverflowError:
                 return latency
             return int(latency)
-        dtype = _dtype_key_map[dtype]
         return self.latency_table[dtype][op]
 
     def node_resource(self, node):

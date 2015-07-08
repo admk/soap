@@ -1,10 +1,11 @@
 from soap.datatype import (
-    auto_type, int_type, real_type, IntegerArrayType, RealArrayType
+    auto_type, int_type, float_type, double_type,
+    IntegerArrayType, FloatArrayType
 )
 from soap.expression import expression_factory, operators, Variable
 from soap.parser.common import (
-    ParserError, _lift_child, _lift_children, _lift_middle, _lift_second,
-    _visit_list, _visit_maybe_list, CommonVisitor
+    ParserError, _lift_child, _lift_children, _lift_middle, _visit_list,
+    _visit_maybe_list, CommonVisitor
 )
 from soap.parser.grammar import compiled_grammars
 
@@ -34,16 +35,32 @@ class DeclarationVisitor(object):
         super().__init__()
         self.decl_map = decl or {}
 
-    visit_variable_or_declaration = _lift_child
+    visit_variable_or_declaration = visit_variable_declaration = _lift_child
 
-    def visit_variable_declaration(self, node, children):
-        decl_type, var = children
+    def _new_declaration(self, decl_type, var):
         if var.dtype is not None or var.name in self.decl_map:
             raise VariableAlreadyDeclaredError(
                 'Variable {} is already declared with type {}'
                 .format(var.name, var.dtype))
         self.decl_map[var.name] = decl_type
         return Variable(var.name, decl_type)
+
+    def visit_scalar_declaration(self, node, children):
+        decl_type, var = children
+        return self._new_declaration(decl_type, var)
+
+    def visit_array_declaration(self, ndoe, children):
+        base_type, var, dimension_list = children
+        if base_type == int_type:
+            data_type = IntegerArrayType(dimension_list)
+        elif base_type == float_type:
+            data_type = FloatArrayType(dimension_list)
+        else:
+            raise TypeError('Unrecognized data type {}'.format(base_type))
+        return self._new_declaration(data_type, var)
+
+    visit_dimension_list = _lift_children
+    visit_dimension = _lift_middle
 
     def visit_variable(self, node, children):
         var = self.visit_new_variable(node, children)
@@ -60,7 +77,7 @@ class DeclarationVisitor(object):
     visit_variable_subscript = _lift_child
 
     def visit_variable_with_subscript(self, node, children):
-        var, _1, subscript, _2 = children
+        var, subscript = children
         dtype = var.dtype
         if dtype is not auto_type and len(dtype.shape) != len(subscript):
             raise ArrayDimensionError(
@@ -70,31 +87,22 @@ class DeclarationVisitor(object):
                     ', '.join(str(s) for s in subscript), len(subscript)))
         return expression_factory(operators.INDEX_ACCESS_OP, var, subscript)
 
+    def visit_subscript_list(self, node, children):
+        return children
+
+    visit_subscript = _lift_middle
     visit_data_type = _lift_child
-
-    def visit_array_type(self, node, children):
-        base_type, left_brac, dimension_list, right_brac = children
-        if base_type == int_type:
-            return IntegerArrayType(dimension_list)
-        elif base_type == real_type:
-            return RealArrayType(dimension_list)
-        raise TypeError('Unrecognized data type {}'.format(base_type))
-
-    visit_dimension_list = _visit_list
-    visit_maybe_dimension_list = _visit_maybe_list
-    visit_comma_dimension_list = _lift_second
-
-    visit_base_type = _lift_child
 
     _type_map = {
         'int_type': int_type,
-        'real_type': real_type,
+        'float_type': float_type,
+        'double_type': double_type,
     }
 
     def _visit_type(self, node, children):
         return self._type_map[node.expr_name]
 
-    visit_int_type = visit_real_type = _visit_type
+    visit_int_type = visit_float_type = visit_double_type = _visit_type
 
 
 class UntypedDeclarationVisitor(DeclarationVisitor):

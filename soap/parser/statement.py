@@ -29,15 +29,17 @@ class StatementVisitor(object):
 
     visit_declaration_statement = visit_skip_statement
 
-    visit_assign_statement = _lift_first
+    visit_assign_statement = visit_operator_assign_statement = _lift_first
+    visit_step_statement = _lift_first
+    visit_assign_variations = _lift_child
 
-    def visit_operator_assign_statement(self, node, children):
-        var, op, expr, semicolon = children
+    def visit_operator_assign_part(self, node, children):
+        var, op, expr = children
         expr = expression_factory(op, var, expr)
         return AssignFlow(var, expr)
 
-    def visit_step_statement(self, node, children):
-        var, op, semicolon = children
+    def visit_step_part(self, node, children):
+        var, op = children
         expr = expression_factory(op, var, IntegerInterval(1))
         return AssignFlow(var, expr)
 

@@ -15,13 +15,9 @@ skip_statement = skip semicolon
 
 declaration_statement = variable_declaration semicolon
 
-assign_statement = assign_part semicolon
-variable_or_declaration = variable_declaration / variable_subscript
-
-operator_assign_statement =
-    variable_subscript op_eq_operator arithmetic_expression semicolon
-
-step_statement = variable_subscript step_operator semicolon
+assign_statement = assign_variations semicolon
+operator_assign_statement = operator_assign_part semicolon
+step_statement = step_part semicolon
 
 if_statement = if_else_block / if_then_block
 if_then_block = if boolean_block code_block
@@ -33,8 +29,13 @@ for_statement =
     for left_paren for_assign_part semicolon boolean_expression semicolon
     for_assign_part right_paren code_block
 
-for_assign_part = assign_part / skip
+for_assign_part = assign_variations / _
+
+assign_variations = assign_part / operator_assign_part / step_part
 assign_part = variable_or_declaration assign arithmetic_expression
+variable_or_declaration = scalar_declaration / variable_subscript
+operator_assign_part = variable_subscript op_eq_operator arithmetic_expression
+step_part = variable_subscript step_operator
 
 boolean_block = left_paren boolean_expression right_paren
 code_block = single_statement / multi_line_code_block
@@ -50,7 +51,7 @@ input_assign_expr = variable_declaration assign number
 
 pragma_output_statement = pragma output output_list _
 
-output_list = variable maybe_output_list
+output_list = new_variable maybe_output_list
 maybe_output_list = comma_output_list / _
 comma_output_list = comma output_list
 
@@ -61,7 +62,7 @@ comma_output_list = comma output_list
 
 input = _no_new_line 'input' _no_new_line
 output = _no_new_line 'output' _no_new_line
-pragma = _ '#pragma' _no_new_line 'soap' _no_new_line
+pragma = _ '#' _no_new_line 'pragma' _no_new_line 'soap' _no_new_line
 
 
 # ==========

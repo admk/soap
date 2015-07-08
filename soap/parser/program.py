@@ -71,4 +71,6 @@ def parse(program, decl=None):
     decl = decl or {}
     visitor = _ProgramVisitor(decl)
     program = _preprocess(program)
-    return ProgramFlow(visitor.parse(program))
+    flow = visitor.parse(program)
+    decl = visitor.decl_map
+    return ProgramFlow(flow, decl)

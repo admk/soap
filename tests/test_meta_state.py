@@ -126,7 +126,7 @@ class TestMetaState(unittest.TestCase):
         self.assertEqual(state, compare_state)
 
     def test_access_expr_multi(self):
-        flow = self.stmt_parse('x = b[y, z];')
+        flow = self.stmt_parse('x = b[y][z];')
         state = MetaState({
             self.b: self.b,
             self.x: self.x,
@@ -157,7 +157,7 @@ class TestMetaState(unittest.TestCase):
         self.assertEqual(state, compare_state)
 
     def test_update_expr_multi(self):
-        flow = self.stmt_parse('b[x, y] = 1;')
+        flow = self.stmt_parse('b[x][y] = 1;')
         state = MetaState({
             self.b: self.b,
             self.x: self.y,

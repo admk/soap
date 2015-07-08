@@ -1,6 +1,6 @@
 import unittest
 
-from soap.datatype import auto_type, int_type, real_type
+from soap.datatype import auto_type, int_type, float_type, IntegerArrayType
 from soap.expression import expression_factory, operators, Variable, Subscript
 from soap.semantics import IntegerInterval, ErrorSemantics
 from soap.program.flow import (
@@ -12,6 +12,8 @@ from soap.parser import stmt_parse, expr_parse, parse
 
 class Base(unittest.TestCase):
     def setUp(self):
+        self.a = Variable('a', IntegerArrayType([10]))
+        self.w = Variable('w', int_type)
         self.x = Variable('x', auto_type)
         self.y = Variable('y', auto_type)
         self.z = Variable('z', auto_type)
@@ -72,7 +74,7 @@ class TestExpressionParser(Base):
 
         expr = expression_factory(
             operators.INDEX_ACCESS_OP, self.x, Subscript(self.y, self.i1))
-        self.assertEqual(expr_parse('x[y, 1]'), expr)
+        self.assertEqual(expr_parse('x[y][1]'), expr)
 
         expr = expression_factory(
             operators.INDEX_ACCESS_OP, self.x,
@@ -94,6 +96,14 @@ class TestStatementParser(Base):
             operators.ADD_OP, self.y, self.i1)
         flow = AssignFlow(self.x, expr)
         self.assertEqual(self.stmt_parse('x = y + 1;'), flow)
+
+    def test_declaration_assign_statement(self):
+        flow = AssignFlow(self.w, self.i1)
+        self.assertEqual(self.stmt_parse('int w = 1;'), flow)
+
+    def test_declaration_statement(self):
+        self.stmt_parse('int w;')
+        self.stmt_parse('float a[10][10];')
 
     def test_operator_assign_statement(self):
         expr = expression_factory(
@@ -169,8 +179,13 @@ class TestProgramParser(Base):
     def setUp(self):
         super().setUp()
         self.x = Variable('x', int_type)
-        self.y = Variable('y', real_type)
-        self.z = Variable('z', real_type)
+        self.y = Variable('y', float_type)
+        self.z = Variable('z', float_type)
+        self.decl = {
+            'x': int_type,
+            'y': float_type,
+            'z': float_type,
+        }
 
     def test_function(self):
         expr = expression_factory(
@@ -185,10 +200,10 @@ class TestProgramParser(Base):
             PragmaOutputFlow([self.z]),
             AssignFlow(self.z, expr),
         ])
-        flow = ProgramFlow(body)
+        flow = ProgramFlow(body, self.decl)
         prog = """
             #pragma soap input \
-                int x=1, real y=[3.0, 4.0], real z=[5.0, 6.0][0, 0]
+                int x=1, float y=[3.0, 4.0], float z=[5.0, 6.0][0, 0]
             #pragma soap output z
             z = x + y + z;
             """
