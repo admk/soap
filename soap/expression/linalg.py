@@ -1,3 +1,4 @@
+from soap.common.formatting import indent
 from soap.expression.arithmetic import ArithmeticMixin
 from soap.expression import (
     BinaryExpression, Expression, TernaryExpression, FixExpr
@@ -94,7 +95,8 @@ class UpdateExpr(
 
     def format(self):
         var, subscript, expr = (a.format() for a in self.args)
-        return 'update({}, {}, {})'.format(var, subscript, expr)
+        args = '{}, \n{}, \n{}'.format(var, subscript, expr)
+        return 'update(\n{})'.format(indent(args))
 
     def __repr__(self):
         return '{cls}({var!r}, {subscript!r}, {expr!r})'.format(
