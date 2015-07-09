@@ -41,19 +41,16 @@ def linear_expressions_never_equal(*args):
         return False
 
 
-def _subscripts_compare(func, *subscripts):
-    for indices in zip(*(a.args for a in subscripts)):
-        if not func(*indices):
-            return False
-    return True
-
-
 def subscripts_always_equal(*subscripts):
-    return _subscripts_compare(linear_expressions_always_equal, *subscripts)
+    return all(
+        linear_expressions_always_equal(*indices)
+        for indices in zip(*(a.args for a in subscripts)))
 
 
 def subscripts_never_equal(*subscripts):
-    return _subscripts_compare(linear_expressions_never_equal, *subscripts)
+    return any(
+        linear_expressions_never_equal(*indices)
+        for indices in zip(*(a.args for a in subscripts)))
 
 
 class AccessUpdateSimplifier(GenericExecuter):

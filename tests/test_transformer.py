@@ -9,7 +9,6 @@ from soap.transformer import arithmetic, pattern
 from soap.transformer.partition import partition_optimize
 from soap.transformer.utils import parsings, reduce
 from soap.transformer.linalg import linear_algebra_simplify
-from soap.semantics.functions.fixpoint import unroll_fix_expr
 
 
 Expression.__repr__ = lambda self: self.__str__()
@@ -204,12 +203,9 @@ class TestPartition(unittest.TestCase):
             self.meta_state[self.output], compare_meta_state[self.output])
 
     def test_optimize(self):
-        return
         with context.local(unroll_depth=1):
             env_set = partition_optimize(
                 self.meta_state, self.state, [self.output])
-        for e in env_set:
-            print(e.format())
         analysis = Analysis(
             {self.meta_state}, self.state, [self.output], round_values=True)
         print('Original: ', analysis.analyze().pop().format())

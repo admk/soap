@@ -157,6 +157,7 @@ def _unroll_for_loop(expr, iter_var, iter_slice, depth):
     from soap.semantics.schedule.common import iter_point_count
     from soap.transformer.linalg import linear_algebra_simplify
 
+    expr = linear_algebra_simplify(expr)
     expr.unroll_depth = 0
     expr_list = [expr]
 

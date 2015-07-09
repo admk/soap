@@ -307,7 +307,6 @@ class ArithTreeTransformer(TreeTransformer):
             distributivity_collect_division_2,
             distributivity_distribute_select,
             unnegation_1,
-            unnegation_2,
         ],
         operators.SUBTRACT_OP: [
             distributivity_distribute_select,

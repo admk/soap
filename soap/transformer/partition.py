@@ -186,7 +186,10 @@ class PartitionOptimizer(GenericExecuter):
 
     def optimize_algorithm(self, expr, state, recurrences):
         from soap.transformer.discover import GreedyDiscoverer
-        return GreedyDiscoverer(recurrences=recurrences)(expr, state, None)
+        results = GreedyDiscoverer(recurrences=recurrences)(expr, state, None)
+        for r in results:
+            print(r.format())
+        return results
         from soap.transformer.utils import thick_frontier_closure
         return thick_frontier_closure(
             expr, state, recurrences=recurrences, depth=-1)
@@ -353,7 +356,7 @@ def partition_optimize(
     else:
         out_vars = sorted(meta_state.keys(), key=str)
 
-    meta_state_str = meta_state.format()
+    meta_state_str = str(meta_state)
 
     logger.info('Partitioning:', meta_state_str)
     label, env = _generate(_mark_unroll(meta_state), state)
@@ -368,12 +371,18 @@ def partition_optimize(
         for r in results:
             logger.debug(r.format())
 
+    spliced_results = []
+    for r in results:
+        expression = _splice(r.expression, r.expression)
+        r = AnalysisResult(r.lut, r.dsp, r.error, r.latency, expression)
+        spliced_results.append(r)
+
     if not final_analysis:
         return results
 
     logger.info('Final analysis: ', len(results))
-    expr_list = [_splice(r.expression, r.expression) for r in results]
-    analysis = Analysis(expr_list, state, out_vars, round_values=True)
+    analysis = Analysis(
+        (r.expression for r in results), state, out_vars, round_values=True)
     expr_list = analysis.frontier()
     logger.info('Final frontier: ', len(expr_list))
 
