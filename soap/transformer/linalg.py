@@ -1,3 +1,5 @@
+import itertools
+
 import islpy
 
 from soap.expression import (
@@ -54,7 +56,7 @@ def subscripts_never_equal(*subscripts):
     return _subscripts_compare(linear_expressions_never_equal, *subscripts)
 
 
-class LinearAlgebraSimplifier(GenericExecuter):
+class AccessUpdateSimplifier(GenericExecuter):
     def _execute_atom(self, expr):
         return expr
 
@@ -94,4 +96,73 @@ class LinearAlgebraSimplifier(GenericExecuter):
             var: self(var_expr) for var, var_expr in expr.items()})
 
 
-linear_algebra_simplify = LinearAlgebraSimplifier()
+class SubscriptCollector(GenericExecuter):
+    def __init__(self, expr):
+        super().__init__()
+        self.subscripts = set()
+        self(expr)
+
+    def _execute_atom(self, expr):
+        pass
+
+    def _execute_expression(self, expr):
+        for arg in expr.args:
+            self(arg)
+
+    def execute_Subscript(self, expr):
+        self.subscripts.add(expr)
+
+    def _execute_mapping(self, expr):
+        for var_expr in expr.values():
+            self(var_expr)
+
+    def equivalent_subscripts(self):
+        equiv_map = {}
+        iterer = itertools.product(self.subscripts, repeat=2)
+        for subscript_1, subscript_2 in iterer:
+            if not subscripts_always_equal(subscript_1, subscript_2):
+                continue
+            equiv_set_1 = equiv_map.get(subscript_1)
+            equiv_set_2 = equiv_map.get(subscript_2)
+            if equiv_set_1 and equiv_set_2:
+                if id(equiv_set_1) != id(equiv_set_2):
+                    raise ValueError('Equivalent set must be identical.')
+            equiv_set = equiv_set_1 or equiv_set_2 or set()
+            equiv_map.setdefault(subscript_1, equiv_set)
+            equiv_map.setdefault(subscript_2, equiv_set)
+            equiv_set |= {subscript_1, subscript_2}
+
+        # simplify
+        for subscript, equiv_set in equiv_map.items():
+            equiv = sorted(equiv_set, key=lambda e: (len(str(e)), hash(e)))
+            equiv_map[subscript] = equiv[0]
+
+        return equiv_map
+
+
+class SubscriptSimplifier(GenericExecuter):
+    def __init__(self, smallest_map):
+        super().__init__()
+        self.smallest_map = smallest_map
+
+    def _execute_atom(self, expr):
+        return expr
+
+    def _execute_args(self, expr):
+        return (self(arg) for arg in expr.args)
+
+    def _execute_expression(self, expr):
+        return expression_factory(expr.op, *self._execute_args(expr))
+
+    def execute_Subscript(self, expr):
+        return self.smallest_map.get(expr, expr)
+
+    def _execute_mapping(self, expr):
+        return expr.__class__({
+            var: self(var_expr) for var, var_expr in expr.items()})
+
+
+def linear_algebra_simplify(expr):
+    expr = AccessUpdateSimplifier()(expr)
+    smallest_map = SubscriptCollector(expr).equivalent_subscripts()
+    return SubscriptSimplifier(smallest_map)(expr)

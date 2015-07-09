@@ -9,6 +9,7 @@ from soap.transformer import arithmetic, pattern
 from soap.transformer.partition import partition_optimize
 from soap.transformer.utils import parsings, reduce
 from soap.transformer.linalg import linear_algebra_simplify
+from soap.semantics.functions.fixpoint import unroll_fix_expr
 
 
 Expression.__repr__ = lambda self: self.__str__()
@@ -155,13 +156,15 @@ class TestLinearAlgebraSimplifier(unittest.TestCase):
             """
             #pragma soap input float a[20] = [0.0, 1.0]
             #pragma soap output a
-            for (int i = 5; i < 20; i = i + 1) {
+            for (int i = 3; i < 21; i = i + 2) {
                 a[i] = (a[i - 1] + a[i - 2] + a[i - 3]) / 3;
-                a[i + 1] = (a[i] + a[i - 1] + a[i - 2]) / 3;
+                int j = i + 1;
+                a[j] = (a[j - 1] + a[j - 2] + a[j - 3]) / 3;
             }
             """)
         expr = flow_to_meta_state(flow)[flow.outputs[0]]
         expr = linear_algebra_simplify(expr)
+        print(expr.format())
         env = label(expr.loop_state, None, None)[1]
         access_count = self._count(env, operators.INDEX_ACCESS_OP)
         update_count = self._count(env, operators.INDEX_UPDATE_OP)

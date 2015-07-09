@@ -27,10 +27,25 @@ associativity_division = (
     'associativity_division'
 )
 
-negation = (
+negation_1 = (
     compile('a - b'),
     compile('a + -b'),
-    'negation'
+    'negation_1'
+)
+negation_2 = (
+    compile('a - -b'),
+    compile('a + b'),
+    'negation_2'
+)
+unnegation_1 = (
+    compile('a + -b'),
+    compile('a - b'),
+    'unnegation_1'
+)
+unnegation_2 = (
+    compile('a + b'),
+    compile('a - -b'),
+    'unnegation_2'
 )
 
 
@@ -291,9 +306,13 @@ class ArithTreeTransformer(TreeTransformer):
             distributivity_collect_division_1,
             distributivity_collect_division_2,
             distributivity_distribute_select,
+            unnegation_1,
+            unnegation_2,
         ],
         operators.SUBTRACT_OP: [
             distributivity_distribute_select,
+            negation_1,
+            negation_2,
         ],
         operators.MULTIPLY_OP: [
             associativity_multiplication,
@@ -372,6 +391,7 @@ class ArithTreeTransformer(TreeTransformer):
         operators.UNARY_SUBTRACT_OP: [
             double_negation_reduction,
             zero_reduction_subtraction,
+            constant_reduction,
         ],
         operators.TERNARY_SELECT_OP: [
             same_expression_reduction_ifelse,

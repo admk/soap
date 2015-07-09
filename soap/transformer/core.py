@@ -161,8 +161,7 @@ class TreeTransformer(TreeFarmer):
             logger.persistent('Todo', len(todo_trees))
             if not reduced:
                 todo_trees = self._sample(todo_trees)
-                _, step_trees = \
-                    self._step(todo_trees, not reduced, None)
+                _, step_trees = self._step(todo_trees, not reduced, None)
                 step_trees -= done_trees
                 step_trees = self._recursive_closure(step_trees, True)
                 step_trees = self._plugin(
@@ -170,8 +169,8 @@ class TreeTransformer(TreeFarmer):
                 done_trees |= todo_trees
                 todo_trees = step_trees - done_trees
             else:
-                nore_trees, step_trees = \
-                    self._step(todo_trees, not reduced, None)
+                nore_trees, step_trees = self._step(
+                    todo_trees, not reduced, None)
                 step_trees = self._plugin(
                     curr_step, step_trees, self.reduce_plugin)
                 done_trees |= nore_trees

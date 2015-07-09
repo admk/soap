@@ -227,7 +227,8 @@ def _bool_transform(expr):
     bool_vars = []
     bool_expr_set = set()
     transformed = closure(
-        expr, depth=100, no_bool=False, steps=context.bool_steps)
+        expr, depth=context.small_depth, no_bool=False,
+        steps=context.small_steps)
     for expr in sorted(transformed, key=hash):
         a1, a2 = expr.args
         if is_variable(a1) and a1 not in bool_vars:
@@ -241,6 +242,8 @@ def _bool_transform(expr):
 
 @cached
 def bool_eval(expr, state):
+    if state.is_bottom():
+        return state, state
     constraints = construct(expr)
     true_list, false_list = [], []
     for cstr in constraints:

@@ -33,7 +33,8 @@ context = dict(
     max_steps=10,       # max no of steps for equivalent expr discovery
     plugin_every=1,     # no of steps before plugins are executed
     thickness=0,        # no of iterations of pareto suboptimal inclusion
-    bool_steps=5,       # transition steps for finding equivalent boolean exprs
+    small_steps=5,      # transition steps for finding equivalent small exprs
+    small_depth=3,      # transition depth for finding equivalent small exprs
     window_depth=3,     # depth limit window for equivalent expr discovery
     unroll_depth=2,     # partial unroll depth limit
 )
