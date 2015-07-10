@@ -95,24 +95,26 @@ class AccessUpdateSimplifier(GenericExecuter):
 
 class IndexCollector(GenericExecuter):
     def _execute_atom(self, expr, indices):
-        pass
+        return indices
 
     def _execute_expression(self, expr, indices):
         for arg in expr.args:
-            self(arg, indices)
+            indices = self(arg, indices)
+        return indices
 
     def execute_Subscript(self, expr, indices):
         for index in expr.args:
             indices.add(index)
+        return indices
 
     def _execute_mapping(self, expr, indices):
         for var_expr in expr.values():
-            self(var_expr, indices)
+            indices = self(var_expr, indices)
+        return indices
 
     def __call__(self, expr, indices=None):
         indices = indices or set()
-        super().__call__(expr, indices)
-        return indices
+        return super().__call__(expr, indices)
 
 
 class SubscriptSimplifier(GenericExecuter):
