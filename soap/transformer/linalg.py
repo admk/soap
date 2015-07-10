@@ -3,7 +3,7 @@ import itertools
 import islpy
 
 from soap.expression import (
-    expression_factory, expression_variables, AccessExpr, UpdateExpr
+    expression_factory, expression_variables, AccessExpr, UpdateExpr, Subscript
 )
 from soap.transformer.common import GenericExecuter
 
@@ -93,73 +93,76 @@ class AccessUpdateSimplifier(GenericExecuter):
             var: self(var_expr) for var, var_expr in expr.items()})
 
 
-class SubscriptCollector(GenericExecuter):
-    def __init__(self, expr):
-        super().__init__()
-        self.subscripts = set()
-        self(expr)
-
-    def _execute_atom(self, expr):
+class IndexCollector(GenericExecuter):
+    def _execute_atom(self, expr, indices):
         pass
 
-    def _execute_expression(self, expr):
+    def _execute_expression(self, expr, indices):
         for arg in expr.args:
-            self(arg)
+            self(arg, indices)
 
-    def execute_Subscript(self, expr):
-        self.subscripts.add(expr)
+    def execute_Subscript(self, expr, indices):
+        for index in expr.args:
+            indices.add(index)
 
-    def _execute_mapping(self, expr):
+    def _execute_mapping(self, expr, indices):
         for var_expr in expr.values():
-            self(var_expr)
+            self(var_expr, indices)
 
-    def equivalent_subscripts(self):
-        equiv_map = {}
-        iterer = itertools.product(self.subscripts, repeat=2)
-        for subscript_1, subscript_2 in iterer:
-            if not subscripts_always_equal(subscript_1, subscript_2):
-                continue
-            equiv_set_1 = equiv_map.get(subscript_1)
-            equiv_set_2 = equiv_map.get(subscript_2)
-            if equiv_set_1 and equiv_set_2:
-                if id(equiv_set_1) != id(equiv_set_2):
-                    raise ValueError('Equivalent set must be identical.')
-            equiv_set = equiv_set_1 or equiv_set_2 or set()
-            equiv_map.setdefault(subscript_1, equiv_set)
-            equiv_map.setdefault(subscript_2, equiv_set)
-            equiv_set |= {subscript_1, subscript_2}
-
-        # simplify
-        for subscript, equiv_set in equiv_map.items():
-            equiv = sorted(equiv_set, key=lambda e: (len(str(e)), hash(e)))
-            equiv_map[subscript] = equiv[0]
-
-        return equiv_map
+    def __call__(self, expr, indices=None):
+        indices = indices or set()
+        super().__call__(expr, indices)
+        return indices
 
 
 class SubscriptSimplifier(GenericExecuter):
-    def __init__(self, smallest_map):
-        super().__init__()
-        self.smallest_map = smallest_map
-
-    def _execute_atom(self, expr):
+    def _execute_atom(self, expr, indices):
         return expr
 
-    def _execute_args(self, expr):
-        return (self(arg) for arg in expr.args)
+    def _execute_expression(self, expr, indices):
+        args = (self(arg, indices) for arg in expr.args)
+        return expression_factory(expr.op, *args)
 
-    def _execute_expression(self, expr):
-        return expression_factory(expr.op, *self._execute_args(expr))
+    def execute_Subscript(self, expr, indices):
+        args = (indices.get(index, index) for index in expr.args)
+        return expression_factory(expr.op, *args)
 
-    def execute_Subscript(self, expr):
-        return self.smallest_map.get(expr, expr)
-
-    def _execute_mapping(self, expr):
+    def _execute_mapping(self, expr, indices):
         return expr.__class__({
-            var: self(var_expr) for var, var_expr in expr.items()})
+            var: self(var_expr, indices) for var, var_expr in expr.items()})
+
+
+def _smallest_indices(indices):
+    equiv_map = {}
+    iterer = itertools.product(indices, repeat=2)
+    for index_1, index_2 in iterer:
+        if not subscripts_always_equal(
+                Subscript(index_1), Subscript(index_2)):
+            continue
+        equiv_set_1 = equiv_map.get(index_1)
+        equiv_set_2 = equiv_map.get(index_2)
+        if equiv_set_1 and equiv_set_2:
+            if id(equiv_set_1) != id(equiv_set_2):
+                raise ValueError('Equivalent set must be identical.')
+        equiv_set = equiv_set_1 or equiv_set_2 or set()
+        equiv_map.setdefault(index_1, equiv_set)
+        equiv_map.setdefault(index_2, equiv_set)
+        equiv_set |= {index_1, index_2}
+
+    # simplify
+    for index, equiv_set in equiv_map.items():
+        equiv = sorted(equiv_set, key=lambda e: (len(str(e)), hash(e)))
+        equiv_map[index] = equiv[0]
+
+    return equiv_map
+
+
+_access_update_simplify = AccessUpdateSimplifier()
+_index_collect = IndexCollector()
+_subscript_simplify = SubscriptSimplifier()
 
 
 def linear_algebra_simplify(expr):
-    expr = AccessUpdateSimplifier()(expr)
-    smallest_map = SubscriptCollector(expr).equivalent_subscripts()
-    return SubscriptSimplifier(smallest_map)(expr)
+    expr = _access_update_simplify(expr)
+    smallest_map = _smallest_indices(_index_collect(expr))
+    return _subscript_simplify(expr, smallest_map)

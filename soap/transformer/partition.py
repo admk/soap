@@ -186,10 +186,7 @@ class PartitionOptimizer(GenericExecuter):
 
     def optimize_algorithm(self, expr, state, recurrences):
         from soap.transformer.discover import GreedyDiscoverer
-        results = GreedyDiscoverer(recurrences=recurrences)(expr, state, None)
-        for r in results:
-            print(r.format())
-        return results
+        return GreedyDiscoverer(recurrences=recurrences)(expr, state, None)
         from soap.transformer.utils import thick_frontier_closure
         return thick_frontier_closure(
             expr, state, recurrences=recurrences, depth=-1)
@@ -378,12 +375,12 @@ def partition_optimize(
         spliced_results.append(r)
 
     if not final_analysis:
-        return results
+        return spliced_results
 
-    logger.info('Final analysis: ', len(results))
-    analysis = Analysis(
-        (r.expression for r in results), state, out_vars, round_values=True)
-    expr_list = analysis.frontier()
+    logger.info('Final analysis: ', len(spliced_results))
+    expr_list = [result.expression for result in spliced_results]
+    analysis = Analysis(expr_list, state, out_vars, round_values=True)
+    results = analysis.frontier()
     logger.info('Final frontier: ', len(expr_list))
 
-    return expr_list
+    return results

@@ -6,7 +6,6 @@ import collections
 import random
 
 from soap import logger
-from soap.common import Flyweight
 from soap.common.parallel import pool
 from soap.context import context
 from soap.semantics import error_eval, ErrorSemantics, inf, schedule_graph
@@ -105,7 +104,7 @@ def _analyze_expression(args):
         resource.lut, resource.dsp, error, latency, expr)
 
 
-class Analysis(Flyweight):
+class Analysis(object):
 
     def __init__(
             self, expr_set, state, out_vars=None, recurrences=None,
