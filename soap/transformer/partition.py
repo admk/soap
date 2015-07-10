@@ -75,7 +75,20 @@ class MarkUnroll(GenericExecuter):
 
 
 class PartitionLabel(Label):
-    pass
+    def __new__(cls, statement, bound, invariant, context_id, _label_value):
+        obj = super().__new__(
+            cls, statement, bound, invariant,
+            context_id=context_id, _label_value=_label_value)
+        obj._expr = statement
+        return obj
+
+    def __getnewargs__(self):
+        return (
+            self._expr, self.bound, self.invariant,
+            self.context_id, self.label_value)
+
+    def expr(self):
+        return self._expr
 
 
 class PartitionLabelContext(LabelContext):
@@ -84,10 +97,10 @@ class PartitionLabelContext(LabelContext):
 
 class PartitionGenerator(GenericExecuter):
 
-    context = PartitionLabelContext('partition')
+    label_context = PartitionLabelContext('partition')
 
     def Label(self, expr, bound=None, invar=None):
-        return self.context.Label(expr, bound, invar)
+        return self.label_context.Label(expr, bound, invar)
 
     def _execute_atom(self, expr, state):
         return expr, MetaState()
