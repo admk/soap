@@ -7,5 +7,10 @@
 # python
 *.py[co]
 
+# pycharm
+.idea
+
 # soap
-*.soap.*
+*.soap.emir
+*.soap.pdf
+*.soap.rpt
