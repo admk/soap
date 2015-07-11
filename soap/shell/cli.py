@@ -129,22 +129,20 @@ def _setup_context(args):
 def _file(args):
     command = args['--command']
     if command:
-        file = command
-        out_file = 'from_command'
+        return command, 'from_command'
+    file = args['<file>']
+    if not file:
+        return None, None
+    if file == '-':
+        out_file = 'from_stdin'
+        file = sys.stdin
     else:
-        file = args['<file>']
+        out_file = file
         try:
-            if not file:
-                return None, None
-            if file == '-':
-                out_file = 'from_stdin'
-                file = sys.stdin
-            else:
-                out_file = file
-                file = open(file)
+            file = open(file)
         except FileNotFoundError:
             raise CommandError('File {!r} does not exist'.format(file))
-        file = file.read()
+    file = file.read()
     if not file:
         raise CommandError('Empty input')
     return file, out_file
@@ -209,7 +207,9 @@ def _csv(args):
     file = args['<file>']
     with open(file, 'rb') as f:
         emir = pickle.load(f)
-    emir2csv(emir)
+    csv_file = emir['file'] + '.csv'
+    with open(csv_file, 'w') as f:
+        emir2csv(emir, f)
     return 0
 
 

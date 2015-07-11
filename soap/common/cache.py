@@ -88,13 +88,15 @@ def cached(f):
 def dump_cache_info():
     from soap import logger
     logger.info('Cache Hits and Misses')
-    logger.info('Name\tHits\tMisses\tRate\tSize')
+    logger.info('Name\t\t\t\t\tHits\tMisses\tRate\tSize')
     for func in _cached_funcs:
         hits, misses, size = func.cache_info()
         if hits or misses:
-            rate = '{}'.format(int(100 * hits / (hits + misses)))
-            logger.info('{}\n\t\t{}\t{}\t{}%\t{}'.format(
-                func.__qualname__, hits, misses, rate, size))
+            rate = '{}%'.format(int(100 * hits / (hits + misses)))
+        else:
+            rate = 'n/a'
+        logger.info('{:<30}\t{}\t{}\t{}\t{}'.format(
+            func.__qualname__, hits, misses, rate, size))
 
 
 class Flyweight(object):

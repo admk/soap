@@ -120,8 +120,8 @@ def plot(emir, file_name, reanalyze=False):
     plot.show()
 
 
-def emir2csv(emir):
-    csvwriter = csv.writer(sys.stdout, lineterminator='\n')
+def emir2csv(emir, file):
+    csvwriter = csv.writer(file, lineterminator='\n')
     orig = emir['original']
     csvwriter.writerow(orig._fields)
     csvwriter.writerow(orig)

@@ -20,7 +20,8 @@
 # Ultra Short Term FIXMEs
 
 * [ ] Fix sequential loop partitioning
-* [ ] Fix Simplifier may not reduce properly
+* [X] Fix Simplifier may not reduce properly
+* [X] Fix unroll problem on some large factors
 
 
 # Ugliness, fix if have the time to
