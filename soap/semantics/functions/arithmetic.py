@@ -31,7 +31,10 @@ class ArithmeticEvaluator(base_dispatcher()):
         return expr.bound
 
     def _execute_args(self, expr, state):
-        return tuple(self(arg, state) for arg in expr.args)
+        args = []
+        for arg in expr.args:
+            args.append(self(arg, state))
+        return args
 
     def execute_Variable(self, expr, state):
         return state[expr]

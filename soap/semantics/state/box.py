@@ -7,6 +7,10 @@ from soap.semantics.linalg import MultiDimensionalArray
 from soap.semantics.state.base import BaseState
 
 
+class KeyErrorFromString(Exception):
+    """Failed to convert string into a correct variable. """
+
+
 class BoxState(BaseState, MapLattice):
     __slots__ = ()
 
@@ -26,9 +30,10 @@ class BoxState(BaseState, MapLattice):
         if isinstance(key, str):
             var_list = [var for var in self.keys() if var.name == key]
             if not var_list:
-                raise KeyError(key)
+                raise KeyErrorFromString(key)
             if len(var_list) > 1:
-                raise KeyError('Multiple variables with the same name.')
+                raise KeyErrorFromString(
+                    'Multiple variables with the same name.')
             var = var_list.pop()
             return var
         raise TypeError(

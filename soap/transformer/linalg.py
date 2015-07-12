@@ -3,9 +3,9 @@ import itertools
 import islpy
 
 from soap.expression import (
-    expression_factory, expression_variables, AccessExpr, UpdateExpr, Subscript
+    expression_factory, expression_variables, AccessExpr, UpdateExpr,
+    Subscript, GenericExecuter
 )
-from soap.transformer.common import GenericExecuter
 
 
 class ExpressionNotLinearException(Exception):

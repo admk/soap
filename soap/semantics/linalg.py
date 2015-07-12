@@ -127,9 +127,7 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
         return self.transpose()
 
     def _normalize_index(self, index):
-        if isinstance(index, tuple):
-            index = list(index)
-        else:
+        if not isinstance(index, collections.Sequence):
             index = [index]
 
         index_iterer = []
@@ -141,7 +139,8 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
             elif isinstance(i, (list, IntegerInterval)):
                 min_val, max_val = i
                 if not (0 <= min_val <= max_val < s):
-                    raise IndexError('Index interval out of range')
+                    raise IndexError(
+                        'Index interval {} out of range {}'.format(i, s))
                 index_iterer.append(range(min_val, max_val + 1))
             else:
                 raise TypeError(

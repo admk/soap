@@ -1,6 +1,6 @@
 // D := alpha*A*B*C + beta*D
 
-#define N 3
+#define N 1024
 #define _PB_NI N
 #define _PB_NJ N
 #define _PB_NK N

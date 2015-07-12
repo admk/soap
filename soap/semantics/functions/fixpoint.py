@@ -2,7 +2,8 @@ from soap import logger
 from soap.context import context
 from soap.common.cache import cached
 from soap.expression import (
-    operators, BinaryArithExpr, BinaryBoolExpr, FixExpr, SelectExpr
+    operators, BinaryArithExpr, BinaryBoolExpr, FixExpr, SelectExpr,
+    fix_expr_has_inner_loop
 )
 from soap.semantics import IntegerInterval
 from soap.semantics.functions.arithmetic import arith_eval
@@ -35,7 +36,12 @@ def fixpoint_eval(state, bool_expr, loop_meta_state=None, loop_flow=None):
 
     F(g) = lambda v . bool_expr ? (g v) * loop_meta_state : g v
     """
+    from soap.semantics.state.meta import flow_to_meta_state
+
     state_class = state.__class__
+
+    if loop_flow is not None:
+        loop_meta_state = flow_to_meta_state(loop_flow)
 
     iteration = 0
     trip_count = prev_trip_count = IntegerInterval(0)
@@ -85,20 +91,13 @@ def fixpoint_eval(state, bool_expr, loop_meta_state=None, loop_flow=None):
         prev_entry_join_state = entry_join_state
         prev_loop_state = loop_state
 
-        # perform loop, what to do depends on if you have a Flow object or a
-        # MetaState object
-        if loop_flow:
-            loop_state = entry_state.transition(loop_flow)
-        elif loop_meta_state:
-            diff_state = arith_eval(loop_meta_state, entry_state)
-            # arith_eval only computes value changes with loop_meta_state,
-            # need to use changes to update existing state
-            loop_state = dict(entry_state)
-            loop_state.update(diff_state)
-            loop_state = state_class(loop_state)
-        else:
-            raise ValueError(
-                'loop_flow and loop_meta_state are both unspecified.')
+        # analyze loop body
+        diff_state = arith_eval(loop_meta_state, entry_state)
+        # arith_eval only computes value changes with loop_meta_state,
+        # need to use changes to update existing state
+        loop_state = dict(entry_state)
+        loop_state.update(diff_state)
+        loop_state = state_class(loop_state)
 
         loop_end_join_state = loop_state | loop_end_join_state
 
@@ -120,8 +119,10 @@ def fixpoint_eval(state, bool_expr, loop_meta_state=None, loop_flow=None):
 
 def fix_expr_eval(expr, state):
     state = arith_eval(expr.init_state, state)
-    fixpoint = fixpoint_eval(
-        state, expr.bool_expr, loop_meta_state=expr.loop_state)
+    loop_state = expr.loop_state
+    if context.fast_analysis and fix_expr_has_inner_loop(expr):
+        return arith_eval(loop_state[expr.loop_var], state)
+    fixpoint = fixpoint_eval(state, expr.bool_expr, loop_state)
     fixpoint['last_entry']._warn_non_termination(expr)
     return fixpoint['exit'][expr.loop_var]
 

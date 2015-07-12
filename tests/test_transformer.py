@@ -183,12 +183,15 @@ class TestPartition(unittest.TestCase):
     def program(self, iteration_count):
         flow = parse(
             """
-            #pragma soap input float a[200][200] = [0.0, 1.0], int i=[0, 100]
+            #pragma soap input \
+                float a[{bound}][{bound}] = [0.0, 1.0], int i=[1, {boundm2}]
             #pragma soap output a
-            for (int j = 1; j < {}; j++)
+            for (int j = 1; j < {boundm1}; j++)
                 a[i][j] = 0.2 * (
                     a[i][j-1] + a[i][j] + a[i][j+1] + a[i+1][j] + a[i-1][j]);
-            """.format(iteration_count))
+            """.format(
+                bound=iteration_count, boundm1=iteration_count - 1,
+                boundm2=iteration_count - 2))
         meta_state = flow_to_meta_state(flow)
         return meta_state, BoxState(flow.inputs), flow.outputs
 

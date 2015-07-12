@@ -6,14 +6,14 @@ from soap.analysis.core import (
 )
 from soap.context import context
 from soap.expression import (
-    expression_factory, FixExpr, UnaryExpression, BinaryExpression, is_variable
+    expression_factory, FixExpr, UnaryExpression, BinaryExpression,
+    is_variable, GenericExecuter
 )
 from soap.semantics import Label, LabelContext, MetaState
 from soap.semantics.functions import (
     error_eval, fixpoint_eval, unroll_fix_expr
 )
 from soap.semantics.schedule.graph.base import loop_graph
-from soap.transformer.common import GenericExecuter
 
 
 def is_innermost_loop(expr):
