@@ -45,8 +45,8 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
             self._flat_items = _flat_items
         else:
             flattened_flat_items = []
-            self.shape = _shape or tuple(
-                append_flat_items(flattened_flat_items, items))
+            shape = tuple(append_flat_items(flattened_flat_items, items))
+            self.shape = _shape or shape
             self._flat_items = tuple(
                 item if isinstance(item, self.value_class) else
                 self.value_class(item) for item in flattened_flat_items)

@@ -21,7 +21,7 @@ class BaseState(base_dispatcher('visit')):
     visit_InputFlow = visit_OutputFlow = visit_SkipFlow
 
     def visit_AssignFlow(self, flow):
-        return self[flow.var:arith_eval(flow.expr, self)]
+        return self.immu_update(flow.var, arith_eval(flow.expr, self))
 
     def visit_IfFlow(self, flow):
         bool_expr = flow.conditional_expr

@@ -6,6 +6,8 @@
 
 # python
 *.py[co]
+.coverage
+cover/
 
 # pycharm
 .idea

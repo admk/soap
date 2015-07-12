@@ -1,0 +1,36 @@
+// D := alpha*A*B*C + beta*D
+
+#define N 3
+#define _PB_NI N
+#define _PB_NJ N
+#define _PB_NK N
+#define _PB_NL N
+
+#pragma soap input \
+    float A[_PB_NI][_PB_NK] = [0.0, 1.0], \
+    float B[_PB_NK][_PB_NJ] = [0.0, 1.0], \
+    float C[_PB_NL][_PB_NJ] = [0.0, 1.0], \
+    float D[_PB_NI][_PB_NL] = [0.0, 1.0], \
+    float tmp[_PB_NI][_PB_NJ] = [0.0, 1.0]
+#pragma soap output D
+
+int i; int j; int k;
+float alpha = 32412;
+float beta = 2123;
+
+for (i = 0; i < _PB_NI; i++)
+    for (j = 0; j < _PB_NJ; j++)
+    {
+        tmp[i][j] = 0;
+        for (k = 0; k < _PB_NK; ++k)
+            tmp[i][j] += alpha * A[i][k] * B[k][j];
+    }
+for (i = 0; i < _PB_NI; i++)
+    for (j = 0; j < _PB_NL; j++)
+    {
+        D[i][j] *= beta;
+        for (k = 0; k < _PB_NJ; ++k)
+            D[i][j] += tmp[i][k] * C[k][j];
+    }
+
+// vim: ft=c

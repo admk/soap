@@ -11,6 +11,7 @@
     - [X] Resource usage with sharing
     - [X] Transform `AccessExpr` and `UpdateExpr`
     - [X] II reduction in subexpressions
+    - [ ] Faster error analysis?
     - [ ] Benchmarks
     - [ ] Comparison with actual results
     - [ ] Code generation
@@ -19,7 +20,7 @@
 
 # Ultra Short Term FIXMEs
 
-* [ ] Fix sequential loop partitioning
+* [X] Fix sequential loop partitioning
 * [X] Fix Simplifier may not reduce properly
 * [X] Fix unroll problem on some large factors
 

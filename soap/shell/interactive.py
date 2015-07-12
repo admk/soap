@@ -27,12 +27,11 @@ shell = Shell()
 
 def main(file=None):
     from soap import (
-        context, parse, analyze, frontier, Plot, plot, parse, Flow, generate,
-        IntegerInterval, FloatInterval, FractionInterval, ErrorSemantics,
-        BoxState, MetaState, flow_to_meta_state, mpz, mpq, mpfr, mpz_type,
-        mpq_type, mpfr_type, inf, ulp, cast, arith_eval, error_eval, label,
-        luts, closure, greedy_frontier_closure, expand, reduce, parsings,
-        martel, greedy, frontier
+        context, analyze, frontier, Plot, plot, parse, Flow, generate,
+        IntegerInterval, FloatInterval, ErrorSemantics, BoxState, MetaState,
+        flow_to_meta_state, mpz, mpq, mpfr, mpz_type, mpq_type, mpfr_type,
+        inf, ulp, cast, arith_eval, error_eval, label, luts, closure,
+        greedy_frontier_closure, expand, reduce, parsings, greedy
     )
 
     def pp(*args):
@@ -75,6 +74,8 @@ def main(file=None):
     directory, file_name = os.path.split(file)
     base_name, ext = os.path.splitext(file_name)
     var_name = base_name.replace('.', '_')
+    if var_name[0].isdigit():
+        var_name = 's' + var_name
     if ext == '.py':
         with open(file, 'r') as f:
             exec(f.read())

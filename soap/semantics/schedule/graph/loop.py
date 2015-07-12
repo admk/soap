@@ -44,9 +44,11 @@ class LoopScheduleGraph(SequentialScheduleGraph):
             kernel, out_vars, round_values=round_values,
             sequentialize_loops=sequentialize_loops,
             scheduler=scheduler)
+        self.is_for_loop = extractor.is_for_loop
         self.is_pipelined = is_pipelined
         self.fix_expr = fix_expr
         self.iter_vars = iter_vars
+        self.iter_slice = extractor.iter_slice
         self.iter_slices = extractor.iter_slices
         self._init_loop_graph()
 
@@ -192,7 +194,6 @@ class LoopScheduleGraph(SequentialScheduleGraph):
         except AttributeError:
             pass
         if not self.is_pipelined:
-            logger.debug('Loop', self.fix_expr, 'is not pipelined.')
             self._initiation_interval = self.depth()
         else:
             _, access_map = self.resource_counts()
@@ -209,8 +210,8 @@ class LoopScheduleGraph(SequentialScheduleGraph):
         return self.sequential_latency()
 
     def trip_count(self):
-        if not self.is_pipelined:
-            return float('inf')
+        if not self.is_pipelined and self.is_for_loop:
+            return iter_point_count(self.iter_slice)
         trip_counts = [iter_point_count(s) for s in self.iter_slices]
         return functools.reduce(lambda x, y: x * y, trip_counts)
 

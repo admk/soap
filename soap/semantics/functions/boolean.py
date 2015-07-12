@@ -108,7 +108,7 @@ def _comparison_eval(expr, state):
         else:
             split = state
             for var, cstr in cstr_list:
-                split = split[var:cstr]
+                split = split.immu_update(var, cstr)
         split_list.append(split)
     return tuple(split_list)
 

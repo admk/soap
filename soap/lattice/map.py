@@ -83,17 +83,19 @@ class MapLattice(Lattice, Mapping):
     def __contains__(self, key):
         return super().__contains__(self._cast_key(key))
 
+    def immu_update(self, key, value):
+        new_map = dict(self)
+        value = self._cast_value(key=key, value=value)
+        new_map[self._cast_key(key)] = value
+        return self.__class__(new_map)
+
     def __getitem__(self, key):
-        if self.is_top():
+        try:
+            return self._mapping[self._cast_key(key)]
+        except KeyError:
+            if self.is_bottom():
+                return self._cast_value(key=key, bottom=True)
             return self._cast_value(key=key, top=True)
-        if isinstance(key, slice):
-            new_map = dict(self)
-            value = self._cast_value(key=key, value=key.stop)
-            new_map[self._cast_key(key.start)] = value
-            return self.__class__(new_map)
-        if self.is_bottom():
-            return self._cast_value(key=key, bottom=True)
-        return self._mapping[self._cast_key(key)]
 
     def __hash__(self):
         self._hash = hash_val = hash(tuple(sorted(self.items(), key=hash)))

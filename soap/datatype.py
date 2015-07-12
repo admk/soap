@@ -135,7 +135,7 @@ def type_cast(dtype, value=None, top=False, bottom=False):
                 return cls(scalar=value, _shape=shape, top=top, bottom=bottom)
             for dim in reversed(dtype.shape):
                 value = [value] * dim
-            return cls(_flat_items=value, _shape=shape, top=top, bottom=bottom)
+            return cls(items=value, _shape=shape, top=top, bottom=bottom)
     array = cls(value, _shape=shape, top=top, bottom=bottom)
     if shape is not None and dtype.shape != array.shape:
         raise ValueError(

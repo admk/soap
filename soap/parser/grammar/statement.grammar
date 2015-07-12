@@ -31,11 +31,15 @@ for_statement =
 
 for_assign_part = assign_variations / _
 
-assign_variations = assign_part / operator_assign_part / step_part
+assign_variations =
+    assign_part / operator_assign_part / step_part
 assign_part = variable_or_declaration assign arithmetic_expression
 variable_or_declaration = scalar_declaration / variable_subscript
 operator_assign_part = variable_subscript op_eq_operator arithmetic_expression
-step_part = variable_subscript step_operator
+
+step_part = pre_step_part / post_step_part
+pre_step_part = step_operator variable_subscript
+post_step_part = variable_subscript step_operator
 
 boolean_block = left_paren boolean_expression right_paren
 code_block = single_statement / multi_line_code_block

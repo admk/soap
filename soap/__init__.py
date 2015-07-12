@@ -16,22 +16,18 @@ __doc__ = """
 """.format(**locals())
 
 
-import gmpy2
-
 from soap import logger
 from soap.context import context
 from soap.analysis import analyze, frontier, Plot, plot
 from soap.parser import parse, expr_parse
 from soap.program import Flow, generate
 from soap.semantics import (
-    IntegerInterval, FloatInterval, FractionInterval, ErrorSemantics,
-    BoxState, MetaState, flow_to_meta_state,
-    mpz, mpq, mpfr, mpz_type, mpq_type, mpfr_type, inf, ulp, cast,
-    arith_eval, error_eval, label, luts
+    IntegerInterval, FloatInterval, ErrorSemantics, BoxState, MetaState,
+    flow_to_meta_state, mpz, mpq, mpfr, mpz_type, mpq_type, mpfr_type, inf,
+    ulp, cast, arith_eval, error_eval, label, luts
 )
 from soap.transformer import (
-    closure, greedy_frontier_closure, expand, reduce, parsings,
-    greedy, frontier,
+    closure, greedy_frontier_closure, expand, reduce, parsings, greedy
 )
 
 
