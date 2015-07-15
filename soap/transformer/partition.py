@@ -150,7 +150,7 @@ class PartitionGenerator(GenericExecuter):
     def execute_FixExpr(self, expr, state):
         bool_expr, loop_state, loop_var, init_state = expr.args
         init_label, init_env = self.execute_MetaState(init_state, state)
-        loop_info = fixpoint_eval(init_label.bound, bool_expr, loop_state)
+        loop_info = fixpoint_eval(expr, init_label.bound)
 
         _, loop_env = self.execute_MetaState(
             expr.loop_state, loop_info['entry'])
@@ -241,7 +241,7 @@ class PartitionOptimizer(GenericExecuter):
     def execute_FixExpr(self, expr, state, _):
         bool_expr, loop_env, loop_var, init_label = expr.args
         loop_info = expr.loop_info
-        trip_count = loop_info['trip_count'].max
+        trip_count = loop_info['trip_count']
         innermost = is_innermost_loop(expr)
 
         logger.info(
@@ -259,8 +259,9 @@ class PartitionOptimizer(GenericExecuter):
                     bool_expr, _splice(each_loop_env, each_loop_env),
                     loop_var, init_label)
                 expr_set.add(fix_expr)
-            results = Analysis(expr_set, None, None,
-                               size_limit=context.loop_size_limit).analyze()
+            analysis = Analysis(
+                expr_set, None, None, size_limit=context.loop_size_limit)
+            results = analysis.analyze()
         else:
             results = set()
             for each_loop_env_result in loop_env_set:
@@ -268,7 +269,8 @@ class PartitionOptimizer(GenericExecuter):
                 fix_expr = FixExpr(
                     bool_expr, each_loop_env, loop_var, init_label)
                 latency *= trip_count  # simplify the analysis of outer loops
-                error *= trip_count  # assume the loop has Lipschitz continuity
+                # assume the loop has Lipschitz continuity
+                # error *= trip_count
                 result = AnalysisResult(lut, dsp, error, latency, fix_expr)
                 results.add(result)
 

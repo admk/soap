@@ -109,32 +109,18 @@ def round_off_error_from_exact(v):
     return overapproximate_error([e, e])
 
 
-def _coerce(self, other):
-    if type(self) is type(other):
+def _coerce(self, other, always_return_class=True):
+    self_cls = self.__class__
+    other_cls = other.__class__
+    if self_cls is other_cls:
+        if always_return_class:
+            return self_cls
         return None
-    dominance_poset = {
-        (int, IntegerInterval): IntegerInterval,
-        (int, FloatInterval): FloatInterval,
-        (int, ErrorSemantics): ErrorSemantics,
-        (mpz_type, IntegerInterval): IntegerInterval,
-        (mpz_type, FloatInterval): FloatInterval,
-        (mpz_type, ErrorSemantics): ErrorSemantics,
-        (float, IntegerInterval): FloatInterval,
-        (float, FloatInterval): FloatInterval,
-        (float, ErrorSemantics): ErrorSemantics,
-        (mpfr_type, IntegerInterval): FloatInterval,
-        (mpfr_type, FloatInterval): FloatInterval,
-        (mpfr_type, ErrorSemantics): ErrorSemantics,
-        (IntegerInterval, FloatInterval): FloatInterval,
-        (IntegerInterval, ErrorSemantics): ErrorSemantics,
-        (FloatInterval, ErrorSemantics): ErrorSemantics,
-    }
+    cls = _dominance_poset.get((self_cls, other_cls))
+    if cls is not None:
+        return cls
     try:
-        return dominance_poset[self.__class__, other.__class__]
-    except KeyError:
-        pass
-    try:
-        return dominance_poset[other.__class__, self.__class__]
+        return _dominance_poset[other_cls, self_cls]
     except KeyError:
         raise TypeError(
             'Do not know how to coerce values {!r} and {!r} into the same '
@@ -144,7 +130,8 @@ def _coerce(self, other):
 def _decorate_coerce(func):
     @functools.wraps(func)
     def wrapper(self, other):
-        return func(self, other, _coerce(self, other))
+        cls = _coerce(self, other, always_return_class=False)
+        return func(self, other, cls)
     return wrapper
 
 
@@ -154,13 +141,11 @@ def _decorate_operator(func):
         with ignored(AttributeError):
             if self.is_top() or other.is_top():
                 # top denotes no information or non-termination
-                cls = _coerce(self, other) or self.__class__
-                return cls(top=True)
+                return _coerce(self, other)(top=True)
         with ignored(AttributeError):
             if self.is_bottom() or other.is_bottom():
                 # bottom denotes conflict
-                cls = _coerce(self, other) or self.__class__
-                return cls(bottom=True)
+                return _coerce(self, other)(bottom=True)
         try:
             return _decorate_coerce(func)(self, other)
         except gmpy2.RangeError:
@@ -609,6 +594,25 @@ class ErrorSemantics(Lattice):
     def __hash__(self):
         self._hash = hash_val = hash((self.v, self.e))
         return hash_val
+
+
+_dominance_poset = {
+    (int, IntegerInterval): IntegerInterval,
+    (int, FloatInterval): FloatInterval,
+    (int, ErrorSemantics): ErrorSemantics,
+    (mpz_type, IntegerInterval): IntegerInterval,
+    (mpz_type, FloatInterval): FloatInterval,
+    (mpz_type, ErrorSemantics): ErrorSemantics,
+    (float, IntegerInterval): FloatInterval,
+    (float, FloatInterval): FloatInterval,
+    (float, ErrorSemantics): ErrorSemantics,
+    (mpfr_type, IntegerInterval): FloatInterval,
+    (mpfr_type, FloatInterval): FloatInterval,
+    (mpfr_type, ErrorSemantics): ErrorSemantics,
+    (IntegerInterval, FloatInterval): FloatInterval,
+    (IntegerInterval, ErrorSemantics): ErrorSemantics,
+    (FloatInterval, ErrorSemantics): ErrorSemantics,
+}
 
 
 def _is_integer(v):

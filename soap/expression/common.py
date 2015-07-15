@@ -179,6 +179,8 @@ class HasInnerLoop(GenericExecuter):
     def execute_FixExpr(self, expr):
         return True
 
+    execute_PreUnrollExpr = execute_PostUnrollExpr = execute_FixExpr
+
     def _execute_mapping(self, expr):
         return any(self(var_expr) for var_expr in expr.values())
 
@@ -187,4 +189,7 @@ _has_inner_loop = HasInnerLoop()
 
 
 def fix_expr_has_inner_loop(expr):
-    return _has_inner_loop(expr.loop_state)
+    from soap.expression.fixpoint import FixExpr
+    if isinstance(expr, FixExpr):
+        expr = expr.loop_state
+    return _has_inner_loop(expr)

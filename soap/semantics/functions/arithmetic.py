@@ -3,7 +3,7 @@ import collections
 from soap.common import base_dispatcher, cached
 from soap.expression import operators, BinaryBoolExpr, Subscript
 from soap.semantics.error import error_norm
-from soap.semantics.linalg import ErrorSemanticsArray
+from soap.semantics.linalg import IntegerIntervalArray, ErrorSemanticsArray
 
 
 _unary_operator_function_dictionary = {
@@ -55,7 +55,8 @@ class ArithmeticEvaluator(base_dispatcher()):
             raise KeyError('Unrecognized operator type {!r}'.format(self.op))
         return op(a1, a2)
 
-    execute_Subscript = _execute_args
+    def execute_Subscript(self, expr, state):
+        return IntegerIntervalArray(self._execute_args(expr, state))
 
     def execute_AccessExpr(self, expr, state):
         array, subscript = self._execute_args(expr, state)

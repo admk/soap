@@ -160,8 +160,9 @@ class BaseDiscoverer(base_dispatcher('discover')):
 
         # compute loop optimizing value ranges
         init_value_state = arith_eval(init_meta_state, state)
-        loop_value_state = fixpoint_eval(
-            init_value_state, bool_expr, loop_meta_state)['entry']
+        ori_fix_expr = FixExpr(bool_expr, loop_meta_state, loop_var, None)
+        ori_loop_info = fixpoint_eval(ori_fix_expr, init_value_state)
+        loop_value_state = ori_loop_info['entry']
         # set all errors to null to optimize loop specifically
         null_error_state = {}
         for var, error in loop_value_state.items():

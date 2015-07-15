@@ -1,25 +1,17 @@
 from soap.common.cache import cached_property
 from soap.datatype import int_type
 from soap.expression import (
-    operators, is_variable, is_expression, BinaryArithExpr, FixExpr
+    operators, is_variable, is_expression, BinaryArithExpr, FixExpr,
+    fix_expr_has_inner_loop
 )
 from soap.semantics.error import IntegerInterval, inf
 from soap.semantics.functions import expand_expr, label
 from soap.semantics.label import Label
+from soap.semantics.schedule.common import iter_point_count
 
 
 class ForLoopExtractionFailureException(Exception):
     """Failed to extract for loop.  """
-
-
-def _has_loops(expr):
-    _, env = label(expr, None, None, fusion=False)
-    for var, var_expr in env.items():
-        if not is_expression(var_expr):
-            continue
-        if var_expr.op == operators.FIXPOINT_OP:
-            return True
-    return False
 
 
 class ForLoopExtractor(object):
@@ -45,7 +37,14 @@ class ForLoopExtractor(object):
 
     @cached_property
     def has_inner_loops(self):
-        return _has_loops(self.kernel)
+        return fix_expr_has_inner_loop(self.fix_expr)
+
+    @cached_property
+    def trip_count(self):
+        if self.is_for_loop:
+            return iter_point_count(self.iter_slice)
+        raise AttributeError(
+            'Cannot find trip count for loop because it is not a for loop.')
 
     def _extract_iter_var(self, fix_expr):
         bool_expr = fix_expr.bool_expr
@@ -180,7 +179,7 @@ class ForLoopNestExtractor(ForLoopExtractor):
         iter_vars = [iter_var]
         iter_slices = [extractor.iter_slice]
 
-        if not _has_loops(fix_expr.loop_state):
+        if not extractor.has_inner_loops:
             return iter_vars, iter_slices, fix_expr.loop_state
 
         # nested loops

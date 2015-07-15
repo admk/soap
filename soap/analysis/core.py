@@ -11,8 +11,13 @@ from soap.context import context
 from soap.semantics import error_eval, ErrorSemantics, inf, schedule_graph
 
 
-def abs_error(expr, state):
-    v = ErrorSemantics(error_eval(expr, state))
+def abs_error(expr, state, out_vars):
+    if isinstance(expr, collections.Mapping):
+        expr = expr.__class__({
+            var: var_expr for var, var_expr in expr.items()
+            if var in out_vars})
+    e = error_eval(expr, state)
+    v = ErrorSemantics(e)
     if v.is_bottom():
         logger.error(
             'Cannot compute error for unreachable expression. '
@@ -95,7 +100,7 @@ def thick_frontier(points):
 
 def _analyze_expression(args):
     expr, state, out_vars, recurrences, round_values = args
-    error = abs_error(expr, state)
+    error = abs_error(expr, state, out_vars)
     graph = schedule_graph(
         expr, out_vars, recurrences=recurrences, round_values=round_values)
     latency = graph.latency()

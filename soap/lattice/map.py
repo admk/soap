@@ -83,12 +83,6 @@ class MapLattice(Lattice, Mapping):
     def __contains__(self, key):
         return super().__contains__(self._cast_key(key))
 
-    def immu_update(self, key, value):
-        new_map = dict(self)
-        value = self._cast_value(key=key, value=value)
-        new_map[self._cast_key(key)] = value
-        return self.__class__(new_map)
-
     def __getitem__(self, key):
         try:
             return self._mapping[self._cast_key(key)]

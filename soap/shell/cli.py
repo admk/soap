@@ -47,7 +47,11 @@ Options:
                             `--precision=<width>` and `--single`.
     --population-size=<int> Simulation is used to find actual bound on errors.
                             This parameter specifies the population size for
-                            simulation. [default: 100]
+                            simulation.  [default: 100]
+    --fast-factor={context.fast_factor}
+                            Reduce the number of iterations taken by error
+                            analysis with a factor.  Only values less than 1
+                            have effect.  [default: {context.fast_factor}]
     --unroll-factor={context.unroll_factor}
                             Set the number of iterations bofore stopping loop
                             unroll and use the loop invariant in loop analysis.
@@ -116,6 +120,7 @@ def _setup_context(args):
     if algorithm:
         context.algorithm = algorithm
 
+    context.fast_factor = float(args['--fast-factor'])
     context.unroll_factor = int(args['--unroll-factor'])
     context.widen_factor = int(args['--widen-factor'])
     context.window_depth = int(args['--window-depth'])

@@ -1,6 +1,5 @@
-from soap import logger
 from soap.common import base_dispatcher
-from soap.semantics.functions import arith_eval, bool_eval, fixpoint_eval
+from soap.semantics.functions import arith_eval, bool_eval
 from soap.program.flow import CompositionalFlow, WhileFlow
 
 
@@ -30,19 +29,8 @@ class BaseState(base_dispatcher('visit')):
         false_split = false_split.transition(flow.false_flow)
         return true_split | false_split
 
-    def _warn_non_termination(self, flow_or_meta_state):
-        if self.is_bottom():
-            return
-        logger.warning(
-            'Loop/fixpoint computation "{loop}" may never terminate with state'
-            '{state}, analysis assumes it always terminates.'
-            .format(loop=flow_or_meta_state, state=self))
-
     def visit_WhileFlow(self, flow):
-        fixpoint = fixpoint_eval(
-            self, flow.conditional_expr, loop_flow=flow.loop_flow)
-        fixpoint['last_entry']._warn_non_termination(flow)
-        return fixpoint['exit']
+        raise NotImplementedError('Override this method.')
 
     def visit_ForFlow(self, flow):
         state = self.transition(flow.init_flow)

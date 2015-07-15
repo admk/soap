@@ -164,7 +164,6 @@ class TestLinearAlgebraSimplifier(unittest.TestCase):
             """)
         expr = flow_to_meta_state(flow)[flow.outputs[0]]
         expr = linear_algebra_simplify(expr)
-        print(expr.format())
         env = label(expr.loop_state, None, None)[1]
         access_count = self._count(env, operators.INDEX_ACCESS_OP)
         update_count = self._count(env, operators.INDEX_UPDATE_OP)
@@ -184,9 +183,10 @@ class TestPartition(unittest.TestCase):
         flow = parse(
             """
             #pragma soap input \
-                float a[{bound}][{bound}] = [0.0, 1.0], int i=[1, {boundm2}]
+                float a[{bound}][{bound}] = [0.0, 1.0]
             #pragma soap output a
-            for (int j = 1; j < {boundm1}; j++)
+            for (int i = 1; i < {boundm1}; i++)
+              for (int j = 1; j < {boundm1}; j++)
                 a[i][j] = 0.2 * (
                     a[i][j-1] + a[i][j] + a[i][j+1] + a[i+1][j] + a[i-1][j]);
             """.format(
@@ -210,9 +210,10 @@ class TestPartition(unittest.TestCase):
     def test_optimize(self):
         raise nose.SkipTest
         meta_state, state, outputs = self.program(100)
+
+        analysis = Analysis({meta_state}, state, outputs, round_values=True)
+        print('Original: ', analysis.analyze().pop().format())
+
         with context.local(unroll_depth=1):
             env_set = partition_optimize(meta_state, state, outputs)
-        analysis = Analysis(
-            {self.meta_state}, self.state, [self.output], round_values=True)
-        print('Original: ', analysis.analyze().pop().format())
         self.assertGreater(len(env_set), 1)

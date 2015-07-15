@@ -1,7 +1,6 @@
 from soap.context.soap import SoapContext
 
 
-# noinspection PyPackageRequirements
 context = dict(
     # debugging
     ipdb=False,
@@ -10,14 +9,16 @@ context = dict(
     xmode='context',
     # general
     repr=repr,
-    multiprocessing=True,
+    multiprocessing=False,
     # platform
     device='Virtex7',
     frequency=333,
     port_count=2,
     # analysis related
-    fast_analysis=True,  # analyze only innermost loop for error
-    scalar_array=False,
+    fast_outer=True,     # analyze only innermost loop for error
+    fast_factor=0.2,     # accelerate error analysis by computing a fraction
+                         # of iterations and extrapolate
+    scalar_array=True,
     unroll_factor=0,     # steps before no unrolling in static analysis
     widen_factor=0,      # steps before widening in static analysis
     precision='single',
