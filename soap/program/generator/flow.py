@@ -5,7 +5,10 @@ from soap.expression import (
     is_variable, is_expression, expression_factory,
     Variable, InputVariable, InputVariableTuple, OutputVariableTuple
 )
-from soap.program.flow import AssignFlow, IfFlow, WhileFlow, CompositionalFlow
+from soap.program.flow import (
+    AssignFlow, IfFlow, WhileFlow, CompositionalFlow,
+    PragmaInputFlow, PragmaOutputFlow, ProgramFlow
+)
 from soap.program.graph import (
     DependenceGraph, HierarchicalDependenceGraph
 )
@@ -83,8 +86,7 @@ class CodeGenerator(object):
         if infix is not None:
             name = '{}_{}'.format(name, infix)
 
-        # FIXME type
-        return Variable(name)
+        return Variable(name, expr.dtype)
 
     def generate(self):
         if isinstance(self.graph, HierarchicalDependenceGraph):
@@ -253,9 +255,13 @@ class CodeGenerator(object):
         return flows
 
 
-def generate(meta_state, state, out_vars):
-    from soap.semantics import BoxState, label
-    if not state:
-        state = BoxState(bottom=True)
-    _, env = label(meta_state, state, out_vars)
-    return CodeGenerator(env=env, out_vars=out_vars).generate()
+def generate(meta_state, inputs, outputs):
+    from soap.semantics import label
+    _, env = label(meta_state, None, outputs)
+    if not isinstance(inputs, collections.OrderedDict):
+        raise TypeError('Inputs must be an OrderedDict.')
+    input_flow = PragmaInputFlow(inputs)
+    output_flow = PragmaOutputFlow(outputs)
+    body_flow = CodeGenerator(env=env, out_vars=outputs).generate()
+    flow = CompositionalFlow([input_flow, output_flow]) + body_flow
+    return ProgramFlow(flow)
