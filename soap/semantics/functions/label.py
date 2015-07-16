@@ -119,7 +119,7 @@ class LabelGenerator(base_dispatcher()):
             loop_var_bound = type_cast(loop_var.dtype, bottom=True)
 
         loop_entry = loop_info['entry']
-        if loop_entry is empty:
+        if loop_entry.is_bottom():
             loop_entry = None
         loop_labsem = self(expr.loop_state, loop_entry)
         loop_label, loop_env = loop_labsem

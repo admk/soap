@@ -14,6 +14,10 @@ class ForLoopExtractionFailureException(Exception):
     """Failed to extract for loop.  """
 
 
+class ForLoopExtractorTripCountError(Exception):
+    """Failed to find trip_count.  """
+
+
 class ForLoopExtractor(object):
     def __init__(self, fix_expr):
         super().__init__()
@@ -42,9 +46,14 @@ class ForLoopExtractor(object):
     @cached_property
     def trip_count(self):
         if self.is_for_loop:
-            return iter_point_count(self.iter_slice)
-        raise AttributeError(
-            'Cannot find trip count for loop because it is not a for loop.')
+            iter_slice = self.iter_slice
+            try:
+                return iter_point_count(iter_slice)
+            except OverflowError:
+                raise ForLoopExtractorTripCountError(
+                    'Cannot find trip count because of unbounded iter_slice.')
+        raise ForLoopExtractorTripCountError(
+            'Cannot find trip count because loop is not a for loop.')
 
     def _extract_iter_var(self, fix_expr):
         bool_expr = fix_expr.bool_expr

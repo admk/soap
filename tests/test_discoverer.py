@@ -1,5 +1,6 @@
 import unittest
 
+from soap.context import context
 from soap.datatype import float_type
 from soap.expression import Variable
 from soap.parser import parse
@@ -20,7 +21,6 @@ class TestUnroller(unittest.TestCase):
         x = Variable('x', float_type)
         fix_expr = flow_to_meta_state(parse(program))[x]
         unrolled = list(unroll_fix_expr(fix_expr, 2))
-        for u in unrolled: print(u.format())
         self.assertEqual(fix_expr, unrolled[0])
         program = """
         #pragma soap output x
@@ -55,10 +55,11 @@ class TestUnroller(unittest.TestCase):
         test_expr = flow_to_meta_state(parse(program))[x]
         self.assertEqual(test_expr, unrolled[1])
         inputs = BoxState(bottom=True)
-        for unrolled_expr in unrolled:
-            self.assertEqual(
-                arith_eval(fix_expr, inputs),
-                arith_eval(unrolled_expr, inputs))
+        with context.local(fast_factor=0):
+            for unrolled_expr in unrolled:
+                self.assertEqual(
+                    arith_eval(fix_expr, inputs),
+                    arith_eval(unrolled_expr, inputs))
 
 
 class TestDiscoverer(unittest.TestCase):

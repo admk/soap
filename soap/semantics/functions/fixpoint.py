@@ -40,7 +40,7 @@ def _extrapolate(value, factor):
     if isinstance(value, IntegerInterval):
         return value
     if isinstance(value, MultiDimensionalArray):
-        if value.is_scalar:
+        if value.is_scalar():
             scalar = _extrapolate(value.scalar, factor)
             return value.__class__(scalar=scalar, _shape=value.shape)
         items = [_extrapolate(val, factor) for val in value._flat_items]
@@ -56,20 +56,22 @@ class TripCount(object):
     def __init__(self, fix_expr):
         super().__init__()
         self.fix_expr = fix_expr
-        self._trip_count = None
 
     def get(self):
-        trip_count = self._trip_count
-        if trip_count is not None:
-            return trip_count
-        from soap.semantics.schedule.extract import ForLoopNestExtractor
+        try:
+            return self._trip_count
+        except AttributeError:
+            pass
+        from soap.semantics.schedule.extract import (
+            ForLoopNestExtractor, ForLoopExtractorTripCountError
+        )
         extractor = ForLoopNestExtractor(self.fix_expr)
         try:
             trip_count = extractor.trip_count
-        except AttributeError:
+        except ForLoopExtractorTripCountError as e:
             logger.warning(
                 'Failed to find trip count for loop {}, reason: {}'
-                .format(self.fix_expr, extractor.exception))
+                .format(self.fix_expr, e))
             trip_count = None
         self._trip_count = trip_count
         return trip_count
@@ -79,8 +81,12 @@ def _is_fast_finish(
         iteration, entry_state, entry_join_state, exit_join_state, loop_state,
         loop_end_join_state, trip_count):
 
+    if trip_count is None:
+        logger.warning('Cannot enable fast path.')
+        return
+
     fast_factor = context.fast_factor
-    if fast_factor >= 1:
+    if fast_factor <= 0 or fast_factor >= 1:
         return
 
     curr_factor = iteration / trip_count
