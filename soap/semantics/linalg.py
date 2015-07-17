@@ -206,6 +206,10 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
         return self.__class__(_flat_items=items, _shape=shape)
 
     def le(self, other):
+        if self.shape != other.shape:
+            raise ValueError('Cannot compare arrays with different shapes.')
+        if self.scalar is not None:
+            return self.scalar.le(other.scalar)
         return all(
             x.le(y) for x, y in zip(self._flat_items, other._flat_items))
 
@@ -223,16 +227,20 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
-        # FIXME weird bug
+        # FIXME workaround for a weird bug about top and bottom values
         if (self.bottom and other.bottom) or (self.top and other.top):
             return True
+        if self.shape != other.shape:
+            return False
+        if self.scalar is not None:
+            return self.scalar == other.scalar
         return self._flat_items == other._flat_items
 
     def __hash__(self):
         if self.scalar is not None:
             hash_val = hash((self.scalar, self.shape))
         else:
-            hash_val = hash(self._flat_items)
+            hash_val = hash((self._flat_items, self.shape))
         self._hash = hash_val
         return hash_val
 

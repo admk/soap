@@ -75,3 +75,7 @@ class BaseState(base_dispatcher('visit')):
         new_mapping = dict(self)
         new_mapping[self._cast_key(key)] = self._cast_value(key, value)
         return self.__class__(new_mapping)
+
+    def filter(self, key_set):
+        return self.__class__({
+            key: value for key, value in self.items() if key in key_set})

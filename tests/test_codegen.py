@@ -1,25 +1,43 @@
 import unittest
 
+from soap.context import context
 from soap.parser import parse
 from soap.program import generate
-from soap.semantics import flow_to_meta_state
+from soap.semantics import flow_to_meta_state, arith_eval, BoxState
 
 from examples import test_programs
 
 
 class TestCodeGenerator(unittest.TestCase):
+    def setUp(self):
+        context.take_snapshot()
+        context.fast_outer = False
+        context.fast_factor = 1
+        context.scalar_array = False
+
+    def tearDown(self):
+        context.restore_snapshot()
 
     def check(self, program):
         program = parse(program)
+        inputs = BoxState(program.inputs)
 
         print('Original:')
         print(program.format())
 
         state = flow_to_meta_state(program)
+        result = arith_eval(state.filter(program.outputs), inputs)
         code = generate(state, program.inputs, program.outputs)
 
+        code_str = code.format()
         print('Transformed:')
-        print(code.format())
+        print(code_str)
+
+        gen_flow = parse(code_str)
+        gen_state = flow_to_meta_state(gen_flow).filter(program.outputs)
+        compare_result = arith_eval(gen_state, inputs)
+
+        self.assertEqual(result, compare_result)
 
     def check_case(self, case):
         return self.check(case['program'])
@@ -79,7 +97,7 @@ class TestCodeGenerator(unittest.TestCase):
         program = """
         #pragma soap input float x[30]=3, int y=4
         #pragma soap output x
-        for (int i = 0; i < 10; i++) {
+        for (int i = 1; i < 10; i++) {
             x[i] = x[i - 1] + y;
         }
         """

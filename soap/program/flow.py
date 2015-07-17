@@ -10,6 +10,14 @@ from soap.expression import AccessExpr, Variable
 from soap.semantics import is_numeral
 
 
+def _decl_str(name, dtype, shape=False):
+    if isinstance(dtype, ArrayType):
+        if shape:
+            return '{} {}{}'.format(dtype.num_type, name, list(dtype.shape))
+        return '{} *{}'.format(dtype.num_type, name)
+    return '{} {}'.format(dtype, name)
+
+
 class Flow(object):
     """Program flow.
 
@@ -248,7 +256,7 @@ class PragmaInputFlow(PragmaFlow):
     def format(self):
         inputs = []
         for var, value in self.inputs.items():
-            text = '{} {}'.format(var.dtype, var.name)
+            text = _decl_str(var.name, var.dtype, shape=True)
             if not value.is_top():
                 text += ' = {}'.format(value)
             inputs.append(text)
@@ -339,12 +347,8 @@ class ProgramFlow(Flow):
 
     def _format_declarations(self):
         decl_text = []
-        for var, dtype in self.decl.items():
-            if isinstance(dtype, ArrayType):
-                decl = '{} *{};'.format(dtype.num_type, var)
-            else:
-                decl = '{} {};'.format(dtype, var)
-            decl_text.append(decl + ' ')
+        for name, dtype in self.decl.items():
+            decl_text.append(_decl_str(name, dtype) + '; ')
         return '\n'.join(decl_text)
 
     def format(self):
