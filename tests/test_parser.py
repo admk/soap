@@ -203,7 +203,7 @@ class TestProgramParser(Base):
             PragmaOutputFlow(outputs),
             AssignFlow(self.w, expr),
         ])
-        flow = ProgramFlow(body, self.decl)
+        flow = ProgramFlow(body)
         prog = """
             #pragma soap input \
                 int x=1, float y=[3.0, 4.0], float z=[5.0, 6.0][0, 0]

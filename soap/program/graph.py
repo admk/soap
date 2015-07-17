@@ -1,8 +1,13 @@
+import itertools
+
 import networkx
 from matplotlib import pyplot
 
 from soap.common import base_dispatcher, cached_property
-from soap.expression import InputVariable, External, InputVariableTuple
+from soap.expression import (
+    InputVariable, External, InputVariableTuple, AccessExpr, UpdateExpr,
+    operators
+)
 from soap.semantics import is_numeral
 
 
@@ -59,6 +64,8 @@ class DependenceGraph(object):
             return '<root>'
         __repr__ = __str__
 
+    deps_func = staticmethod(expression_dependencies)
+
     def __init__(self, env, out_vars):
         super().__init__()
         self.env = env
@@ -72,27 +79,9 @@ class DependenceGraph(object):
     @cached_property
     def graph(self):
         graph = networkx.DiGraph()
-        self._edges_recursive(graph, self._root_node)
+        self._init_edges_recursive(graph, self._root_node)
+        self._init_array_dependences(graph)
         return graph
-
-    def nodes(self):
-        try:
-            return self._nodes
-        except AttributeError:
-            pass
-        self._nodes = self.graph.nodes()
-        return self._nodes
-
-    def edges(self):
-        try:
-            return self._edges
-        except AttributeError:
-            pass
-        self._edges = self.graph.edges()
-        return self._edges
-
-    def is_cyclic(self):
-        return bool(list(networkx.simple_cycles(self.graph)))
 
     def add_dep_edges_one_to_many(self, graph, from_node, to_nodes):
         graph.add_edges_from(
@@ -101,9 +90,7 @@ class DependenceGraph(object):
     def edge_attr(self, from_node, to_node):
         return from_node, to_node, {}
 
-    deps_func = staticmethod(expression_dependencies)
-
-    def _edges_recursive(self, graph, out_vars):
+    def _init_edges_recursive(self, graph, out_vars):
         from soap.transformer.partition import PartitionLabel
         prev_nodes = graph.nodes()
         if out_vars == self._root_node:
@@ -131,7 +118,57 @@ class DependenceGraph(object):
         for v in deps:
             if v not in prev_nodes:
                 new_deps.append(v)
-        self._edges_recursive(graph, new_deps)
+        self._init_edges_recursive(graph, new_deps)
+
+    def _array_nodes(self, graph):
+        def is_array_op(node):
+            if isinstance(node, (InputVariable, InputVariableTuple)):
+                return False
+            if is_numeral(node):
+                return False
+            if node == self._root_node:
+                return False
+            expr = self.env[node]
+            return isinstance(expr, (AccessExpr, UpdateExpr))
+        return (n for n in graph.nodes() if is_array_op(n))
+
+    array_edge_attr = edge_attr
+
+    def _init_array_dependences(self, graph):
+        """
+        Any updates to array must happen after access to the same array.  This
+        method finds all such occurrences and add them to the dependence graph.
+        """
+        nodes = self._array_nodes(graph)
+        for update_node, access_node in itertools.product(nodes, repeat=2):
+            update = self.env[update_node]
+            access = self.env[access_node]
+            check = (
+                update.op == operators.INDEX_UPDATE_OP and
+                access.op == operators.INDEX_ACCESS_OP and
+                access.var == update.var)
+            if not check:
+                continue
+            graph.add_edge(*self.array_edge_attr(update_node, access_node))
+
+    def nodes(self):
+        try:
+            return self._nodes
+        except AttributeError:
+            pass
+        self._nodes = self.graph.nodes()
+        return self._nodes
+
+    def edges(self):
+        try:
+            return self._edges
+        except AttributeError:
+            pass
+        self._edges = self.graph.edges()
+        return self._edges
+
+    def is_cyclic(self):
+        return any(networkx.simple_cycles(self.graph))
 
     def input_vars(self):
         return (v for v in self.nodes() if isinstance(v, InputVariable))

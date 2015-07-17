@@ -103,6 +103,14 @@ class ScheduleGraph(DependenceGraph):
         }
         return from_node, to_node, attr_dict
 
+    def array_edge_attr(self, update, access):
+        attr_dict = {
+            'type': DependenceType.flow,
+            'latency': 0,
+            'distance': 0,
+        }
+        return update, access, attr_dict
+
     def _list_schedule(self, node_order, next_func):
         schedule_map = {}
         max_loop_end = 0

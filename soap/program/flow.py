@@ -5,6 +5,7 @@
 from collections import OrderedDict
 
 from soap.common import base_dispatcher, indent
+from soap.datatype import ArrayType
 from soap.expression import AccessExpr, Variable
 from soap.semantics import is_numeral
 
@@ -290,18 +291,18 @@ class PragmaOutputFlow(PragmaFlow):
 
 
 class ProgramFlow(Flow):
-    def __init__(self, flow, decl=None):
+    def __init__(self, flow):
         super().__init__()
         self.input_flows, self.output_flows, body_flows = \
             self._find_pragmas(flow)
         self.body_flow = CompositionalFlow(body_flows)
         self.original_flow = flow
-        self.decl = decl or self._find_declarations(self.body_flow)
+        self.decl = self._find_declarations(self.body_flow)
 
     def _find_declarations(self, flow):
         var_set = flow_variables(flow, input=True, output=True)
-        return {
-            var.name: var.dtype for var in var_set if var not in self.inputs}
+        return {var.name: var.dtype
+                for var in var_set if var not in self.inputs}
 
     def _find_pragmas(self, flow):
         input_flows = []
@@ -339,7 +340,11 @@ class ProgramFlow(Flow):
     def _format_declarations(self):
         decl_text = []
         for var, dtype in self.decl.items():
-            decl_text.append('{} {};'.format(dtype, var))
+            if isinstance(dtype, ArrayType):
+                decl = '{} *{};'.format(dtype.num_type, var)
+            else:
+                decl = '{} {};'.format(dtype, var)
+            decl_text.append(decl + ' ')
         return '\n'.join(decl_text)
 
     def format(self):

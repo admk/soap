@@ -8,7 +8,7 @@ from soap.datatype import int_type, ArrayType
 from soap.expression import (
     AccessExpr, InputVariable, operators, UpdateExpr, Variable,
 )
-from soap.semantics import is_numeral, label, Label, label_to_expr
+from soap.semantics import label, Label, label_to_expr
 from soap.semantics.schedule.common import (
     DependenceType, iter_point_count,
     resource_ceil, resource_map_add, resource_map_min
@@ -84,24 +84,10 @@ class LoopScheduleGraph(SequentialScheduleGraph):
             recurrences.add((out_var, out_var, 1))
 
     def _init_array_loops(self, loop_graph, recurrences):
-        def is_array_op(node):
-            if isinstance(node, InputVariable):
-                return False
-            if is_numeral(node):
-                return False
-            if node == self._root_node:
-                return False
-            expr = self.env[node]
-            return isinstance(expr, (AccessExpr, UpdateExpr))
-
-        nodes = (n for n in self.graph.nodes() if is_array_op(n))
-        for from_node, to_node in itertools.combinations(nodes, 2):
-            # note that edges (from_node, to_node) and (to_node, from_node)
-            # are used once each only
+        nodes = self._array_nodes(self.graph)
+        for from_node, to_node in itertools.product(nodes, repeat=2):
             self._add_array_loop(
                 loop_graph, recurrences, from_node, to_node)
-            self._add_array_loop(
-                loop_graph, recurrences, to_node, from_node)
 
     def _add_array_loop(
             self, loop_graph, recurrences, from_node, to_node):
