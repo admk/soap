@@ -3,7 +3,8 @@ import collections
 from soap import logger
 from soap.expression import (
     is_variable, is_expression, expression_factory,
-    Variable, InputVariable, InputVariableTuple, OutputVariableTuple
+    Variable, InputVariable, InputVariableTuple, OutputVariableTuple,
+    AccessExpr, Subscript
 )
 from soap.program.flow import (
     AssignFlow, IfFlow, WhileFlow, CompositionalFlow,
@@ -51,7 +52,7 @@ class CodeGenerator(object):
 
         return new_flows
 
-    def _with_infix(self, expr, var_infix, label_infix='__magic__'):
+    def _with_infix(self, expr, var_infix, label_infix='__magic'):
         if is_expression(expr):
             args = tuple(self._with_infix(a, var_infix, label_infix)
                          for a in expr.args)
@@ -68,7 +69,7 @@ class CodeGenerator(object):
 
         if isinstance(expr, Label):
             name = '_t{}'.format(expr.label_value)
-            if label_infix == '__magic__':
+            if label_infix == '__magic':
                 infix = self.label_infix
             else:
                 infix = label_infix
@@ -100,10 +101,10 @@ class CodeGenerator(object):
             ','.join(str(o) for o in order)))
         flows = []
         for var in order:
-            flows.append(self.emit_dispatcher(var, order))
+            flows.append(self._dispatcher(var, order))
         return CompositionalFlow(self._flatten(list(flows)))
 
-    def emit_dispatcher(self, var, order):
+    def _dispatcher(self, var, order):
         env = self.graph.env
         expr = env.get(var)
         if not expr:
@@ -132,6 +133,31 @@ class CodeGenerator(object):
 
     def emit_OutputVariableTuple(self, var, expr, order):
         return
+
+    def emit_Subscript(self, var, expr, order):
+        return
+
+    def emit_AccessExpr(self, var, expr, order):
+        access_var = self._with_infix(expr.var, self.in_var_infix)
+        subscript = Subscript(
+            *(self._with_infix(index, self.in_var_infix)
+              for index in self.env[expr.subscript]))
+        return AssignFlow(
+            self._with_infix(var, self.out_var_infix),
+            AccessExpr(access_var, subscript))
+
+    def emit_UpdateExpr(self, var, expr, order):
+        access_var, subscript, update_expr = expr.args
+        access_var = self._with_infix(expr.var, self.in_var_infix)
+        subscript = Subscript(
+            *(self._with_infix(index, self.in_var_infix)
+              for index in self.env[subscript]))
+        update_flow = AssignFlow(
+            AccessExpr(access_var, subscript),
+            self._with_infix(update_expr, self.in_var_infix))
+        assign_flow = AssignFlow(
+            self._with_infix(var, self.out_var_infix), access_var)
+        return CompositionalFlow([update_flow, assign_flow])
 
     def emit_SelectExpr(self, var, expr, order):
         graph = self.graph
@@ -228,8 +254,8 @@ class CodeGenerator(object):
         for var in init_vars:
             if var not in new_init_vars:
                 # because these variables are labelled `InputVariable`
-                # we need to re-label them
-                new_init_vars.append(var)
+                # we need to re-label them as Variable
+                new_init_vars.append(Variable(var.name, var.dtype))
         init_flow_generator = generator_class(
             env=init_state, out_vars=new_init_vars, parent=self,
             label_infix=infix, out_var_infix=infix)

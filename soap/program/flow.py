@@ -245,10 +245,13 @@ class PragmaInputFlow(PragmaFlow):
         self.inputs = OrderedDict(inputs)
 
     def format(self):
-        inputs = ', '.join('{dtype} {name} = {value}'.format(
-            dtype=var.dtype, name=var.name, value=value)
-            for var, value in self.inputs.items())
-        return '{} input {} '.format(pragma_keyword, inputs)
+        inputs = []
+        for var, value in self.inputs.items():
+            text = '{} {}'.format(var.dtype, var.name)
+            if not value.is_top():
+                text += ' = {}'.format(value)
+            inputs.append(text)
+        return '{} input {} '.format(pragma_keyword, ', '.join(inputs))
 
     def __repr__(self):
         return '{cls}({inputs!r})'.format(

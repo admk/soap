@@ -8,10 +8,10 @@ from soap.datatype import int_type, ArrayType
 from soap.expression import (
     AccessExpr, InputVariable, operators, UpdateExpr, Variable,
 )
-from soap.semantics import is_numeral, label, Label
+from soap.semantics import is_numeral, label, Label, label_to_expr
 from soap.semantics.schedule.common import (
     DependenceType, iter_point_count,
-    resource_ceil, resource_map_add, resource_map_min, label_to_expr
+    resource_ceil, resource_map_add, resource_map_min
 )
 from soap.semantics.schedule.extract import ForLoopNestExtractor
 from soap.semantics.schedule.distance import dependence_eval
