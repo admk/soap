@@ -21,6 +21,12 @@ class Expression(Flyweight):
         self._args = args
         self._hash = None
 
+    def __setstate__(self, state):
+        self._hash = None
+        state = state[1]
+        self._op = state['_op']
+        self._args = state['_args']
+
     @property
     def op(self):
         return self._op

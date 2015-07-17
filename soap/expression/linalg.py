@@ -61,8 +61,8 @@ class AccessExpr(
         return self.a2
 
     def format(self):
-        var, subscript = (a.format() for a in self.args)
-        return 'access({}, {})'.format(var, subscript)
+        var, subscript = self._args_to_str()
+        return '{}{}'.format(var, subscript)
 
     def __repr__(self):
         return '{cls}({var!r}, {subscript!r})'.format(

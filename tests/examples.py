@@ -1,7 +1,7 @@
 test_programs = {
     'if': {
         'program': """
-            #pragma soap input int x = 0, int n = 1
+            #pragma soap input int x = 0, int n = [-1, 1]
             #pragma soap output x
             if (x < n) {
                 x = x + 1;
@@ -25,7 +25,7 @@ test_programs = {
     },
     'if_fusion': {
         'program': """
-            #pragma soap input int a = [0, 2], int x = 0, int y = 0
+            #pragma soap input int a = [0, 2], int x = 0, int y = 1
             #pragma soap output x, y
             if (a < 1) {
                 x = x + 1;

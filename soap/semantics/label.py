@@ -2,6 +2,7 @@ from collections import namedtuple
 
 from soap.common import Comparable, Flyweight
 from soap.datatype import type_of
+from soap.expression import expression_factory, is_expression
 
 
 _label_map = {}
@@ -146,3 +147,12 @@ class LabelSemantics(_label_semantics_tuple_type, Flyweight, Comparable):
 
     def __str__(self):
         return '({}, {})'.format(self.label, self.env)
+
+
+def label_to_expr(node):
+    if isinstance(node, Label):
+        node = node.expr()
+    if is_expression(node):
+        args = (label_to_expr(arg) for arg in node.args)
+        return expression_factory(node.op, *args)
+    return node

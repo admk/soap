@@ -5,9 +5,17 @@
 from collections import OrderedDict
 
 from soap.common import base_dispatcher, indent
-from soap.datatype import auto_type
+from soap.datatype import ArrayType
 from soap.expression import AccessExpr, Variable
 from soap.semantics import is_numeral
+
+
+def _decl_str(name, dtype, shape=False):
+    if isinstance(dtype, ArrayType):
+        if shape:
+            return '{} {}{}'.format(dtype.num_type, name, list(dtype.shape))
+        return '{} *{}'.format(dtype.num_type, name)
+    return '{} {}'.format(dtype, name)
 
 
 class Flow(object):
@@ -201,7 +209,13 @@ class CompositionalFlow(Flow):
     """
     def __init__(self, flows=None):
         super().__init__()
-        self.flows = tuple(flows or [])
+        new_flows = []
+        for flow in (flows or []):
+            if isinstance(flow, CompositionalFlow):
+                new_flows += flow.flows
+            else:
+                new_flows.append(flow)
+        self.flows = tuple(new_flows)
 
     def transition(self, state):
         for flow in self.flows:
@@ -240,10 +254,13 @@ class PragmaInputFlow(PragmaFlow):
         self.inputs = OrderedDict(inputs)
 
     def format(self):
-        inputs = ', '.join('{dtype} {name} = {value}'.format(
-            dtype=var.dtype, name=var.name, value=value)
-            for var, value in self.inputs.items())
-        return '{} inputs {} '.format(pragma_keyword, inputs)
+        inputs = []
+        for var, value in self.inputs.items():
+            text = _decl_str(var.name, var.dtype, shape=True)
+            if not value.is_top():
+                text += ' = {}'.format(value)
+            inputs.append(text)
+        return '{} input {} '.format(pragma_keyword, ', '.join(inputs))
 
     def __repr__(self):
         return '{cls}({inputs!r})'.format(
@@ -265,7 +282,7 @@ class PragmaOutputFlow(PragmaFlow):
 
     def format(self):
         outputs = ', '.join(str(v) for v in self.outputs)
-        return '{} outputs {} '.format(pragma_keyword, outputs)
+        return '{} output {} '.format(pragma_keyword, outputs)
 
     def __repr__(self):
         return '{cls}({outputs!r})'.format(
@@ -282,13 +299,18 @@ class PragmaOutputFlow(PragmaFlow):
 
 
 class ProgramFlow(Flow):
-    def __init__(self, flow, decl):
+    def __init__(self, flow):
         super().__init__()
         self.input_flows, self.output_flows, body_flows = \
             self._find_pragmas(flow)
         self.body_flow = CompositionalFlow(body_flows)
         self.original_flow = flow
-        self.decl = decl
+        self.decl = self._find_declarations(self.body_flow)
+
+    def _find_declarations(self, flow):
+        var_set = flow_variables(flow, input=True, output=True)
+        return {var.name: var.dtype
+                for var in var_set if var not in self.inputs}
 
     def _find_pragmas(self, flow):
         input_flows = []
@@ -323,8 +345,16 @@ class ProgramFlow(Flow):
             typed_outputs.append(var)
         return typed_outputs
 
+    def _format_declarations(self):
+        decl_text = []
+        for name, dtype in self.decl.items():
+            decl_text.append(_decl_str(name, dtype) + '; ')
+        return '\n'.join(decl_text)
+
     def format(self):
-        return self.original_flow.format()
+        preamble = CompositionalFlow(self.input_flows + self.output_flows)
+        text = preamble.format() + '\n' + self._format_declarations()
+        return text + '\n' + self.body_flow.format()
 
     def __repr__(self):
         return '{cls}({flow!r})'.format(

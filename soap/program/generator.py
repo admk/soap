@@ -1,11 +1,17 @@
 import collections
 
+from soap.common import indent
 from soap import logger
+from soap.datatype import ArrayType
 from soap.expression import (
     is_variable, is_expression, expression_factory,
-    Variable, InputVariable, InputVariableTuple, OutputVariableTuple
+    Variable, InputVariable, InputVariableTuple, OutputVariableTuple,
+    AccessExpr, Subscript
 )
-from soap.program.flow import AssignFlow, IfFlow, WhileFlow, CompositionalFlow
+from soap.program.flow import (
+    AssignFlow, IfFlow, WhileFlow, CompositionalFlow,
+    PragmaInputFlow, PragmaOutputFlow, ProgramFlow, _decl_str
+)
 from soap.program.graph import (
     DependenceGraph, HierarchicalDependenceGraph
 )
@@ -48,7 +54,7 @@ class CodeGenerator(object):
 
         return new_flows
 
-    def _with_infix(self, expr, var_infix, label_infix='__magic__'):
+    def _with_infix(self, expr, var_infix, label_infix='__magic'):
         if is_expression(expr):
             args = tuple(self._with_infix(a, var_infix, label_infix)
                          for a in expr.args)
@@ -65,7 +71,7 @@ class CodeGenerator(object):
 
         if isinstance(expr, Label):
             name = '_t{}'.format(expr.label_value)
-            if label_infix == '__magic__':
+            if label_infix == '__magic':
                 infix = self.label_infix
             else:
                 infix = label_infix
@@ -75,16 +81,16 @@ class CodeGenerator(object):
         else:
             raise TypeError(
                 'Do not know how to add infix for {!r}'.format(expr))
+        dtype = expr.dtype
 
         if not isinstance(infix, Label):
             if isinstance(infix, collections.Sequence):
                 infix = '_'.join(str(i) for i in infix)
 
-        if infix is not None:
+        if infix is not None and not isinstance(dtype, ArrayType):
             name = '{}_{}'.format(name, infix)
 
-        # FIXME type
-        return Variable(name)
+        return Variable(name, dtype)
 
     def generate(self):
         if isinstance(self.graph, HierarchicalDependenceGraph):
@@ -98,10 +104,10 @@ class CodeGenerator(object):
             ','.join(str(o) for o in order)))
         flows = []
         for var in order:
-            flows.append(self.emit_dispatcher(var, order))
+            flows.append(self._dispatcher(var, order))
         return CompositionalFlow(self._flatten(list(flows)))
 
-    def emit_dispatcher(self, var, order):
+    def _dispatcher(self, var, order):
         env = self.graph.env
         expr = env.get(var)
         if not expr:
@@ -111,8 +117,21 @@ class CodeGenerator(object):
         emit = getattr(self, emit_func_name, self.generic_emit)
         return self._flatten(emit(var, expr, order))
 
+    def _expand_simple_expression(self, env, label):
+        if is_numeral(label):
+            return label
+        expr = env.get(label)
+        if is_variable(expr) or is_numeral(expr):
+            return expr
+        if expr is None:
+            return label
+        args = [self._expand_simple_expression(env, l) for l in expr.args]
+        return expression_factory(expr.op, *args)
+
     def generic_emit(self, var, expr, order):
         if isinstance(var, InputVariable):
+            return
+        if isinstance(var.dtype, ArrayType):
             return
         if expr is None:
             raise ValueError(
@@ -130,6 +149,36 @@ class CodeGenerator(object):
 
     def emit_OutputVariableTuple(self, var, expr, order):
         return
+
+    def emit_BinaryBoolExpr(self, var, expr, order):
+        return
+
+    def emit_Subscript(self, var, expr, order):
+        return
+
+    def emit_AccessExpr(self, var, expr, order):
+        access_var = self._with_infix(expr.var, self.in_var_infix)
+        from soap.semantics.label import label_to_expr
+        access_var = label_to_expr(var).true_var()
+        subscript = Subscript(
+            *(self._with_infix(index, self.in_var_infix)
+              for index in self.env[expr.subscript]))
+        return AssignFlow(
+            self._with_infix(var, self.out_var_infix),
+            AccessExpr(access_var, subscript))
+
+    def emit_UpdateExpr(self, var, expr, order):
+        access_var, subscript, update_expr = expr.args
+        access_var = self._with_infix(expr.var, self.in_var_infix)
+        from soap.semantics.label import label_to_expr
+        access_var = label_to_expr(var).true_var()
+        subscript = Subscript(
+            *(self._with_infix(index, self.in_var_infix)
+              for index in self.env[subscript]))
+        update_flow = AssignFlow(
+            AccessExpr(access_var, subscript),
+            self._with_infix(update_expr, self.in_var_infix))
+        return update_flow
 
     def emit_SelectExpr(self, var, expr, order):
         graph = self.graph
@@ -179,12 +228,17 @@ class CodeGenerator(object):
             flow += generate_branch_output_interface(label)
             return flow
 
-        bool_expr = self._with_infix(expr.bool_expr, self.in_var_infix)
+        bool_expr = self.env[expr.bool_expr]
+        bool_expr_args = (
+            self._with_infix(a, self.in_var_infix) for a in bool_expr.args)
+        bool_expr = expression_factory(bool_expr.op, *bool_expr_args)
         true_flow = generate_branch(expr.true_expr)
         false_flow = generate_branch(expr.false_expr)
         return IfFlow(bool_expr, true_flow, false_flow)
 
     def emit_External(self, var, expr, order):
+        if isinstance(var.dtype, ArrayType):
+            return
         return AssignFlow(
             self._with_infix(var, var_infix=self.out_var_infix),
             self._with_infix(
@@ -192,17 +246,6 @@ class CodeGenerator(object):
                 label_infix=self.parent.label_infix))
 
     def emit_FixExpr(self, var, expr, order):
-        def expand_simple_expression(env, label):
-            if is_numeral(label):
-                return label
-            expr = env.get(label)
-            if is_variable(expr) or is_numeral(expr):
-                return expr
-            if expr is None:
-                return label
-            args = [expand_simple_expression(env, l) for l in expr.args]
-            return expression_factory(expr.op, *args)
-
         def var_to_list(v):
             if isinstance(v, OutputVariableTuple):
                 return list(v)
@@ -213,7 +256,7 @@ class CodeGenerator(object):
         generator_class = self.__class__
 
         bool_label, bool_env = expr.bool_expr
-        bool_expr = expand_simple_expression(bool_env, bool_label)
+        bool_expr = self._expand_simple_expression(bool_env, bool_label)
         loop_state = expr.loop_state
         loop_vars = var_to_list(expr.loop_var)
         init_state = expr.init_state
@@ -226,8 +269,8 @@ class CodeGenerator(object):
         for var in init_vars:
             if var not in new_init_vars:
                 # because these variables are labelled `InputVariable`
-                # we need to re-label them
-                new_init_vars.append(var)
+                # we need to re-label them as Variable
+                new_init_vars.append(Variable(var.name, var.dtype))
         init_flow_generator = generator_class(
             env=init_state, out_vars=new_init_vars, parent=self,
             label_infix=infix, out_var_infix=infix)
@@ -245,6 +288,8 @@ class CodeGenerator(object):
         # loop_vars interface
         exit_flow = CompositionalFlow()
         for out_var, loop_var in zip(out_vars, loop_vars):
+            if isinstance(out_var.dtype, ArrayType):
+                continue
             exit_flow += AssignFlow(
                 self._with_infix(out_var, self.out_var_infix),
                 self._with_infix(loop_var, infix))
@@ -253,9 +298,32 @@ class CodeGenerator(object):
         return flows
 
 
-def generate(meta_state, state, out_vars):
-    from soap.semantics import BoxState, label
-    if not state:
-        state = BoxState(bottom=True)
-    _, env = label(meta_state, state, out_vars)
-    return CodeGenerator(env=env, out_vars=out_vars).generate()
+def generate(meta_state, inputs, outputs):
+    from soap.semantics import label
+    _, env = label(meta_state, None, outputs)
+    if not isinstance(inputs, collections.OrderedDict):
+        raise TypeError('Inputs must be an OrderedDict.')
+    input_flow = PragmaInputFlow(inputs)
+    output_flow = PragmaOutputFlow(outputs)
+    body_flow = CodeGenerator(env=env, out_vars=outputs).generate()
+    flow = CompositionalFlow([input_flow, output_flow]) + body_flow
+    return ProgramFlow(flow)
+
+
+_template = """{func_name}({inout_list}) {{
+{code}}}
+"""
+
+
+def generate_function(func_name, meta_state, inputs, outputs):
+    flow = generate(meta_state, inputs, outputs)
+    inout_list = list(inputs.keys())
+    for var in flow.outputs:
+        if var in inout_list:
+            continue
+        inout_list.append(var)
+    inout_list = (_decl_str(var.name, var.dtype) for var in inout_list)
+    func_code = _template.format(
+        func_name=func_name, inout_list=', '.join(inout_list),
+        code=indent(flow.format()))
+    return func_code

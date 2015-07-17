@@ -3,9 +3,9 @@ import math
 
 from soap import logger
 from soap.expression import AccessExpr, UpdateExpr
-from soap.semantics.label import Label
+from soap.semantics.label import Label, label_to_expr
 from soap.semantics.schedule.common import (
-    resource_map_add, resource_map_min, label_to_expr
+    resource_map_add, resource_map_min
 )
 from soap.semantics.schedule.graph.base import ScheduleGraph
 
