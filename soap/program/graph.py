@@ -121,8 +121,11 @@ class DependenceGraph(object):
         self._init_edges_recursive(graph, new_deps)
 
     def _array_nodes(self, graph):
+        from soap.transformer.partition import PartitionLabel
+
         def is_array_op(node):
-            if isinstance(node, (InputVariable, InputVariableTuple)):
+            if isinstance(
+                    node, (InputVariable, InputVariableTuple, PartitionLabel)):
                 return False
             if is_numeral(node):
                 return False
@@ -130,6 +133,7 @@ class DependenceGraph(object):
                 return False
             expr = self.env[node]
             return isinstance(expr, (AccessExpr, UpdateExpr))
+
         return (n for n in graph.nodes() if is_array_op(n))
 
     array_edge_attr = edge_attr

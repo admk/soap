@@ -1,13 +1,14 @@
 import csv
+import os
 import random
 import time
-import sys
 
 from soap import logger
 from soap.analysis import frontier as analysis_frontier, Plot
 from soap.context import context
 from soap.expression import is_expression
 from soap.parser import parse as _parse
+from soap.program.generator import generate_function
 from soap.semantics import (
     arith_eval, BoxState, ErrorSemantics, flow_to_meta_state, MetaState,
     IntegerInterval
@@ -24,7 +25,7 @@ def parse(program):
             with open(program) as file:
                 program = file.read()
         program = _parse(program)
-    state = BoxState(program.inputs)
+    state = program.inputs
     out_vars = program.outputs
     return program, state, out_vars
 
@@ -46,7 +47,7 @@ def _generate_samples(iv, population_size):
     return samples
 
 
-def _run_simulation(program, samples, rv):
+def _run_simulation(program, samples, outputs):
     max_error = 0
     n = len(samples)
     try:
@@ -56,7 +57,7 @@ def _run_simulation(program, samples, rv):
             result_state = arith_eval(program, iv)
             error = max(
                 max(abs(error.e.min), abs(error.e.max))
-                for var, error in result_state.items() if var in rv)
+                for var, error in result_state.items() if var in outputs)
             max_error = max(error, max_error)
         logger.unpersistent('Sim')
     except KeyboardInterrupt:
@@ -65,9 +66,9 @@ def _run_simulation(program, samples, rv):
 
 
 def simulate_error(program, population_size):
-    program, state, out_vars = parse(program)
-    samples = _generate_samples(state, population_size)
-    return _run_simulation(flow_to_meta_state(program), samples, out_vars)
+    program, inputs, outputs = parse(program)
+    samples = _generate_samples(BoxState(inputs), population_size)
+    return _run_simulation(flow_to_meta_state(program), samples, outputs)
 
 
 _algorithm_map = {
@@ -82,28 +83,28 @@ _algorithm_map = {
 }
 
 
-def optimize(program, file_name=None):
-    program, state, out_vars = parse(program)
+def optimize(source, file_name=None):
+    program, inputs, outputs = parse(source)
     if not is_expression(program):
-        program = flow_to_meta_state(program)
-        program = MetaState({
-            k: v for k, v in program.items() if k in out_vars})
+        program = flow_to_meta_state(program).filter(outputs)
     func = _algorithm_map[context.algorithm]
+    state = BoxState(inputs)
 
-    original = analysis_frontier([program], state, out_vars).pop()
+    original = analysis_frontier([program], state, outputs).pop()
 
     start_time = time.time()
-    results = func(program, state, out_vars)
+    results = func(program, state, outputs)
     elapsed_time = time.time() - start_time
 
     # results = analysis_frontier(expr_set, state, out_vars)
     emir = {
         'original': original,
-        'inputs': state,
-        'outputs': out_vars,
+        'inputs': inputs,
+        'outputs': outputs,
         'results': results,
         'time': elapsed_time,
         'context': context,
+        'source': source,
         'file': file_name,
     }
     return emir
@@ -121,12 +122,17 @@ def plot(emir, file_name, reanalyze=False):
 
 
 def emir2csv(emir, file):
+    name = os.path.split(emir['file'])[-1]
+    name = name.split(os.path.extsep)[0]
     csvwriter = csv.writer(file, lineterminator='\n')
     orig = emir['original']
     csvwriter.writerow(orig._fields)
-    csvwriter.writerow(orig)
+    csvwriter.writerow(orig[:-1] + (emir['source'], ))
     for result in emir['results']:
-        csvwriter.writerow(result)
+        stats = result.stats()
+        expr = result.expression
+        code = generate_function(name, expr, emir['inputs'], emir['outputs'])
+        csvwriter.writerow(stats + (code, ))
 
 
 def report(emir, file_name):

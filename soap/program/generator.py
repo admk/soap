@@ -1,5 +1,6 @@
 import collections
 
+from soap.common import indent
 from soap import logger
 from soap.datatype import ArrayType
 from soap.expression import (
@@ -9,7 +10,7 @@ from soap.expression import (
 )
 from soap.program.flow import (
     AssignFlow, IfFlow, WhileFlow, CompositionalFlow,
-    PragmaInputFlow, PragmaOutputFlow, ProgramFlow
+    PragmaInputFlow, PragmaOutputFlow, ProgramFlow, _decl_str
 )
 from soap.program.graph import (
     DependenceGraph, HierarchicalDependenceGraph
@@ -307,3 +308,22 @@ def generate(meta_state, inputs, outputs):
     body_flow = CodeGenerator(env=env, out_vars=outputs).generate()
     flow = CompositionalFlow([input_flow, output_flow]) + body_flow
     return ProgramFlow(flow)
+
+
+_template = """{func_name}({inout_list}) {{
+{code}}}
+"""
+
+
+def generate_function(func_name, meta_state, inputs, outputs):
+    flow = generate(meta_state, inputs, outputs)
+    inout_list = list(inputs.keys())
+    for var in flow.outputs:
+        if var in inout_list:
+            continue
+        inout_list.append(var)
+    inout_list = (_decl_str(var.name, var.dtype) for var in inout_list)
+    func_code = _template.format(
+        func_name=func_name, inout_list=', '.join(inout_list),
+        code=indent(flow.format()))
+    return func_code
