@@ -310,20 +310,32 @@ def generate(meta_state, inputs, outputs):
     return ProgramFlow(flow)
 
 
-_template = """{func_name}({inout_list}) {{
-{code}}}
+_template = """{rt_type} {func_name}({inout_list}) {{
+{code}{rt_part}}}
 """
 
 
 def generate_function(func_name, meta_state, inputs, outputs):
+    if len(outputs) > 1:
+        raise NotImplementedError(
+            'Can only support one return variable for the moment.')
+
     flow = generate(meta_state, inputs, outputs)
+
     inout_list = list(inputs.keys())
-    for var in flow.outputs:
-        if var in inout_list:
-            continue
-        inout_list.append(var)
-    inout_list = (_decl_str(var.name, var.dtype) for var in inout_list)
+
+    output = outputs[0]
+    if isinstance(output.dtype, ArrayType):
+        rt_type = 'void'
+        rt_part = ''
+        inout_list.append(output)
+    else:
+        rt_type = output.dtype
+        rt_part = '    return ' + output.name + ';\n'
+
+    inout_list = (
+        _decl_str(var.name, var.dtype, shape=True) for var in inout_list)
     func_code = _template.format(
-        func_name=func_name, inout_list=', '.join(inout_list),
-        code=indent(flow.format()))
+        rt_type=rt_type, func_name=func_name, inout_list=', '.join(inout_list),
+        code=indent(flow.format()), rt_part=rt_part)
     return func_code
