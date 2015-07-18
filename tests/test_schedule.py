@@ -265,24 +265,6 @@ class TestSequentialScheduleGraph(_CommonMixin):
         """
         return self._to_graph(program)
 
-    def test_simple_dag_schedule(self):
-        graph = self._simple_dag()
-        op_schedule = []
-        for node, interval in graph.schedule().items():
-            if not isinstance(node, Label):
-                continue
-            op_schedule.append((node.dtype, node.expr().op, interval))
-        op_ints = [
-            (int_type, operators.VARIABLE_OP, (10, 10)),
-            (int_type, operators.ADD_OP, (10, 11)),
-            (float_type, operators.VARIABLE_OP, (0, 0)),
-            (float_type, operators.ADD_OP, (0, 11)),
-            (float_type, operators.MULTIPLY_OP, (11, 18)),
-            (float_type, operators.SUBTRACT_OP, (18, 29)),
-        ]
-        for op_int in op_ints:
-            self.assertIn(op_int, op_schedule)
-
     def test_simple_dag_latency(self):
         graph = self._simple_dag()
         expect_latency = LATENCY_TABLE[float_type][operators.ADD_OP]

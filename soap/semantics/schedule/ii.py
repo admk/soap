@@ -1,4 +1,5 @@
 import itertools
+import math
 
 import numpy
 
@@ -39,13 +40,12 @@ def rec_init_int_check(graph, ii):
     return True
 
 
-def rec_init_int_search(graph, init_ii=1, prec=None):
+def rec_init_int_search(graph, init_ii=1, prec=None, round_values=False):
     """
     Performs a binary search of the recurrence-based minimum initiation
     interval (RecMII).
     """
-    if not prec:
-        prec = context.ii_precision
+    prec = prec or context.ii_precision
 
     min_ii = max_ii = init_ii
     incr = prec = 2 ** -prec
@@ -64,6 +64,8 @@ def rec_init_int_search(graph, init_ii=1, prec=None):
         else:
             min_ii = mid_ii
 
+    if round_values:
+        return int(math.ceil(last_ii - (max_ii - min_ii) / 2))
     return last_ii
 
 

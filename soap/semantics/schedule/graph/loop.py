@@ -185,12 +185,8 @@ class LoopScheduleGraph(SequentialScheduleGraph):
         else:
             _, access_map = self.resource_counts()
             res_mii = res_init_int(access_map)
-            ii = rec_init_int_search(self.loop_graph, res_mii)
-            if self.round_values:
-                # FIXME potential over-estimation of II
-                ii_overestimate_factor = 0
-                ii = int(math.ceil(ii - ii_overestimate_factor))
-            self._initiation_interval = ii
+            self._initiation_interval = rec_init_int_search(
+                self.loop_graph, res_mii, round_values=self.round_values)
         return self._initiation_interval
 
     def depth(self):
@@ -218,9 +214,14 @@ class LoopScheduleGraph(SequentialScheduleGraph):
             init_latency = init_graph.sequential_latency()
         else:
             init_latency = 0
+        trip_count = self.trip_count()
+        depth = self.depth()
         ii = self.initiation_interval()
-        loop_latency = (self.trip_count() - 1) * ii + self.depth()
+        loop_latency = (trip_count - 1) * ii + depth
         self._loop_latency = init_latency + loop_latency
+        logger.debug(
+            'Initiation interval: {}, trip_count: {}, depth: {}, latency: {}'
+            .format(ii, trip_count, depth, loop_latency))
         return self._loop_latency
 
     latency = loop_latency
