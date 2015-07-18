@@ -20,8 +20,8 @@ DEVICE_LATENCY_TABLE = {
             'comparison': 3,
             'conversion': 8,
             operators.UNARY_SUBTRACT_OP: 0,
-            operators.ADD_OP: 11,
-            operators.SUBTRACT_OP: 11,
+            operators.ADD_OP: 10,
+            operators.SUBTRACT_OP: 10,
             operators.MULTIPLY_OP: 7,
             operators.DIVIDE_OP: 30,
             operators.EXPONENTIATE_OP: 20,
@@ -86,8 +86,8 @@ DEVICE_RESOURCE_TABLE = {
         float_type: {
             'conversion': s(0, 128, 341),
             'comparison': s(0, 66, 72),
-            operators.ADD_OP: s(2, 368, 236),  # full dsp
-            operators.SUBTRACT_OP: s(2, 368, 236),  # full dsp
+            operators.ADD_OP: s(2, 364, 238),  # full dsp
+            operators.SUBTRACT_OP: s(2, 364, 238),  # full dsp
             operators.MULTIPLY_OP: s(3, 197, 123),  # max dsp
             operators.DIVIDE_OP: s(0, 1410, 867),
             operators.UNARY_SUBTRACT_OP: s(0, 0, 1),
