@@ -8,7 +8,7 @@ import soap
 from soap import logger
 from soap.analysis import analyze
 from soap.context import context
-from soap.semantics import flow_to_meta_state
+from soap.semantics import flow_to_meta_state, BoxState
 from soap.shell import interactive
 from soap.shell.utils import (
     optimize, parse, plot, emir2csv, report, simulate_error
@@ -165,7 +165,8 @@ def _analyze(args):
         return
     file, out_file = _file(args)
     prog, inputs, outputs = parse(file)
-    result = analyze([flow_to_meta_state(prog)], inputs, outputs).pop()
+    result = analyze(
+        [flow_to_meta_state(prog)], BoxState(inputs), outputs).pop()
     out_file = '{}.rpt'.format(out_file)
     logger.debug(result)
     with open(out_file, 'w') as f:

@@ -29,7 +29,7 @@ class CodeGenerator(object):
         if graph:
             self.graph = graph
         else:
-            logger.info(
+            logger.debug(
                 'Partitioning dependency graph for {}'.format(
                     ', '.join(str(v) for v in out_vars)))
             self.graph = DependenceGraph(env, out_vars)
@@ -100,7 +100,7 @@ class CodeGenerator(object):
                 v for v in self.graph.dfs_postorder()
                 if isinstance(v, Label) or isinstance(v, Variable)
                 or isinstance(v, OutputVariableTuple)]
-        logger.info('Generating code for nodes {}'.format(
+        logger.debug('Generating code for nodes {}'.format(
             ','.join(str(o) for o in order)))
         flows = []
         for var in order:
@@ -310,7 +310,7 @@ def generate(meta_state, inputs, outputs):
     return ProgramFlow(flow)
 
 
-_template = """{rt_type} {func_name}({inout_list}) {{
+_template = """{rt_type} kernel_{func_name}({inout_list}) {{
 {code}{rt_part}}}
 """
 
@@ -328,7 +328,8 @@ def generate_function(func_name, meta_state, inputs, outputs):
     if isinstance(output.dtype, ArrayType):
         rt_type = 'void'
         rt_part = ''
-        inout_list.append(output)
+        if output not in inout_list:
+            inout_list.append(output)
     else:
         rt_type = output.dtype
         rt_part = '    return ' + output.name + ';\n'

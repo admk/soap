@@ -1,6 +1,6 @@
 from soap.expression import (
-    is_variable, is_expression,
-    External, InputVariableTuple, OutputVariableTuple, SelectExpr, FixExpr
+    is_variable, is_expression, External, InputVariableTuple,
+    OutputVariableTuple, SelectExpr, FixExpr, Subscript
 )
 from soap.program.graph import DependenceGraph
 from soap.semantics import is_numeral, Label, MetaState
@@ -229,6 +229,9 @@ def outer_scope_fusion(env, var):
             continue
         if extn_expr != init_expr:
             # do not fuse when cannot find matching expr in env
+            continue
+        if isinstance(init_expr, Subscript):
+            # do not fuse when expression is a subscript
             continue
         extn_label = extn_expr if is_variable(init_var) else init_var
         init_state[init_var] = External(extn_label)

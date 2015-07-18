@@ -57,6 +57,8 @@ class AccessUpdateSimplifier(GenericExecuter):
     def _execute_atom(self, expr):
         return expr
 
+    execute_PartitionLabel = execute_PreUnrollExpr = _execute_atom
+
     def _execute_args(self, expr):
         return (self(arg) for arg in expr.args)
 
@@ -97,6 +99,8 @@ class IndexCollector(GenericExecuter):
     def _execute_atom(self, expr, indices):
         return indices
 
+    execute_PartitionLabel = execute_PreUnrollExpr = _execute_atom
+
     def _execute_expression(self, expr, indices):
         for arg in expr.args:
             indices = self(arg, indices)
@@ -120,6 +124,8 @@ class IndexCollector(GenericExecuter):
 class SubscriptSimplifier(GenericExecuter):
     def _execute_atom(self, expr, indices):
         return expr
+
+    execute_PartitionLabel = execute_PreUnrollExpr = _execute_atom
 
     def _execute_expression(self, expr, indices):
         args = (self(arg, indices) for arg in expr.args)

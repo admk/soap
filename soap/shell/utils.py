@@ -10,8 +10,7 @@ from soap.expression import is_expression
 from soap.parser import parse as _parse
 from soap.program.generator import generate_function
 from soap.semantics import (
-    arith_eval, BoxState, ErrorSemantics, flow_to_meta_state, MetaState,
-    IntegerInterval
+    arith_eval, BoxState, ErrorSemantics, flow_to_meta_state, IntegerInterval
 )
 from soap.transformer import (
     closure, expand, frontier, greedy, parsings, reduce, thick,
@@ -128,11 +127,14 @@ def emir2csv(emir, file):
     orig = emir['original']
     csvwriter.writerow(orig._fields)
     csvwriter.writerow(orig[:-1] + (emir['source'], ))
-    for result in emir['results']:
+    for i, result in enumerate(emir['results']):
+        logger.persistent(
+            'Generate', '{}/{}'.format(i + 1, len(emir['results'])))
         stats = result.stats()
         expr = result.expression
         code = generate_function(name, expr, emir['inputs'], emir['outputs'])
         csvwriter.writerow(stats + (code, ))
+    logger.unpersistent('Generate')
 
 
 def report(emir, file_name):

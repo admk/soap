@@ -323,8 +323,9 @@ def unroll_fix_expr(expr, depth):
         return [expr]
 
     if not extractor.is_for_loop:
-        return [_unroll_fix_expr(expr, expr.loop_state, d)
-                for d in range(depth + 1)]
+        return list(
+            _unroll_fix_expr(expr, expr.loop_state, d)
+            for d in range(depth + 1))
 
     iter_var = extractor.iter_var
     iter_slice = extractor.iter_slice

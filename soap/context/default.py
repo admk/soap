@@ -9,7 +9,7 @@ context = dict(
     xmode='context',
     # general
     repr=repr,
-    multiprocessing=False,
+    multiprocessing=True,
     # platform
     device='Virtex7',
     frequency=333,

@@ -16,3 +16,4 @@ cover/
 *.soap.emir
 *.soap.pdf
 *.soap.rpt
+*.soap.csv

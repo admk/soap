@@ -155,7 +155,7 @@ class LoopScheduleGraph(SequentialScheduleGraph):
         init_state = self.fix_expr.init_state
         if isinstance(init_state, Label):
             return None
-        _, init_env = label(self.fix_expr.init_state, None, None)
+        _, init_env = label(self.fix_expr.init_state, None, None, fusion=False)
         self._init_graph = SequentialScheduleGraph(
             init_env, init_env, round_values=self.round_values,
             sequentialize_loops=self.sequentialize_loops,

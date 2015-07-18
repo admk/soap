@@ -368,7 +368,7 @@ class _FloatIntervalFormatMixin(object):
 
     def __str__(self):
         if self.min == self.max:
-            return '{}'.format(self._vals_to_str()[0])
+            return '{}f'.format(self._vals_to_str()[0])
         return '[{}, {}]'.format(*self._vals_to_str())
 
 

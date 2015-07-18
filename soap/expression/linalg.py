@@ -21,8 +21,7 @@ class Subscript(Expression):
         return iter(self.args)
 
     def format(self):
-        args = (a.format() for a in self.args)
-        return '[{}]'.format(', '.join(args))
+        return ''.join('[' + a.format() + ']' for a in self.args)
 
     def __repr__(self):
         return '{}({!r})'.format(self.__class__.__name__, self.args)

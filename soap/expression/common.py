@@ -123,7 +123,8 @@ class GenericExecuter(base_dispatcher()):
         setattr(self, name, value)
 
     def generic_execute(self, expr, *args, **kwargs):
-        raise TypeError('Do not know how to execute {!r}'.format(expr))
+        raise NotImplementedError(
+            'Do not know how to execute {!r}'.format(expr))
 
     def _execute_atom(self, expr, *args, **kwargs):
         raise NotImplementedError

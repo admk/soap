@@ -7,13 +7,14 @@ from collections import OrderedDict
 from soap.common import base_dispatcher, indent
 from soap.datatype import ArrayType
 from soap.expression import AccessExpr, Variable
-from soap.semantics import is_numeral
+from soap.semantics import is_numeral, ErrorSemantics
 
 
 def _decl_str(name, dtype, shape=False):
     if isinstance(dtype, ArrayType):
         if shape:
-            return '{} {}{}'.format(dtype.num_type, name, list(dtype.shape))
+            shape = ''.join('[{}]'.format(s) for s in dtype.shape)
+            return '{} {}{}'.format(dtype.num_type, name, shape)
         return '{} *{}'.format(dtype.num_type, name)
     return '{} {}'.format(dtype, name)
 
@@ -330,7 +331,12 @@ class ProgramFlow(Flow):
         inputs = []
         for flow in self.input_flows:
             inputs += flow.inputs.items()
-        return OrderedDict(inputs)
+        new_inputs = []
+        for key, value in inputs:
+            if isinstance(value, ErrorSemantics):
+                value = ErrorSemantics(value.v, 0)
+            new_inputs.append((key, value))
+        return OrderedDict(new_inputs)
 
     @property
     def outputs(self):

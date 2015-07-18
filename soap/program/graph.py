@@ -3,7 +3,7 @@ import itertools
 import networkx
 from matplotlib import pyplot
 
-from soap.common import base_dispatcher, cached_property
+from soap.common import base_dispatcher, cached_property, Flyweight
 from soap.expression import (
     InputVariable, External, InputVariableTuple, AccessExpr, UpdateExpr,
     operators
@@ -57,7 +57,7 @@ class ExpressionDependencies(base_dispatcher()):
 expression_dependencies = ExpressionDependencies()
 
 
-class DependenceGraph(object):
+class DependenceGraph(Flyweight):
     """Graph of dependences"""
     class _RootNode(object):
         def __str__(self):

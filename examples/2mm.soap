@@ -11,7 +11,7 @@
     float B[_PB_NK][_PB_NJ] = [0.0, 1.0][0, 0], \
     float C[_PB_NL][_PB_NJ] = [0.0, 1.0][0, 0], \
     float D[_PB_NI][_PB_NL] = [0.0, 1.0][0, 0], \
-    float tmp[_PB_NI][_PB_NJ] = [0.0, 1.0][0, 0]
+    float tmp[_PB_NI][_PB_NJ] = 0
 #pragma soap output D
 
 int i; int j; int k;
