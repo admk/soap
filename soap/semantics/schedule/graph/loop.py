@@ -1,7 +1,6 @@
 import collections
 import functools
 import itertools
-import math
 
 from soap import logger
 from soap.datatype import int_type, ArrayType
@@ -17,6 +16,7 @@ from soap.semantics.schedule.extract import ForLoopNestExtractor
 from soap.semantics.schedule.distance import dependence_eval
 from soap.semantics.schedule.ii import rec_init_int_search, res_init_int
 from soap.semantics.schedule.graph.sequential import SequentialScheduleGraph
+from soap.transformer.linalg import subscripts_always_equal
 
 
 _edge_type_map = {
@@ -122,6 +122,11 @@ class LoopScheduleGraph(SequentialScheduleGraph):
 
         source_expr = to_expr.subscript
         sink_expr = from_expr.subscript
+        if subscripts_always_equal(source_expr, sink_expr):
+            # quick hack for the case when read/write accesses same location,
+            # Vivado HLS can simpliy iterate on a register
+            latency = -self.node_latency(from_node)
+
         distance = dependence_eval(
             self.iter_vars, self.iter_slices, source_expr, sink_expr)
         if distance is None:

@@ -14,7 +14,7 @@ from soap.semantics.label import Label
 from soap.semantics.schedule.common import DependenceType
 from soap.semantics.schedule.table import (
     OperatorResourceTuple, RESOURCE_TABLE, PIPELINED_OPERATORS, LATENCY_TABLE,
-    MAX_SHARE_COUNT, SHARED_DATATYPE_OPERATORS,
+    MAX_SHARE_COUNT, SHARED_DATATYPE_OPERATORS, MULTIPLEXER_SIZE_PER_INPUT
 )
 
 
@@ -216,13 +216,20 @@ class ScheduleGraph(DependenceGraph):
     def resource_stats(self):
         total_map, min_alloc_map = self.resource()
         stat = OperatorResourceTuple(0, 0, 0)
+        final_map = {}
+        multiplexer_map = collections.defaultdict(int)
         for (dtype, op), count in total_map.items():
             if (dtype, op) in SHARED_DATATYPE_OPERATORS:
-                count = count / MAX_SHARE_COUNT
+                multiplexer_map[dtype, op] += count
+                count /= MAX_SHARE_COUNT
                 if self.round_values:
                     count = int(math.ceil(count))
             if op in operators.COMPARISON_OPERATORS:
                 op = 'comparison'
-            count = max(count, min_alloc_map[dtype, op])
+            final_map[dtype, op] = max(count, min_alloc_map[dtype, op])
+        for (dtype, op), count in final_map.items():
             stat += RESOURCE_TABLE[dtype][op] * count
+        for (dtype, op), count in multiplexer_map.items():
+            stat += OperatorResourceTuple(
+                0, 0, MULTIPLEXER_SIZE_PER_INPUT * count)
         return stat

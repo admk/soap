@@ -114,11 +114,14 @@ class SequentialScheduleGraph(ScheduleGraph):
 
         min_alloc_map = {}
         total_map = {}
+        total_active_nodes = set()
         for active_nodes, cycles in control_points:
             alloc_map = {}
             for node in active_nodes:
                 res_total_map, res_lower_map = self.node_resource(node)
-                resource_map_add(total_map, res_total_map)
+                if node not in total_active_nodes:
+                    resource_map_add(total_map, res_total_map)
+                    total_active_nodes.add(node)
                 resource_map_add(alloc_map, res_lower_map)
             resource_map_min(min_alloc_map, alloc_map)
 
