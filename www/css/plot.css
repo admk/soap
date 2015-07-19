@@ -1,13 +1,13 @@
-body {
-    font: 11px sans-serif;
-    margin-bottom: 200px;
-}
 
 .axis path,
 .axis line {
     fill: none;
     stroke: #000;
     shape-rendering: crispEdges;
+}
+
+.axis text {
+    font: 11px sans-serif;
 }
 
 .dot {

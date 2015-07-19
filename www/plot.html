@@ -17,49 +17,28 @@
   error, area, and latency of the implementation are minimised.</p>
 </div>
 
-<div class="container">
+<div class="container" id="main_container">
 
-<div class="col-sm-12">
+<div class="col-md-12">
   <h3>Select an example:</h3>
-  <select onChange="draw_graphs(this)" size=11>
-    <option value="sum">simple sum</option>
-    <option value="inner_product">simple dot product</option>
-    <option value="2mm">2mm</option>
-    <option value="3mm">3mm</option>
-    <option value="atax">atax</option>
-    <option value="bicg">bicg</option>
-    <option value="gemm">gemm</option>
-    <option value="gemver">gemver</option>
-    <option value="mvt">mvt</option>
-    <option value="syr2k">syr2k</option>
-    <option value="seidel">seidel</option>
-  </select>
+
+<ul class="nav nav-pills">
+  <li role="presentation"><a href="#" onclick="draw_graphs('sum')">simple sum</a></li>
+  <li role="presentation"><a href="#" onclick="draw_graphs('inner_product')">simple dot product</a></li>
+  <li role="presentation"><a href="#" onclick="draw_graphs('2mm')">2mm</a></li>
+  <li role="presentation"><a href="#" onclick="draw_graphs('3mm')">3mm</a></li>
+  <li role="presentation"><a href="#" onclick="draw_graphs('atax')">atax</a></li>
+  <li role="presentation"><a href="#" onclick="draw_graphs('bicg')">bicg</a></li>
+  <li role="presentation"><a href="#" onclick="draw_graphs('gemm')">gemm</a></li>
+  <li role="presentation"><a href="#" onclick="draw_graphs('gemver')">gemver</a></li>
+  <li role="presentation"><a href="#" onclick="draw_graphs('mvt')">mvt</a></li>
+  <li role="presentation"><a href="#" onclick="draw_graphs('syr2k')">syr2k</a></li>
+  <li role="presentation"><a href="#" onclick="draw_graphs('seidel')">seidel</a></li>
+</ul>
+
 </div>
 
 <script src="js/scatter.js"></script>
-
-<div class="col-sm-4">
-  <h2>Latency vs. error</h2>
-<div id="graphzone1"></div>
-</div>
-<div class="col-sm-4">
-  <h2>Lut vs. error</h2>
-<div id="graphzone2"></div>
-</div>
-<div class="col-sm-4">
-  <h2>Lut vs. latency</h2>
-<div id="graphzone3"></div>
-</div>
-
-<div class="col-sm-6">
-  <h2>Original program</h2>
-  <textarea id="orig_program" style="width: 100%;" rows=20></textarea>
-</div>
-
-<div class="col-sm-6">
-  <h2>Optimised program</h2>
-  <textarea id="opti_program" style="width: 100%;" rows=20></textarea>
-</div>
 
 </div>
 
