@@ -174,6 +174,7 @@ class TestLinearAlgebraSimplifier(unittest.TestCase):
 class TestPartition(unittest.TestCase):
     def setUp(self):
         context.take_snapshot()
+        context.multiprocessing = False
         context.unroll_depth = 0
 
     def tearDown(self):

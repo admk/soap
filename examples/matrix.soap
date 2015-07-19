@@ -1,9 +1,0 @@
-def matrix_multiply(
-        int i = [0, 99], int k = [0, 99],
-        real[100, 100] x = [0.0, 1.0], real[100, 100] y = [0.0, 1.0]) {
-    real sum = 0.0;
-    for (int j=0 ; j<100 ; j = j + 2 ) {
-        sum = sum + x[k,i] * y[j,k];
-    }
-    return sum;
-}

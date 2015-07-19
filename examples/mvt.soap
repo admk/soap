@@ -1,0 +1,21 @@
+// Matrix Vector Product and Transpose
+
+#define N 1024
+#define _PB_N 1024
+
+#pragma soap input \
+    float x1[N] = [0.0, 1.0][0, 0], \
+    float x2[N] = [0.0, 1.0][0, 0], \
+    float y_1[N] = [0.0, 1.0][0, 0], \
+    float y_2[N] = [0.0, 1.0][0, 0], \
+    float A[N][N] = [0.0, 1.0][0, 0]
+#pragma soap output x1, x2
+
+int i; int j;
+
+for (i = 0; i < _PB_N; i++)
+    for (j = 0; j < _PB_N; j++)
+        x1[i] = x1[i] + A[i][j] * y_1[j];
+for (i = 0; i < _PB_N; i++)
+    for (j = 0; j < _PB_N; j++)
+        x2[i] = x2[i] + A[j][i] * y_2[j];

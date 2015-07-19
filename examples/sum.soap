@@ -1,6 +1,11 @@
-#pragma soap input float x[100] = [0.0, 1.0]
+#define N 4096
+
+#pragma soap input float x[N] = [0.0, 1.0]
 #pragma soap output sum
+
 float sum = 0;
-for (int i = 0; i < 100; i = i + 1) {
+for (int i = 0; i < N; i = i + 1) {
     sum = sum + x[i];
 }
+
+// vim: ft=c

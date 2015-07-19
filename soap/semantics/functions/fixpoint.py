@@ -278,6 +278,7 @@ def _unroll_for_loop(expr, iter_var, iter_slice, depth):
         return expr_list
 
     for d in range(2, depth + 2):
+        logger.persistent('Unroll', '{}/{}'.format(d, depth + 1))
         new_step = step * d
         new_count = iter_point_count(slice(start, stop, new_step))
         mid = start + new_count * new_step
@@ -310,6 +311,7 @@ def _unroll_for_loop(expr, iter_var, iter_slice, depth):
             epilogue_state = expand_meta_state(expr_state, epilogue_state)
 
         expr_list.append(epilogue_state[loop_var])
+    logger.unpersistent('Unroll')
 
     return expr_list
 

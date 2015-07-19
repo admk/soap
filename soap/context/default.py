@@ -16,7 +16,7 @@ context = dict(
     port_count=2,
     # analysis related
     fast_outer=True,     # analyze only innermost loop for error
-    fast_factor=0.2,     # accelerate error analysis by computing a fraction
+    fast_factor=0.05,    # accelerate error analysis by computing a fraction
                          # of iterations and extrapolate
     scalar_array=True,
     unroll_factor=0,     # steps before no unrolling in static analysis
@@ -39,6 +39,6 @@ context = dict(
     small_steps=5,       # transition steps for finding equivalent small exprs
     small_depth=3,       # transition depth for finding equivalent small exprs
     window_depth=3,      # depth limit window for equivalent expr discovery
-    unroll_depth=2,      # partial unroll depth limit
+    unroll_depth=7,      # partial unroll depth limit
 )
 context = SoapContext(context)

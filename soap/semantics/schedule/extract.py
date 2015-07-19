@@ -4,6 +4,7 @@ from soap.expression import (
     operators, is_variable, is_expression, BinaryArithExpr, FixExpr,
     fix_expr_has_inner_loop
 )
+from soap.semantics import arith_eval, BoxState
 from soap.semantics.error import IntegerInterval, inf
 from soap.semantics.functions import expand_expr, label
 from soap.semantics.label import Label
@@ -93,6 +94,10 @@ class ForLoopExtractor(object):
         if stop != expand_expr(stop, fix_expr.loop_state):
             raise ForLoopExtractionFailureException(
                 'Stop value changes in loop.')
+        if is_expression(stop):
+            new_stop = arith_eval(stop, BoxState(bottom=True))
+            if not new_stop.is_bottom():
+                stop = new_stop
         if op == operators.LESS_EQUAL_OP:
             if isinstance(stop, IntegerInterval):
                 stop += IntegerInterval(1)

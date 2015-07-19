@@ -1,0 +1,30 @@
+#define N 1000
+#define TMAX 50
+
+#define _PB_NX N
+#define _PB_NY N
+#define _PB_TMAX TMAX
+
+#pragma soap input \
+    float ex[_PB_NX][_PB_NY] = [0.0, 1.0][0, 0], \
+    float ey[_PB_NX][_PB_NY] = [0.0, 1.0][0, 0], \
+    float hz[_PB_NX][_PB_NY] = [0.0, 1.0][0, 0], \
+    float _fict_ = [0.0, 1.0]
+#pragma soap output hz
+
+
+int t; int i; int j;
+
+for (i = 1; i < _PB_NX; i++)
+    for (j = 0; j < _PB_NY; j++)
+        ey[i][j] = ey[i][j] - 0.5*(hz[i][j]-hz[i-1][j]);
+for (i = 0; i < _PB_NX; i++)
+    for (j = 1; j < _PB_NY; j++)
+        ex[i][j] = ex[i][j] - 0.5*(hz[i][j]-hz[i][j-1]);
+for (i = 0; i < _PB_NX - 1; i++)
+    for (j = 0; j < _PB_NY - 1; j++)
+        hz[i][j] = hz[i][j] - 0.7*(ex[i][j+1] - ex[i][j] +
+                ey[i+1][j] - ey[i][j]);
+
+
+// vim: ft=c

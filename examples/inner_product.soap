@@ -1,6 +1,12 @@
+// livermore inner_product
+
+#define N 4096
+
 #pragma soap input float x[100] = [0.0, 1.0], float z[100] = [0.0, 1.0]
 #pragma soap output q
 float q = 0.0;
-for (int k = 0; k < 100; k++) {
+for (int k = 0; k < N; k++) {
     q = q + z[k] * x[k];
 }
+
+// vim: ft=c

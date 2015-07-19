@@ -1,0 +1,46 @@
+// G = (A * B) * (C * D)
+#define N 1024
+#define _PB_NI N
+#define _PB_NJ N
+#define _PB_NK N
+#define _PB_NL N
+#define _PB_NM N
+
+#pragma soap input \
+    float A[_PB_NI][_PB_NK] = [0.0, 1.0][0, 0], \
+    float B[_PB_NK][_PB_NJ] = [0.0, 1.0][0, 0], \
+    float C[_PB_NL][_PB_NJ] = [0.0, 1.0][0, 0], \
+    float D[_PB_NI][_PB_NL] = [0.0, 1.0][0, 0], \
+    float E[_PB_NI][_PB_NL] = [0.0, 1.0][0, 0], \
+    float F[_PB_NI][_PB_NL] = [0.0, 1.0][0, 0], \
+    float G[_PB_NI][_PB_NL] = [0.0, 1.0][0, 0]
+#pragma soap output G
+
+int i; int j; int k;
+
+/* E := A*B */
+for (i = 0; i < _PB_NI; i++)
+    for (j = 0; j < _PB_NJ; j++)
+    {
+        E[i][j] = 0;
+        for (k = 0; k < _PB_NK; ++k)
+            E[i][j] += A[i][k] * B[k][j];
+    }
+/* F := C*D */
+for (i = 0; i < _PB_NJ; i++)
+    for (j = 0; j < _PB_NL; j++)
+    {
+        F[i][j] = 0;
+        for (k = 0; k < _PB_NM; ++k)
+            F[i][j] += C[i][k] * D[k][j];
+    }
+/* G := E*F */
+for (i = 0; i < _PB_NI; i++)
+    for (j = 0; j < _PB_NL; j++)
+    {
+        G[i][j] = 0;
+        for (k = 0; k < _PB_NJ; ++k)
+            G[i][j] += E[i][k] * F[k][j];
+    }
+
+// vim: ft=c

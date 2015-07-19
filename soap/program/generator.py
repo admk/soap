@@ -316,23 +316,27 @@ _template = """{rt_type} kernel_{func_name}({inout_list}) {{
 
 
 def generate_function(func_name, meta_state, inputs, outputs):
-    if len(outputs) > 1:
-        raise NotImplementedError(
-            'Can only support one return variable for the moment.')
-
     flow = generate(meta_state, inputs, outputs)
 
     inout_list = list(inputs.keys())
 
-    output = outputs[0]
-    if isinstance(output.dtype, ArrayType):
+    rt_val = []
+    for output in outputs:
+        if isinstance(output.dtype, ArrayType):
+            if output not in inout_list:
+                inout_list.append(output)
+        else:
+            rt_val.append(output)
+
+    if len(rt_val) > 1:
+        raise NotImplementedError('Can support only one return variable.')
+    if rt_val:
+        rt_val = rt_val.pop()
+        rt_type = rt_val.dtype
+        rt_part = '    return ' + rt_val.name + ';\n'
+    else:
         rt_type = 'void'
         rt_part = ''
-        if output not in inout_list:
-            inout_list.append(output)
-    else:
-        rt_type = output.dtype
-        rt_part = '    return ' + output.name + ';\n'
 
     inout_list = (
         _decl_str(var.name, var.dtype, shape=True) for var in inout_list)

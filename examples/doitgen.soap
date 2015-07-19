@@ -1,0 +1,25 @@
+// doitgen
+
+#define N 128
+#define _PB_NQ N
+#define _PB_NR N
+#define _PB_NP N
+
+#pragma soap input \
+    float A[_PB_NR][_PB_NQ][_PB_NP] = [0.0, 1.0], \
+    float C4[_PB_NP][_PB_NP] = [0.0, 1.0], \
+    float sum[_PB_NR][_PB_NQ][_PB_NP] = 0
+#pragma soap output sum
+
+int r; int q; int p; int s;
+
+for (r = 0; r < _PB_NR; r++)
+    for (q = 0; q < _PB_NQ; q++)  {
+        for (p = 0; p < _PB_NP; p++)  {
+            sum[r][q][p] = 0;
+            for (s = 0; s < _PB_NP; s++)
+                sum[r][q][p] = sum[r][q][p] + A[r][q][s] * C4[s][p];
+        }
+        for (p = 0; p < _PB_NR; p++)
+            A[r][q][p] = sum[r][q][p];
+    }

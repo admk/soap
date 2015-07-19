@@ -1,0 +1,29 @@
+// bicg
+#define N 4000
+#define _PB_NX N
+#define _PB_NY N
+
+#pragma soap input \
+    float A[_PB_NX][_PB_NY] = [0.0, 1.0], \
+    float s[_PB_NY] = [0.0, 1.0], \
+    float q[_PB_NX] = 0, \
+    float p[_PB_NY] = [0.0, 1.0], \
+    float r[_PB_NX] = [0.0, 1.0]
+#pragma soap output s, q
+
+
+int i; int j;
+
+for (i = 0; i < _PB_NY; i++)
+    s[i] = 0;
+for (i = 0; i < _PB_NX; i++)
+{
+    q[i] = 0;
+    for (j = 0; j < _PB_NY; j++)
+    {
+        s[j] = s[j] + r[i] * A[i][j];
+        q[i] = q[i] + A[i][j] * p[j];
+    }
+}
+
+// vim: ft=c

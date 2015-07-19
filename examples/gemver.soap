@@ -1,0 +1,33 @@
+// Vector Multiplication and Matrix Addition
+
+#define N 1024
+#define _PB_N N
+
+#pragma soap input \
+    float A[_PB_N][_PB_N] = [0.0, 1.0][0, 0], \
+    float u1[_PB_N] = [0.0, 1.0][0, 0], \
+    float v1[_PB_N] = [0.0, 1.0][0, 0], \
+    float u2[_PB_N] = [0.0, 1.0][0, 0], \
+    float v2[_PB_N] = [0.0, 1.0][0, 0], \
+    float w[_PB_N] = 0, \
+    float x[_PB_N] = 0, \
+    float y[_PB_N] = [0.0, 1.0][0, 0], \
+    float z[_PB_N] = [0.0, 1.0][0, 0]
+#pragma soap output w
+
+int i; int j;
+float alpha = 43532;
+float beta = 12313;
+
+for (i = 0; i < _PB_N; i++)
+    for (j = 0; j < _PB_N; j++)
+        x[i] = x[i] + beta * A[j][i] * y[j];
+
+for (i = 0; i < _PB_N; i++)
+    x[i] = x[i] + z[i];
+
+for (i = 0; i < _PB_N; i++)
+    for (j = 0; j < _PB_N; j++)
+        w[i] = w[i] +  alpha * A[i][j] * x[j];
+
+// vim: ft=c
