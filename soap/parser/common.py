@@ -78,7 +78,10 @@ class CommonVisitor(nodes.NodeVisitor):
     visit_question = visit_colon = _lift_dontcare
 
     def _visit_number_regex(self, node, children):
-        return cast(node.text)
+        text = node.text
+        if text.endswith('f'):
+            text = text[:-1]
+        return cast(text)
 
     visit_integer_regex = visit_real_regex = _visit_number_regex
 

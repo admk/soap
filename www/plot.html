@@ -21,7 +21,7 @@
 
 <div class="col-sm-12">
   <h3>Select an example:</h3>
-  <select onChange="draw_graphs(this)" size=10>
+  <select onChange="draw_graphs(this)" size=11>
     <option value="sum">simple sum</option>
     <option value="inner_product">simple dot product</option>
     <option value="2mm">2mm</option>
@@ -38,16 +38,6 @@
 
 <script src="js/scatter.js"></script>
 
-<div class="col-sm-6">
-  <h2>Original program</h2>
-  <textarea id="orig_program" style="width: 100%;" rows=10></textarea>
-</div>
-
-<div class="col-sm-6">
-  <h2>Optimised program</h2>
-  <textarea id="opti_program" style="width: 100%;" rows=10></textarea>
-</div>
-
 <div class="col-sm-4">
   <h2>Latency vs. error</h2>
 <div id="graphzone1"></div>
@@ -59,6 +49,16 @@
 <div class="col-sm-4">
   <h2>Lut vs. latency</h2>
 <div id="graphzone3"></div>
+</div>
+
+<div class="col-sm-6">
+  <h2>Original program</h2>
+  <textarea id="orig_program" style="width: 100%;" rows=20></textarea>
+</div>
+
+<div class="col-sm-6">
+  <h2>Optimised program</h2>
+  <textarea id="opti_program" style="width: 100%;" rows=20></textarea>
 </div>
 
 </div>
