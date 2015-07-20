@@ -279,7 +279,7 @@ function init() {
             .attr('role', 'presentation')
             .attr('id', name)
             .append('a')
-            .attr('href', '#select_example')
+            .attr('href', '#')
             .attr('onclick', "draw_graphs('" + name + "')")
             .html(name);
     }
