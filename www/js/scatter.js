@@ -1,16 +1,29 @@
-
-var description_of = {};
-description_of["sum"] = "A simple starter example that sums all items in an array.";
-description_of["inner_product"] = "A simple starter example that calculates the dot product of two vectors, this pattern is often observed in linear algebra programs.  This code is taken from <a href='http://www.netlib.org/benchmark/livermorec'>Livermore loops</a>.";
-description_of["2mm"] = "A matrix multiplication example taken from <a href='http://web.cs.ucla.edu/~pouchet/software/polybench/'>PolyBench 3.2</a>.  It computes a matrix <tt>D = alpha * A * B * C + beta * D</tt>, where <tt>A, B, C, D</tt> are 1024x1024 matrices, <tt>alpha, beta</tt> are constant values.";
-description_of["3mm"] = "A matrix-vector multiplication example taken from <a href='http://web.cs.ucla.edu/~pouchet/software/polybench/'>PolyBench 3.2</a>.  It computes <tt>E = A * B; F = C * D; G = E * F</tt>, where <tt>A, B, C, D, E, F</tt> are 1024x1024 matrices.";
-description_of["atax"] = "A matrix multiplication example taken from <a href='http://web.cs.ucla.edu/~pouchet/software/polybench/'>PolyBench 3.2</a>.  It computes <tt>y = A * A<sup>T</sup> * x</tt>, where <tt>A</tt> is a 4000x4000 matrix, <tt>A<sup>T</sup></tt> is <tt>A</tt> transposed, and <tt>x, y</tt> are vectors with 4000 elements.";
-description_of["bicg"] = "The <tt>bicg</tt> example from <a href='http://web.cs.ucla.edu/~pouchet/software/polybench/'>PolyBench 3.2</a>.  BiCG Sub Kernel of BiCGStab Linear Solver.  BiCGStab is an acronym for the <a href='http://mathworld.wolfram.com/BiconjugateGradientStabilizedMethod.html'>biconjugate gradient stabilized method</a>.";
-description_of["gemm"] = "A simple matrix multiplication example taken from <a href='http://web.cs.ucla.edu/~pouchet/software/polybench/'>PolyBench 3.2</a>.  It computes <tt>C = alpha * A * B + beta * C</tt>, where <tt>A, B, C</tt> are 1024x1024 matrices, <tt>alpha, beta</tt> are contants.";
-description_of["gemver"] = "The <tt>gemver</tt> example from <a href='http://web.cs.ucla.edu/~pouchet/software/polybench/'>PolyBench 3.2</a>.";
-description_of["mvt"] = "The <tt>mvt</tt> example from <a href='http://web.cs.ucla.edu/~pouchet/software/polybench/'>PolyBench 3.2</a>.  Matrix Vector Product and Transpose.  Our tool identifies that the two nested loops can be fused because they share the same control logic.  This is not yet performed in Vivado HLS 2015.2, and loops are run sequentially even if there are no dependences between them.";
-description_of["seidel"] = "A five point seidel stencil computation, modified from <tt>seidel</tt> in <a href='http://web.cs.ucla.edu/~pouchet/software/polybench/'>PolyBench 3.2</a>.";
-description_of["syr2k"] = "Symmetric Rank-2k Update from <a href='http://web.cs.ucla.edu/~pouchet/software/polybench/'>PolyBench 3.2</a>.";
+var description_of = {
+    "sum":
+        "A simple starter example that sums all items in an array.",
+    "inner_product":
+        "A simple starter example that calculates the dot product of two vectors, this pattern is often observed in linear algebra programs.  This code is taken from <a href='http://www.netlib.org/benchmark/livermorec'>Livermore loops</a>.",
+    "tridiag":
+        "An example from <a href='http://www.netlib.org/benchmark/livermorec'>Livermore loops</a>, which is a code fragment for solving tri-diagonal linear system of equations.",
+    "2mm":
+        "A matrix multiplication example taken from <a href='http://web.cs.ucla.edu/~pouchet/software/polybench/'>PolyBench 3.2</a>.  It computes a matrix <tt>D = alpha * A * B * C + beta * D</tt>, where <tt>A, B, C, D</tt> are 1024x1024 matrices, <tt>alpha, beta</tt> are constant values.",
+    "3mm":
+        "A matrix-vector multiplication example taken from <a href='http://web.cs.ucla.edu/~pouchet/software/polybench/'>PolyBench 3.2</a>.  It computes <tt>E = A * B, F = C * D, G = E * F</tt>, where <tt>A, B, C, D, E, F</tt> are 1024x1024 matrices.",
+    "atax":
+        "A matrix multiplication example taken from <a href='http://web.cs.ucla.edu/~pouchet/software/polybench/'>PolyBench 3.2</a>.  It computes <tt>y = A * A<sup>T</sup> * x</tt>, where <tt>A</tt> is a 4000x4000 matrix, <tt>A<sup>T</sup></tt> is <tt>A</tt> transposed, and <tt>x, y</tt> are vectors with 4000 elements.",
+    "bicg":
+        "The <tt>bicg</tt> example from <a href='http://web.cs.ucla.edu/~pouchet/software/polybench/'>PolyBench 3.2</a>.  BiCG Sub Kernel of BiCGStab Linear Solver.  BiCGStab is an acronym for the <a href='http://mathworld.wolfram.com/BiconjugateGradientStabilizedMethod.html'>biconjugate gradient stabilized method</a>.",
+    "gemm":
+        "A simple matrix multiplication example taken from <a href='http://web.cs.ucla.edu/~pouchet/software/polybench/'>PolyBench 3.2</a>.  It computes <tt>C = alpha * A * B + beta * C</tt>, where <tt>A, B, C</tt> are 1024x1024 matrices, <tt>alpha, beta</tt> are contants.",
+    "gemver":
+        "The <tt>gemver</tt> example from <a href='http://web.cs.ucla.edu/~pouchet/software/polybench/'>PolyBench 3.2</a>.",
+    "mvt":
+        "The <tt>mvt</tt> example from <a href='http://web.cs.ucla.edu/~pouchet/software/polybench/'>PolyBench 3.2</a>.  Matrix Vector Product and Transpose.  Our tool identifies that the two nested loops can be fused because they share the same control logic.  This is not yet performed in Vivado HLS 2015.2, and loops are run sequentially even if there are no dependences between them.",
+    "seidel":
+        "A five point seidel stencil computation, modified from <tt>seidel</tt> in <a href='http://web.cs.ucla.edu/~pouchet/software/polybench/'>PolyBench 3.2</a>.",
+    "syr2k":
+        "Symmetric Rank-2k Update from <a href='http://web.cs.ucla.edu/~pouchet/software/polybench/'>PolyBench 3.2</a>.",
+}
 
 var usage_msg =
     "[Hover over a data-point in one of the graphs below to see the corresponding program.]"
@@ -238,13 +251,15 @@ function redraw () {
     get_latency = function(d) {return d.latency},
     get_lut = function(d) {return d.lut};
 
-    draw_graph(data, get_error, "error", get_latency, "latency (cycles)", graphzone1,
-           tooltip, orig_program_textarea, opti_program_textarea);
-    draw_graph(data, get_error, "error", get_lut, "LUT count", graphzone2,
-           tooltip, orig_program_textarea, opti_program_textarea);
-    draw_graph(data, get_latency, "latency (cycles)", get_lut, "LUT count", graphzone3,
-           tooltip, orig_program_textarea, opti_program_textarea);
-
+    draw_graph(
+        data, get_error, "error", get_latency, "latency (cycles)", graphzone1,
+        tooltip, orig_program_textarea, opti_program_textarea);
+    draw_graph(
+        data, get_error, "error", get_lut, "LUT count", graphzone2,
+        tooltip, orig_program_textarea, opti_program_textarea);
+    draw_graph(
+        data, get_latency, "latency (cycles)", get_lut, "LUT count", graphzone3,
+        tooltip, orig_program_textarea, opti_program_textarea);
   });
 
 }
@@ -255,3 +270,18 @@ function draw_graphs(new_csv_file) {
 }
 
 //window.onresize = redraw;
+
+
+function init() {
+    for (var name in description_of) {
+        d3.select('#example_list')
+            .append('li')
+            .attr('role', 'presentation')
+            .attr('id', name)
+            .append('a')
+            .attr('href', '#select_example')
+            .attr('onclick', "draw_graphs('" + name + "')")
+            .html(name);
+    }
+}
+init();

@@ -1,8 +1,18 @@
-def tridiagonal(
-        real[100] x=[0.0, 1.0], real[100] y=[0.0, 1.0],
-        real[100] z=[0.0, 1.0]) {
-    for (int i=1 ; i<100 ; i = i + 2 ) {
-        x[i] = z[i]*( y[i] - x[i - 1] );
+#define loop 1024
+#define n 1024
+
+#pragma soap input \
+    float x[n] = [0.0, 1.0][0, 0], \
+    float y[n] = [0.0, 1.0][0, 0], \
+    float z[n] = [0.0, 1.0][0, 0]
+#pragma soap output x
+
+int l; int i;
+
+for ( l=1 ; l<=loop ; l++ ) {
+    for ( i=1 ; i<n ; i++ ) {
+        x[i] = z[i]*( y[i] - x[i-1] );
     }
-    return x;
 }
+
+// vim: ft=c

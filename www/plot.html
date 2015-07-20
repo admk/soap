@@ -1,68 +1,29 @@
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="css/bootstrap.min.css">
-<script src="js/bootstrap.min.js"></script>
-<script src="js/d3.v3.min.js"></script>
-<link rel="stylesheet" href="css/plot.css">
-</head>
-<body>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="css/bootstrap.min.css">
+        <script src="js/bootstrap.min.js"></script>
+        <script src="js/d3.v3.min.js"></script>
+        <link rel="stylesheet" href="css/plot.css">
+    </head>
+    <body>
 
-<div class="jumbotron">
-  <h1>SOAP</h1>
-  <p>SOAP is a tool for automatically exploring optimisations to a C
-  program, so that when it is compiled to an FPGA implementation, the
-  error, area, and latency of the implementation are minimised.</p>
-</div>
+        <div class="jumbotron">
+            <h1>SOAP</h1>
+            <p>SOAP is a tool for automatically exploring optimisations to a C
+            program, so that when it is compiled to an FPGA implementation, the
+            error, area, and latency of the implementation are minimised.</p>
+        </div>
 
-<div class="container" id="main_container">
+        <div class="container" id="main_container">
+            <div class="col-md-12">
+                <h3 id="select_example">Select an example:</h3>
+                <ul class="nav nav-pills" id="example_list"></ul>
+            </div>
+            <script src="js/scatter.js"></script>
+        </div>
 
-<div class="col-md-12">
-  <h3 id="select_example">Select an example:</h3>
-
-<ul class="nav nav-pills">
-  <li role="presentation">
-      <a href="#select_example" onclick="draw_graphs('sum')">simple sum</a>
-  </li>
-  <li role="presentation">
-      <a href="#select_example" onclick="draw_graphs('inner_product')">simple dot product</a>
-  </li>
-  <li role="presentation">
-      <a href="#select_example" onclick="draw_graphs('gemm')">gemm</a>
-  </li>
-  <li role="presentation">
-      <a href="#select_example" onclick="draw_graphs('syr2k')">syr2k</a>
-  </li>
-  <li role="presentation">
-      <a href="#select_example" onclick="draw_graphs('atax')">atax</a>
-  </li>
-  <li role="presentation">
-      <a href="#select_example" onclick="draw_graphs('2mm')">2mm</a>
-  </li>
-  <li role="presentation">
-      <a href="#select_example" onclick="draw_graphs('3mm')">3mm</a>
-  </li>
-  <li role="presentation">
-      <a href="#select_example" onclick="draw_graphs('seidel')">seidel</a>
-  </li>
-  <li role="presentation">
-      <a href="#select_example" onclick="draw_graphs('mvt')">mvt</a>
-  </li>
-  <li role="presentation">
-      <a href="#select_example" onclick="draw_graphs('bicg')">bicg</a>
-  </li>
-  <li role="presentation">
-      <a href="#select_example" onclick="draw_graphs('gemver')">gemver</a>
-  </li>
-</ul>
-
-</div>
-
-<script src="js/scatter.js"></script>
-
-</div>
-
-</body>
+    </body>
 </html>
