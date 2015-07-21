@@ -1,7 +1,7 @@
 var description_of = {
     "sum":
         "A simple starter example that sums all items in an array.",
-    "inner_product":
+    "dotprod":
         "A simple starter example that calculates the dot product of two vectors, this pattern is often observed in linear algebra programs.  This code is taken from <a href='http://www.netlib.org/benchmark/livermorec'>Livermore loops</a>.",
     "tridiag":
         "An example from <a href='http://www.netlib.org/benchmark/livermorec'>Livermore loops</a>, which is a code fragment for solving tri-diagonal linear system of equations.",
