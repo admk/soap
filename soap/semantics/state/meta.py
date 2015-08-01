@@ -1,3 +1,5 @@
+from soap import logger
+
 from soap.common import indent
 from soap.expression import (
     AccessExpr, Expression, FixExpr, OutputVariableTuple, SelectExpr,
@@ -23,6 +25,8 @@ class MetaState(BaseState, dict):
         self._hash = None
 
     def _cast_key(self, key):
+        if isinstance(key, (Variable, Label, OutputVariableTuple)):
+            return key
         if isinstance(key, str):
             var_list = [var for var in self.keys() if var.name == key]
             if not var_list:
@@ -31,8 +35,6 @@ class MetaState(BaseState, dict):
                 raise KeyError('Multiple variables with the same name.')
             var = var_list.pop()
             return var
-        if isinstance(key, (Variable, Label, OutputVariableTuple)):
-            return key
         raise TypeError(
             'Do not know how to convert {!r} into a variable'.format(key))
 
@@ -48,6 +50,13 @@ class MetaState(BaseState, dict):
             return self.__class__(value)
         raise TypeError(
             'Do not know how to convert {!r} into an expression'.format(value))
+
+    def __getitem__(self, key):
+        try:
+            return super().__getitem__(key)
+        except KeyError:
+            logger.warning('Variable {} does not exist.'.format(key))
+            return Variable('__unreachable', key.dtype)
 
     def is_fixpoint(self, other):
         raise RuntimeError('Should not be called.')

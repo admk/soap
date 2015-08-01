@@ -6,7 +6,7 @@ from soap.expression import expression_factory
 from soap.semantics.error import _coerce
 from soap.semantics.functions import error_eval
 from soap.semantics.label import LabelContext, LabelSemantics
-from soap.semantics.linalg import IntegerIntervalArray
+from soap.semantics.linalg import IntegerIntervalArray, ErrorSemanticsArray
 
 
 class LabelGenerator(base_dispatcher()):
@@ -69,7 +69,12 @@ class LabelGenerator(base_dispatcher()):
     def execute_SelectExpr(self, expr, state):
         def bound_func(label_expr):
             _, a1, a2 = label_expr.args
-            return _coerce(a1.bound, a2.bound)(bottom=True)
+            dtype_cls = _coerce(a1.bound, a2.bound)
+            if dtype_cls is ErrorSemanticsArray:
+                if a1.bound.shape != a2.bound.shape:
+                    raise TypeError('Bound size mismatch.')
+                return dtype_cls(bottom=True, _shape=a1.bound.shape)
+            return dtype_cls(bottom=True)
         return self._execute_expression(expr, state, bound_func)
 
     execute_BinaryBoolExpr = _execute_binary_expression

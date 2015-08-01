@@ -14,6 +14,7 @@ DEVICE_LATENCY_TABLE = {
             operators.SUBTRACT_OP: 1,
             operators.MULTIPLY_OP: 7,
             operators.DIVIDE_OP: 36,
+            operators.TERNARY_SELECT_OP: 0,
             operators.INDEX_ACCESS_OP: 2,
         },
         float_type: {
@@ -25,9 +26,11 @@ DEVICE_LATENCY_TABLE = {
             operators.MULTIPLY_OP: 7,
             operators.DIVIDE_OP: 30,
             operators.EXPONENTIATE_OP: 20,
+            operators.TERNARY_SELECT_OP: 0,
             operators.INDEX_ACCESS_OP: 2,
         },
         ArrayType: {
+            operators.TERNARY_SELECT_OP: 0,
             operators.INDEX_UPDATE_OP: 1,
             operators.SUBSCRIPT_OP: 0,
         },
@@ -99,6 +102,7 @@ DEVICE_RESOURCE_TABLE = {
             operators.INDEX_ACCESS_OP: s(0, 0, 0),
         },
         ArrayType: {
+            operators.TERNARY_SELECT_OP: s(0, 32, 71),
             operators.INDEX_UPDATE_OP: s(0, 0, 0),
             operators.SUBSCRIPT_OP: s(0, 0, 0),
         }
