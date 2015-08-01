@@ -194,7 +194,7 @@ class TestProgramParser(Base):
                 operators.ADD_OP, self.x, self.y), self.z)
         inputs = [
             (self.x, self.i1),
-            (self.y, ErrorSemantics([3.0, 4.0])),
+            (self.y, ErrorSemantics([3.0, 4.0], [0, 0])),
             (self.z, ErrorSemantics([5, 6], [0, 0])),
         ]
         outputs = [self.w]
