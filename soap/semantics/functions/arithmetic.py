@@ -2,7 +2,7 @@ import collections
 
 from soap.common import base_dispatcher, cached
 from soap.expression import operators, BinaryBoolExpr, Subscript
-from soap.semantics.error import error_norm
+from soap.semantics.error import error_norm, ErrorSemantics, IntegerInterval
 from soap.semantics.linalg import IntegerIntervalArray, ErrorSemanticsArray
 
 
@@ -107,6 +107,10 @@ arith_eval = ArithmeticEvaluator()
 
 
 def _to_norm(value):
+    if isinstance(value, IntegerIntervalArray):
+        if value.is_scalar():
+            return value.scalar
+        return error_norm(ErrorSemantics(v, 0) for v in value._flat_items)
     if isinstance(value, ErrorSemanticsArray):
         if value.is_scalar():
             return value.scalar
@@ -122,4 +126,6 @@ def error_eval(expr, state, to_norm=True):
     value = arith_eval(expr, state)
     if to_norm:
         value = _to_norm(value)
+    if isinstance(value, IntegerInterval):
+        value = ErrorSemantics(value, 0)
     return value
