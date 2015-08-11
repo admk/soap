@@ -175,7 +175,6 @@ inversive_division = (
     'inversive_division'
 )
 
-# FIXME separate rules for complimentaries
 commutativity_select_1 = (
     compile('d ? (b ? a : c) : e',
             'b ? (d ? a : e) : (d ? c : e)'),

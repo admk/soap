@@ -46,7 +46,7 @@ class SequentialScheduleGraph(ScheduleGraph):
                     expr = AccessExpr(var, subscript)
                 elif isinstance(expr, UpdateExpr):
                     expr = UpdateExpr(var, subscript, None)
-            # FIXME linearize subscript?
+            # FIXME linearize subscript into canonical forms?
             new_schedule[expr].append(interval)
 
         # finds the maximum recurrence-weigthed latency

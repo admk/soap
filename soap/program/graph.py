@@ -181,7 +181,7 @@ class DependenceGraph(Flyweight):
         return (n for n in nodes if n != self._root_node)
 
     def dfs_preorder(self):
-        # FIXME strange non-deterministic dependence bug when using networkx's
+        # strange non-deterministic dependence bug when using networkx's
         # dfs_preorder method
         return reversed(list(self.dfs_postorder()))
 

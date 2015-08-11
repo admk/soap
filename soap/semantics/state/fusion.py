@@ -30,8 +30,6 @@ def branch_fusion(env, expr):
         return env
 
     # discover things to collect
-    # possible FIXME: greedy collection, possibly making other things
-    # unable to collect if done greedily
     bool_expr = expr.bool_expr
     true_env = {}
     false_env = {}
@@ -86,8 +84,6 @@ def loop_fusion(env, expr):
         return env
 
     # discover things to collect
-    # possible FIXME: greedy collection, possibly making other things
-    # unable to collect if done greedily
     bool_expr = expr.bool_expr
     loop_state = expr.loop_state
     init_state = expr.init_state
@@ -200,7 +196,6 @@ def inner_meta_fusion(env, var):
 
 
 def _input_vars(state):
-    # FIXME bug in here for Gauss-Seidel
     var_set = set()
     for v in state.values():
         if isinstance(v, External):

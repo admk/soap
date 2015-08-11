@@ -227,9 +227,6 @@ class MultiDimensionalArray(Lattice, collections.Sequence):
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
-        # FIXME workaround for a weird bug about top and bottom values
-        if (self.bottom and other.bottom) or (self.top and other.top):
-            return True
         if self.shape != other.shape:
             return False
         if self.scalar is not None:
