@@ -9,6 +9,7 @@ DEVICE_LATENCY_TABLE = {
     ('Virtex7', 333): {
         int_type: {
             'comparison': 1,
+            'boolean': 0,
             operators.UNARY_SUBTRACT_OP: 0,
             operators.ADD_OP: 1,
             operators.SUBTRACT_OP: 1,
@@ -19,6 +20,7 @@ DEVICE_LATENCY_TABLE = {
         },
         float_type: {
             'comparison': 3,
+            'boolean': 0,
             'conversion': 8,
             operators.UNARY_SUBTRACT_OP: 0,
             operators.ADD_OP: 10,
