@@ -6,7 +6,7 @@ from soap.datatype import ArrayType
 from soap.expression import (
     is_variable, is_expression, expression_factory,
     Variable, InputVariable, InputVariableTuple, OutputVariableTuple,
-    AccessExpr, Subscript
+    AccessExpr, Subscript, operators
 )
 from soap.program.flow import (
     AssignFlow, IfFlow, WhileFlow, CompositionalFlow,
@@ -228,10 +228,16 @@ class CodeGenerator(object):
             flow += generate_branch_output_interface(label)
             return flow
 
-        bool_expr = self.env[expr.bool_expr]
-        bool_expr_args = (
-            self._with_infix(a, self.in_var_infix) for a in bool_expr.args)
-        bool_expr = expression_factory(bool_expr.op, *bool_expr_args)
+        def generate_bool_expr(label):
+            bool_expr = self.env[label]
+            if is_numeral(bool_expr):
+                return bool_expr
+            if bool_expr.op not in operators.BOOLEAN_OPERATORS:
+                return self._with_infix(label, var_infix=self.in_var_infix)
+            bool_expr_args = (generate_bool_expr(a) for a in bool_expr.args)
+            return expression_factory(bool_expr.op, *bool_expr_args)
+
+        bool_expr = generate_bool_expr(expr.bool_expr)
         true_flow = generate_branch(expr.true_expr)
         false_flow = generate_branch(expr.false_expr)
         return IfFlow(bool_expr, true_flow, false_flow)

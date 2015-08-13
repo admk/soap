@@ -56,7 +56,7 @@ class ScheduleGraph(DependenceGraph):
             op = expr.op
             if op in operators.COMPARISON_OPERATORS:
                 op = 'comparison'
-            if op in operators.BOOLEAN_OPERATORS:
+            elif op in operators.BOOLEAN_OPERATORS:
                 op = 'boolean'
             return expr, dtype, op
         if is_numeral(expr) or isinstance(expr, _irrelevant_types):
