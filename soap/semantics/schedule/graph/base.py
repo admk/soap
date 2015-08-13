@@ -80,6 +80,8 @@ class ScheduleGraph(DependenceGraph):
             except OverflowError:
                 return latency
             return int(latency)
+        if op == operators.BARRIER_OP:
+            return 0
         return self.latency_table[dtype][op]
 
     def node_resource(self, node):

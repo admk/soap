@@ -53,10 +53,18 @@ class LabelGenerator(base_dispatcher()):
         label_env[label] = label_expr
         return LabelSemantics(label, label_env)
 
+    def _binary_bound(self, a1, a2):
+        dtype_cls = _coerce(a1.bound, a2.bound)
+        if dtype_cls is ErrorSemanticsArray:
+            if a1.bound.shape != a2.bound.shape:
+                raise TypeError('Bound size mismatch.')
+            return dtype_cls(bottom=True, _shape=a1.bound.shape)
+        return dtype_cls(bottom=True)
+
     def _execute_binary_expression(self, expr, state):
         def bound_func(label_expr):
             a1, a2 = label_expr.args
-            return _coerce(a1.bound, a2.bound)(bottom=True)
+            return self._binary_bound(a1, a2)
         return self._execute_expression(expr, state, bound_func)
 
     def execute_UnaryArithExpr(self, expr, state):
@@ -69,12 +77,7 @@ class LabelGenerator(base_dispatcher()):
     def execute_SelectExpr(self, expr, state):
         def bound_func(label_expr):
             _, a1, a2 = label_expr.args
-            dtype_cls = _coerce(a1.bound, a2.bound)
-            if dtype_cls is ErrorSemanticsArray:
-                if a1.bound.shape != a2.bound.shape:
-                    raise TypeError('Bound size mismatch.')
-                return dtype_cls(bottom=True, _shape=a1.bound.shape)
-            return dtype_cls(bottom=True)
+            return self._binary_bound(a1, a2)
         return self._execute_expression(expr, state, bound_func)
 
     execute_BinaryBoolExpr = _execute_binary_expression
