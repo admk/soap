@@ -4,7 +4,7 @@ from soap.datatype import auto_type, int_type, float_type, IntegerArrayType
 from soap.expression import expression_factory, operators, Variable, Subscript
 from soap.semantics import IntegerInterval, ErrorSemantics
 from soap.program.flow import (
-    AssignFlow, SkipFlow, IfFlow, WhileFlow, ForFlow, CompositionalFlow,
+    AssignFlow, IfFlow, WhileFlow, ForFlow, CompositionalFlow,
     PragmaInputFlow, PragmaOutputFlow, ProgramFlow
 )
 from soap.parser import stmt_parse, expr_parse, parse
@@ -87,9 +87,6 @@ class TestStatementParser(Base):
     def setUp(self):
         super().setUp()
         self.stmt_parse = lambda prog: stmt_parse(prog, self.decl)
-
-    def test_skip_statement(self):
-        self.assertEqual(stmt_parse('skip;'), SkipFlow())
 
     def test_assign_statement(self):
         expr = expression_factory(

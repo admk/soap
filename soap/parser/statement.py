@@ -11,27 +11,19 @@ from soap.semantics import IntegerInterval
 
 
 class StatementVisitor(object):
-    visit_statement = visit_single_statement = _lift_child
+    def visit_statement(self, node, children):
+        if len(children) == 1:
+            return children[0]
+        return CompositionalFlow(children)
 
-    def visit_compound_statement(self, node, children):
-        single_statement, statement = children
-        if statement is None:
-            return single_statement
-        if isinstance(statement, CompositionalFlow):
-            flows = list(statement.flows)
-        else:
-            flows = [statement]
-        flows = [single_statement] + flows
-        return CompositionalFlow(flows)
+    visit_single_statement = _lift_child
 
-    def visit_skip_statement(self, node, children):
+    def visit_declaration_statement(self, node, children):
         return SkipFlow()
-
-    visit_declaration_statement = visit_skip_statement
 
     visit_assign_statement = visit_operator_assign_statement = _lift_first
     visit_step_statement = _lift_first
-    visit_assign_variations = visit_step_part = _lift_child
+    visit_step_part = _lift_child
 
     def visit_operator_assign_part(self, node, children):
         var, op, expr = children

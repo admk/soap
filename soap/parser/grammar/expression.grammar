@@ -10,17 +10,15 @@ expression = arithmetic_expression / boolean_expression
 # ==============
 
 variable_declaration = array_declaration / scalar_declaration
-array_declaration = data_type new_variable dimension_list
+array_declaration = data_type new_variable dimension+
 scalar_declaration = data_type new_variable
 
+dimension = left_brac integer right_brac
 data_type = int_type / float_type / double_type
 
 int_type  = _ 'int'  _
 float_type = _ 'float' _
 double_type = _ 'double' _
-
-dimension_list = dimension+
-dimension = left_brac integer right_brac
 
 
 # =============
@@ -29,48 +27,33 @@ dimension = left_brac integer right_brac
 
 boolean_expression = boolean_term
 
-boolean_term = and_factor maybe_or_list
+boolean_term = and_factor (or and_factor)*
+and_factor   = bool_atom (and bool_atom)*
 
-and_factor   = bool_atom maybe_and_list
-bool_atom    = bool_parened / binary_bool_expr / unary_bool_expr / variable
-bool_parened = left_paren boolean_expression right_paren
-
+bool_atom        = bool_parened / binary_bool_expr / unary_bool_expr / variable
+bool_parened     = left_paren boolean_expression right_paren
 binary_bool_expr = term compare_operator term
 unary_bool_expr  = not bool_atom
-maybe_or_list    = or_list / _
-or_list          = or_expr maybe_or_list
-or_expr          = or and_factor
-maybe_and_list   = and_list / _
-and_list         = and_expr maybe_and_list
-and_expr         = and bool_atom
 
 arithmetic_expression = select / term
 
-select     = boolean_expression question term colon term
-term       = factor maybe_sum_list
-factor     = atom maybe_prod_list
-atom       = parened / unary_expr / unary_subtract / number / variable_subscript
-parened    = left_paren arithmetic_expression right_paren
-unary_expr = unary_operator parened
+select = boolean_expression question term colon term
+term   = factor (sum_operator factor)*
+factor = atom (prod_operator atom)*
+atom   = parened / unary_expr / unary_subtract / number / variable_subscript
 
-unary_subtract  = sub atom
-maybe_sum_list  = sum_list / _
-sum_list        = sum_expr maybe_sum_list
-sum_expr        = sum_operator factor
-maybe_prod_list = prod_list / _
-prod_list       = prod_expr maybe_prod_list
-prod_expr       = prod_operator atom
+parened        = left_paren arithmetic_expression right_paren
+unary_expr     = unary_operator parened
+unary_subtract = sub atom
 
 variable_subscript      = variable_with_subscript / variable
-variable_with_subscript = variable subscript_list
+variable_with_subscript = variable subscript+
 
-subscript_list = subscript+
 subscript = left_brac arithmetic_expression right_brac
-
-number   = error / interval / scalar
-error    = interval interval
-interval = left_brac scalar comma scalar right_brac
-scalar   = real / integer
+number    = error / interval / scalar
+error     = interval interval
+interval  = left_brac scalar comma scalar right_brac
+scalar    = real / integer
 
 
 # ===========

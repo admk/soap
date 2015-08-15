@@ -16,18 +16,6 @@ def _lift_middle(self, node, children):
     return value
 
 
-def _visit_maybe_list(self, node, children):
-    expr_list = _lift_child(self, node, children)
-    if expr_list is None:
-        return []
-    return expr_list
-
-
-def _visit_list(self, node, children):
-    expr, expr_list = children
-    return [expr] + expr_list
-
-
 class ParserError(Exception):
     pass
 
@@ -35,16 +23,8 @@ class ParserError(Exception):
 class CommonVisitor(nodes.NodeVisitor):
     def generic_visit(self, node, children):
         if not node.expr_name:
-            return
+            return children
         raise TypeError('Do not recognize node {!r}'.format(node))
-
-    visit_integer_list = _visit_list
-    visit_maybe_integer_list = _visit_maybe_list
-    visit_comma_integer_list = _lift_second
-
-    visit_expression_list = _visit_list
-    visit_maybe_expression_list = _visit_maybe_list
-    visit_comma_expression_list = _lift_second
 
     def visit_number(self, node, children):
         child = _lift_child(self, node, children)

@@ -4,18 +4,9 @@ from soap.datatype import (
 )
 from soap.expression import expression_factory, operators, Variable
 from soap.parser.common import (
-    ParserError, _lift_child, _lift_children, _lift_middle, _visit_list,
-    _visit_maybe_list, CommonVisitor
+    ParserError, _lift_child, _lift_middle, CommonVisitor
 )
 from soap.parser.grammar import compiled_grammars
-
-
-def _visit_concat_expr(self, node, children):
-    expr, expr_list = children
-    for each_expr in expr_list:
-        each_op, each_factor = each_expr
-        expr = expression_factory(each_op, expr, each_factor)
-    return expr
 
 
 class VariableNotDeclaredError(ParserError):
@@ -59,7 +50,6 @@ class DeclarationVisitor(object):
             raise TypeError('Unrecognized data type {}'.format(base_type))
         return self._new_declaration(data_type, var)
 
-    visit_dimension_list = _lift_children
     visit_dimension = _lift_middle
 
     def visit_variable(self, node, children):
@@ -87,9 +77,6 @@ class DeclarationVisitor(object):
                     ', '.join(str(s) for s in subscript), len(subscript)))
         return expression_factory(operators.INDEX_ACCESS_OP, var, subscript)
 
-    def visit_subscript_list(self, node, children):
-        return children
-
     visit_subscript = _lift_middle
     visit_data_type = _lift_child
 
@@ -116,13 +103,16 @@ class UntypedDeclarationVisitor(DeclarationVisitor):
 class ExpressionVisitor(object):
     visit_expression = visit_boolean_expression = _lift_child
 
-    visit_boolean_term = visit_and_factor = _visit_concat_expr
+    def _visit_concat_list(self, node, children):
+        item, item_list = children
+        for op, other_item in item_list:
+            item = expression_factory(op, item, other_item)
+        return item
+
+    visit_boolean_term = visit_and_factor = _visit_concat_list
+
     visit_bool_atom = _lift_child
     visit_bool_parened = _lift_middle
-
-    visit_maybe_or_list = visit_maybe_and_list = _visit_maybe_list
-    visit_or_list = visit_and_list = _visit_list
-    visit_or_expr = visit_and_expr = _lift_children
 
     def visit_binary_bool_expr(self, node, children):
         a1, op, a2 = children
@@ -139,7 +129,7 @@ class ExpressionVisitor(object):
         return expression_factory(
             operators.TERNARY_SELECT_OP, bool_expr, true_expr, false_expr)
 
-    visit_term = visit_factor = _visit_concat_expr
+    visit_term = visit_factor = _visit_concat_list
     visit_atom = _lift_child
     visit_parened = _lift_middle
 
@@ -150,10 +140,6 @@ class ExpressionVisitor(object):
         return expression_factory(op, atom)
 
     visit_unary_subtract = visit_unary_expr
-
-    visit_maybe_sum_list = visit_maybe_prod_list = _visit_maybe_list
-    visit_sum_list = visit_prod_list = _visit_list
-    visit_sum_expr = visit_prod_expr = _lift_children
 
     visit_compare_operator = _lift_child
 
