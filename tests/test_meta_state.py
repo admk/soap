@@ -5,7 +5,6 @@ from soap.expression.fixpoint import FixExpr
 from soap.expression.linalg import AccessExpr, UpdateExpr
 from soap.expression.variable import Variable
 from soap.parser import stmt_parse, expr_parse
-from soap.semantics.error import IntegerInterval
 from soap.semantics.state.meta import MetaState
 
 
@@ -24,11 +23,6 @@ class TestMetaState(unittest.TestCase):
         self.b = Variable('b', multi_array_type)
         self.expr_parse = lambda expr: expr_parse(expr, self.decl)
         self.stmt_parse = lambda prog: stmt_parse(prog, self.decl)
-
-    def test_visit_SkipFlow(self):
-        state = MetaState({self.x: self.x})
-        compare_state = state.visit_SkipFlow(stmt_parse('skip;'))
-        self.assertEqual(state, compare_state)
 
     def test_visit_AssignFlow(self):
         flow = self.stmt_parse('z = x * y;')
