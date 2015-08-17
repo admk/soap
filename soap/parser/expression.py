@@ -109,8 +109,7 @@ class ExpressionVisitor(object):
             item = expression_factory(op, item, other_item)
         return item
 
-    visit_boolean_term = visit_and_factor = _visit_concat_list
-
+    visit_bool_term = visit_and_factor = _visit_concat_list
     visit_bool_atom = _lift_child
     visit_bool_parened = _lift_middle
 

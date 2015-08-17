@@ -2,7 +2,7 @@
 #  statement
 # ===========
 
-statement = single_statement*
+statement = single_statement+
 single_statement =
     assign_statement / operator_assign_statement / step_statement /
     if_statement / while_statement / for_statement / declaration_statement /

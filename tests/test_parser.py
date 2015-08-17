@@ -1,3 +1,4 @@
+import nose
 import unittest
 
 from soap.datatype import auto_type, int_type, float_type, IntegerArrayType
@@ -93,6 +94,13 @@ class TestStatementParser(Base):
             operators.ADD_OP, self.y, self.i1)
         flow = AssignFlow(self.x, expr)
         self.assertEqual(self.stmt_parse('x = y + 1;'), flow)
+
+    def test_boolean_assign_statement(self):
+        raise nose.SkipTest  # can't bother with this now
+        expr = expression_factory(
+            operators.LESS_EQUAL_OP, self.y, self.i1)
+        flow = AssignFlow(self.x, expr)
+        self.assertEqual(self.stmt_parse('x = y < 1;'), flow)
 
     def test_declaration_assign_statement(self):
         flow = AssignFlow(self.w, self.i1)

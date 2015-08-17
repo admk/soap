@@ -25,16 +25,6 @@ double_type = _ 'double' _
 #  expressions
 # =============
 
-boolean_expression = boolean_term
-
-boolean_term = and_factor (or and_factor)*
-and_factor   = bool_atom (and bool_atom)*
-
-bool_atom        = bool_parened / binary_bool_expr / unary_bool_expr / variable
-bool_parened     = left_paren boolean_expression right_paren
-binary_bool_expr = term compare_operator term
-unary_bool_expr  = not bool_atom
-
 arithmetic_expression = select / term
 
 select = boolean_expression question term colon term
@@ -45,6 +35,16 @@ atom   = parened / unary_expr / unary_subtract / number / variable_subscript
 parened        = left_paren arithmetic_expression right_paren
 unary_expr     = unary_operator parened
 unary_subtract = sub atom
+
+boolean_expression = bool_term
+
+bool_term  = and_factor (or and_factor)*
+and_factor = bool_atom (and bool_atom)*
+
+bool_atom        = bool_parened / binary_bool_expr / unary_bool_expr / variable
+bool_parened     = left_paren boolean_expression right_paren
+binary_bool_expr = term compare_operator term
+unary_bool_expr  = not bool_atom
 
 variable_subscript      = variable_with_subscript / variable
 variable_with_subscript = variable subscript+
