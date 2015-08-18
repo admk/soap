@@ -6,7 +6,7 @@ from soap.datatype import ArrayType
 from soap.expression import (
     is_variable, is_expression, expression_factory,
     Variable, InputVariable, InputVariableTuple, OutputVariableTuple,
-    AccessExpr, Subscript, operators
+    AccessExpr, UpdateExpr, Subscript, operators
 )
 from soap.program.flow import (
     AssignFlow, IfFlow, WhileFlow, CompositionalFlow,
@@ -18,6 +18,7 @@ from soap.program.graph import (
 from soap.semantics import (
     ErrorSemantics, FloatInterval, is_constant, is_numeral, Label
 )
+from soap.semantics.label import label_to_expr
 
 
 class CodeGenerator(object):
@@ -97,7 +98,7 @@ class CodeGenerator(object):
             order = self.graph.local_order()
         else:
             order = [
-                v for v in self.graph.dfs_postorder()
+                v for v in self.graph.dfs_preorder()
                 if isinstance(v, Label) or isinstance(v, Variable)
                 or isinstance(v, OutputVariableTuple)]
         logger.debug('Generating code for nodes {}'.format(
@@ -105,7 +106,7 @@ class CodeGenerator(object):
         flows = []
         for var in order:
             flows.append(self._dispatcher(var, order))
-        return CompositionalFlow(self._flatten(list(flows)))
+        return CompositionalFlow(self._flatten(list(reversed(flows))))
 
     def _dispatcher(self, var, order):
         env = self.graph.env
@@ -158,7 +159,6 @@ class CodeGenerator(object):
 
     def emit_AccessExpr(self, var, expr, order):
         access_var = self._with_infix(expr.var, self.in_var_infix)
-        from soap.semantics.label import label_to_expr
         access_var = label_to_expr(var).true_var()
         subscript = Subscript(
             *(self._with_infix(index, self.in_var_infix)
@@ -168,9 +168,7 @@ class CodeGenerator(object):
             AccessExpr(access_var, subscript))
 
     def emit_UpdateExpr(self, var, expr, order):
-        access_var, subscript, update_expr = expr.args
-        access_var = self._with_infix(expr.var, self.in_var_infix)
-        from soap.semantics.label import label_to_expr
+        _, subscript, update_expr = expr.args
         access_var = label_to_expr(var).true_var()
         subscript = Subscript(
             *(self._with_infix(index, self.in_var_infix)
@@ -189,20 +187,36 @@ class CodeGenerator(object):
 
         def generate_branch_output_interface(label):
             if not isinstance(var, OutputVariableTuple):
-                return AssignFlow(
-                    self._with_infix(var, self.out_var_infix),
-                    self._with_infix(label, self.in_var_infix))
+                iterer = [(var, label)]
+            else:
+                iterer = zip(var.args, label.args)
             flows = []
-            for var_out, var_in in zip(var.args, label.args):
-                var_out = self._with_infix(var_out, self.out_var_infix)
-                var_in = self._with_infix(var_in, self.in_var_infix)
-                flows.append(AssignFlow(var_out, var_in))
+            for var_out, var_in in iterer:
+                if isinstance(var_out.dtype, ArrayType):
+                    expr_in = self.env[var_in]
+                    del order[order.index(var_in)]
+                    if isinstance(expr_in, UpdateExpr):
+                        _, subscript, update_expr = expr_in.args
+                        access_var = label_to_expr(expr_in).true_var()
+                        subscript = Subscript(
+                            *(self._with_infix(index, self.in_var_infix)
+                              for index in self.env[subscript]))
+                        flow = AssignFlow(
+                            AccessExpr(access_var, subscript),
+                            self._with_infix(update_expr, self.in_var_infix))
+                        flows.append(flow)
+                    elif not is_variable(expr_in):
+                        raise TypeError(
+                            'Expect update to an array, not anything else.')
+                else:
+                    var_out = self._with_infix(var_out, self.out_var_infix)
+                    var_in = self._with_infix(var_in, self.in_var_infix)
+                    flows.append(AssignFlow(var_out, var_in))
             return CompositionalFlow(flows)
 
         def generate_branch_locals(label):
             if isinstance(label, InputVariableTuple):
-                # it can be proved there are no dependencies between each local
-                # label
+                # there are no dependencies between each local label
                 flows = CompositionalFlow()
                 for each in label:
                     flows += generate_branch_locals(each)

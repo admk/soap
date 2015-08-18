@@ -93,7 +93,16 @@ class TestCodeGenerator(unittest.TestCase):
         """
         self.check(program)
 
-    def test_linalg_flow(self):
+    def test_linalg_if(self):
+        program = """
+        #pragma soap input float x[30]=3, int y=4
+        #pragma soap output x
+        if (y > 1)
+            x[y] = x[y - 1] + 1;
+        """
+        self.check(program)
+
+    def test_linalg_for(self):
         program = """
         #pragma soap input float x[30]=3, int y=4
         #pragma soap output x
