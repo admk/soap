@@ -281,6 +281,8 @@ def _unroll_for_loop(expr, iter_var, iter_slice, depth):
         logger.persistent('Unroll', '{}/{}'.format(d, depth + 1))
         new_step = step * d
         new_count = iter_point_count(slice(start, stop, new_step))
+        if new_count == 0:
+            continue
         mid = start + new_count * new_step
 
         new_loop_state = loop_state
