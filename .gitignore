@@ -17,3 +17,4 @@ cover/
 *.soap.pdf
 *.soap.rpt
 *.soap.csv
+.DS_Store
