@@ -1,18 +1,15 @@
 #define N 1000
 #define TSTEPS 20
 
-#define _PB_N N
-#define _PB_TSTEPS TSTEPS
-
-#pragma soap input float A[_PB_N][_PB_N] = [0.0, 1.0][0, 0]
+#pragma soap input float A[N][N] = [0.0, 1.0][0, 0]
 #pragma soap output A
 
 
 int t; int i; int j;
 
-for (t = 0; t < _PB_TSTEPS; t++)
-    for (i = 1; i < _PB_N - 1; i++)
-        for (j = 1; j < _PB_N - 1; j++)
+for (t = 0; t < TSTEPS; t++)
+    for (i = 1; i < N - 1; i++)
+        for (j = 1; j < N - 1; j++)
             A[i][j] = (
                 A[i-1][j] + A[i][j-1] + A[i][j] + A[i][j+1] + A[i+1][j]
             ) * 0.2f;

@@ -2,7 +2,7 @@
 
 #define N 4096
 
-#pragma soap input float x[100] = [0.0, 1.0], float z[100] = [0.0, 1.0]
+#pragma soap input float x[N] = [0.0, 1.0], float z[N] = [0.0, 1.0]
 #pragma soap output q
 float q = 0.0;
 for (int k = 0; k < N; k++) {
