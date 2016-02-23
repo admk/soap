@@ -1,123 +1,195 @@
 import collections
 
 from soap.common import base_dispatcher, cached
-from soap.context import context
-from soap.expression import expression_factory, operators
+from soap.datatype import type_cast
+from soap.expression import expression_factory
+from soap.semantics.error import _coerce
 from soap.semantics.functions import error_eval
 from soap.semantics.label import LabelContext, LabelSemantics
+from soap.semantics.linalg import IntegerIntervalArray, ErrorSemanticsArray
 
 
 class LabelGenerator(base_dispatcher()):
+    def __init__(self, context):
+        super().__init__()
+        self.context = context
 
-    def generic_execute(self, expr, state, context):
+    def Label(self, expr, bound, invar):
+        return self.context.Label(expr, bound, invar)
+
+    def generic_execute(self, expr, state):
         raise TypeError('Do not know how to label {!r}'.format(expr))
 
-    def _execute_atom(self, expr, state, context):
-        bound = error_eval(expr, state)
-        label = context.Label(expr, bound)
+    def execute_PartitionLabel(self, expr, state):
+        return LabelSemantics(expr, {})
+
+    def _execute_atom(self, expr, bound):
+        label = self.Label(expr, bound, None)
         env = {label: expr}
         return LabelSemantics(label, env)
 
-    execute_numeral = execute_Variable = _execute_atom
+    def execute_numeral(self, expr, state):
+        return self._execute_atom(expr, expr)
 
-    def _execute_expression(self, expr, state, context):
-        semantics_list = tuple(self(arg, state, context) for arg in expr.args)
+    def execute_Variable(self, expr, state):
+        if state is not None:
+            bound = error_eval(expr, state, to_norm=False)
+        else:
+            bound = type_cast(expr.dtype, bottom=True)
+        return self._execute_atom(expr, bound)
+
+    def _execute_expression(self, expr, state, bound_func):
+        semantics_list = tuple(self(arg, state) for arg in expr.args)
         arg_label_list, arg_env_list = zip(*semantics_list)
         label_expr = expression_factory(expr.op, *arg_label_list)
         label_env = {}
         for env in arg_env_list:
             label_env.update(env)
-        return label_expr, label_env
-
-    def _execute_arithmetic_expression(self, expr, state, context):
-        label_expr, label_env = self._execute_expression(expr, state, context)
-        bound = error_eval(expr, state)
-        label = context.Label(label_expr, bound)
+        if state is not None:
+            bound = error_eval(expr, state, to_norm=False)
+        else:
+            bound = bound_func(label_expr)
+        label = self.Label(expr, bound, None)
         label_env[label] = label_expr
         return LabelSemantics(label, label_env)
 
-    execute_UnaryArithExpr = _execute_arithmetic_expression
-    execute_BinaryArithExpr = _execute_arithmetic_expression
-    execute_SelectExpr = _execute_arithmetic_expression
+    def _binary_bound(self, a1, a2):
+        dtype_cls = _coerce(a1.bound, a2.bound)
+        if dtype_cls is ErrorSemanticsArray:
+            if a1.bound.shape != a2.bound.shape:
+                raise TypeError('Bound size mismatch.')
+            return dtype_cls(bottom=True, _shape=a1.bound.shape)
+        return dtype_cls(bottom=True)
 
-    def execute_BinaryBoolExpr(self, expr, state, context):
-        label_expr, label_env = self._execute_expression(expr, state, context)
-        sub_expr = expression_factory(operators.SUBTRACT_OP, expr.a1, expr.a2)
-        bound = error_eval(sub_expr, state)
-        label = context.Label(label_expr, bound)
-        label_env[label] = label_expr
-        return LabelSemantics(label, label_env)
+    def _execute_binary_expression(self, expr, state):
+        def bound_func(label_expr):
+            a1, a2 = label_expr.args
+            return self._binary_bound(a1, a2)
+        return self._execute_expression(expr, state, bound_func)
 
-    def execute_FixExpr(self, expr, state, context):
-        from soap.semantics.functions import (
-            arith_eval_meta_state, fixpoint_eval
-        )
+    def execute_UnaryArithExpr(self, expr, state):
+        def bound_func(label_expr):
+            return label_expr.args[0].bound
+        return self._execute_expression(expr, state, bound_func)
 
-        init_state = expr.init_state
-        loop_state = expr.loop_state
+    execute_BinaryArithExpr = _execute_binary_expression
+
+    def execute_SelectExpr(self, expr, state):
+        def bound_func(label_expr):
+            _, a1, a2 = label_expr.args
+            return self._binary_bound(a1, a2)
+        return self._execute_expression(expr, state, bound_func)
+
+    execute_BinaryBoolExpr = _execute_binary_expression
+
+    def execute_Subscript(self, expr, state):
+        def bound_func(label_expr):
+            args = tuple(b.bound for b in label_expr.args)
+            return IntegerIntervalArray(args)
+        return self._execute_expression(expr, state, bound_func)
+
+    def execute_AccessExpr(self, expr, state):
+        def bound_func(label_expr):
+            dtype = label_expr.var.dtype.num_type
+            return type_cast(dtype, bottom=True)
+        return self._execute_expression(expr, state, bound_func)
+
+    def execute_UpdateExpr(self, expr, state):
+        def bound_func(label_expr):
+            dtype = label_expr.var.dtype
+            return type_cast(dtype, bottom=True)
+        return self._execute_expression(expr, state, bound_func)
+
+    def execute_FixExpr(self, expr, state):
+        from soap.semantics.error import IntegerInterval
+        from soap.semantics.functions import fixpoint_eval
+        from soap.semantics.state import BoxState
+
         bool_expr = expr.bool_expr
+        loop_var = expr.loop_var
 
-        init_bound = arith_eval_meta_state(init_state, state)
-        init_state_label, init_state_env = self(init_state, state, context)
+        init_labsem = self(expr.init_state, state)
+        init_label, init_env = init_labsem
 
-        loop_bound = fixpoint_eval(init_bound, bool_expr, loop_state)['entry']
-        loop_state_labsem = self(loop_state, loop_bound, context)
-        loop_state_label, loop_state_env = loop_state_labsem
+        if state is not None:
+            loop_info = fixpoint_eval(expr, init_label.bound)
+            loop_var_bound = loop_info['exit'][loop_var]
+        else:
+            empty = BoxState(bottom=True)
+            loop_info = {
+                'entry': empty,
+                'exit': empty,
+                'last_entry': empty,
+                'last_exit': empty,
+                'end': empty,
+                'trip_count': IntegerInterval(bottom=True),
+            }
+            loop_var_bound = type_cast(loop_var.dtype, bottom=True)
 
-        bool_expr_labsem = self(bool_expr, loop_bound, context)
-        bool_expr_label, _ = bool_expr_labsem
+        loop_entry = loop_info['entry']
+        if loop_entry.is_bottom():
+            loop_entry = None
+        loop_labsem = self(expr.loop_state, loop_entry)
+        loop_label, loop_env = loop_labsem
 
-        label_expr = expr.__class__(
-            bool_expr_label, loop_state_label, expr.loop_var, init_state_label)
-        label = context.Label(label_expr, loop_bound[expr.loop_var])
+        bool_labsem = self(bool_expr, loop_info['end'])
+        bool_label, _ = bool_labsem
 
-        expr = expr.__class__(
-            bool_expr_labsem, loop_state_env, expr.loop_var, init_state_env)
+        label = self.Label(expr, loop_var_bound, loop_info['entry'])
+
+        expr = expr.__class__(bool_labsem, loop_env, loop_var, init_env)
         env = {label: expr}
         return LabelSemantics(label, env)
 
-    def execute_UnrollExpr(self, expr, state, context):
-        return self(expr.a1, state, context)
-
-    def execute_MetaState(self, expr, state, context):
-        from soap.semantics.state.meta import MetaState
+    def execute_MetaState(self, expr, state):
+        from soap.semantics.state import BoxState
         env = {}
-        for each_var, each_expr in sorted(expr.items(), key=hash):
-            expr_label, expr_env = self(each_expr, state, context)
+        for each_var, each_expr in sorted(expr.items(), key=str):
+            expr_label, expr_env = self(each_expr, state)
             env.update(expr_env)
             env[each_var] = expr_label
-        label = context.Label(MetaState(env), None)
 
+        if state is not None:
+            bound = error_eval(expr, state, to_norm=False)
+        else:
+            bound = BoxState(bottom=True)
+        label = self.Label(expr, bound, None)
         return LabelSemantics(label, env)
 
     @cached
-    def __call__(self, expr, state, context=None):
-        context = context or LabelContext(expr)
-        return super().__call__(expr, state, context)
+    def __call__(self, expr, state=None):
+        return super().__call__(expr, state)
 
-
-_label = LabelGenerator()
-
-
-def label(expr, state, out_vars, context=None):
-    from soap.semantics.state.meta import MetaState
-    if isinstance(expr, MetaState):
-        expr = MetaState({k: v for k, v in expr.items() if k in out_vars})
-    lab, env = _label(expr, state, context)
-    if isinstance(expr, collections.Mapping):
-        from soap.semantics.state.fusion import fusion
-        env = fusion(env, out_vars)
-    return LabelSemantics(lab, env)
-
-
-_luts_context = LabelContext('luts_count')
+    execute = __call__
 
 
 @cached
-def resources(expr, state, out_vars, mantissa=None):
-    mantissa = mantissa or context.precision
-    return label(expr, state, out_vars, _luts_context).resources(mantissa)
+def label(expr, state, out_vars, context=None, fusion=True):
+    from soap.semantics.state import MetaState
+
+    if state is not None:
+        if state and state.is_bottom():
+            state = None
+
+    context = context or LabelContext(expr)
+
+    if isinstance(expr, collections.Mapping):
+        out_vars = out_vars or expr.keys()
+        expr = MetaState({k: v for k, v in expr.items() if k in out_vars})
+
+    lab, env = LabelGenerator(context).execute(expr, state)
+
+    if fusion and isinstance(expr, collections.Mapping):
+        from soap.semantics.state.fusion import fusion
+        env = fusion(env, out_vars)
+
+    return LabelSemantics(lab, env)
 
 
-def luts(expr, state, out_vars, mantissa=None):
-    return resources(expr, state, out_vars, mantissa).lut
+@cached
+def resource_eval(expr, state, out_vars):
+    return label(expr, state, out_vars).resources()
+
+
+def luts(expr, state, out_vars):
+    return resource_eval(expr, state, out_vars).lut

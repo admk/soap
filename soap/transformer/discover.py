@@ -12,50 +12,55 @@ from soap.analysis import (
 from soap.common import base_dispatcher, cached
 from soap.context import context
 from soap.expression import (
-    expression_factory, SelectExpr, FixExpr, operators, UnrollExpr
+    expression_factory, UnaryExpression, SelectExpr, FixExpr, operators
 )
 from soap.program import Flow
-from soap.program.graph import DependencyGraph, unique
 from soap.semantics import BoxState, ErrorSemantics, MetaState
 from soap.semantics.functions import (
-    arith_eval_meta_state, equivalent_loop_meta_states, fixpoint_eval,
+    arith_eval, unroll_fix_expr, fixpoint_eval,
 )
-from soap.semantics.functions.label import _label
-from soap.transformer.arithmetic import MartelTreeTransformer
 from soap.transformer.utils import (
     closure, greedy_frontier_closure, thick_frontier_closure
 )
 
 
-class Unroller(base_dispatcher('unroll')):
-    def generic_unroll(self, expr):
+class UnrollExpr(UnaryExpression):
+    def __init__(self, fix_expr):
+        super().__init__('Unroll', fix_expr)
+
+    @property
+    def fix_expr(self):
+        return self.a
+
+    def format(self):
+        return 'unroll_{}'.format(self.fix_expr.format())
+
+
+class MarkUnroll(base_dispatcher()):
+    def generic_execute(self, expr):
         raise TypeError('Do not know how to unroll {!r}'.format(expr))
 
-    def _unroll_atom(self, expr):
+    def _execute_atom(self, expr):
         return expr
 
-    unroll_numeral = _unroll_atom
-    unroll_Variable = _unroll_atom
+    execute_numeral = execute_Variable = _execute_atom
 
-    def _unroll_expression(self, expr):
-        return expression_factory(expr.op, *[self(arg) for arg in expr.args])
+    def _execute_expression(self, expr):
+        return expression_factory(expr.op, *(self(a) for a in expr.args))
 
-    unroll_UnaryArithExpr = unroll_BinaryArithExpr = _unroll_expression
-    unroll_UnaryBoolExpr = unroll_BinaryBoolExpr = _unroll_expression
-    unroll_SelectExpr = _unroll_expression
+    execute_UnaryArithExpr = execute_BinaryArithExpr = _execute_expression
+    execute_UnaryBoolExpr = execute_BinaryBoolExpr = _execute_expression
+    execute_AccessExpr = execute_UpdateExpr = _execute_expression
+    execute_SelectExpr = execute_Subscript = _execute_expression
 
-    def unroll_FixExpr(self, expr):
-        init_state = self(expr.init_state)
-        loop_state = self(expr.loop_state)
-        fix_expr = FixExpr(
-            expr.bool_expr, loop_state, expr.loop_var, init_state)
-        return UnrollExpr(fix_expr, loop_state, context.unroll_depth)
+    def execute_FixExpr(self, expr):
+        return UnrollExpr(expr)
 
-    def unroll_MetaState(self, expr):
-        return MetaState({v: self(e) for v, e in expr.items()})
+    def execute_MetaState(self, meta_state):
+        return MetaState({var: self(expr) for var, expr in meta_state.items()})
 
 
-unroll = Unroller()
+mark_unroll = MarkUnroll()
 
 
 class BaseDiscoverer(base_dispatcher('discover')):
@@ -63,7 +68,20 @@ class BaseDiscoverer(base_dispatcher('discover')):
 
     Subclasses need to override :member:`closure`.
     """
-    def filter(self, expr_set, state, out_vars, **kwargs):
+    def __init__(self, **analysis_kwargs):
+        super().__init__()
+        self.analysis_kwargs = analysis_kwargs
+
+    def _filter(self, expr_set, state, out_vars, size_limit=None):
+        return self.filter(
+            expr_set, state, out_vars, size_limit=size_limit,
+            **self.analysis_kwargs)
+
+    def _closure(self, expr_set, state, out_vars):
+        return self.closure(
+            expr_set, state, out_vars, **self.analysis_kwargs)
+
+    def filter(self, expr_set, state, out_vars, size_limit=None):
         raise NotImplementedError
 
     def closure(self, expr_set, state, out_vars):
@@ -77,8 +95,8 @@ class BaseDiscoverer(base_dispatcher('discover')):
     def _discover_atom(self, expr, state, out_vars):
         return {expr}
 
-    discover_numeral = _discover_atom
-    discover_Variable = _discover_atom
+    discover_numeral = discover_Variable = discover_PartitionLabel = \
+        _discover_atom
 
     def _discover_expression(self, expr, state, out_vars):
         op = expr.op
@@ -89,7 +107,7 @@ class BaseDiscoverer(base_dispatcher('discover')):
         }
         frontier_expr_set.add(expr)
         logger.info('Discovering: {}'.format(expr))
-        frontier = self.closure(frontier_expr_set, state, out_vars)
+        frontier = self._closure(frontier_expr_set, state, out_vars)
         logger.info('Discovered: {}, Frontier: {}'.format(expr, len(frontier)))
         return frontier
 
@@ -121,7 +139,10 @@ class BaseDiscoverer(base_dispatcher('discover')):
             expr_set.add(SelectExpr(bool_expr, true_expr, false_expr))
 
         expr_set = self.filter(expr_set, state, out_vars)
-        return self.closure(expr_set, state, out_vars)
+        return self._closure(expr_set, state, out_vars)
+
+    discover_AccessExpr = discover_UpdateExpr = _discover_expression
+    discover_Subscript = _discover_expression
 
     def discover_FixExpr(self, expr, state, out_vars):
         bool_expr = expr.bool_expr
@@ -131,15 +152,17 @@ class BaseDiscoverer(base_dispatcher('discover')):
 
         logger.info('Discovering: {}'.format(init_meta_state))
 
-        frontier_init_meta_state_set = self(init_meta_state, state, [loop_var])
+        frontier_init_meta_state_set = self(
+            init_meta_state, state, init_meta_state.keys())
 
         logger.info('Discovered: {}, Frontier: {}'.format(
             init_meta_state, len(frontier_init_meta_state_set)))
 
         # compute loop optimizing value ranges
-        init_value_state = arith_eval_meta_state(init_meta_state, state)
-        loop_value_state = fixpoint_eval(
-            init_value_state, bool_expr, loop_meta_state)['entry']
+        init_value_state = arith_eval(init_meta_state, state)
+        ori_fix_expr = FixExpr(bool_expr, loop_meta_state, loop_var, None)
+        ori_loop_info = fixpoint_eval(ori_fix_expr, init_value_state)
+        loop_value_state = ori_loop_info['entry']
         # set all errors to null to optimize loop specifically
         null_error_state = {}
         for var, error in loop_value_state.items():
@@ -148,63 +171,47 @@ class BaseDiscoverer(base_dispatcher('discover')):
             null_error_state[var] = error
         loop_value_state = state.__class__(null_error_state)
 
-        # transform bool_expr
-        frontier_bool_expr_set = self(bool_expr, loop_value_state, None)
-
         logger.info('Discovering loop: {}'.format(loop_meta_state))
 
-        loop_meta_state_list = list(equivalent_loop_meta_states(
-            expr, context.unroll_depth))
-        frontier = {UnrollExpr(expr, expr.loop_state, context.unroll_depth)}
-        total = len(loop_meta_state_list)
+        frontier_loop_meta_state_set = self(
+            expr.loop_state, loop_value_state, [loop_var])
 
-        # transform loop_meta_state
-        for depth, unrolled_loop_meta_state in enumerate(loop_meta_state_list):
-            logger.persistent('Unroll', '{}/{}'.format(depth, total - 1))
+        iterer = itertools.product(
+            frontier_loop_meta_state_set, frontier_init_meta_state_set)
+        frontier = set()
+        for each_loop_state, each_init_state in iterer:
+            fix_expr = FixExpr(
+                bool_expr, each_loop_state, loop_var, each_init_state)
+            frontier.add(fix_expr)
 
-            remaining_depth = context.unroll_depth - depth
-
-            frontier_loop_meta_state_set = self(
-                unrolled_loop_meta_state, loop_value_state, [loop_var])
-
-            iterer = itertools.product(
-                frontier_bool_expr_set, frontier_loop_meta_state_set,
-                frontier_init_meta_state_set)
-            each_frontier = set()
-            for bool_expr, each_loop_meta_state, init_meta_state in iterer:
-                fix_expr = FixExpr(
-                    bool_expr, each_loop_meta_state, loop_var, init_meta_state)
-                unroll_expr = UnrollExpr(
-                    fix_expr, loop_meta_state, remaining_depth)
-                each_frontier.add(unroll_expr)
-
-            each_frontier = set(self.filter(
-                each_frontier, state, out_vars,
-                size_limit=context.loop_size_limit))
-            frontier |= each_frontier
-
-        logger.unpersistent('LoopTr')
-
-        frontier = self.filter(frontier, state, out_vars, size_limit=0)
+        frontier.add(expr)
+        frontier = self.filter(
+            frontier, state, out_vars, size_limit=context.loop_size_limit)
 
         logger.info('Discovered: {}, Frontier: {}'.format(expr, len(frontier)))
 
         return frontier
 
+    def discover_UnrollExpr(self, expr, state, out_vars):
+        expr_set = unroll_fix_expr(expr.fix_expr, context.unroll_depth)
+        frontier = set()
+        n = len(expr_set)
+        for i, expr in enumerate(expr_set):
+            logger.persistent('Unroll', '{}/{}'.format(i + 1, n))
+            frontier |= set(self(expr, state, out_vars))
+        logger.unpersistent('Unroll')
+        return self.filter(frontier, state, out_vars, size_limit=0)
+
     def _discover_multiple_expressions(
             self, var_expr_state, state, out_vars):
 
-        _, env = _label(var_expr_state, state)
-        graph = DependencyGraph(env, out_vars)
-        var_list = graph.order_by_dependencies(var_expr_state.keys())
-        var_list = unique(out_vars + var_list)
+        var_list = sorted(set(var_expr_state.keys()) | set(out_vars), key=str)
 
         logger.info('Discovering state: {}'.format(var_expr_state))
 
         frontier = [{}]
         n = len(var_list)
         for i, var in enumerate(var_list):
-            i += 1
             logger.persistent('Merge', '{}/{}'.format(i, n))
             var_expr_set = self(var_expr_state[var], state, out_vars)
             iterer = itertools.product(frontier, var_expr_set)
@@ -213,8 +220,10 @@ class BaseDiscoverer(base_dispatcher('discover')):
                 meta_state = dict(meta_state)
                 meta_state[var] = var_expr
                 new_frontier.append(MetaState(meta_state))
-            frontier = self.filter(new_frontier, state, var_list[:i])
-        frontier = self.filter(frontier, state, out_vars)
+            if len(frontier) == len(new_frontier):
+                frontier = new_frontier
+            else:
+                frontier = self.filter(new_frontier, state, var_list[:(i + 1)])
 
         logger.unpersistent('Merge')
         logger.info('Discovered: {}, Frontier: {}'
@@ -227,16 +236,11 @@ class BaseDiscoverer(base_dispatcher('discover')):
     def __call__(self, expr, state, out_vars=None):
         return super().__call__(expr, state, out_vars)
 
+    def __eq__(self, other):
+        return self.__class__ == other.__class__
 
-class MartelDiscoverer(BaseDiscoverer):
-    """A subclass of :class:`BaseDiscoverer` to generate Martel's results."""
-    def filter(self, expr_set, state, out_vars, **kwargs):
-        return expr_set
-
-    def closure(self, expr_set, state, out_vars):
-        transformer = MartelTreeTransformer(
-            expr_set, depth=context.window_depth)
-        return transformer.closure()
+    def __hash__(self):
+        return hash(self.__class__)
 
 
 class _FrontierFilter(BaseDiscoverer):
@@ -252,8 +256,8 @@ class GreedyDiscoverer(_FrontierFilter):
     A subclass of :class:`BaseDiscoverer` to generate our greedy_trace
     equivalent expressions.
     """
-    def closure(self, expr_set, state, out_vars):
-        return greedy_frontier_closure(expr_set, state, out_vars)
+    def closure(self, expr_set, state, out_vars, **kwargs):
+        return greedy_frontier_closure(expr_set, state, out_vars, **kwargs)
 
 
 class ThickDiscoverer(BaseDiscoverer):
@@ -263,15 +267,15 @@ class ThickDiscoverer(BaseDiscoverer):
                 expr_set, state, out_vars, **kwargs)]
         return frontier
 
-    def closure(self, expr_set, state, out_vars):
-        return thick_frontier_closure(expr_set, state, out_vars)
+    def closure(self, expr_set, state, out_vars, **kwargs):
+        return thick_frontier_closure(expr_set, state, out_vars, **kwargs)
 
 
 class FrontierDiscoverer(_FrontierFilter):
     """A subclass of :class:`BaseDiscoverer` to generate our frontier_trace
     equivalent expressions."""
-    def closure(self, expr_set, state, out_vars):
-        expr_set = closure(expr_set, depth=context.window_depth)
+    def closure(self, expr_set, state, out_vars, **kwargs):
+        expr_set = closure(expr_set, depth=context.window_depth, **kwargs)
         return self.filter(expr_set, state, out_vars)
 
 
@@ -290,13 +294,14 @@ def _discover(discoverer, expr, state, out_vars):
     if isinstance(expr, MetaState):
         expr = MetaState({k: v for k, v in expr.items() if k in out_vars})
 
+    expr = mark_unroll(expr)
+
     if not isinstance(state, BoxState):
         state = BoxState(state)
 
     return discoverer(expr, state, out_vars)
 
 
-_martel_discoverer = MartelDiscoverer()
 _greedy_discoverer = GreedyDiscoverer()
 _frontier_discoverer = FrontierDiscoverer()
 _thick_discoverer = ThickDiscoverer()
@@ -345,18 +350,3 @@ def frontier(expr, state=None, out_vars=None):
     :type out_vars: :class:`collections.Sequence`
     """
     return _discover(_frontier_discoverer, expr, state, out_vars)
-
-
-def martel(expr, state=None, out_vars=None):
-    """Finds Martel's equivalent expressions.
-
-    :param expr: An expression or a variable-expression mapping
-    :type expr:
-        :class:`soap.expression.Expression` or
-        :class:`soap.semantics.state.MetaState`
-    :param state: The ranges of input variables.
-    :type state: :class:`soap.semantics.state.BoxState`
-    :param out_vars: The output variables of the metastate
-    :type out_vars: :class:`collections.Sequence`
-    """
-    return _discover(_martel_discoverer, expr, state, out_vars)

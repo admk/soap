@@ -109,32 +109,18 @@ def round_off_error_from_exact(v):
     return overapproximate_error([e, e])
 
 
-def _coerce(self, other):
-    if type(self) is type(other):
+def _coerce(self, other, always_return_class=True):
+    self_cls = self.__class__
+    other_cls = other.__class__
+    if self_cls is other_cls:
+        if always_return_class:
+            return self_cls
         return None
-    dominance_poset = {
-        (int, IntegerInterval): IntegerInterval,
-        (int, FloatInterval): FloatInterval,
-        (int, ErrorSemantics): ErrorSemantics,
-        (mpz_type, IntegerInterval): IntegerInterval,
-        (mpz_type, FloatInterval): FloatInterval,
-        (mpz_type, ErrorSemantics): ErrorSemantics,
-        (float, IntegerInterval): FloatInterval,
-        (float, FloatInterval): FloatInterval,
-        (float, ErrorSemantics): ErrorSemantics,
-        (mpfr_type, IntegerInterval): FloatInterval,
-        (mpfr_type, FloatInterval): FloatInterval,
-        (mpfr_type, ErrorSemantics): ErrorSemantics,
-        (IntegerInterval, FloatInterval): FloatInterval,
-        (IntegerInterval, ErrorSemantics): ErrorSemantics,
-        (FloatInterval, ErrorSemantics): ErrorSemantics,
-    }
+    cls = _dominance_poset.get((self_cls, other_cls))
+    if cls is not None:
+        return cls
     try:
-        return dominance_poset[self.__class__, other.__class__]
-    except KeyError:
-        pass
-    try:
-        return dominance_poset[other.__class__, self.__class__]
+        return _dominance_poset[other_cls, self_cls]
     except KeyError:
         raise TypeError(
             'Do not know how to coerce values {!r} and {!r} into the same '
@@ -144,7 +130,8 @@ def _coerce(self, other):
 def _decorate_coerce(func):
     @functools.wraps(func)
     def wrapper(self, other):
-        return func(self, other, _coerce(self, other))
+        cls = _coerce(self, other, always_return_class=False)
+        return func(self, other, cls)
     return wrapper
 
 
@@ -154,11 +141,11 @@ def _decorate_operator(func):
         with ignored(AttributeError):
             if self.is_top() or other.is_top():
                 # top denotes no information or non-termination
-                return self.__class__(top=True)
+                return _coerce(self, other)(top=True)
         with ignored(AttributeError):
             if self.is_bottom() or other.is_bottom():
                 # bottom denotes conflict
-                return self.__class__(bottom=True)
+                return _coerce(self, other)(bottom=True)
         try:
             return _decorate_coerce(func)(self, other)
         except gmpy2.RangeError:
@@ -222,6 +209,11 @@ class Interval(Lattice):
     @max.setter
     def max(self, v):
         self._max = v
+
+    def to_constant(self):
+        if self.min != self.max:
+            raise ValueError('Value is not a constant.')
+        return self.min
 
     @_decorate_coerce
     def join(self, other, cls):
@@ -320,6 +312,13 @@ class Interval(Lattice):
             return self
         return self.__class__([-self.max, -self.min])
 
+    def exp(self):
+        if self.is_top() or self.is_bottom():
+            return self
+        value = [gmpy2.exp(self.min), gmpy2.exp(self.max)]
+        error = round_off_error(value)
+        return ErrorSemantics(value, error)
+
     @_decorate_operator
     def widen(self, other, cls):
         if cls is not None:
@@ -334,6 +333,7 @@ class Interval(Lattice):
         if min_val == max_val:
             return str(min_val)
         return '[{}, {}]'.format(min_val, max_val)
+    format = __str__
 
     def __repr__(self):
         return '{cls}([{min!r}, {max!r}])'.format(
@@ -368,7 +368,7 @@ class _FloatIntervalFormatMixin(object):
 
     def __str__(self):
         if self.min == self.max:
-            return '{}'.format(self._vals_to_str()[0])
+            return '{}f'.format(self._vals_to_str()[0])
         return '[{}, {}]'.format(*self._vals_to_str())
 
 
@@ -545,6 +545,19 @@ class ErrorSemantics(Lattice):
             return self
         return self.__class__(-self.v, -self.e)
 
+    def exp(self):
+        if self.is_top() or self.is_bottom():
+            return self
+        v_min, v_max = self.v
+        if _propagate_constant and v_min == v_max:
+            v = gmpy2.exp(mpq(v_min))
+        else:
+            v = self.v.exp()
+        # exponentiation generally computes irrational numbers
+        e = round_off_error(v)
+        e += (self.e.exp() - 1) * v
+        return self.__class__(v, e)
+
     @_decorate_operator
     def widen(self, other, cls):
         if cls is not None:
@@ -583,11 +596,38 @@ class ErrorSemantics(Lattice):
         return hash_val
 
 
+_dominance_poset = {
+    (int, IntegerInterval): IntegerInterval,
+    (int, FloatInterval): FloatInterval,
+    (int, ErrorSemantics): ErrorSemantics,
+    (mpz_type, IntegerInterval): IntegerInterval,
+    (mpz_type, FloatInterval): FloatInterval,
+    (mpz_type, ErrorSemantics): ErrorSemantics,
+    (float, IntegerInterval): FloatInterval,
+    (float, FloatInterval): FloatInterval,
+    (float, ErrorSemantics): ErrorSemantics,
+    (mpfr_type, IntegerInterval): FloatInterval,
+    (mpfr_type, FloatInterval): FloatInterval,
+    (mpfr_type, ErrorSemantics): ErrorSemantics,
+    (IntegerInterval, FloatInterval): FloatInterval,
+    (IntegerInterval, ErrorSemantics): ErrorSemantics,
+    (FloatInterval, ErrorSemantics): ErrorSemantics,
+}
+
+
+def _is_integer(v):
+    try:
+        int(v)
+    except ValueError:
+        return False
+    return True
+
+
 def cast(v=None):
     if v is None:
         return IntegerInterval(bottom=True)
     if isinstance(v, str):
-        if v.isdigit():
+        if _is_integer(v):
             return IntegerInterval(v)
         return ErrorSemantics(v)
     if isinstance(v, (Interval, ErrorSemantics)):
@@ -601,7 +641,7 @@ def cast(v=None):
             return ErrorSemantics(v)
     else:
         if _are_instance((v_min, v_max), str):
-            if v_min.isdigit() and v_max.isdigit():
+            if _is_integer(v_min) and _is_integer(v_max):
                 return IntegerInterval(v)
             return ErrorSemantics(v)
         if _are_instance((v_min, v_max), (int, mpz_type)):

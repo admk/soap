@@ -6,6 +6,15 @@
 
 # python
 *.py[co]
+.coverage
+cover/
+
+# pycharm
+.idea
 
 # soap
-*.soap.*
+*.soap.emir
+*.soap.pdf
+*.soap.rpt
+*.soap.csv
+.DS_Store

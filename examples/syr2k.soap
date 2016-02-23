@@ -1,0 +1,24 @@
+// Symmetric rank-2k operations
+
+#define N 1024
+#define _PB_NI N
+#define _PB_NJ N
+#define _PB_NK N
+#define _PB_NL N
+
+#pragma soap input \
+    float alpha = [0.0, 1.0], \
+    float A[_PB_NI][_PB_NK] = [0.0, 1.0][0, 0], \
+    float B[_PB_NK][_PB_NJ] = [0.0, 1.0][0, 0], \
+    float C[_PB_NL][_PB_NJ] = [0.0, 1.0][0, 0]
+#pragma soap output C
+
+int i; int j; int k;
+
+for (i = 0; i < _PB_NI; i++)
+    for (j = 0; j < _PB_NI; j++)
+        for (k = 0; k < _PB_NJ; k++)
+        {
+            C[i][j] += alpha * A[i][k] * B[j][k];
+            C[i][j] += alpha * B[i][k] * A[j][k];
+        }

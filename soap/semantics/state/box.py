@@ -1,26 +1,49 @@
+from soap.datatype import auto_type, type_of, type_cast
 from soap.expression.variable import Variable
-from soap.lattice.map import map
-from soap.semantics.error import cast, ErrorSemantics, IntegerInterval
-from soap.semantics.label import Identifier
+from soap.lattice.map import MapLattice
+from soap.semantics.error import cast, ErrorSemantics
+from soap.semantics.label import Label
+from soap.semantics.linalg import MultiDimensionalArray
 from soap.semantics.state.base import BaseState
-from soap.semantics.state.identifier import IdentifierBaseState
-from soap.semantics.functions import bool_eval, fixpoint_eval
 
 
-class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
+class KeyErrorFromString(Exception):
+    """Failed to convert string into a correct variable. """
+
+
+class BoxState(BaseState, MapLattice):
     __slots__ = ()
 
-    def _cast_key(self, key):
+    def _init_key_value(self, key, value):
+        value = self._cast_value(key, value)
         if isinstance(key, str):
-            return Variable(key)
-        if isinstance(key, Variable):
+            key = Variable(key, type_of(value))
+        elif isinstance(key, Variable):
+            dtype = key.dtype
+            if dtype is not auto_type and dtype != type_of(value):
+                value = type_cast(dtype, value=value)
+        return key, value
+
+    def _cast_key(self, key, value=None):
+        if isinstance(key, (Variable, Label)):
             return key
+        if isinstance(key, str):
+            var_list = [var for var in self.keys() if var.name == key]
+            if not var_list:
+                raise KeyErrorFromString(key)
+            if len(var_list) > 1:
+                raise KeyErrorFromString(
+                    'Multiple variables with the same name.')
+            var = var_list.pop()
+            return var
         raise TypeError(
             'Do not know how to convert {!r} into a variable'.format(key))
 
-    def _cast_value(self, value=None, top=False, bottom=False):
+    def _cast_value(self, key=None, value=None, top=False, bottom=False):
         if top or bottom:
-            return IntegerInterval(top=top, bottom=bottom)
+            return type_cast(key.dtype, value=value, top=top, bottom=bottom)
+        if isinstance(value, MultiDimensionalArray):
+            return value
         return cast(value)
 
     def is_fixpoint(self, other):
@@ -69,74 +92,3 @@ class BoxState(BaseState, map(None, (IntegerInterval, ErrorSemantics))):
             else:
                 mapping[k] = mapping[k].widen(v)
         return self.__class__(mapping)
-
-
-class IdentifierBoxState(IdentifierBaseState, BoxState):
-    __slots__ = ()
-
-    def _cast_value(self, value=None, top=False, bottom=False):
-        if not isinstance(value, Identifier):
-            return super()._cast_value(value, top=top, bottom=bottom)
-        return value
-
-    def _labeled_transition(self, label):
-        mapping = dict(self)
-        for k, v in self.items():
-            if not k.label.is_bottom():
-                continue
-            labeled_key = Identifier(k.variable, label=label)
-            v |= mapping.get(labeled_key, self._cast_value(bottom=True))
-            mapping[labeled_key] = v
-        return self.__class__(mapping)
-
-    def visit_AssignFlow(self, flow):
-        state = super().visit_AssignFlow(flow)
-        return state._labeled_transition(flow.label)
-
-    def visit_IfFlow(self, flow):
-        true_label = flow.label.attributed_true()
-        false_label = flow.label.attributed_false()
-        exit_label = flow.label.attributed_exit()
-
-        # for each split, label respective changes to values
-        true_state, false_state = bool_eval(flow.conditional_expr, self)
-        true_state = true_state._labeled_transition(true_label)
-        false_state = false_state._labeled_transition(false_label)
-        true_state = true_state.transition(flow.true_flow)
-        false_state = false_state.transition(flow.false_flow)
-
-        # join transitioned states together, label joined values
-        state = true_state | false_state
-        return state._labeled_transition(exit_label)
-
-    def visit_WhileFlow(self, flow):
-        # use super()'s method to compute fixpoint for us.
-        fixpoint = fixpoint_eval(
-            self, flow.conditional_expr, loop_flow=flow.loop_flow)
-
-        # check if we've given up of computing an unrolled fixpoint, and if
-        # there is still potential non-terminating condition after the loop
-        # kernel; if non-termination is possible, last_entry (without labels
-        # for program statements, which is not relevant to our analysis),
-        # should not be tested bottom.
-        last_entry_predicate = lambda k: k.label.is_bottom()
-        last_entry = fixpoint['last_entry'].filter(last_entry_predicate)
-        last_entry._warn_non_termination(flow)
-
-        entry_label = flow.label.attributed_entry()
-        exit_label = flow.label.attributed_exit()
-
-        # we need to get the labeled joined value mapping from all entries to
-        # the loop, so to produce a complete mapping due to the effects of loop
-        # statements for loop exit.
-        entry = fixpoint['entry']._labeled_transition(entry_label)
-        # we should not include any current values into this as these values
-        # are not relevant after the loop, all relevant loop execution effects
-        # are recorded with labels.
-        entry = entry.filter(lambda k: not k.label.is_bottom())
-
-        # label loop exit values.
-        exit = fixpoint['exit']._labeled_transition(exit_label)
-
-        # stitch all things together, without introducing extraneous lubs.
-        return entry | exit

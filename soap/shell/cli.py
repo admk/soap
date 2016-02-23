@@ -6,11 +6,12 @@ from docopt import docopt
 
 import soap
 from soap import logger
+from soap.analysis import analyze
 from soap.context import context
+from soap.semantics import flow_to_meta_state, BoxState
 from soap.shell import interactive
 from soap.shell.utils import (
-    analyze_error, analyze_resource, optimize, parse, plot, report,
-    simulate_error
+    optimize, parse, plot, emir2csv, report, simulate_error
 )
 
 
@@ -20,13 +21,13 @@ usage = """
 {__author__} ({__email__})
 
 Usage:
-    {__executable__} analyze error [options] (<file> | --command=<str> | -)
-    {__executable__} analyze resource [options] (<file> | --command=<str> | -)
+    {__executable__} analyze [options] (<file> | --command=<str> | -)
     {__executable__} simulate [options] (<file> | --command=<str> | -)
     {__executable__} optimize [options] (<file> | --command=<str> | -)
     {__executable__} plot [options] <file>
+    {__executable__} csv [options] <file>
     {__executable__} report [options] <file>
-    {__executable__} interactive [options] [<file> | --command=<str> | -]
+    {__executable__} interact [options] [<file>]
     {__executable__} lint [options] (<file> | --command=<str> | -)
     {__executable__} (-h | --help)
     {__executable__} --version
@@ -46,7 +47,11 @@ Options:
                             `--precision=<width>` and `--single`.
     --population-size=<int> Simulation is used to find actual bound on errors.
                             This parameter specifies the population size for
-                            simulation. [default: 100]
+                            simulation.  [default: 100]
+    --fast-factor={context.fast_factor}
+                            Reduce the number of iterations taken by error
+                            analysis with a factor.  Only values less than 1
+                            have effect.  [default: {context.fast_factor}]
     --unroll-factor={context.unroll_factor}
                             Set the number of iterations bofore stopping loop
                             unroll and use the loop invariant in loop analysis.
@@ -63,7 +68,8 @@ Options:
                             [default: {context.unroll_depth}]
     --algorithm=<str>       The name of the algorithm used for optimization.
                             Allows: `closure`, `expand`, `reduce`, `parsings`,
-                            `greedy`, `frontier` or `thick`.  [default: thick]
+                            `greedy`, `frontier`, `thick` or `partition`.
+                            [default: partition]
     --norm={context.norm}
                             Specify the name of the norm function to use.
                             Allows: `mean_error`, `mse_error`, `max_error`
@@ -114,59 +120,54 @@ def _setup_context(args):
     if algorithm:
         context.algorithm = algorithm
 
+    context.fast_factor = float(args['--fast-factor'])
     context.unroll_factor = int(args['--unroll-factor'])
     context.widen_factor = int(args['--widen-factor'])
     context.window_depth = int(args['--window-depth'])
     context.unroll_depth = int(args['--unroll-depth'])
-
     context.norm = args['--norm']
 
     if args['--no-multiprocessing']:
         context.multiprocessing = False
 
 
-def _interactive(args):
-    if not args['interactive']:
-        return
-    file, _ = _file(args)
-    interactive.main(file)
-    return 0
-
-
 def _file(args):
     command = args['--command']
     if command:
-        file = command
-        out_file = 'from_command'
+        return command, 'from_command'
+    file = args['<file>']
+    if not file:
+        return None, None
+    if file == '-':
+        out_file = 'from_stdin'
+        file = sys.stdin
     else:
-        file = args['<file>']
+        out_file = file
         try:
-            if not file:
-                return None, None
-            if file == '-':
-                out_file = 'from_stdin'
-                file = sys.stdin
-            else:
-                out_file = file
-                file = open(file)
+            file = open(file)
         except FileNotFoundError:
             raise CommandError('File {!r} does not exist'.format(file))
-        file = file.read()
+    file = file.read()
     if not file:
         raise CommandError('Empty input')
     return file, out_file
+
+
+def _interact(args):
+    if not args['interact']:
+        return
+    interactive.main(args['<file>'])
+    return 0
 
 
 def _analyze(args):
     if not args['analyze']:
         return
     file, out_file = _file(args)
-    if args['error']:
-        result = analyze_error(file)
-        out_file = '{}.acc'.format(out_file)
-    if args['resource']:
-        result = analyze_resource(file)
-        out_file = '{}.res'.format(out_file)
+    prog, inputs, outputs = parse(file)
+    result = analyze(
+        [flow_to_meta_state(prog)], BoxState(inputs), outputs).pop()
+    out_file = '{}.rpt'.format(out_file)
     logger.debug(result)
     with open(out_file, 'w') as f:
         f.write(str(result))
@@ -203,6 +204,18 @@ def _plot(args):
     with open(file, 'rb') as f:
         emir = pickle.load(f)
     plot(emir, file)
+    return 0
+
+
+def _csv(args):
+    if not args['csv']:
+        return
+    file = args['<file>']
+    with open(file, 'rb') as f:
+        emir = pickle.load(f)
+    csv_file = emir['file'] + '.csv'
+    with open(csv_file, 'w') as f:
+        emir2csv(emir, f)
     return 0
 
 
@@ -244,8 +257,8 @@ def _post_run(args):
 def main():
     args = docopt(usage, version=soap.__version__)
     functions = [
-        _setup_context, _interactive, _analyze, _simulate, _optimize, _lint,
-        _plot, _report, _unreachable,
+        _setup_context, _interact, _analyze, _simulate, _optimize, _lint,
+        _plot, _csv, _report, _unreachable,
     ]
     try:
         for f in functions:

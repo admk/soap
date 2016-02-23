@@ -2,6 +2,7 @@
 .. module:: soap.expression.common
     :synopsis: Common definitions for expressions.
 """
+from soap.common.base import base_dispatcher
 from soap.common.cache import cached
 
 
@@ -57,34 +58,33 @@ def split_multi_expr(e):
     return split_multi_expr(e.a1) + split_multi_expr(e.a2)
 
 
+op_expr_cls_map = None
+
+
 @cached
 def expression_factory(op, *args):
     from soap.expression import operators
-    from soap.expression.variable import Variable
     from soap.expression.arithmetic import (
         UnaryArithExpr, BinaryArithExpr, TernaryArithExpr, SelectExpr
     )
     from soap.expression.boolean import (
         UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr
     )
-    from soap.expression.fixpoint import FixExpr, UnrollExpr
+    from soap.expression.fixpoint import FixExpr
+    from soap.expression.linalg import Subscript, AccessExpr, UpdateExpr
 
-    if not args:
-        if isinstance(op, Variable):
-            return op
-        if isinstance(op, str):
-            return Variable(op)
-        raise ValueError(
-            'Do not know how to construct expression from {!r}'.format(op))
-
-    if op == operators.FIXPOINT_OP:
-        return FixExpr(*args)
-
-    if op == operators.TERNARY_SELECT_OP:
-        return SelectExpr(*args)
-
-    if op == operators.UNROLL_OP:
-        return UnrollExpr(*args)
+    global op_expr_cls_map
+    if not op_expr_cls_map:
+        op_expr_cls_map = {
+            operators.SUBSCRIPT_OP: Subscript,
+            operators.INDEX_ACCESS_OP: AccessExpr,
+            operators.INDEX_UPDATE_OP: UpdateExpr,
+            operators.FIXPOINT_OP: FixExpr,
+            operators.TERNARY_SELECT_OP: SelectExpr,
+        }
+    cls = op_expr_cls_map.get(op)
+    if cls:
+        return cls(*args)
 
     if op in operators.ARITHMETIC_OPERATORS:
         class_list = [UnaryArithExpr, BinaryArithExpr, TernaryArithExpr]
@@ -97,3 +97,100 @@ def expression_factory(op, *args):
     except IndexError:
         raise ValueError('Too many arguments.')
     return cls(op, *args)
+
+
+class GenericExecuter(base_dispatcher()):
+    def __init__(self, *arg, **kwargs):
+        super().__init__()
+
+        for attr in ['numeral', 'Variable']:
+            self._set_default_method(attr, self._execute_atom)
+
+        expr_cls_list = [
+            'UnaryArithExpr', 'BinaryArithExpr', 'UnaryBoolExpr',
+            'BinaryBoolExpr', 'AccessExpr', 'UpdateExpr', 'SelectExpr',
+            'Subscript', 'FixExpr',
+        ]
+        for attr in expr_cls_list:
+            self._set_default_method(attr, self._execute_expression)
+
+        self._set_default_method('MetaState', self._execute_mapping)
+
+    def _set_default_method(self, name, value):
+        name = 'execute_{}'.format(name)
+        if hasattr(self, name):
+            return
+        setattr(self, name, value)
+
+    def generic_execute(self, expr, *args, **kwargs):
+        raise NotImplementedError(
+            'Do not know how to execute {!r}'.format(expr))
+
+    def _execute_atom(self, expr, *args, **kwargs):
+        raise NotImplementedError
+
+    def _execute_expression(self, expr, *args, **kwargs):
+        raise NotImplementedError
+
+    def _execute_mapping(self, meta_state, *args, **kwargs):
+        raise NotImplementedError
+
+
+class VariableSetGenerator(GenericExecuter):
+    def generic_execute(self, expr):
+        raise TypeError(
+            'Do not know how to find input variables for {!r}'.format(expr))
+
+    def _execute_atom(self, expr):
+        return {expr}
+
+    def _execute_expression(self, expr):
+        input_vars = set()
+        for arg in expr.args:
+            input_vars |= self(arg)
+        return input_vars
+
+    def execute_tuple(self, expr):
+        return set(expr)
+
+    def execute_numeral(self, expr):
+        return set()
+
+    def execute_FixExpr(self, expr):
+        input_vars = set()
+        for expr in expr.init_state.values():
+            input_vars |= self(expr)
+        return input_vars
+
+
+expression_variables = VariableSetGenerator()
+
+
+class HasInnerLoop(GenericExecuter):
+    def generic_execute(self, expr):
+        raise TypeError(
+            'Do not know how to find inner loops in {!r}'.format(expr))
+
+    def _execute_atom(self, expr):
+        return False
+
+    def _execute_expression(self, expr):
+        return any(self(arg) for arg in expr.args)
+
+    def execute_FixExpr(self, expr):
+        return True
+
+    execute_PreUnrollExpr = execute_PostUnrollExpr = execute_FixExpr
+
+    def _execute_mapping(self, expr):
+        return any(self(var_expr) for var_expr in expr.values())
+
+
+_has_inner_loop = HasInnerLoop()
+
+
+def fix_expr_has_inner_loop(expr):
+    from soap.expression.fixpoint import FixExpr
+    if isinstance(expr, FixExpr):
+        expr = expr.loop_state
+    return _has_inner_loop(expr)

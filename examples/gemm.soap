@@ -1,0 +1,26 @@
+// C := alpha*A*B + beta*C
+
+#define N 1024
+#define _PB_NI N
+#define _PB_NJ N
+#define _PB_NK N
+
+#pragma soap input \
+    float C[_PB_NI][_PB_NJ] = [0.0, 1.0][0, 0], \
+    float A[_PB_NI][_PB_NK] = [0.0, 1.0][0, 0], \
+    float B[_PB_NK][_PB_NJ] = [0.0, 1.0][0, 0]
+#pragma soap output C
+
+int i; int j; int k;
+float alpha = 32412;
+float beta = 2123;
+
+for (i = 0; i < _PB_NI; i++)
+    for (j = 0; j < _PB_NJ; j++)
+    {
+        C[i][j] *= beta;
+        for (k = 0; k < _PB_NK; ++k)
+            C[i][j] += alpha * A[i][k] * B[k][j];
+    }
+
+// vim: ft=c

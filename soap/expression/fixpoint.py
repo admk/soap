@@ -1,15 +1,18 @@
 from soap.common.formatting import underline
 
-from soap.expression.operators import FIXPOINT_OP, UNROLL_OP
-from soap.expression.arithmetic import TernaryArithExpr, QuaternaryArithExpr
+from soap.expression.operators import FIXPOINT_OP
+from soap.expression.arithmetic import QuaternaryArithExpr
+
+
+class FixExprIsNotForLoopException(Exception):
+    """FixExpr object is not a for loop.  """
 
 
 class FixExpr(QuaternaryArithExpr):
     """Fixpoint expression."""
 
-    def __init__(self, a1=None, a2=None, a3=None, a4=None,
-                 top=False, bottom=False):
-        super().__init__(FIXPOINT_OP, a1, a2, a3, a4, top=top, bottom=bottom)
+    def __init__(self, a1, a2, a3, a4):
+        super().__init__(FIXPOINT_OP, a1, a2, a3, a4)
 
     @property
     def bool_expr(self):
@@ -27,32 +30,11 @@ class FixExpr(QuaternaryArithExpr):
     def init_state(self):
         return self.a4
 
-    def __str__(self):
+    def format(self):
         fixpoint_var = underline('e')
         s = ('{op}(λ{fvar}.({bool_expr} ? {fvar} % {loop_state} : {var}))'
              ' % {init_state}')
         return s.format(
             fvar=fixpoint_var, op=self.op, bool_expr=self.bool_expr,
-            loop_state=self.loop_state, var=self.loop_var,
-            init_state=self.init_state)
-
-
-class UnrollExpr(TernaryArithExpr):
-    def __init__(self, a1=None, a2=None, a3=None, top=False, bottom=False):
-        super().__init__(UNROLL_OP, a1, a2, a3, top=top, bottom=bottom)
-
-    @property
-    def fix_expr(self):
-        return self.a1
-
-    @property
-    def outer(self):
-        return self.a2
-
-    @property
-    def depth(self):
-        return self.a3
-
-    def __str__(self):
-        fix_expr, outer, depth = self._args_to_str()
-        return '{} @ {}'.format(fix_expr, depth)
+            loop_state=self.loop_state.format(), var=self.loop_var,
+            init_state=self.init_state.format())

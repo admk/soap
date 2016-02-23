@@ -31,7 +31,7 @@ class TreeFarmer(object):
 
     def _harvest(self, trees):
         """Crops all trees at the depth limit."""
-        if self.depth >= RECURSION_LIMIT:
+        if self.depth < 0 or self.depth >= RECURSION_LIMIT:
             return trees
         cropped = []
         for t in trees:
@@ -78,11 +78,14 @@ class TreeTransformer(TreeFarmer):
     def __init__(self, tree_or_trees,
                  depth=None, steps=None, no_bool=True,
                  transform_rules=None, reduction_rules=None,
-                 step_plugin=None, reduce_plugin=None):
+                 step_plugin=None, reduce_plugin=None, multiprocessing=None,
+                 **kwargs):
         super().__init__(depth=depth or context.window_depth)
+
         self.steps = steps or context.max_steps
         self.step_plugin = step_plugin
         self.reduce_plugin = reduce_plugin
+
         if transform_rules:
             self.transform_rules = transform_rules
         if not no_bool:
@@ -90,6 +93,12 @@ class TreeTransformer(TreeFarmer):
                 self.transform_rules, **self.boolean_rules)
         if reduction_rules:
             self.reduction_rules = reduction_rules
+
+        if multiprocessing is not None:
+            self.multiprocessing = multiprocessing
+        else:
+            self.multiprocessing = context.multiprocessing
+
         if isinstance(tree_or_trees, str):
             self._expressions = [parse(tree_or_trees)]
         elif is_expression(tree_or_trees):
@@ -110,10 +119,11 @@ class TreeTransformer(TreeFarmer):
 
     def _sample(self, expr_set):
         limit = context.size_limit
-        if limit >= 0 and len(expr_set) > limit:
+        size = len(expr_set)
+        if limit >= 0 and size > limit:
             logger.debug(
-                'Equivalent structures over limit, '
-                'reduces population size by sampling.')
+                'Number of equivalent structures over limit ({} > {}), '
+                'reduces population size by sampling.'.format(size, limit))
             random.seed(context.rand_seed)
             expr_set = random.sample(expr_set, limit)
         return set(expr_set)
@@ -121,24 +131,21 @@ class TreeTransformer(TreeFarmer):
     def _step(self, expressions, closure=False, depth=None):
         """One step of the transitive closure."""
         rules = self.transform_rules if closure else self.reduction_rules
-        if context.multiprocessing:
-            cpu_count = multiprocessing.cpu_count()
-            chunksize = int(len(expressions) / cpu_count) + 1
+        if self.multiprocessing:
             # this gives the desired deterministic behaviour for reduction
             # so never change it to imap_unordered!!
             map = pool.map
         else:
-            cpu_count = chunksize = 1
-            map = lambda func, args_list, _: [func(args) for args in args_list]
-        union = lambda s, _: functools.reduce(lambda x, y: x | y, s)
+            map = lambda func, args_list: [func(args) for args in args_list]
         args_list = [(expression, rules, closure, depth)
                      for index, expression in enumerate(expressions)]
-        should_include, discovered_sets = \
-            zip(*map(_walk, args_list, chunksize))
+        should_include, discovered_sets = zip(*map(_walk, args_list))
         expressions = {
             expression for index, expression in enumerate(expressions)
             if should_include[index]}
-        discovered = union(discovered_sets, cpu_count)
+        discovered = set()
+        for s in discovered_sets:
+            discovered.update(s)
         return expressions, discovered
 
     def _recursive_closure(self, trees, reduced=False):
@@ -154,8 +161,7 @@ class TreeTransformer(TreeFarmer):
             logger.persistent('Todo', len(todo_trees))
             if not reduced:
                 todo_trees = self._sample(todo_trees)
-                _, step_trees = \
-                    self._step(todo_trees, not reduced, None)
+                _, step_trees = self._step(todo_trees, not reduced, None)
                 step_trees -= done_trees
                 step_trees = self._recursive_closure(step_trees, True)
                 step_trees = self._plugin(
@@ -163,8 +169,8 @@ class TreeTransformer(TreeFarmer):
                 done_trees |= todo_trees
                 todo_trees = step_trees - done_trees
             else:
-                nore_trees, step_trees = \
-                    self._step(todo_trees, not reduced, None)
+                nore_trees, step_trees = self._step(
+                    todo_trees, not reduced, None)
                 step_trees = self._plugin(
                     curr_step, step_trees, self.reduce_plugin)
                 done_trees |= nore_trees
@@ -191,15 +197,9 @@ def _walk(args):
     try:
         discovered = _recursive_walk(expression, rules, depth)
     except Exception:
-        try:
-            from IPython.core.ultratb import VerboseTB
-        except ImportError:
-            import traceback
-            traceback.print_exc()
-        else:
-            import sys
-            exc = sys.exc_info()
-            print(VerboseTB().text(*exc))
+        import sys
+        from IPython.core.ultratb import VerboseTB
+        print(VerboseTB().text(*sys.exc_info()))
         raise
     if closure:
         discovered.add(expression)

@@ -1,23 +1,21 @@
 from soap.expression import (
-    expression_factory, is_expression, is_variable
+    expression_factory, is_expression, is_variable, FixExpr
 )
 from soap.semantics.common import is_numeral
-from soap.semantics.functions.arithmetic import arith_eval
-
-
-def to_meta_state(flow):
-    from soap.semantics.state.meta import MetaState
-    id_state = MetaState({v: v for v in flow.vars(output=False)})
-    return id_state.transition(flow)
 
 
 def expand_expr(expr, meta_state):
+    if isinstance(expr, FixExpr):
+        return expression_factory(
+            expr.op, expr.bool_expr, expr.loop_state, expr.loop_var,
+            expand_meta_state(expr.init_state, meta_state))
     if is_expression(expr):
         args = [expand_expr(a, meta_state) for a in expr.args]
         return expression_factory(expr.op, *args)
     if is_variable(expr):
-        new_expr = meta_state[expr]
-        if new_expr.is_bottom():
+        try:
+            new_expr = meta_state[expr]
+        except KeyError:
             raise KeyError(
                 'Cannot expand the expression {expr}, missing variable in '
                 '{state}'.format(expr=expr, state=meta_state))
@@ -37,8 +35,3 @@ def _eval_meta_state_with_func(eval_func, meta_state, state):
 def expand_meta_state(meta_state, state):
     """Expand meta_state with state."""
     return _eval_meta_state_with_func(expand_expr, meta_state, state)
-
-
-def arith_eval_meta_state(meta_state, state):
-    """Perform arithmetic evaluation on meta_state with state."""
-    return _eval_meta_state_with_func(arith_eval, meta_state, state)

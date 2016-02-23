@@ -1,0 +1,18 @@
+# ==========
+#  literals
+# ==========
+
+left_paren  = _ '(' _
+right_paren = _ ')' _
+left_brac   = _ '[' _
+right_brac  = _ ']' _
+comma       = _ ',' _
+
+
+# =========
+#  regexes
+# =========
+
+_new_line = _no_new_line ~r"[\r\n]+"m _
+_no_new_line = ~r"[^\S\r\n]*"
+_ = ~r"\s*(?://[^\r\n]*)?\s*"

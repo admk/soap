@@ -9,7 +9,8 @@ from soap.expression.operators import (
     COMPARISON_NEGATE_DICT, COMPARISON_MIRROR_DICT,
 )
 from soap.expression.common import (
-    expression_factory, is_expression, is_variable
+    expression_factory, expression_variables, is_expression, is_variable,
+    fix_expr_has_inner_loop, GenericExecuter
 )
 from soap.expression.base import (
     Expression, UnaryExpression, BinaryExpression, TernaryExpression,
@@ -26,4 +27,5 @@ from soap.expression.arithmetic import (
 from soap.expression.boolean import (
     BoolExpr, UnaryBoolExpr, BinaryBoolExpr, TernaryBoolExpr
 )
-from soap.expression.fixpoint import FixExpr, UnrollExpr
+from soap.expression.fixpoint import FixExpr
+from soap.expression.linalg import Subscript, AccessExpr, UpdateExpr

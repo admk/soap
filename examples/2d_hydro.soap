@@ -1,0 +1,25 @@
+#define loop 1024
+#define N 512
+#define J 6
+
+#pragma soap input \
+    float za[J][N] = [0.0, 1.0][0, 0], \
+    float zb[J][N] = [0.0, 1.0][0, 0], \
+    float zr[J][N] = [0.0, 1.0][0, 0], \
+    float zu[J][N] = [0.0, 1.0][0, 0], \
+    float zv[J][N] = [0.0, 1.0][0, 0], \
+    float zz[J][N] = [0.0, 1.0][0, 0]
+#pragma soap output za
+
+int l; int j; int k;
+float qa;
+
+for ( l=1 ; l<=loop ; l++ ) {
+    for ( j=1 ; j<6 ; j++ ) {
+        for ( k=1 ; k<N ; k++ ) {
+            qa = za[j+1][k]*zr[j][k] + za[j-1][k]*zb[j][k] +
+                 za[j][k+1]*zu[j][k] + za[j][k-1]*zv[j][k] + zz[j][k];
+            za[j][k] += 0.175f*( qa - za[j][k] );
+        }
+    }
+}

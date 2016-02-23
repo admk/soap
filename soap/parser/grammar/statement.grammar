@@ -1,0 +1,73 @@
+# ===========
+#  statement
+# ===========
+
+statement = single_statement+
+single_statement =
+    assign_statement / operator_assign_statement / step_statement /
+    if_statement / while_statement / for_statement / declaration_statement /
+    pragma_input_statement / pragma_output_statement
+
+declaration_statement = variable_declaration semicolon
+
+assign_statement = assign_part semicolon
+operator_assign_statement = operator_assign_part semicolon
+step_statement = step_part semicolon
+
+if_statement = if_else_block / if_then_block
+if_then_block = if boolean_block code_block
+if_else_block = if_then_block else code_block
+
+while_statement = while boolean_block code_block
+
+for_statement =
+    for left_paren for_assign_part semicolon boolean_expression semicolon
+    for_assign_part right_paren code_block
+
+for_assign_part = assign_part / operator_assign_part / step_part / _
+assign_part = variable_or_declaration assign expression
+variable_or_declaration = scalar_declaration / variable_subscript
+operator_assign_part = variable_subscript op_eq_operator arithmetic_expression
+
+step_part = pre_step_part / post_step_part
+pre_step_part = step_operator variable_subscript
+post_step_part = variable_subscript step_operator
+
+boolean_block = left_paren boolean_expression right_paren
+code_block = single_statement / multi_line_code_block
+multi_line_code_block = left_curl statement right_curl
+
+pragma_input_statement = pragma input input_list
+input_list = input_expr (comma input_expr)*
+input_expr = input_assign_expr / variable_declaration
+input_assign_expr = variable_declaration assign number
+
+pragma_output_statement = pragma output output_list
+output_list = new_variable (comma new_variable)*
+
+
+# ==========
+#  literals
+# ==========
+
+input = _no_new_line 'input' _no_new_line
+output = _no_new_line 'output' _no_new_line
+pragma = _ '#' _no_new_line 'pragma' _no_new_line 'soap' _no_new_line
+
+
+# ==========
+#  literals
+# ==========
+
+def        = _ 'def'    _
+skip       = _ 'skip'   _
+if         = _ 'if'     _
+else       = _ 'else'   _
+while      = _ 'while'  _
+for        = _ 'for'    _
+return     = _ 'return' _
+
+assign     = _ '=' _
+left_curl  = _ '{' _
+right_curl = _ '}' _
+semicolon  = _ ';' _

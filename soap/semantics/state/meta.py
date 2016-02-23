@@ -1,31 +1,45 @@
+from soap import logger
+
+from soap.common import indent
 from soap.expression import (
-    Expression, SelectExpr, FixExpr, Variable, OutputVariableTuple
+    AccessExpr, Expression, FixExpr, OutputVariableTuple, SelectExpr,
+    UpdateExpr, Variable
 )
-from soap.lattice import Lattice, map
-from soap.semantics.error import cast
 from soap.semantics.common import is_numeral
+from soap.semantics.error import cast
+from soap.semantics.functions import expand_expr
 from soap.semantics.label import Label
 from soap.semantics.state.base import BaseState
-from soap.semantics.functions import expand_expr, to_meta_state
 
 
-class MetaState(BaseState, map(None, Expression)):
-    __slots__ = ()
+class MetaState(BaseState, dict):
+    __slots__ = ('_hash')
+
+    def __init__(self, dictionary=None, **kwargs):
+        dictionary = dict(dictionary or {}, **kwargs)
+        mapping = {
+            self._cast_key(key): self._cast_value(key, value)
+            for key, value in dictionary.items()
+        }
+        super().__init__(mapping)
+        self._hash = None
 
     def _cast_key(self, key):
-        if isinstance(key, str):
-            return Variable(key)
         if isinstance(key, (Variable, Label, OutputVariableTuple)):
             return key
+        if isinstance(key, str):
+            var_list = [var for var in self.keys() if var.name == key]
+            if not var_list:
+                raise KeyError(key)
+            if len(var_list) > 1:
+                raise KeyError('Multiple variables with the same name.')
+            var = var_list.pop()
+            return var
         raise TypeError(
             'Do not know how to convert {!r} into a variable'.format(key))
 
-    def _cast_value(self, value=None, top=False, bottom=False):
-        if top or bottom:
-            return Expression(top=top, bottom=bottom)
+    def _cast_value(self, key, value):
         if isinstance(value, (Label, Expression)):
-            return value
-        if isinstance(value, Lattice) and value.is_top():
             return value
         if isinstance(value, str):
             from soap.parser import parse
@@ -37,23 +51,32 @@ class MetaState(BaseState, map(None, Expression)):
         raise TypeError(
             'Do not know how to convert {!r} into an expression'.format(value))
 
+    def __getitem__(self, key):
+        try:
+            return super().__getitem__(key)
+        except KeyError:
+            logger.warning('Variable {} does not exist.'.format(key))
+            return Variable('__unreachable', key.dtype)
+
     def is_fixpoint(self, other):
         raise RuntimeError('Should not be called.')
 
     def widen(self, other):
         raise RuntimeError('Should not be called.')
 
-    def visit_IdentityFlow(self, flow):
+    def visit_SkipFlow(self, flow):
         return self
 
     def visit_AssignFlow(self, flow):
-        return self[flow.var:expand_expr(flow.expr, self)]
+        var, expr = flow.var, flow.expr
+        if isinstance(var, AccessExpr):
+            var, subscript = var.var, var.subscript
+            expr = UpdateExpr(var, subscript, expr)
+        return self.immu_update(var, expand_expr(expr, self))
 
     def visit_IfFlow(self, flow):
         def get(state, var):
             expr = state[var]
-            if expr.is_bottom():
-                return var
             return expr
         bool_expr = expand_expr(flow.conditional_expr, self)
         true_state = self.transition(flow.true_flow)
@@ -85,36 +108,62 @@ class MetaState(BaseState, map(None, Expression)):
             in_vars |= expr_vars
         return in_vars
 
-    def visit_WhileFlow(self, flow):
-        bool_expr = flow.conditional_expr
-        loop_flow = flow.loop_flow
+    def _visit_loop(self, init_state, bool_expr, loop_flow):
+        """
+        Finds necessary loop variables and loop states for each variable.
+        """
         bool_expr_vars = bool_expr.vars()
-
-        # loop_state for all output variables
         input_vars = loop_flow.vars(output=False) | bool_expr_vars
         loop_vars = loop_flow.vars(input=False)
         id_state = self.__class__({k: k for k in input_vars | loop_vars})
         loop_state = id_state.transition(loop_flow)
 
-        mapping = dict(self)
+        loop_map = {}
+        init_map = {}
+
         for var in loop_vars:
             # local loop/init variables
             local_loop_vars = self._input_vars(loop_state, var)
             local_loop_vars |= bool_expr_vars
             # local loop/init states
-            local_loop_state = self.__class__(
+            loop_map[var] = self.__class__(
                 {k: v for k, v in loop_state.items() if k in local_loop_vars})
-            local_init_state = self.__class__(
-                {k: v for k, v in self.items() if k in local_loop_vars})
+            init_map[var] = self.__class__(
+                {k: v for k, v in init_state.items() if k in local_loop_vars})
+
+        mapping = dict(init_state)
+        for var in loop_map:
             # fixpoint expression
             mapping[var] = FixExpr(
-                bool_expr, local_loop_state, var, local_init_state)
-
+                bool_expr, loop_map[var], var, init_map[var])
         return self.__class__(mapping)
+
+    def visit_WhileFlow(self, flow):
+        return self._visit_loop(self, flow.conditional_expr, flow.loop_flow)
+
+    def visit_ForFlow(self, flow):
+        init_state = self(flow.init_flow)
+        return self._visit_loop(
+            init_state, flow.conditional_expr, flow.loop_flow + flow.incr_flow)
+
+    def format(self):
+        items = []
+        for k, v in sorted(self.items(), key=str):
+            if isinstance(v, (Expression, MetaState)):
+                v = v.format()
+            items.append('{}: {}'.format(k, v))
+        items = ', \n'.join(items)
+        return '{{\n{}}}'.format(indent(items))
+
+    def __str__(self):
+        return self.format().replace('    ', '').replace('\n', '').strip()
+
+    def __hash__(self):
+        if self._hash is None:
+            self._hash = hash(tuple(sorted(self.items(), key=hash)))
+        return self._hash
 
 
 def flow_to_meta_state(flow):
-    if isinstance(flow, str):
-        from soap.parser import pyparse
-        flow = pyparse(flow)
-    return to_meta_state(flow)
+    id_state = MetaState({v: v for v in flow.vars(output=False)})
+    return id_state.transition(flow)

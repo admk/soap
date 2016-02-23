@@ -1,0 +1,117 @@
+# ======
+#  root
+# ======
+
+expression = arithmetic_expression / boolean_expression
+
+
+# ==============
+#  declarations
+# ==============
+
+variable_declaration = array_declaration / scalar_declaration
+array_declaration = data_type new_variable dimension+
+scalar_declaration = data_type new_variable
+
+dimension = left_brac integer right_brac
+data_type = int_type / float_type / double_type
+
+int_type  = _ 'int'  _
+float_type = _ 'float' _
+double_type = _ 'double' _
+
+
+# =============
+#  expressions
+# =============
+
+arithmetic_expression = select / term
+
+select = boolean_expression question term colon term
+term   = factor (sum_operator factor)*
+factor = atom (prod_operator atom)*
+atom   = parened / unary_expr / unary_subtract / number / variable_subscript
+
+parened        = left_paren arithmetic_expression right_paren
+unary_expr     = unary_operator parened
+unary_subtract = sub atom
+
+boolean_expression = bool_term
+
+bool_term  = and_factor (or and_factor)*
+and_factor = bool_atom (and bool_atom)*
+
+bool_atom        = bool_parened / binary_bool_expr / unary_bool_expr / variable
+bool_parened     = left_paren boolean_expression right_paren
+binary_bool_expr = term compare_operator term
+unary_bool_expr  = not bool_atom
+
+variable_subscript      = variable_with_subscript / variable
+variable_with_subscript = variable subscript+
+
+subscript = left_brac arithmetic_expression right_brac
+number    = error / interval / scalar
+error     = interval interval
+interval  = left_brac scalar comma scalar right_brac
+scalar    = real / integer
+
+
+# ===========
+#  operators
+# ===========
+
+question    = _ '?' _
+colon       = _ ':' _
+
+compare_operator = le / lt / ge / gt / eq / ne
+
+lt = _ '<'  _
+le = _ '<=' _
+ge = _ '>=' _
+gt = _ '>'  _
+eq = _ '==' _
+ne = _ '!=' _
+
+and = _ '&&' _
+or  = _ '||' _
+not = _ '!'  _
+
+sum_operator = add / sub
+prod_operator = pow / mul / div
+unary_operator = exp / sin / cos
+
+add = _ '+' _
+sub = _ '-' _
+mul = _ '*' _
+div = _ '/' _
+pow = _ '**' _
+exp = _ 'exp' _
+sin = _ 'sin' _
+cos = _ 'cos' _
+
+op_eq_operator = add_eq / sub_eq / mul_eq / div_eq / pow_eq
+
+add_eq = _ '+=' _
+sub_eq = _ '-=' _
+mul_eq = _ '*=' _
+div_eq = _ '/=' _
+pow_eq = _ '**=' _
+
+step_operator = incr / decr
+
+incr = _ '++' _
+decr = _ '--' _
+
+
+# =========
+#  regexes
+# =========
+
+variable = _ variable_regex _
+new_variable = _ variable_regex _
+variable_regex = ~'[a-zA-Z_][a-zA-Z_0-9]*'
+
+integer = _ integer_regex _
+real    = _ real_regex _
+integer_regex = ~'(\+|-)?[0-9]+'
+real_regex    = ~'(\+|-)?([0-9]+\.?[0-9]*|\.[0-9]+)([eE](\+|-)?[0-9]+)?f?'

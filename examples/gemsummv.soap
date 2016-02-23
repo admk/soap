@@ -1,0 +1,30 @@
+//Scalar, Vector and Matrix Multiplication
+
+#define N 1024
+#define _PB_N 1024
+
+#pragma soap input \
+    float A[N][N] = [0.0, 1.0][0, 0], \
+    float B[N][N] = [0.0, 1.0][0, 0], \
+    float tmp[N] = 0, \
+    float x[N] = [0.0, 1.0][0, 0], \
+    float y[N] = 0
+#pragma soap output y
+
+int i; int j;
+float alpha = 43532;
+float beta = 12313;
+
+for (i = 0; i < _PB_N; i++)
+{
+    tmp[i] = 0;
+    y[i] = 0;
+    for (j = 0; j < _PB_N; j++)
+    {
+        tmp[i] = A[i][j] * x[j] + tmp[i];
+        y[i] = B[i][j] * x[j] + y[i];
+    }
+    y[i] = alpha * tmp[i] + beta * y[i];
+}
+
+// vim: ft=c

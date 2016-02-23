@@ -5,7 +5,6 @@
 from collections import Mapping
 
 from soap.lattice import Lattice
-from soap.lattice.common import _lattice_factory
 
 
 class MapLattice(Lattice, Mapping):
@@ -19,10 +18,8 @@ class MapLattice(Lattice, Mapping):
             return
         mapping = {}
         for k, v in dict(dictionary or {}, **kwargs).items():
-            k = self._cast_key(k)
-            v = self._cast_value(v)
-            if not v.is_bottom():
-                mapping[k] = v
+            k, v = self._init_key_value(k, v)
+            mapping[k] = v
         self._mapping = mapping
 
     def __getstate__(self):
@@ -33,10 +30,15 @@ class MapLattice(Lattice, Mapping):
         self.top, self.bottom = state[:2]
         self._mapping = {k: v for k, v in state[2]}
 
-    def _cast_key(self, k):
+    def _init_key_value(self, key, value, top=False, bottom=False):
+        key = self._cast_key(key, value)
+        value = self._cast_value(key, value, top, bottom)
+        return key, value
+
+    def _cast_key(self, key, value=None):
         raise NotImplementedError
 
-    def _cast_value(self, v=None, top=False, bottom=False):
+    def _cast_value(self, key=None, value=None, top=False, bottom=False):
         raise NotImplementedError
 
     def is_top(self):
@@ -82,18 +84,12 @@ class MapLattice(Lattice, Mapping):
         return super().__contains__(self._cast_key(key))
 
     def __getitem__(self, key):
-        if self.is_top():
-            return self._cast_value(top=True)
-        if isinstance(key, slice):
-            new_map = dict(self)
-            new_map[self._cast_key(key.start)] = self._cast_value(key.stop)
-            return self.__class__(new_map)
-        if self.is_bottom():
-            return self._cast_value(bottom=True)
         try:
             return self._mapping[self._cast_key(key)]
         except KeyError:
-            return self._cast_value(bottom=True)
+            if self.is_bottom():
+                return self._cast_value(key=key, bottom=True)
+            return self._cast_value(key=key, top=True)
 
     def __hash__(self):
         self._hash = hash_val = hash(tuple(sorted(self.items(), key=hash)))
@@ -107,24 +103,3 @@ class MapLattice(Lattice, Mapping):
     def __repr__(self):
         return '{cls}({items!r})'.format(
             cls=self.__class__.__name__, items=dict(self))
-
-
-def map(from_cls=None, to_lattice=None, name=None):
-    """Returns a mapping lattice which orders the partial maps from a class
-    `from_cls` to a lattice `to_lattice`.
-
-    :param from_cls: The domain of the function.
-    :type cls: type
-    :param to_lattice: The range of the function, must be a lattice.
-    :type name: :class:`soap.lattice.Lattice`
-    """
-    if not name and from_cls and to_lattice:
-        try:
-            to_lattice_name = to_lattice.__name__
-        except AttributeError:
-            to_lattice_name = type(to_lattice).__name__
-        name = 'MapLattice_{}_to_{}'.format(from_cls.__name__, to_lattice_name)
-    cls = _lattice_factory(to_lattice, MapLattice, name)
-    if from_cls:
-        cls._cast_key = lambda self, key: from_cls(key)
-    return cls

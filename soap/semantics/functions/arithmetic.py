@@ -1,21 +1,25 @@
+import collections
+
 from soap.common import base_dispatcher, cached
-from soap.expression import operators
-from soap.semantics.error import ErrorSemantics, FloatInterval, error_norm
+from soap.expression import operators, BinaryBoolExpr, Subscript
+from soap.semantics.error import error_norm, ErrorSemantics, IntegerInterval
+from soap.semantics.linalg import IntegerIntervalArray, ErrorSemanticsArray
+
+
+_unary_operator_function_dictionary = {
+    operators.UNARY_SUBTRACT_OP: lambda x: -x,
+    operators.EXPONENTIATE_OP: lambda x: x.exp(),
+}
+_binary_operator_function_dictionary = {
+    operators.ADD_OP: lambda x, y: x + y,
+    operators.SUBTRACT_OP: lambda x, y: x - y,
+    operators.MULTIPLY_OP: lambda x, y: x * y,
+    operators.DIVIDE_OP: lambda x, y: x / y,
+    operators.BARRIER_OP: lambda x, y: error_norm([x, y]),
+}
 
 
 class ArithmeticEvaluator(base_dispatcher()):
-
-    _unary_operator_function_dictionary = {
-        operators.UNARY_SUBTRACT_OP: lambda x: -x,
-    }
-
-    _binary_operator_function_dictionary = {
-        operators.ADD_OP: lambda x, y: x + y,
-        operators.SUBTRACT_OP: lambda x, y: x - y,
-        operators.MULTIPLY_OP: lambda x, y: x * y,
-        operators.DIVIDE_OP: lambda x, y: x / y,
-        operators.BARRIER_OP: lambda x, y: error_norm([x, y]),
-    }
 
     def generic_execute(self, expr, state):
         raise TypeError('Do not know how to evaluate {!r}'.format(expr))
@@ -23,27 +27,50 @@ class ArithmeticEvaluator(base_dispatcher()):
     def execute_numeral(self, expr, state):
         return expr
 
-    def _execute_args(self, args, state):
-        return tuple(self(arg, state) for arg in args)
+    def execute_PartitionLabel(self, expr, state):
+        return expr.bound
+
+    def _execute_args(self, expr, state):
+        args = []
+        for arg in expr.args:
+            args.append(self(arg, state))
+        return args
 
     def execute_Variable(self, expr, state):
         return state[expr]
 
     def execute_UnaryArithExpr(self, expr, state):
-        a, = self._execute_args(expr.args, state)
+        a, = self._execute_args(expr, state)
         try:
-            op = self._unary_operator_function_dictionary[expr.op]
+            op = _unary_operator_function_dictionary[expr.op]
         except KeyError:
             raise KeyError('Unrecognized operator type {!r}'.format(op))
         return op(a)
 
     def execute_BinaryArithExpr(self, expr, state):
-        a1, a2 = self._execute_args(expr.args, state)
+        a1, a2 = self._execute_args(expr, state)
         try:
-            op = self._binary_operator_function_dictionary[expr.op]
+            op = _binary_operator_function_dictionary[expr.op]
         except KeyError:
             raise KeyError('Unrecognized operator type {!r}'.format(self.op))
         return op(a1, a2)
+
+    def execute_Subscript(self, expr, state):
+        return IntegerIntervalArray(self._execute_args(expr, state))
+
+    def execute_AccessExpr(self, expr, state):
+        array, subscript = self._execute_args(expr, state)
+        if array.is_bottom() or any(s.is_bottom() for s in subscript):
+            return array.value_class(bottom=True)
+        return array[subscript]
+
+    def execute_UpdateExpr(self, expr, state):
+        array, subscript, value = self._execute_args(expr, state)
+        if array.is_bottom():
+            return array
+        if any(s.is_bottom() for s in subscript):
+            return array.__class__(_shape=array.shape, bottom=True)
+        return array.update(subscript, value)
 
     def execute_SelectExpr(self, expr, state):
         from soap.semantics.functions.boolean import bool_eval
@@ -55,17 +82,15 @@ class ArithmeticEvaluator(base_dispatcher()):
         return true_value | false_value
 
     def execute_FixExpr(self, expr, state):
-        from soap.semantics.functions import fix_expr_eval
+        from soap.semantics.functions.fixpoint import fix_expr_eval
         return fix_expr_eval(expr, state)
 
-    def execute_UnrollExpr(self, expr, state):
-        from soap.semantics.functions import unroll_eval
-        expr, kernel, depth = expr.args
-        return unroll_eval(expr, kernel, state, depth)
+    def execute_PreUnrollExpr(self, expr, state):
+        return self.execute_FixExpr(expr.a, state)
 
     def execute_MetaState(self, meta_state, state):
-        from soap.semantics.functions import arith_eval_meta_state
-        return arith_eval_meta_state(meta_state, state)
+        return state.__class__({
+            var: self(expr, state) for var, expr in meta_state.items()})
 
     @cached
     def __call__(self, expr, state):
@@ -75,25 +100,32 @@ class ArithmeticEvaluator(base_dispatcher()):
         return self.__class__ == other.__class__
 
     def __hash__(self):
-        return hash('arith_eval')
+        return hash(self.__class__)
 
 
 arith_eval = ArithmeticEvaluator()
 
 
-class ErrorEvaluator(ArithmeticEvaluator):
+def _to_norm(value):
+    if isinstance(value, IntegerIntervalArray):
+        if value.is_scalar():
+            return value.scalar
+        return error_norm(ErrorSemantics(v, 0) for v in value._flat_items)
+    if isinstance(value, ErrorSemanticsArray):
+        if value.is_scalar():
+            return value.scalar
+        return error_norm(value._flat_items)
+    if isinstance(value, collections.Mapping):
+        return error_norm(_to_norm(val) for val in value.values())
+    return value
 
-    def execute_Variable(self, expr, state):
-        value = state[expr]
-        if isinstance(value, FloatInterval):
-            value = ErrorSemantics(value, 0)
-        return value
 
-    def execute_BinaryBoolExpr(self, expr, state):
+def error_eval(expr, state, to_norm=True):
+    if isinstance(expr, (BinaryBoolExpr, Subscript)):
         return 0
-
-    def execute_MetaState(self, meta_state, state):
-        return error_norm([self(expr, state) for expr in meta_state.values()])
-
-
-error_eval = ErrorEvaluator()
+    value = arith_eval(expr, state)
+    if to_norm:
+        value = _to_norm(value)
+    if isinstance(value, IntegerInterval):
+        value = ErrorSemantics(value, 0)
+    return value

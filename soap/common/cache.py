@@ -23,7 +23,7 @@ def invalidate_cache():
 def cached(f):
     class NonLocals(object):
         pass
-    CACHE_CAPACITY = 10000
+    CACHE_CAPACITY = 1000000
     cache = {}
     NonLocals.full = False
     NonLocals.hits = NonLocals.misses = NonLocals.currsize = 0
@@ -88,13 +88,15 @@ def cached(f):
 def dump_cache_info():
     from soap import logger
     logger.info('Cache Hits and Misses')
-    logger.info('Name\tHits\tMisses\tRate\tSize')
+    logger.info('Name\t\t\t\t\tHits\tMisses\tRate\tSize')
     for func in _cached_funcs:
         hits, misses, size = func.cache_info()
         if hits or misses:
-            rate = '{}'.format(int(100 * hits / (hits + misses)))
-            logger.info('{}\n\t\t{}\t{}\t{}%\t{}'.format(
-                func.__qualname__, hits, misses, rate, size))
+            rate = '{}%'.format(int(100 * hits / (hits + misses)))
+        else:
+            rate = 'n/a'
+        logger.info('{:<30}\t{}\t{}\t{}\t{}'.format(
+            func.__qualname__, hits, misses, rate, size))
 
 
 class Flyweight(object):
@@ -106,8 +108,24 @@ class Flyweight(object):
             return object.__new__(cls)
         key = pickle.dumps((cls, args, list(kwargs.items())))
         v = cls._cache.get(key, None)
-        if v:
+        if v is not None:
             return v
         v = object.__new__(cls)
         cls._cache[key] = v
         return v
+
+
+class cached_property(object):
+    """
+    Cached property descriptor.
+    https://github.com/pydanny/cached-property
+    """
+    def __init__(self, func):
+        self.__doc__ = getattr(func, '__doc__')
+        self.func = func
+
+    def __get__(self, obj, cls):
+        if obj is None:
+            return self
+        value = obj.__dict__[self.func.__name__] = self.func(obj)
+        return value
