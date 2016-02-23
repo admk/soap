@@ -13,23 +13,27 @@ Installation
 Requirements:
 * Python3
 
-```
-pip install -r requirements.txt
-```
+::
+
+  $ pip install -r requirements.txt
+
 
 
 Usage
 =====
 
-```
-./soapy --help
-```
+::
+
+  ./soapy --help
+
 
 
 Benchmark Results
 =================
 
-Available `here<https://admk.github.io/soap/plot.html>`_.
+Available here_.
+
+.. _here: https://admk.github.io/soap/plot.html
 
 
 Caveat
