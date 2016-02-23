@@ -4,8 +4,8 @@ import sys
 __soap__ = 'SOAP'
 __description__ = """
 Numerical program structural optimizer."""
-__version__ = '2.0.1'
-__date__ = '23 Feb 2015'
+__version__ = '3'
+__date__ = '23 Feb 2016'
 __author__ = 'Xitong Gao'
 __email__ = '@'.join(['xtg08', 'ic.ac.uk'])
 __executable__ = os.path.basename(sys.argv[0])
